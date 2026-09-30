@@ -1,0 +1,918 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORRA-65 — Live-Build Mechanical Keyboard</title>
+<style>
+/* ============ BASE ============ */
+:root{
+  --bg:#0c1014; --bg2:#11161b; --panel:#141a21; --line:rgba(255,255,255,.08);
+  --ink:#e6eaef; --mut:#8f9aa5; --amber:#ffb454; --amber2:#ff9e2e;
+  --ok:#7ee8b2;
+  --disp:Futura,"Futura PT","Avenir Next",Avenir,"Century Gothic","Trebuchet MS",Verdana,sans-serif;
+  --mono:"SF Mono",ui-monospace,"Cascadia Mono","JetBrains Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(1100px 620px at 50% -8%, rgba(46,62,80,.55), transparent 65%),
+    radial-gradient(900px 500px at 85% 110%, rgba(30,44,40,.35), transparent 60%),
+    var(--bg);
+  color:var(--ink);
+  font:14px/1.6 var(--mono);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+::selection{background:rgba(255,180,84,.35)}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;border-radius:6px}
+
+
+/* ambient background layers */
+.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse 90% 62% at 50% 14%,#000 20%,transparent 78%);
+  mask-image:radial-gradient(ellipse 90% 62% at 50% 14%,#000 20%,transparent 78%);
+}
+.dust{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.dust span{position:absolute;top:104%;border-radius:50%;background:#cfd8e0;
+  animation:floatY linear infinite}
+@keyframes floatY{
+  from{transform:translate3d(0,0,0)}
+  to{transform:translate3d(var(--dx,0px),-118vh,0)}
+}
+
+
+/* ============ HEADER ============ */
+header{
+  position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  padding:14px 26px;
+  background:rgba(12,16,20,.78);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:13px}
+.mark{width:32px;height:32px;border-radius:8px;flex:none;
+  background:
+    linear-gradient(var(--amber),var(--amber2)) center/13px 3.5px no-repeat,
+    linear-gradient(var(--amber),var(--amber2)) center/3.5px 13px no-repeat,
+    linear-gradient(180deg,#414a56,#2b323b);
+  box-shadow:0 3px 0 #171b21, inset 0 1px 0 rgba(255,255,255,.14);
+}
+.brand h1{font:700 19px/1 var(--disp);letter-spacing:.22em}
+.brand h1 em{font-style:normal;color:var(--amber)}
+.brand p{font:10.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);margin-top:3px}
+.controls{display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font:600 10.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;
+  padding:10px 15px;border-radius:9px;color:#dfe5ea;
+  background:linear-gradient(180deg,#242c35,#161c23);
+  border:1px solid rgba(255,255,255,.15);
+  box-shadow:0 2px 0 rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .15s, border-color .2s, box-shadow .2s;
+}
+.btn:hover{transform:translateY(-1px);border-color:rgba(255,180,84,.6);
+  box-shadow:0 4px 14px rgba(255,180,84,.14), inset 0 1px 0 rgba(255,255,255,.08)}
+.btn:active{transform:translateY(1px)}
+.btn svg{flex:none}
+.btn b{font-weight:600;color:var(--amber)}
+#btnMute.muted .wv{display:none}
+#btnMute.muted .xx{display:block}
+#btnMute .xx{display:none}
+
+
+/* ============ MAIN / STAGE ============ */
+main{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:0 20px}
+.stagebox{position:relative;margin-top:26px}
+.stageInner{position:relative;margin:0 auto}
+.scene{
+  position:relative;width:664px;height:320px;
+  transform-origin:top left;
+  perspective:1200px;perspective-origin:50% 22%;
+  user-select:none;-webkit-user-select:none;
+}
+.board3d{position:absolute;inset:0;transform-style:preserve-3d}
+.layer{position:absolute;will-change:transform,opacity}
+
+
+/* desk shadow + underglow */
+.deskshadow{position:absolute;left:72px;top:312px;width:520px;height:42px;z-index:0;
+  background:radial-gradient(50% 50% at 50% 50%, rgba(0,0,0,.6), transparent 70%);
+  filter:blur(9px)}
+.underglow{position:absolute;left:88px;top:300px;width:490px;height:64px;z-index:0;
+  --gc:#ffb454;--go:.5;
+  background:radial-gradient(50% 62% at 50% 42%, var(--gc,#ffb454), transparent 72%);
+  filter:blur(20px);opacity:var(--go,0);
+  transition:opacity .8s ease;
+  animation:glowPulse 5.5s ease-in-out infinite}
+@keyframes glowPulse{0%,100%{opacity:var(--go,0)}50%{opacity:calc(var(--go,0)*1.45)}}
+
+
+/* --- case --- */
+.caseB{left:-4px;top:-2px;width:672px;height:326px;z-index:1;border-radius:22px;
+  background:linear-gradient(180deg,#2b333d,#151a20 72%);
+  box-shadow:0 34px 60px rgba(0,0,0,.6), 0 10px 22px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.09)}
+.bezel{inset:0;z-index:8;pointer-events:none}
+.bezel i{position:absolute;display:block}
+.bz-top{left:0;top:0;width:664px;height:34px;border-radius:18px 18px 0 0;
+  background:linear-gradient(180deg,#3d4653,#232a33 68%,#1d232b);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(0,0,0,.5)}
+.bz-left{left:0;top:34px;width:20px;height:264px;
+  background:linear-gradient(90deg,#2a323c,#1c222a);box-shadow:inset 1px 0 0 rgba(255,255,255,.08)}
+.bz-right{right:0;top:34px;width:20px;height:264px;
+  background:linear-gradient(270deg,#2a323c,#1c222a);box-shadow:inset -1px 0 0 rgba(255,255,255,.08)}
+.bz-bot{left:0;bottom:0;width:664px;height:22px;border-radius:0 0 18px 18px;
+  background:linear-gradient(0deg,#14181d,#232932);box-shadow:inset 0 -1px 0 rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07)}
+.bz-brand{position:absolute;left:26px;top:9px;font:700 12px/1 var(--disp);letter-spacing:.42em;color:#b8c2cd;
+  text-shadow:0 1px 0 rgba(0,0,0,.65)}
+.bz-rightset{position:absolute;right:26px;top:0;height:34px;display:flex;align-items:center;gap:8px}
+.micro{font:600 7.5px/1 var(--mono);letter-spacing:.22em;color:#7d8894}
+.led{width:6px;height:6px;border-radius:50%;background:#242b33;box-shadow:inset 0 1px 1px rgba(0,0,0,.7);transition:.2s}
+.led.on{background:var(--amber);box-shadow:0 0 9px rgba(255,180,84,.9), inset 0 0 2px rgba(255,255,255,.6)}
+
+
+/* --- PCB --- */
+.pcb{left:22px;top:36px;width:620px;height:260px;z-index:2;border-radius:9px;
+  background:
+    radial-gradient(rgba(210,255,225,.09) 1px, transparent 1.6px),
+    repeating-linear-gradient(90deg, rgba(96,178,128,.14) 0 1px, transparent 1px 29px),
+    repeating-linear-gradient(0deg, rgba(96,178,128,.10) 0 1px, transparent 1px 37px),
+    linear-gradient(155deg,#1b4d36,#133a28 55%,#0f2f20);
+  background-size:23px 23px,auto,auto,auto;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45), inset 0 2px 8px rgba(0,0,0,.35)}
+.pcb .chip{position:absolute;background:linear-gradient(180deg,#20262e,#11151a);
+  border-radius:2px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07), 0 1px 2px rgba(0,0,0,.5)}
+.pcb .chip::after{content:"";position:absolute;left:2px;right:2px;top:30%;bottom:30%;
+  background:repeating-linear-gradient(90deg,#3a424c 0 2px,transparent 2px 5px)}
+.pcb .sil{position:absolute;font:600 8px/1 var(--mono);letter-spacing:.2em;color:rgba(150,220,180,.55)}
+.pcb .sil.sm{font-size:6.5px;letter-spacing:.14em;color:rgba(150,220,180,.4)}
+
+
+/* --- foam --- */
+.foam{left:28px;top:42px;width:608px;height:244px;z-index:3;border-radius:8px;
+  background:
+    radial-gradient(rgba(0,0,0,.05) 1px, transparent 1.7px),
+    linear-gradient(160deg,#efe9da,#ddd5c1);
+  background-size:9px 9px,auto;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.06), inset 0 3px 10px rgba(96,84,58,.25)}
+
+
+/* --- plate --- */
+.plate{left:24px;top:38px;width:616px;height:252px;z-index:4;border-radius:11px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 3px),
+    linear-gradient(160deg,#d6dbe3 0%,#aab2bc 48%,#99a2ad 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), inset 0 -1px 0 rgba(0,0,0,.28),
+    0 2px 5px rgba(0,0,0,.35)}
+.plate .hole{position:absolute;width:17px;height:17px;border-radius:4px;
+  background:radial-gradient(circle at 50% 42%,#0c130f,#05080a 82%);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.35)}
+.plate .scr{position:absolute;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#6b747e,#22282f 70%);
+  box-shadow:0 1px 1px rgba(0,0,0,.5), inset 0 -1px 1px rgba(0,0,0,.5)}
+.knobwell{position:absolute;left:558px;top:8px;width:40px;height:40px;border-radius:50%;display:block;
+  background:radial-gradient(circle at 50% 40%,#141a1f,#080b0e 78%);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.85), 0 1px 0 rgba(255,255,255,.35)}
+
+
+/* --- switches --- */
+.swL{position:absolute;inset:0;z-index:5}
+.sws{position:absolute;width:20px;height:20px;will-change:transform,opacity}
+.sws .swb{position:absolute;inset:0;border-radius:5px;
+  background:radial-gradient(circle at 50% 34%,#414b58,#232a33 72%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07), inset 0 -2px 3px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.55)}
+.sws .swst{position:absolute;left:50%;top:50%;width:11px;height:11px;transform:translate(-50%,-50%);
+  border-radius:1.5px;
+  background:
+    linear-gradient(#ffb454,#f08c1e) center/11px 3.5px no-repeat,
+    linear-gradient(#ffb454,#f08c1e) center/3.5px 11px no-repeat;
+  box-shadow:0 1px 1.5px rgba(0,0,0,.65);
+  transition:transform .05s, filter .05s}
+.sws.pressed .swst{transform:translate(-50%,-50%) translateY(2.2px) scale(.9);filter:brightness(.7)}
+
+
+/* --- keycaps --- */
+.capL{position:absolute;inset:0;z-index:6}
+.key{position:absolute;will-change:transform,opacity;padding:0}
+.key .cap{
+  position:absolute;inset:0;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  color:#d9d5cb;font:600 12px/1 var(--mono);letter-spacing:.03em;
+  background:linear-gradient(180deg,#454e5a,#333b45 55%,#2a313a);
+  box-shadow:0 3px 0 #1a1f26, 0 5px 8px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.11);
+  cursor:pointer;pointer-events:none;
+  transition:transform .09s ease, box-shadow .09s ease, background .15s}
+.key.wide .cap{justify-content:flex-start;padding-left:10px}
+.key.small .cap{font-size:9px;letter-spacing:.1em}
+.key.delf .cap{font-size:7.5px;letter-spacing:.08em}
+.key.spacek .cap{font-size:8px;letter-spacing:.5em;color:#5f6a76;padding-left:.5em}
+.ready .key .cap{pointer-events:auto}
+.ready .key:hover .cap{transform:translateY(-1.5px);
+  box-shadow:0 4.5px 0 #1a1f26, 0 8px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.13)}
+.key.pressed .cap,.ready .key:hover.pressed .cap{transform:translateY(3px);
+  background:linear-gradient(180deg,#3a424d,#2b323b 55%,#252b33);
+  box-shadow:0 0 0 #1a1f26, 0 1px 3px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05)}
+.key.accent .leg{color:var(--amber)}
+.key .leg{text-shadow:0 -1px 0 rgba(0,0,0,.5)}
+
+
+/* --- knob --- */
+.knob{position:absolute;left:585px;top:49px;width:34px;height:34px;z-index:7;border-radius:50%;
+  padding:0;will-change:transform,opacity;pointer-events:none;
+  background:conic-gradient(from 0deg,#b9c2cc,#78828e 12%,#cfd6de 25%,#6d7681 40%,#c4ccd4 55%,#737d89 70%,#bcc5cf 85%,#b9c2cc);
+  box-shadow:0 3px 6px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.18);
+  transition:transform .18s cubic-bezier(.3,1.4,.5,1)}
+.ready .knob{pointer-events:auto}
+.knob .kdial{position:absolute;inset:4px;border-radius:50%;
+  background:radial-gradient(circle at 50% 32%,#3c4550,#1d232a 76%);
+  box-shadow:inset 0 1px 2px rgba(255,255,255,.14), inset 0 -3px 5px rgba(0,0,0,.55)}
+.knob .kidx{position:absolute;left:50%;top:5.5px;width:3px;height:7px;margin-left:-1.5px;border-radius:2px;
+  background:var(--amber);box-shadow:0 0 5px rgba(255,180,84,.9)}
+
+
+/* status + chips */
+.statusbar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin:22px auto 0;width:100%}
+.st-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--amber);flex:none;
+  animation:blip 1.1s ease-in-out infinite}
+@keyframes blip{0%,100%{opacity:1;box-shadow:0 0 8px rgba(255,180,84,.8)}50%{opacity:.35;box-shadow:none}}
+body.ready .sdot{background:var(--ok);animation:none;box-shadow:0 0 8px rgba(126,232,178,.6)}
+#statusText{font:600 11px/1.5 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:#c6cfd8;min-width:0}
+.progress{width:150px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;flex:none}
+#progFill{height:100%;width:0%;background:linear-gradient(90deg,var(--amber2),var(--amber))}
+.stepcount{font:600 10.5px/1 var(--mono);letter-spacing:.2em;color:var(--mut);flex:none}
+.lastread{display:flex;align-items:center;gap:8px;font:10.5px/1 var(--mono);letter-spacing:.14em;color:var(--mut);flex:none}
+.lastread b{color:var(--amber);font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.chip{display:inline-flex;align-items:center;gap:8px;
+  font:600 9.5px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut);
+  padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.02);
+  transition:color .3s,border-color .3s}
+.chip .cd{width:7px;height:7px;border-radius:50%;background:var(--cc,#888);opacity:.3;transition:.3s}
+.chip.act{color:var(--ink);border-color:rgba(255,180,84,.6);animation:blipb 1.1s ease-in-out infinite}
+@keyframes blipb{0%,100%{border-color:rgba(255,180,84,.75)}50%{border-color:rgba(255,180,84,.25)}}
+.chip.on{color:var(--ink);border-color:rgba(255,255,255,.2)}
+.chip.on .cd{opacity:1;box-shadow:0 0 8px var(--cc,#fff)}
+.stagecaption{margin-top:16px;text-align:center;font:10.5px/1.8 var(--mono);letter-spacing:.12em;
+  text-transform:uppercase;color:#5f6a76}
+.hint{display:block;width:max-content;max-width:92%;margin:18px auto 0;text-align:center;white-space:normal;
+  font:600 9.5px/1.7 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:#c9a06b;
+  padding:8px 16px;border:1px solid rgba(255,180,84,.3);border-radius:999px;
+  background:rgba(20,16,10,.7);pointer-events:none;transition:opacity .6s}
+.hint.live{color:var(--ok);border-color:rgba(126,232,178,.4)}
+.hint.gone{opacity:0}
+
+
+/* ============ SECTIONS ============ */
+.sec-head{display:flex;align-items:baseline;gap:16px;margin:64px 0 20px}
+.sec-head .idx{font:600 12px/1 var(--mono);letter-spacing:.24em;color:var(--amber)}
+.sec-head h2{font:700 23px/1 var(--disp);letter-spacing:.06em}
+.sec-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.sec-head .sub{font:10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(236px,1fr));gap:12px}
+.acard{display:flex;gap:13px;align-items:flex-start;padding:16px 15px;
+  background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0)),var(--panel);
+  border:1px solid var(--line);border-radius:13px}
+.acard.lit{animation:litflash 1.4s ease-out}
+@keyframes litflash{
+  0%{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber), 0 0 26px rgba(255,180,84,.22)}
+  100%{border-color:var(--line);box-shadow:none}}
+.swatch{width:36px;height:36px;border-radius:9px;flex:none;margin-top:2px}
+.s-case{background:linear-gradient(180deg,#3d4653,#181d24);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.s-pcb{background:repeating-linear-gradient(90deg,rgba(96,178,128,.3) 0 1px,transparent 1px 6px),#16452f}
+.s-foam{background:radial-gradient(rgba(0,0,0,.08) 1px,transparent 1.6px),#e9e3d3;background-size:7px 7px}
+.s-plate{background:repeating-linear-gradient(90deg,rgba(255,255,255,.14) 0 1px,transparent 1px 4px),linear-gradient(160deg,#d6dbe3,#9aa3ae)}
+.s-sw{background:radial-gradient(circle at 50% 34%,#414b58,#232a33 75%);position:relative}
+.s-sw::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);
+  background:linear-gradient(var(--amber),var(--amber2)) center/12px 3.5px no-repeat,
+             linear-gradient(var(--amber),var(--amber2)) center/3.5px 12px no-repeat}
+.s-cap{background:linear-gradient(180deg,#454e5a,#2a313a);box-shadow:0 3px 0 #1a1f26,inset 0 1px 0 rgba(255,255,255,.12)}
+.s-knob{background:conic-gradient(#b9c2cc,#78828e 18%,#cfd6de 36%,#6d7681 55%,#c4ccd4 72%,#737d89 88%,#b9c2cc);
+  border-radius:50%;box-shadow:inset 0 0 0 5px #1d232a}
+.acard h3{font:700 14.5px/1.3 var(--disp);letter-spacing:.1em}
+.acard h3 small{display:block;font:600 8.5px/1 var(--mono);letter-spacing:.22em;color:var(--mut);margin:4px 0 7px}
+.acard p{font:11px/1.65 var(--mono);color:var(--mut)}
+.scard{text-align:left;display:block;padding:16px 15px 14px;border-radius:13px;
+  background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,0)),var(--panel);
+  border:1px solid var(--line);transition:transform .15s,border-color .2s,box-shadow .2s}
+.scard:hover{transform:translateY(-2px);border-color:rgba(255,180,84,.55);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.scard .top{display:flex;align-items:center;gap:12px}
+.scard .dot5{width:10px;height:10px;border-radius:50%;flex:none;background:var(--dc,#888);box-shadow:0 0 10px var(--dc,#888)}
+.scard h3{font:700 14.5px/1.3 var(--disp);letter-spacing:.08em}
+.scard h3 small{display:block;font:600 8.5px/1 var(--mono);letter-spacing:.22em;color:var(--amber);margin-top:4px}
+.scard p{font:10.5px/1.6 var(--mono);color:var(--mut);margin:10px 0 12px}
+.playtag{display:inline-flex;align-items:center;gap:7px;font:600 9px/1 var(--mono);letter-spacing:.2em;
+  color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:6px 11px;transition:.2s}
+.scard:hover .playtag{color:var(--amber);border-color:rgba(255,180,84,.5)}
+.scard.playing .playtag{color:#1a1206;background:var(--amber);border-color:var(--amber)}
+.scard.playing .dot5{animation:blip .5s ease-in-out 2}
+footer{margin:70px 0 40px;border-top:1px solid var(--line);padding-top:26px}
+.specs{display:flex;flex-wrap:wrap;gap:12px 34px}
+.spec{font:10.5px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.spec b{display:block;font:700 12.5px/1 var(--disp);letter-spacing:.14em;color:var(--ink)}
+.footnote{margin-top:22px;font:10px/1.8 var(--mono);letter-spacing:.1em;color:#4d5763;text-transform:uppercase}
+.footnote em{font-style:normal;color:var(--amber)}
+
+
+@media (max-width:720px){
+  header{padding:12px 16px}
+  .brand h1{font-size:16px}
+  .brand p{display:none}
+  .btn{padding:9px 11px;font-size:9.5px}
+  .sec-head h2{font-size:19px}
+  .sec-head .sub{display:none}
+  .statusbar{gap:10px}
+  .progress{width:100px}
+}
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .dust{display:none}
+  .underglow{animation:none}
+  .sdot,.chip.act{animation:none}
+  .key .cap,.knob{transition:none}
+}
+</style>
+</head>
+<body class="building">
+<div class="bg-grid" aria-hidden="true"></div>
+<div class="dust" id="dust" aria-hidden="true"></div>
+
+
+<header>
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <h1>ORRA<em>·65</em></h1>
+      <p>gasket-mount 65% · assembled live</p>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn" id="btnReplay" title="Replay the assembly animation">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><polyline points="20 3 20 7.5 15.5 7.5"/></svg>
+      <span id="replayLabel">Rebuild</span>
+    </button>
+    <button class="btn" id="btnMute" aria-pressed="false" title="Mute / unmute">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path class="wv" d="M16 8.6a5 5 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="xx" d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span>Sound</span>
+    </button>
+    <button class="btn" id="btnGlow" title="Cycle the underglow color">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/><line x1="12" y1="2.5" x2="12" y2="5.5"/><line x1="12" y1="18.5" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5.5" y2="12"/><line x1="18.5" y1="12" x2="21.5" y2="12"/><line x1="5.3" y1="5.3" x2="7.4" y2="7.4"/><line x1="16.6" y1="16.6" x2="18.7" y2="18.7"/><line x1="18.7" y1="5.3" x2="16.6" y2="7.4"/><line x1="7.4" y1="16.6" x2="5.3" y2="18.7"/></svg>
+      <span>Glow · <b id="glowName">Amber</b></span>
+    </button>
+  </div>
+</header>
+
+
+<main>
+  <!-- ================= STAGE ================= -->
+  <section class="stagebox" aria-label="Interactive keyboard stage">
+    <div class="stageInner" id="stageInner">
+      <div class="scene" id="scene">
+        <div class="underglow" id="glowEl" aria-hidden="true"></div>
+        <div class="deskshadow" aria-hidden="true"></div>
+        <div class="board3d" id="board3d">
+          <div class="layer caseB dyn" id="caseB"></div>
+          <div class="layer pcb dyn" id="pcb">
+            <span class="chip" style="left:66px;top:44px;width:26px;height:18px"></span>
+            <span class="chip" style="left:158px;top:196px;width:34px;height:14px"></span>
+            <span class="chip" style="left:502px;top:58px;width:22px;height:22px"></span>
+            <span class="chip" style="left:330px;top:212px;width:42px;height:12px"></span>
+            <span class="chip" style="left:88px;top:170px;width:16px;height:26px"></span>
+            <span class="sil" style="left:50%;top:50%;transform:translate(-50%,-50%)">ORRA-65 · REV C</span>
+            <span class="sil sm" style="left:40px;bottom:12px">6L FR-4 · GOLD FLASH</span>
+            <span class="sil sm" style="right:36px;top:14px">4096-K</span>
+          </div>
+          <div class="layer foam dyn" id="foam"></div>
+          <div class="layer plate dyn" id="plate">
+            <span class="scr" style="left:9px;top:9px"></span><span class="scr" style="right:9px;top:9px"></span>
+            <span class="scr" style="left:9px;bottom:9px"></span><span class="scr" style="right:9px;bottom:9px"></span>
+            <span class="knobwell" id="knobWell" aria-hidden="true"></span>
+          </div>
+          <div class="layer swL" id="swL"></div>
+          <div class="layer capL" id="capL"></div>
+          <button class="knob dyn" id="knob" tabindex="-1" aria-label="Rotary knob — click to detent, scroll to turn">
+            <span class="kdial"></span><span class="kidx"></span>
+          </button>
+          <div class="layer bezel dyn" id="bezel" aria-hidden="true">
+            <i class="bz-top"></i><i class="bz-left"></i><i class="bz-right"></i><i class="bz-bot"></i>
+            <span class="bz-brand">ORRA-65</span>
+            <span class="bz-rightset">
+              <span class="micro">65% · GASKET · 4096-K</span>
+              <i class="led" id="ledCaps"></i><span class="micro">CAPS</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="hint">♪ sound arms on your first click or keystroke</div>
+
+
+    <div class="statusbar">
+      <div class="st-left"><span class="sdot" aria-hidden="true"></span><span id="statusText" aria-live="off">Preparing build…</span></div>
+      <div class="progress" aria-hidden="true"><div id="progFill"></div></div>
+      <div class="stepcount" id="stepCount">00 / 07</div>
+      <div class="lastread" aria-hidden="true">LAST <b id="lastKey">—</b></div>
+    </div>
+
+
+    <div class="chips" aria-hidden="true">
+      <span class="chip" style="--cc:#4a5460"><i class="cd"></i>Case</span>
+      <span class="chip" style="--cc:#2e8a5a"><i class="cd"></i>PCB</span>
+      <span class="chip" style="--cc:#e9e3d3"><i class="cd"></i>Foam</span>
+      <span class="chip" style="--cc:#c2c9d2"><i class="cd"></i>Plate</span>
+      <span class="chip" style="--cc:#ffb454"><i class="cd"></i>Switches</span>
+      <span class="chip" style="--cc:#6c7887"><i class="cd"></i>Keycaps</span>
+      <span class="chip" style="--cc:#ffb454"><i class="cd"></i>Rotary</span>
+    </div>
+    <p class="stagecaption">Click the caps or type on your keyboard — Tab · Space · Backspace are captured while the board is focused</p>
+  </section>
+
+
+  <!-- ================= ANATOMY ================= -->
+  <section aria-labelledby="hAnatomy">
+    <div class="sec-head"><span class="idx">01</span><h2 id="hAnatomy">Anatomy</h2><span class="rule"></span><span class="sub">what you just watched, in order</span></div>
+    <div class="grid">
+      <article class="acard" id="card-case"><span class="swatch s-case"></span><div><h3>Bottom case<small>STEP 01 · ALUMINUM</small></h3><p>Machined 6061, black anodize. Five-way gasket mount — the whole stack floats on it.</p></div></article>
+      <article class="acard" id="card-pcb"><span class="swatch s-pcb"></span><div><h3>Motherboard<small>STEP 02 · 6-LAYER FR-4</small></h3><p>Gold flash, 5-pin hot-swap sockets, 4096-K report rate. Solder mask in deep pine.</p></div></article>
+      <article class="acard" id="card-foam"><span class="swatch s-foam"></span><div><h3>Dampening foam<small>STEP 03 · 1.5 MM PE</small></h3><p>PE under the plate, Poron under the case. Drops the bottom-out note, rounds the ring.</p></div></article>
+      <article class="acard" id="card-plate"><span class="swatch s-plate"></span><div><h3>Mounting plate<small>STEP 04 · 1.2 MM 6061</small></h3><p>Brushed aluminum, 76 laser-cut openings, four M2 corner screws, rotary recess.</p></div></article>
+      <article class="acard" id="card-sw"><span class="swatch s-sw"></span><div><h3>Switches<small>STEP 05 · 76× CLAY TACTILE</small></h3><p>POM stem, amber cross. 55 g tactile, 48 g bottom-out, linear-ish return.</p></div></article>
+      <article class="acard" id="card-cap"><span class="swatch s-cap"></span><div><h3>Keycaps<small>STEP 06 · PBT DYE-SUB</small></h3><p>1.6 mm walls, charcoal profile with cream legends. Amber ink on the command keys.</p></div></article>
+      <article class="acard" id="card-knob"><span class="swatch s-knob"></span><div><h3>Rotary encoder<small>STEP 07 · 15° DETENTS</small></h3><p>Knurled aluminum, amber index dot. Click it or scroll over it — each detent ticks.</p></div></article>
+    </div>
+  </section>
+
+
+  <!-- ================= ACOUSTICS ================= -->
+  <section aria-labelledby="hSound">
+    <div class="sec-head"><span class="idx">02</span><h2 id="hSound">Acoustics</h2><span class="rule"></span><span class="sub">five synthesized profiles, one compressor</span></div>
+    <div class="grid">
+      <button class="scard" data-g="letter" style="--dc:#ffb454"><span class="top"><span class="dot5"></span><h3>Alphanumerics<small>THOCK</small></h3></span><p>150 → 92 Hz triangle body with a 2.6 kHz bandpass click. The workhorse.</p><span class="playtag">▶ AUDITION</span></button>
+      <button class="scard" data-g="space" style="--dc:#ff8a4d"><span class="top"><span class="dot5"></span><h3>Spacebar<small>DEEP THUD</small></h3></span><p>92 → 48 Hz sine, felt-damped, 120 ms low-pass rumble tail. A full size down.</p><span class="playtag">▶ AUDITION</span></button>
+      <button class="scard" data-g="mod" style="--dc:#d98cff"><span class="top"><span class="dot5"></span><h3>Modifiers<small>CLACK</small></h3></span><p>132 Hz firmer body, 3.3 kHz top edge. Shifts, tab, caps, controls.</p><span class="playtag">▶ AUDITION</span></button>
+      <button class="scard" data-g="enter" style="--dc:#7ee8b2"><span class="top"><span class="dot5"></span><h3>Enter · Bksp · Del<small>SNAP</small></h3></span><p>4.3 kHz tick fired over a 245 Hz base. Sharpest voice on the board.</p><span class="playtag">▶ AUDITION</span></button>
+      <button class="scard" data-g="fn" style="--dc:#5fd4ff"><span class="top"><span class="dot5"></span><h3>Function row<small>TICK</small></h3></span><p>Light 3.8 kHz tick, almost no body. Barely touches the foam.</p><span class="playtag">▶ AUDITION</span></button>
+    </div>
+  </section>
+
+
+  <footer>
+    <div class="specs">
+      <div class="spec"><b>65%</b>format</div>
+      <div class="spec"><b>76 + 1</b>switches &amp; rotary</div>
+      <div class="spec"><b>Gasket</b>mount</div>
+      <div class="spec"><b>4096-K</b>report rate</div>
+      <div class="spec"><b>PBT</b>dye-sub caps</div>
+      <div class="spec"><b>1.8 m</b>USB-C link</div>
+    </div>
+    <p class="footnote">One file · zero assets — every thock, thud and tick is synthesized live with the <em>Web Audio API</em></p>
+  </footer>
+</main>
+
+
+<script>
+(()=>{ 'use strict';
+/* ---------------- helpers ---------------- */
+const $ = s => document.querySelector(s);
+const U=40, BW=664, BH=320, KX=32, KY=46;
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+
+/* ---------------- layout data ---------------- */
+const ROWS=[
+ [['Esc',1,'mod'],['F1',1,'fn'],['F2',1,'fn'],['F3',1,'fn'],['F4',1,'fn'],[null,.25],['F5',1,'fn'],['F6',1,'fn'],['F7',1,'fn'],['F8',1,'fn'],['F9',1,'fn'],['F10',1,'fn'],['F11',1,'fn'],['F12',1,'fn'],['KNOB',1.5,'knob']],
+ [['`',1,'letter'],['1'],['2'],['3'],['4'],['5'],['6'],['7'],['8'],['9'],['0'],['-'],['='],[null,.25],['Bksp',2,'enter'],['Del',.5,'enter']],
+ [['Tab',1.5,'mod'],['Q'],['W'],['E'],['R'],['T'],['Y'],['U'],['I'],['O'],['P'],['['],[']'],['\\',1.5]],
+ [['Caps',1.75,'mod'],['A'],['S'],['D'],['F'],['G'],['H'],['J'],['K'],['L'],[';'],["'"],['Enter',2.25,'enter']],
+ [['LS',2.25,'mod'],['Z'],['X'],['C'],['V'],['B'],['N'],['M'],[','],['.'],['/'],['RS',2.75,'mod']],
+ [['LC',1.25,'mod'],['Win',1.25,'mod'],['LA',1.25,'mod'],['Space',6.25,'space'],['RA',1.25,'mod'],['Fn',1.25,'mod'],['Menu',1.25,'mod'],['RC',1.25,'mod']]
+];
+const DISPL={Esc:'ESC',Bksp:'BKSP',Tab:'TAB',Caps:'CAPS',Enter:'ENTER',LS:'SHIFT',RS:'SHIFT',LC:'CTRL',RC:'CTRL',Win:'WIN',LA:'ALT',RA:'ALT',Fn:'FN',Menu:'MENU',Del:'DEL',Space:'ORRA'};
+const WIDE=new Set(['Bksp','Tab','Caps','Enter','LS','RS']);
+const SMALL=new Set(['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12','LC','RC','Win','LA','RA','Fn','Menu']);
+const DELF=new Set(['Del']);
+const ACCENT=new Set(['Esc','Bksp','Enter']);
+const SPACEK=new Set(['Space']);
+const DX={LS:.875,RS:.625,Enter:.875}; // stem offset from cap center, in u
+function codeFor(l){
+  if(l==='KNOB')return null;
+  const M={Esc:'Escape',Bksp:'Backspace',Del:'Delete',Tab:'Tab',Caps:'CapsLock',Enter:'Enter',
+    LS:'ShiftLeft',RS:'ShiftRight',LC:'ControlLeft',RC:'ControlRight',Win:'MetaLeft',
+    LA:'AltLeft',RA:'AltRight',Menu:'ContextMenu',Space:'Space',
+    '`':'Backquote','-':'Minus','=':'Equal','[':'BracketLeft',']':'BracketRight','\\':'Backslash',
+    ';':'Semicolon',"'":'Quote',',':'Comma','.':'Period','/':'Slash'};
+  if(M[l])return M[l];
+  if(/^F\d+$/.test(l))return l;
+  if(/^\d$/.test(l))return 'Digit'+l;
+  if(/^[A-Z]$/.test(l))return 'Key'+l;
+  return null;
+}
+const SNDNAME={letter:'THOCK',space:'THUD',mod:'CLACK',enter:'SNAP',fn:'TICK',knob:'DETENT'};
+
+
+/* ---------------- build the board ---------------- */
+const plate=$('#plate'), swL=$('#swL'), capL=$('#capL');
+const keys=[];
+ROWS.forEach((row,ri)=>{
+  let x=0;
+  row.forEach(it=>{
+    const [label,w=1,group='letter']=it;
+    if(label===null){x+=w;return;}
+    if(label==='KNOB'){x+=w;return;}
+    const k={id:label,w:w*U,x:KX+x*U,y:KY+ri*U,group,dx:DX[label]||0};
+    const cx=k.x+k.w/2+k.dx*U, cy=k.y+U/2;
+    const h=document.createElement('span'); h.className='hole';
+    h.style.left=(cx-8.5)+'px'; h.style.top=(cy-8.5)+'px'; plate.appendChild(h);
+    const sw=document.createElement('div'); sw.className='sws dyn';
+    sw.style.left=(cx-10)+'px'; sw.style.top=(cy-10)+'px';
+    sw.innerHTML='<span class="swb"></span><span class="swst"></span>'; swL.appendChild(sw);
+    const b=document.createElement('button'); b.tabIndex=-1;
+    b.className='key dyn'+(WIDE.has(label)?' wide':'')+(SMALL.has(label)?' small':'')
+              +(DELF.has(label)?' delf':'')+(ACCENT.has(label)?' accent':'')+(SPACEK.has(label)?' spacek':'');
+    b.style.left=(k.x+2)+'px'; b.style.top=(k.y+3)+'px';
+    b.style.width=(k.w-4)+'px'; b.style.height=(U-6)+'px';
+    b.setAttribute('aria-label',label);
+    b.innerHTML='<span class="cap"><span class="leg">'+(DISPL[label]||label)+'</span></span>';
+    capL.appendChild(b);
+    k.el=b; k.sw=sw;
+    const code=codeFor(label);
+    if(code)k.code=code;
+    keys.push(k);
+    x+=w;
+  });
+});
+const N=keys.length; // 76
+const swOrder=[...keys].sort((a,b)=>a.x-b.x||a.y-b.y);
+const byCode={};
+keys.forEach(k=>{ if(k.code)byCode[k.code]=k; });
+if(byCode.Enter)byCode.NumpadEnter=byCode.Enter;
+
+
+/* ---------------- dust ---------------- */
+const dust=$('#dust');
+for(let i=0;i<24;i++){
+  const s=document.createElement('span');
+  const sz=(1.5+Math.random()*2).toFixed(1);
+  s.style.cssText='left:'+(Math.random()*100).toFixed(1)+'%;width:'+sz+'px;height:'+sz+'px;'+
+    'opacity:'+(0.08+Math.random()*0.2).toFixed(2)+';--dx:'+((Math.random()*90-45)|0)+'px;'+
+    'animation-duration:'+(16+Math.random()*20).toFixed(1)+'s;animation-delay:-'+(Math.random()*30).toFixed(1)+'s';
+  dust.appendChild(s);
+}
+
+
+/* ---------------- responsive scale ---------------- */
+const scene=$('#scene'), stageInner=$('#stageInner');
+function fit(){
+  const avail=Math.min(1040,stageInner.parentElement.clientWidth)-8;
+  const s=Math.min(1.22,Math.max(.44,avail/BW));
+  scene.style.transform='scale('+s+')';
+  stageInner.style.width=(BW*s)+'px';
+  stageInner.style.height=(BH*s)+'px';
+}
+addEventListener('resize',fit); fit();
+
+
+/* ---------------- audio engine ---------------- */
+let ctx=null, master=null, muted=false, armed=false;
+const hint=$('#hint');
+function armAudio(){
+  if(armed){ if(ctx&&ctx.state==='suspended')ctx.resume(); return; }
+  if(!ctx){
+    try{
+      const AC=window.AudioContext||window.webkitAudioContext;
+      ctx=new AC();
+      const comp=ctx.createDynamicsCompressor();
+      comp.threshold.value=-18; comp.knee.value=22; comp.ratio.value=6;
+      master=ctx.createGain(); master.gain.value=muted?0:.9;
+      master.connect(comp); comp.connect(ctx.destination);
+    }catch(e){ return; }
+  }
+  if(ctx.state==='suspended')ctx.resume();
+  armed=true;
+  hint.textContent='♪ sound engine live';
+  hint.classList.add('live');
+  setTimeout(()=>hint.classList.add('gone'),1600);
+}
+addEventListener('pointerdown',armAudio,{passive:true});
+addEventListener('keydown',()=>armAudio(),{passive:true});
+const J=()=>1+(Math.random()-.5)*.06;
+function tone(type,f0,f1,dur,g){
+  const t=ctx.currentTime;
+  const o=ctx.createOscillator(), gn=ctx.createGain();
+  o.type=type; o.frequency.setValueAtTime(f0*J(),t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);
+  gn.gain.setValueAtTime(g,t);
+  gn.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(gn); gn.connect(master); o.start(t); o.stop(t+dur+.03);
+}
+function hiss(ft,bp,q,dur,g){
+  const t=ctx.currentTime;
+  const len=Math.max(16,Math.floor(ctx.sampleRate*dur));
+  const buf=ctx.createBuffer(1,len,ctx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+  const src=ctx.createBufferSource(); src.buffer=buf;
+  const f=ctx.createBiquadFilter(); f.type=ft; f.frequency.value=bp*J(); f.Q.value=q;
+  const gn=ctx.createGain();
+  gn.gain.setValueAtTime(g,t); gn.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  src.connect(f); f.connect(gn); gn.connect(master); src.start(t);
+}
+function playGroup(g){
+  if(!ctx||muted)return;
+  switch(g){
+    case 'letter': tone('triangle',150,92,.09,.5); hiss('bandpass',2600,1.2,.045,.28); break;
+    case 'space':  tone('sine',92,48,.2,.85); hiss('lowpass',160,.8,.12,.5); tone('triangle',180,90,.08,.2); break;
+    case 'mod':    tone('triangle',132,84,.075,.45); hiss('bandpass',3300,1,.04,.3); break;
+    case 'enter':  hiss('bandpass',4300,1.4,.05,.5); tone('triangle',245,150,.07,.35); break;
+    case 'fn':     hiss('bandpass',3800,1.2,.035,.22); tone('triangle',210,140,.05,.18); break;
+    case 'knob':   hiss('bandpass',2400,2,.02,.2); tone('square',1400,900,.015,.05); break;
+    case 'land':   tone('sine',74,40,.28,.7); hiss('lowpass',220,.8,.16,.35); break;
+    case 'rel-letter': hiss('bandpass',3200,1,.02,.06); break;
+    case 'rel-space':  hiss('lowpass',130,.8,.07,.1); break;
+    case 'rel-mod':    hiss('bandpass',3400,1,.018,.05); break;
+    case 'rel-enter':  hiss('bandpass',4300,1.2,.015,.05); break;
+    case 'rel-fn':     hiss('bandpass',3600,1,.012,.045); break;
+    default: break;
+  }
+}
+
+
+/* ---------------- state / UI refs ---------------- */
+let state='build', token=0, total=1, t0=performance.now(), capsOn=false;
+const statusEl=$('#statusText'), stepEl=$('#stepCount'), progFill=$('#progFill'),
+      lastEl=$('#lastKey'), board3d=$('#board3d'), knobEl=$('#knob'),
+      replayBtn=$('#btnReplay'), replayLabel=$('#replayLabel'),
+      muteBtn=$('#btnMute'), glowBtn=$('#btnGlow'), glowEl=$('#glowEl'),
+      ledCaps=$('#ledCaps');
+const chips=[...document.querySelectorAll('.chip')];
+const cardFor=['card-case','card-pcb','card-foam','card-plate','card-sw','card-cap','card-knob']
+  .map(id=>document.getElementById(id));
+function phase(i,label){
+  chips.forEach((c,j)=>{ c.classList.toggle('act',j===i); c.classList.toggle('on',j<i); });
+  statusEl.textContent=label;
+  stepEl.textContent=String(i+1).padStart(2,'0')+' / 07';
+}
+function phaseDone(i){
+  chips.forEach((c,j)=>{ c.classList.remove('act'); if(j<=i)c.classList.add('on'); });
+  cardFor[i].classList.remove('lit'); void cardFor[i].offsetWidth; cardFor[i].classList.add('lit');
+}
+function replaySet(skip){
+  replayLabel.textContent=skip?'Skip build':'Rebuild';
+}
+function squash(){
+  if(RM)return;
+  board3d.animate(
+    [{transform:'translateY(0)'},{transform:'translateY(2.5px)'},{transform:'translateY(0)'}],
+    {duration:150,easing:'ease-out'});
+}
+function shadowPulse(dur){
+  if(RM)return;
+  const d=document.querySelector('.deskshadow');
+  d.animate([{opacity:.55},{opacity:1},{opacity:.7}],{duration:dur,easing:'ease-in'});
+}
+
+
+/* ---------------- animation machinery ---------------- */
+const anims=[];
+function track(a){anims.push(a);return a;}
+function clearAnims(){
+  anims.forEach(a=>{try{a.cancel();}catch(e){}});
+  anims.length=0;
+}
+function preAll(){
+  document.querySelectorAll('.dyn').forEach(el=>{el.style.opacity='0';el.style.transform='';});
+}
+function drop(el,{dur,start,delay=0,ease='cubic-bezier(.22,.9,.24,1.12)',fin}={}){
+  el.style.opacity='0'; el.style.transform=start;
+  const a=el.animate(
+    [{opacity:0,transform:start},{opacity:1,transform:'translate3d(0,0,0)'}],
+    {duration:dur,delay,easing:ease,fill:'both'});
+  track(a);
+  a.onfinish=()=>{
+    el.style.opacity=''; el.style.transform='';
+    try{a.cancel();}catch(e){}
+    if(fin)fin();
+  };
+  return a;
+}
+function clearDyn(){
+  document.querySelectorAll('.dyn').forEach(el=>{el.style.opacity='';el.style.transform='';});
+}
+function releaseAll(){
+  pressed.forEach(k=>{k.el.classList.remove('pressed');k.sw.classList.remove('pressed');});
+  pressed.clear();
+}
+const pressed=new Set();
+
+
+function completeNow(){
+  token++; clearAnims(); releaseAll(); clearDyn();
+  chips.forEach(c=>{c.classList.add('on');c.classList.remove('act');});
+  cardFor.forEach(c=>c.classList.add('lit'));
+  state='ready';
+  document.body.classList.remove('building'); document.body.classList.add('ready');
+  statusEl.textContent='Ready — click a key or type';
+  stepEl.textContent='07 / 07';
+  progFill.style.width='100%';
+  replaySet(false);
+}
+
+
+const SWD=230, SWG=42, KCD=300, KCG=66;
+async function playAssembly(){
+  const tok=++token;
+  state='assembling';
+  replaySet(true);
+  clearAnims(); releaseAll(); clearDyn();
+  chips.forEach(c=>c.classList.remove('on','act'));
+  cardFor.forEach(c=>c.classList.remove('lit'));
+  document.body.classList.add('building'); document.body.classList.remove('ready');
+  statusEl.textContent='Preparing build…';
+  progFill.style.width='0%';
+  stepEl.textContent='00 / 07';
+  total=750+850+800+900+(SWG*(N-1)+SWD)+(KCG*(N-1)+KCD)+700
+        +220+240+240+280+260+260;
+  t0=performance.now();
+  const wait=ms=>new Promise(r=>setTimeout(r,ms)).then(()=>tok===token);
+  const alive=()=>tok===token;
+
+
+  phase(0,'Seating case — 5-way gasket');
+  if(!await wait(250))return;
+  drop($('#caseB'),{dur:750,start:'translate3d(0,46px,0)',
+    fin:()=>{ if(alive()){squash();playGroup('land');phaseDone(0);}}});
+  drop($('#bezel'),{dur:750,start:'translate3d(0,-40px,0)'});
+  shadowPulse(750);
+  if(!await wait(970))return;
+
+
+  phase(1,'Lowering PCB — 6-layer FR-4');
+  drop($('#pcb'),{dur:850,start:'translate3d(0,-430px,120px) rotateX(24deg)',
+    fin:()=>{ if(alive()){squash();playGroup('land');phaseDone(1);}}});
+  shadowPulse(850);
+  if(!await wait(1090))return;
+
+
+  phase(2,'Foam — 1.5 mm PE dampening');
+  drop($('#foam'),{dur:800,start:'translate3d(0,-380px,90px) rotateX(20deg)',
+    fin:()=>{ if(alive()){squash();playGroup('land');phaseDone(2);}}});
+  shadowPulse(800);
+  if(!await wait(1040))return;
+
+
+  phase(3,'Mounting plate — brushed 6061');
+  drop($('#plate'),{dur:900,start:'translate3d(0,-400px,100px) rotateX(22deg)',
+    fin:()=>{ if(alive()){squash();playGroup('land');phaseDone(3);}}});
+  shadowPulse(900);
+  if(!await wait(1180))return;
+
+
+  phase(4,'Switches — 0 / '+N+' · Clay tactile');
+  let ns=0;
+  swOrder.forEach((k,i)=>{
+    drop(k.sw,{dur:SWD,delay:i*SWG,ease:'cubic-bezier(.3,1.35,.45,1)',
+      start:'translate3d(0,-260px,0) rotate('+((Math.random()*14-7).toFixed(1))+'deg) scale(.7)',
+      fin:()=>{ if(!alive())return; ns++;
+        statusEl.textContent='Switches — '+ns+' / '+N+' · Clay tactile'; }});
+  });
+  if(!await wait(SWG*(N-1)+SWD+260))return; phaseDone(4);
+
+
+  phase(5,'Keycaps — 0 / '+N+' · PBT dye-sub');
+  let nc=0;
+  swOrder.forEach((k,i)=>{
+    drop(k.el,{dur:KCD,delay:i*KCG,ease:'cubic-bezier(.25,1.45,.45,1)',
+      start:'translate3d(0,-330px,0) rotate('+((Math.random()*18-9).toFixed(1))+'deg) scale(.85)',
+      fin:()=>{ if(!alive())return; nc++;
+        statusEl.textContent='Keycaps — '+nc+' / '+N+' · PBT dye-sub'; }});
+  });
+  if(!await wait(KCG*(N-1)+KCD+260))return; phaseDone(5);
+
+
+  phase(6,'Seating rotary encoder — 15° detents');
+  if(!await wait(350))return;
+  drop(knobEl,{dur:700,ease:'cubic-bezier(.3,1.4,.5,1)',
+    start:'translate3d(0,-160px,0) rotate(-140deg) scale(.3)',
+    fin:()=>{ if(!alive())return; playGroup('knob'); phaseDone(6); completeNow(); }});
+}
+
+
+/* progress bar */
+(function loop(){
+  const p=state==='ready'?1:Math.min(1,Math.max(0,(performance.now()-t0)/total));
+  progFill.style.width=(p*100).toFixed(1)+'%';
+  requestAnimationFrame(loop);
+})();
+
+
+/* ---------------- key interaction ---------------- */
+function press(k){
+  if(pressed.has(k))return;
+  pressed.add(k);
+  k.el.classList.add('pressed'); k.sw.classList.add('pressed');
+  playGroup(k.group);
+  if(k.id==='Caps'){ capsOn=!capsOn; ledCaps.classList.toggle('on',capsOn); }
+  lastEl.textContent=(DISPL[k.id]||k.id)+' · '+SNDNAME[k.group];
+}
+function release(k){
+  if(!pressed.has(k))return;
+  pressed.delete(k);
+  k.el.classList.remove('pressed'); k.sw.classList.remove('pressed');
+  playGroup('rel-'+k.group);
+}
+keys.forEach(k=>{
+  k.el.addEventListener('pointerdown',e=>{
+    if(state!=='ready')return;
+    e.preventDefault(); armAudio();
+    press(k);
+    const up=()=>{release(k);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);};
+    addEventListener('pointerup',up); addEventListener('pointercancel',up);
+  });
+  k.el.addEventListener('pointerleave',()=>release(k));
+});
+
+
+/* physical keyboard */
+addEventListener('keydown',e=>{
+  if(state!=='ready'){ if(e.code==='Space')e.preventDefault(); return; }
+  const k=byCode[e.code];
+  if(!k||e.repeat){ if(e.code==='Space')e.preventDefault(); return; }
+  const a=document.activeElement;
+  const blocked=new Set(['Space','Backspace','Quote','Slash']);
+  if(blocked.has(e.code)&&(a===document.body||a===document.documentElement||$('#scene').contains(a)))e.preventDefault();
+  press(k);
+});
+addEventListener('keyup',e=>{
+  const k=byCode[e.code]; if(k)release(k);
+});
+addEventListener('blur',releaseAll);
+
+
+/* knob */
+let knobDeg=0;
+function knobTurn(d){
+  knobDeg+=d;
+  knobEl.style.transform='rotate('+knobDeg+'deg)';
+  playGroup('knob');
+  lastEl.textContent='KNOB · '+Math.abs(knobDeg%360)+'°';
+}
+knobEl.addEventListener('pointerdown',e=>{
+  if(state!=='ready')return;
+  e.preventDefault(); armAudio(); knobTurn(45);
+});
+const stagebox=document.querySelector('.stagebox');
+stagebox.addEventListener('wheel',e=>{
+  if(state!=='ready'||!knobEl.contains(e.target))return;
+  e.preventDefault(); knobTurn(e.deltaY>0?15:-15);
+},{passive:false});
+
+
+/* ---------------- controls ---------------- */
+replayBtn.addEventListener('click',()=>{
+  armAudio(); replayBtn.blur();
+  if(state==='assembling'){ completeNow(); }
+  else{ playAssembly(); }
+});
+muteBtn.addEventListener('click',()=>{
+  armAudio();
+  muted=!muted;
+  if(ctx)master.gain.setTargetAtTime(muted?0:.9,ctx.currentTime,.02);
+  muteBtn.classList.toggle('muted',muted);
+  muteBtn.setAttribute('aria-pressed',String(muted));
+  muteBtn.blur();
+});
+const GLOWS=[['Amber','#ffb454',.5],['Cyan','#5fd4ff',.5],['Violet','#b48cff',.48],['Mint','#7ee8b2',.45],['Off','',0]];
+let gi=0;
+glowBtn.addEventListener('click',()=>{
+  gi=(gi+1)%GLOWS.length;
+  const [n,c,o]=GLOWS[gi];
+  glowEl.style.setProperty('--gc',c);
+  glowEl.style.setProperty('--go',o);
+  $('#glowName').textContent=n;
+  glowBtn.blur();
+});
+
+
+/* sound profile auditions */
+document.querySelectorAll('.scard').forEach(c=>{
+  c.addEventListener('click',()=>{
+    armAudio(); playGroup(c.dataset.g);
+    c.classList.add('playing');
+    setTimeout(()=>c.classList.remove('playing'),420);
+    c.blur();
+  });
+});
+
+
+/* ---------------- go ---------------- */
+preAll();
+if(RM){ completeNow(); }
+else{ requestAnimationFrame(()=>playAssembly()); }
+})();
+</script>
+</body>
+</html>

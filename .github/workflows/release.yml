@@ -11,6 +11,11 @@ name: Release build
 on:
   push:
     branches: [master]
+    # Benchmark scenes are served by the luma server, not bundled in the app,
+    # so a push touching only them (e.g. an admin-dashboard upload) needs no
+    # release. Those uploads also say [skip ci] in the commit message.
+    paths-ignore:
+      - 'server/benchmarks/**'
   workflow_dispatch:
 
 permissions:

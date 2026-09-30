@@ -314,6 +314,7 @@ class _EngineTestPageState extends State<EngineTestPage> {
               for (final entry in filtered) ...[
                 ModelButton(
                   model: entry.model,
+                  vendor: entry.vendor,
                   description: entry.description,
                   onTap: () => setState(() => _selectedId = entry.id),
                   isSelected: false,

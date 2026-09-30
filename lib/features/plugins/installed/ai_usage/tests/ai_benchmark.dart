@@ -18,6 +18,7 @@ class AiBenchmark {
     this.updatedAt,
     this.hasPreview = false,
     this.previewSha256 = '',
+    this.vendor = '',
   });
 
   /// File stem of the scene, e.g. `pagoda_haiku45`. Also the cache key the
@@ -46,6 +47,10 @@ class AiBenchmark {
   /// replaces the stale file instead of sitting behind it forever.
   final String previewSha256;
 
+  /// Vendor key of the company behind [model] when the roster names one
+  /// (`anthropic`, `openai`, …); '' means work it out from the model name.
+  final String vendor;
+
   bool get isPagoda => kind == 'pagoda';
   bool get isEngine => kind == 'engine';
   bool get isPc => kind == 'pc';
@@ -64,6 +69,7 @@ class AiBenchmark {
           : DateTime.fromMillisecondsSinceEpoch(updatedAtMs),
       hasPreview: j['hasPreview'] as bool? ?? false,
       previewSha256: j['previewSha256'] as String? ?? '',
+      vendor: j['vendor'] as String? ?? '',
     );
   }
 }

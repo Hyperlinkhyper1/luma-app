@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,27 +6,25 @@ import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart';
 import 'ai_benchmark.dart';
-import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
 import 'model_banner.dart';
 import 'model_search_field.dart';
 import 'pagoda_test_page.dart' show ModelButton;
 import 'test_view_prefs.dart';
 
-/// The **Cathedral Test** page: each entry is a `.glb` model of a cathedral,
-/// shown in an embedded WebView with orbit controls.
+/// The **Keyboard Test** page: each entry is an HTML scene of a keyboard,
+/// shown in an embedded WebView.
 ///
 /// Entries live on the luma server like the other tests (see
 /// [AiBenchmarkScope]); each downloads on first open and is cached on disk.
-/// There are none yet, so the page shows its empty state until some are added.
-class CathedralTestPage extends StatefulWidget {
-  const CathedralTestPage({super.key});
+class KeyboardTestPage extends StatefulWidget {
+  const KeyboardTestPage({super.key});
 
   @override
-  State<CathedralTestPage> createState() => _CathedralTestPageState();
+  State<KeyboardTestPage> createState() => _KeyboardTestPageState();
 }
 
-class _CathedralTestPageState extends State<CathedralTestPage> {
+class _KeyboardTestPageState extends State<KeyboardTestPage> {
   String? _selectedId;
   bool _bannerView = false;
   final _searchController = TextEditingController();
@@ -40,7 +37,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
     if (_started) return;
     _started = true;
     AiBenchmarkScope.of(context).load();
-    TestViewPrefs.loadBannerView('cathedral').then((banners) {
+    TestViewPrefs.loadBannerView('keyboard').then((banners) {
       if (mounted && banners != _bannerView) {
         setState(() => _bannerView = banners);
       }
@@ -59,7 +56,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
     return ListenableBuilder(
       listenable: repo,
       builder: (context, _) {
-        final benchmarks = repo.benchmarksOfKind('cathedral');
+        final benchmarks = repo.benchmarksOfKind('keyboard');
         final query = _query.trim().toLowerCase();
         final filtered = query.isEmpty
             ? benchmarks
@@ -92,7 +89,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Cathedral Test'),
+        title: const Text('Keyboard Test'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -109,8 +106,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              'A cathedral modelled as a 3D .glb file, one per model. Orbit, '
-              'zoom and pan to inspect it.',
+              'A keyboard built as an interactive scene, one per model.',
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
@@ -136,7 +132,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
                   onSelect: (i) {
                     final banners = i == 1;
                     setState(() => _bannerView = banners);
-                    TestViewPrefs.saveBannerView('cathedral', banners);
+                    TestViewPrefs.saveBannerView('keyboard', banners);
                   },
                 ),
               ],
@@ -161,11 +157,11 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
               )
             else if (filtered.isEmpty)
               LumaEmptyState(
-                icon: Icons.church_rounded,
+                icon: Icons.keyboard_rounded,
                 title: 'No entries yet',
                 subtitle: repo.canRefresh
-                    ? 'No cathedral models have been added yet.'
-                    : 'Models download from the luma server. Sign in to an '
+                    ? 'No keyboard scenes have been added yet.'
+                    : 'Scenes download from the luma server. Sign in to an '
                         'approved account to fetch them.',
                 action: LumaGhostButton(
                   label: repo.refreshing ? 'Refreshing…' : 'Refresh',
@@ -178,7 +174,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
             else if (_bannerView)
               ModelBannerGrid(
                 models: filtered,
-                fallbackIcon: Icons.church_rounded,
+                fallbackIcon: Icons.keyboard_rounded,
                 onPick: (b) => setState(() => _selectedId = b.id),
               )
             else
@@ -212,7 +208,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
         appBar: AppBar(
           backgroundColor: luma.background,
           elevation: 0,
-          title: const Text('Cathedral Test'),
+          title: const Text('Keyboard Test'),
           leading: back,
         ),
         body: const Padding(
@@ -220,7 +216,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
             title: 'Not available on this platform',
-            subtitle: 'The Cathedral Test requires a Windows desktop. Mobile '
+            subtitle: 'The Keyboard Test requires a Windows desktop. Mobile '
                 'and Linux support are coming soon.',
           ),
         ),
@@ -232,11 +228,11 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
       appBar: AppBar(
         backgroundColor: luma.background,
         elevation: 0,
-        title: const Text('Cathedral Test'),
+        title: const Text('Keyboard Test'),
         leading: back,
       ),
       body: FutureBuilder<File>(
-        future: _viewerFile(repo, benchmark),
+        future: repo.sceneFile(benchmark.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return Center(
@@ -262,7 +258,7 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
                 icon: Icons.cloud_off_rounded,
                 title: 'Could not load ${benchmark.model}',
                 subtitle: '${snapshot.error ?? 'The download failed.'} '
-                    'Models are cached after the first download, so a retry '
+                    'Scenes are cached after the first download, so a retry '
                     'is usually all it takes.',
                 action: LumaGhostButton(
                   label: 'Retry',
@@ -272,54 +268,23 @@ class _CathedralTestPageState extends State<CathedralTestPage> {
               ),
             );
           }
-          return _GlbWebview(path: snapshot.data!.path);
+          return _SceneWebview(path: snapshot.data!.path);
         },
       ),
     );
   }
-
-  /// The downloaded `.glb`, wrapped in a page that renders it. The model is
-  /// inlined as base64 because a `file://` page cannot fetch a sibling file.
-  Future<File> _viewerFile(
-    AiBenchmarkRepository repo,
-    AiBenchmark benchmark,
-  ) async {
-    final glb = await repo.sceneFile(benchmark.id, extension: 'glb');
-    final viewer = File('${glb.path}.viewer.html');
-    if (await viewer.exists() &&
-        await viewer.lastModified().then((t) => !t.isBefore(glb.lastModifiedSync()))) {
-      return viewer;
-    }
-    final data = base64Encode(await glb.readAsBytes());
-    await viewer.writeAsString(_viewerHtml(data), flush: true);
-    return viewer;
-  }
 }
 
-String _viewerHtml(String base64Glb) => '''<!doctype html>
-<html><head><meta charset="utf-8">
-<style>html,body{margin:0;height:100%;background:#0d0d12}
-model-viewer{width:100%;height:100%;--poster-color:transparent}</style>
-<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
-</head><body>
-<model-viewer id="m" camera-controls auto-rotate shadow-intensity="1"
-  environment-image="neutral" exposure="1"></model-viewer>
-<script>
-const b=atob("$base64Glb"),a=new Uint8Array(b.length);
-for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);
-document.getElementById('m').src=URL.createObjectURL(new Blob([a],{type:'model/gltf-binary'}));
-</script></body></html>''';
-
-class _GlbWebview extends StatefulWidget {
-  const _GlbWebview({required this.path});
+class _SceneWebview extends StatefulWidget {
+  const _SceneWebview({required this.path});
 
   final String path;
 
   @override
-  State<_GlbWebview> createState() => _GlbWebviewState();
+  State<_SceneWebview> createState() => _SceneWebviewState();
 }
 
-class _GlbWebviewState extends State<_GlbWebview> {
+class _SceneWebviewState extends State<_SceneWebview> {
   bool _loading = true;
 
   @override

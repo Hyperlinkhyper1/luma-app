@@ -30,7 +30,26 @@ top of this directory: a file the operator dropped into the data directory
 wins, everything else falls back to what is checked in here. The manifest is
 rebuilt from disk on every request, so there is no refresh or rescan step.
 
-## Adding a scene
+## Uploading from the admin dashboard
+
+Maintenance tab → **AI benchmark scenes** → *Upload test…* takes the file
+plus the test, company, model and reasoning effort, derives the id
+(`keyboard_sonnet55_high`) and display name (`Sonnet 5.5 (High)`), and:
+
+1. saves it to `<dataDir>/ai_benchmarks/uploads/` with its stanza in
+   `uploads.json`, so the app lists it at once;
+2. with `LUMA_BENCHMARK_GITHUB_TOKEN` set (see `server/.env.example`),
+   commits the scene and the updated `manifest.json` here as one
+   `[skip ci]` commit — `release.yml` also ignores pushes that only touch
+   `server/benchmarks/**`, so no release build runs;
+3. renders its banner if it has none.
+
+An upload wins over the seed only while it is newer: once "Update & restart
+server" pulls the commit in, the seed copy (and any later edit to it) is
+served again. The company is stored as an optional `vendor` key; without one
+the app still works the company out from the model name.
+
+## Adding a scene by hand
 
 1. Drop the scene in as `scenes/<test>_<model>.html` (`pagoda_…` or
    `engine_…`), fully self-contained (inline JS/CSS — the app loads it from

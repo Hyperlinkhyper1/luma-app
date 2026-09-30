@@ -16,6 +16,7 @@ import 'ai_model_sources.dart';
 import 'ai_price_guard.dart';
 import 'preview_render.dart';
 import 'ai_usage_store.dart';
+import 'benchmark_github.dart';
 import 'chat_store.dart';
 import 'cs2_offline_store.dart';
 import 'deploy_console.dart';
@@ -328,8 +329,10 @@ class Api {
       this.aiBenchmarks,
       {OAuthClient? oauthClient,
       this.cs2OfflineStore,
-      PreviewRenderService? previewRenders})
+      PreviewRenderService? previewRenders,
+      BenchmarkGithubPublisher? benchmarkGithub})
       : _oauthClient = oauthClient ?? OAuthClient(),
+        benchmarkGithub = benchmarkGithub ?? BenchmarkGithubPublisher(),
         previewRenders = previewRenders ??
             PreviewRenderService(
                 dataDir: config.dataDir, seedDir: aiBenchmarks.seedDir),
@@ -400,6 +403,10 @@ class Api {
   /// Renders benchmark banners for the dashboard's Control panel. Tests
   /// substitute one with a fake renderer process.
   final PreviewRenderService previewRenders;
+
+  /// Commits scenes uploaded from the dashboard to the repo. Tests substitute
+  /// one with a fake transport.
+  final BenchmarkGithubPublisher benchmarkGithub;
   final Cs2OfflineStore? cs2OfflineStore;
   final SubwayRelay _subwayRelay = SubwayRelay();
   final SubwayTicketStore _subwayTickets = SubwayTicketStore();
@@ -632,6 +639,9 @@ class Api {
           _requireAdmin(_adminBannerFramingSave))
       ..delete('/admin/benchmark-banners/framing/<id>',
           _requireAdmin(_adminBannerFramingDelete))
+      ..post('/admin/benchmarks/upload', _requireAdmin(_adminBenchmarkUpload))
+      ..get('/admin/benchmarks/upload/status',
+          _requireAdmin(_adminBenchmarkUploadStatus))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..post('/admin/system/check-updates',
@@ -3971,6 +3981,83 @@ class Api {
               ? 'queued'
               : 'failed',
       if (render != null && render != 'queued') 'message': render,
+    });
+  }
+
+  /// What the upload dialog needs to know up front: whether uploads will
+  /// also reach GitHub, and where.
+  Future<Response> _adminBenchmarkUploadStatus(Request request) async =>
+      jsonResponse(200, {
+        'github': benchmarkGithub.enabled,
+        'repo': benchmarkGithub.repo,
+        'branch': benchmarkGithub.branch,
+        'maxBytes': AiBenchmarkStore.maxUploadBytes,
+      });
+
+  /// Raw-body scene upload (no multipart, like the website editor's image
+  /// upload): the roster fields travel in the query, the file in the body.
+  /// The scene goes live on this server at once, is committed to the repo
+  /// when a GitHub token is configured, and gets its banner rendered.
+  Future<Response> _adminBenchmarkUpload(Request request) async {
+    if (!_sameOrigin(request)) {
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    final q = request.url.queryParameters;
+    final bytes = BytesBuilder(copy: false);
+    await for (final chunk in request.read()) {
+      bytes.add(chunk);
+      if (bytes.length > AiBenchmarkStore.maxUploadBytes) {
+        return errorResponse(413, 'too_large',
+            'File too large (max ${AiBenchmarkStore.maxUploadBytes ~/ (1024 * 1024)} MB).');
+      }
+    }
+    final kind = q['kind'] ?? '';
+    final id = q['id'] ?? '';
+    final data = bytes.takeBytes();
+    final Map<String, dynamic> entry;
+    try {
+      entry = await aiBenchmarks.saveUpload(
+        kind: kind,
+        id: id,
+        model: q['model'] ?? '',
+        vendor: q['vendor'] ?? '',
+        description: q['description'] ?? '',
+        bytes: data,
+      );
+    } on ArgumentError catch (e) {
+      return errorResponse(400, 'bad_upload', '${e.message}');
+    }
+
+    var github = 'off';
+    String? commitUrl;
+    String? githubError;
+    if (benchmarkGithub.enabled) {
+      try {
+        commitUrl = await benchmarkGithub.publish(
+          entry: entry,
+          fileName: '$id.${AiBenchmarkStore.extForKind(kind)}',
+          bytes: data,
+        );
+        github = 'committed';
+      } catch (e) {
+        github = 'failed';
+        githubError = '$e';
+      }
+    }
+
+    String? render;
+    if (await aiBenchmarks.readPreview(id) == null) {
+      final queued = await previewRenders.enqueue([id]);
+      render = queued == null ? 'started' : queued;
+    }
+    return jsonResponse(200, {
+      'saved': true,
+      'id': id,
+      'entry': entry,
+      'github': github,
+      if (commitUrl != null) 'commitUrl': commitUrl,
+      if (githubError != null) 'githubError': githubError,
+      if (render != null) 'render': render,
     });
   }
 
@@ -9297,7 +9384,7 @@ syncToolbar();
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>$_adminCss$_bannersCss</style>'
+        '<style>$_adminCss$_bannersCss$_bmCss</style>'
         '</head><body class="no-js"><div class="wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
@@ -9485,6 +9572,20 @@ syncToolbar();
         '</div>'
         '</div>'
         '<div class="card">'
+        '<h2>AI benchmark scenes</h2>'
+        '<div class="maint-desc">Adds a model\'s run of one of the AI Usage '
+        'plugin\'s tests. The scene is live in the app right away and is '
+        'committed to <code>server/benchmarks/</code> on GitHub (with '
+        '<code>[skip ci]</code>, so no release build runs), so the repo '
+        'keeps every test.</div>'
+        '<div class="maint-actions">'
+        '<button id="bmUploadBtn" type="button" class="btn btn-primary">'
+        'Upload test…</button>'
+        '</div>'
+        '<div id="bmUploadSummary" class="maint-status"></div>'
+        '$_bmUploadDialogHtml'
+        '</div>'
+        '<div class="card">'
         '<h2>AI benchmark banners</h2>'
         '<div class="maint-desc">Renders the model-card banners of the AI '
         'Usage plugin\'s Tests tab, one scene at a time in a headless '
@@ -9568,6 +9669,7 @@ syncToolbar();
         '<script>$_adminAiModelsScript</script>'
         '<script>$_adminAssistantScript</script>'
         '<script>$_adminBannersScript</script>'
+        '<script>$_adminBenchmarkUploadScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '<script>${UpdateCheckConsole.rebootScript}</script>'
@@ -10806,6 +10908,227 @@ window.lumaAskReason = function (form, message) {
   static const _bnCloseIcon = '<svg class="bn-ico" viewBox="0 0 24 24" '
       'aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
+  /// Companies the upload dialog offers, as the app's vendor keys (see
+  /// `pagodaVendorKey` in the AI Usage plugin). "Auto" leaves the key out
+  /// and the app keeps working the company out from the model name.
+  static const _bmVendors = <String, String>{
+    '': 'Auto (from the model name)',
+    'anthropic': 'Anthropic',
+    'openai': 'OpenAI',
+    'google': 'Google',
+    'meta': 'Meta',
+    'x-ai': 'xAI',
+    'deepseek': 'DeepSeek',
+    'qwen': 'Qwen',
+    'z-ai': 'Zhipu AI',
+    'moonshotai': 'Moonshot AI',
+    'minimax': 'MiniMax',
+    'mistralai': 'Mistral AI',
+    'nvidia': 'NVIDIA',
+    'xiaomi': 'Xiaomi',
+    'stepfun': 'StepFun',
+    'seed': 'ByteDance',
+    'hy4': 'Tencent Hunyuan',
+    'github': 'GitHub Copilot',
+    'laguna': 'Poolside',
+    'pickle': 'Big Pickle',
+    'spacebunny': 'Space Bunny',
+  };
+
+  static const _bmKinds = <String, String>{
+    'pagoda': 'Pagoda (voxel garden, .html)',
+    'engine': 'Engine (.html)',
+    'pc': 'PC build (.html)',
+    'keyboard': 'Keyboard (.html)',
+    'cathedral': 'Cathedral (3D model, .glb)',
+  };
+
+  static const _bmEfforts = <String, String>{
+    '': 'None',
+    'low': 'Low',
+    'medium': 'Medium',
+    'high': 'High',
+    'xhigh': 'Xhigh',
+    'max': 'Max',
+  };
+
+  static String _bmOptions(Map<String, String> options) => [
+        for (final e in options.entries)
+          '<option value="${e.key}">${e.value}</option>',
+      ].join();
+
+  static final _bmUploadDialogHtml =
+      '<dialog id="bmUpload" class="bn-dialog bm-dialog" '
+      'aria-labelledby="bmUploadTitle">'
+      '<form id="bmForm">'
+      '<div class="bn-dlg-head"><div><h2 id="bmUploadTitle">Upload a test</h2>'
+      '<div id="bmGithubNote" class="bn-dlg-sub">Checking GitHub…</div></div>'
+      '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
+      '$_bnCloseIcon</button></div>'
+      '<div class="bm-grid">'
+      '<label class="bm-field"><span>Test</span>'
+      '<select id="bmKind" class="bn-input">${_bmOptions(_bmKinds)}'
+      '</select></label>'
+      '<label class="bm-field"><span>Company</span>'
+      '<select id="bmVendor" class="bn-input">${_bmOptions(_bmVendors)}'
+      '</select></label>'
+      '<label class="bm-field"><span>Model</span>'
+      '<input id="bmModel" class="bn-input" required maxlength="60" '
+      'placeholder="Sonnet 5.5" autocomplete="off"></label>'
+      '<label class="bm-field"><span>Reasoning effort</span>'
+      '<select id="bmEffort" class="bn-input">${_bmOptions(_bmEfforts)}'
+      '</select></label>'
+      '<label class="bm-field bm-wide"><span>Description</span>'
+      '<input id="bmDesc" class="bn-input" maxlength="300" '
+      'placeholder="Shown under the model name in the app" autocomplete="off">'
+      '</label>'
+      '<label class="bm-field bm-wide"><span>File</span>'
+      '<input id="bmFile" class="bn-input" type="file" accept=".html,.htm" '
+      'required></label>'
+      '<label class="bm-field bm-wide"><span>Id (file name)</span>'
+      '<input id="bmId" class="bn-input" required pattern="[a-z0-9_]{3,80}" '
+      'autocomplete="off" spellcheck="false"></label>'
+      '<div class="bm-field bm-wide"><span>Shows up as</span>'
+      '<div class="bm-preview"><strong id="bmPreviewName">—</strong> '
+      '<span id="bmPreviewVendor" class="muted"></span></div></div>'
+      '</div>'
+      '<div class="bn-dlg-foot">'
+      '<span id="bmStatus" class="bn-foot-note" aria-live="polite"></span>'
+      '<button type="button" class="btn btn-ghost" data-close>Cancel</button>'
+      '<button id="bmSubmit" type="submit" class="btn btn-primary">Upload'
+      '</button></div>'
+      '</form></dialog>';
+
+  static const _bmCss = r'''
+.bm-dialog{width:min(640px,calc(100vw - 32px))}
+.bm-dialog form{display:flex;flex-direction:column;min-height:0}
+.bm-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:6px 22px 18px;overflow:auto}
+.bm-field{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#9b94b3;min-width:0}
+.bm-field .bn-input{min-width:0;flex:none;width:100%;box-sizing:border-box}
+.bm-wide{grid-column:1/-1}
+.bm-preview{background:#12101e;border:1px solid #241e36;border-radius:9px;padding:10px 12px;color:#ece8f7;font-size:13.5px}
+@media (max-width:700px){.bm-grid{grid-template-columns:1fr;padding-left:14px;padding-right:14px}}
+''';
+
+  /// The scenes card: "Upload test…" opens a form for the roster fields,
+  /// derives the id and display name the rest of the roster uses
+  /// (`keyboard_sonnet55_high` / "Sonnet 5.5 (High)"), and POSTs the file
+  /// raw to /admin/benchmarks/upload with those fields in the query.
+  static const _adminBenchmarkUploadScript = r'''
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const btn = $('bmUploadBtn');
+  const dlg = $('bmUpload');
+  if (!btn || !dlg || typeof dlg.showModal !== 'function') return;
+  const form = $('bmForm');
+  const kind = $('bmKind'), vendor = $('bmVendor'), model = $('bmModel');
+  const effort = $('bmEffort'), desc = $('bmDesc'), file = $('bmFile');
+  const idBox = $('bmId'), status = $('bmStatus'), submit = $('bmSubmit');
+  const summary = $('bmUploadSummary');
+  let idEdited = false;
+  let maxBytes = 60 * 1024 * 1024;
+
+  function slug(s) {
+    return s.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\./g, '')
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  }
+  function displayName() {
+    const m = model.value.trim();
+    const e = effort.options[effort.selectedIndex];
+    return m && effort.value ? m + ' (' + e.text + ')' : m;
+  }
+  function refresh() {
+    if (!idEdited) {
+      const s = slug(model.value);
+      idBox.value = s ? [kind.value, s, effort.value].filter(Boolean).join('_') : '';
+    }
+    file.accept = kind.value === 'cathedral' ? '.glb' : '.html,.htm';
+    $('bmPreviewName').textContent = displayName() || '—';
+    $('bmPreviewVendor').textContent = vendor.value
+      ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
+  }
+  [kind, effort, model, vendor].forEach(function (el) {
+    el.addEventListener('input', refresh);
+    el.addEventListener('change', refresh);
+  });
+  idBox.addEventListener('input', function () { idEdited = idBox.value !== ''; });
+
+  dlg.addEventListener('click', function (e) {
+    if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
+  });
+
+  btn.addEventListener('click', function () {
+    status.textContent = '';
+    submit.disabled = false;
+    dlg.showModal();
+    refresh();
+    fetch('/admin/benchmarks/upload/status').then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (j.maxBytes) maxBytes = j.maxBytes;
+        $('bmGithubNote').textContent = j.github
+          ? 'Commits to ' + j.repo + ' (' + j.branch + ') with [skip ci].'
+          : 'GitHub is not set up (LUMA_BENCHMARK_GITHUB_TOKEN) — the scene only goes live on this server.';
+      })
+      .catch(function () { $('bmGithubNote').textContent = ''; });
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const f = file.files && file.files[0];
+    if (!f) { status.textContent = 'Pick a file.'; return; }
+    if (f.size > maxBytes) {
+      status.textContent = 'That file is over ' + Math.round(maxBytes / 1048576) + ' MB.';
+      return;
+    }
+    const want = kind.value === 'cathedral' ? /\.glb$/i : /\.html?$/i;
+    if (!want.test(f.name)) {
+      status.textContent = kind.value === 'cathedral'
+        ? 'The Cathedral test takes a .glb file.' : 'This test takes an .html file.';
+      return;
+    }
+    const q = new URLSearchParams({
+      kind: kind.value, id: idBox.value.trim(), model: displayName(),
+      vendor: vendor.value, description: desc.value.trim(),
+    });
+    submit.disabled = true;
+    status.textContent = 'Uploading ' + (f.size / 1048576).toFixed(1) + ' MB…';
+    fetch('/admin/benchmarks/upload?' + q.toString(), {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/octet-stream' }, body: f,
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      submit.disabled = false;
+      if (!res.ok) {
+        status.textContent = (res.j && (res.j.message || res.j.error)) || 'Upload failed.';
+        return;
+      }
+      const j = res.j;
+      let line = j.id + ' is live.';
+      if (j.github === 'committed') line += ' Committed to GitHub.';
+      else if (j.github === 'failed') line += ' GitHub commit failed: ' + j.githubError;
+      else line += ' Not pushed (no GitHub token).';
+      if (j.render === 'started') line += ' Banner rendering.';
+      else if (j.render === 'queued') line += ' Banner queued.';
+      summary.textContent = line;
+      if (j.commitUrl) {
+        const a = document.createElement('a');
+        a.href = j.commitUrl; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = ' View commit';
+        summary.appendChild(a);
+      }
+      if (j.github === 'failed') { status.textContent = line; return; }
+      form.reset();
+      idEdited = false;
+      dlg.close();
+    }).catch(function () {
+      submit.disabled = false;
+      status.textContent = 'Upload failed — network error.';
+    });
+  });
+})();
+''';
+
   /// The banner card's two dialogs: the catalog of every scene (pick some,
   /// re-render them) and the framing editor (fly the scene's own camera to
   /// the shot you want, save, and that scene re-renders with it).
@@ -11190,7 +11513,7 @@ window.lumaAskReason = function (form, message) {
     const selCount = $('bnSelCount');
     const renderSel = $('bnRenderSelected');
     const countLine = $('bnCatalogCount');
-    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral' };
+    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard' };
     let scenes = [];
     let kind = 'all';
     const selected = new Set();

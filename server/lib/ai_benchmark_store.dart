@@ -23,18 +23,24 @@ class AiBenchmarkEntry {
     required this.updatedAtMs,
     required this.hasPreview,
     this.previewSha256 = '',
+    this.vendor = '',
   });
 
   /// File stem of the scene, e.g. `pagoda_haiku45`. Also the detail-route key
   /// the client caches the download under.
   final String id;
 
-  /// `pagoda` or `engine` — which test this scene implements.
+  /// `pagoda`, `engine`, `pc`, `cathedral` or `keyboard` — which test this
+  /// scene implements.
   final String kind;
 
   /// Display name of the benchmarked model, e.g. `Haiku 4.5`.
   final String model;
   final String description;
+
+  /// Vendor key of the company behind [model] (`anthropic`, `openai`, …), or
+  /// '' when the app should work it out from the model name as it always has.
+  final String vendor;
 
   /// The scene file's size and SHA-256, so the client can verify a download
   /// before pointing a WebView at it.
@@ -63,6 +69,7 @@ class AiBenchmarkEntry {
         'updatedAtMs': updatedAtMs,
         'hasPreview': hasPreview,
         'previewSha256': previewSha256,
+        if (vendor.isNotEmpty) 'vendor': vendor,
       };
 }
 
@@ -85,6 +92,20 @@ class AiBenchmarkStore {
 
   static final RegExp idPattern = RegExp(r'^[a-z0-9_]{1,80}$');
 
+  /// Every test a scene can implement. A scene's id always starts with its
+  /// kind and an underscore.
+  static const kinds = ['pagoda', 'engine', 'pc', 'cathedral', 'keyboard'];
+
+  static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');
+
+  /// Cap on one uploaded scene. The biggest checked-in GLB is ~16 MB; this
+  /// stays under Cloudflare's 100 MB request limit and GitHub's 100 MB file
+  /// limit even after the base64 blob upload inflates it by a third.
+  static const maxUploadBytes = 60 * 1024 * 1024;
+
+  /// File extension a scene of [kind] is stored under.
+  static String extForKind(String kind) => kind == 'cathedral' ? 'glb' : 'html';
+
   /// Generic artwork lives under fixed historical names (`pagoda-preview.png`),
   /// so hyphens are allowed here — unlike scene ids, these never become cache
   /// keys or file stems, they are only looked up in the previews directory.
@@ -98,6 +119,120 @@ class AiBenchmarkStore {
   }
 
   String get _dir => '$_dataDir/$dirName';
+
+  /// Scenes uploaded from the admin dashboard, kept apart from the operator's
+  /// hand-dropped overrides: an upload is also committed to the repo, and
+  /// once a deploy brings that (or a later) version into the seed, the seed
+  /// must win again — see [_sceneFile] and [_readRoster].
+  String get _uploadsDir => '$_dir/uploads';
+
+  File get _uploadsRoster => File('$_dir/uploads.json');
+
+  /// Stores a scene uploaded from the admin dashboard and adds (or replaces)
+  /// its roster stanza. Returns the stanza as it belongs in the manifest, or
+  /// throws [ArgumentError] with a message fit for the dashboard.
+  Future<Map<String, dynamic>> saveUpload({
+    required String kind,
+    required String id,
+    required String model,
+    required String vendor,
+    required String description,
+    required List<int> bytes,
+  }) async {
+    final entry = validateUpload(
+      kind: kind,
+      id: id,
+      model: model,
+      vendor: vendor,
+      description: description,
+      bytes: bytes,
+    );
+    final dir = Directory(_uploadsDir);
+    await dir.create(recursive: true);
+    final target = File('${dir.path}/$id.${extForKind(kind)}');
+    final tmp = File('${target.path}.tmp');
+    await tmp.writeAsBytes(bytes, flush: true);
+    await tmp.rename(target.path);
+
+    final uploads = await _readUploads();
+    uploads.removeWhere((e) => e['id'] == id);
+    uploads.add({
+      ...entry,
+      'uploadedAtMs': DateTime.now().millisecondsSinceEpoch,
+    });
+    final rosterTmp = File('${_uploadsRoster.path}.tmp');
+    await rosterTmp.writeAsString(jsonEncode(uploads));
+    await rosterTmp.rename(_uploadsRoster.path);
+    return entry;
+  }
+
+  /// Checks an upload's metadata and bytes and returns its manifest stanza.
+  static Map<String, dynamic> validateUpload({
+    required String kind,
+    required String id,
+    required String model,
+    required String vendor,
+    required String description,
+    required List<int> bytes,
+  }) {
+    if (!kinds.contains(kind)) throw ArgumentError('Unknown test "$kind".');
+    if (!idPattern.hasMatch(id) ||
+        !id.startsWith('${kind}_') ||
+        id.length <= kind.length + 1) {
+      throw ArgumentError('The id must look like ${kind}_my_model: '
+          'lowercase letters, digits and underscores.');
+    }
+    final name = model.trim();
+    if (name.isEmpty || name.length > 80) {
+      throw ArgumentError('Give the model a name (up to 80 characters).');
+    }
+    if (!vendorPattern.hasMatch(vendor)) {
+      throw ArgumentError('Unknown company "$vendor".');
+    }
+    if (description.length > 300) {
+      throw ArgumentError('Keep the description under 300 characters.');
+    }
+    if (bytes.isEmpty) throw ArgumentError('The file is empty.');
+    if (bytes.length > maxUploadBytes) {
+      throw ArgumentError(
+          'The file is over ${maxUploadBytes ~/ (1024 * 1024)} MB.');
+    }
+    final isGlb =
+        bytes.length >= 12 && String.fromCharCodes(bytes.take(4)) == 'glTF';
+    if (extForKind(kind) == 'glb') {
+      if (!isGlb) {
+        throw ArgumentError('The $kind test takes a binary .glb model.');
+      }
+    } else {
+      final head = utf8.decode(bytes.take(4096).toList(), allowMalformed: true);
+      if (isGlb || !head.contains('<')) {
+        throw ArgumentError(
+            'The $kind test takes a self-contained .html page.');
+      }
+    }
+    return {
+      'id': id,
+      'kind': kind,
+      'model': name,
+      if (vendor.isNotEmpty) 'vendor': vendor,
+      'description': description.trim(),
+    };
+  }
+
+  Future<List<Map<String, dynamic>>> _readUploads() async {
+    try {
+      final decoded = jsonDecode(await _uploadsRoster.readAsString());
+      if (decoded is List) {
+        return [
+          for (final e in decoded)
+            if (e is Map<String, dynamic> && e['id'] is String) e,
+        ];
+      }
+    } catch (_) {
+      // No uploads yet, or a torn file: the seed roster still stands.
+    }
+    return [];
+  }
 
   /// Every benchmarked scene, manifest order first, then any scene file on
   /// disk the manifest doesn't name yet (with a derived display name, so a
@@ -314,7 +449,8 @@ class AiBenchmarkStore {
       (id.startsWith('pagoda_') ||
           id.startsWith('engine_') ||
           id.startsWith('pc_') ||
-          id.startsWith('cathedral_'));
+          id.startsWith('cathedral_') ||
+          id.startsWith('keyboard_'));
 
   Future<File?> _sceneFile(String id) async {
     final ext = _extOf(id);
@@ -325,7 +461,14 @@ class AiBenchmarkStore {
       if (await overrideIndex.exists()) return overrideIndex;
     }
     final seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.$ext');
-    if (seed != null && await seed.exists()) return seed;
+    final seedExists = seed != null && await seed.exists();
+    final upload = File('$_uploadsDir/$id.$ext');
+    if (await upload.exists() &&
+        (!seedExists ||
+            (await upload.lastModified()).isAfter(await seed.lastModified()))) {
+      return upload;
+    }
+    if (seedExists) return seed;
     if (_seedDir != null && ext == 'html') {
       final seedIndex = File('$_seedDir/scenes/$id/index.html');
       if (await seedIndex.exists()) return seedIndex;
@@ -345,6 +488,7 @@ class AiBenchmarkStore {
     final ids = <String>{};
     final dirs = [
       Directory(_dir),
+      Directory(_uploadsDir),
       if (_seedDir != null) Directory('$_seedDir/scenes'),
     ];
     for (final dir in dirs) {
@@ -387,6 +531,7 @@ class AiBenchmarkStore {
       updatedAtMs: stat.modified.millisecondsSinceEpoch,
       hasPreview: preview != null,
       previewSha256: preview == null ? '' : await _fileHash(preview),
+      vendor: item.vendor,
     );
   }
 
@@ -418,6 +563,7 @@ class AiBenchmarkStore {
     if (id.startsWith('engine_')) return 'engine';
     if (id.startsWith('pc_')) return 'pc';
     if (id.startsWith('cathedral_')) return 'cathedral';
+    if (id.startsWith('keyboard_')) return 'keyboard';
     return 'pagoda';
   }
 
@@ -432,7 +578,9 @@ class AiBenchmarkStore {
                 ? id.substring('pc_'.length)
                 : id.startsWith('cathedral_')
                     ? id.substring('cathedral_'.length)
-                    : id;
+                    : id.startsWith('keyboard_')
+                        ? id.substring('keyboard_'.length)
+                        : id;
     return stem
         .split('_')
         .where((p) => p.isNotEmpty)
@@ -442,7 +590,35 @@ class AiBenchmarkStore {
 
   // ---- Roster ----------------------------------------------------------------
 
+  /// The base roster with the dashboard's uploads laid over it. An upload
+  /// replaces the stanza with its id, unless the seed manifest changed after
+  /// the upload — then a deploy brought the committed version (or a later
+  /// edit of it) in, and the seed is the truth again.
   Future<_Roster> _readRoster() async {
+    final base = await _readBaseRoster();
+    final uploads = await _readUploads();
+    if (uploads.isEmpty) return base;
+    final seedManifest =
+        _seedDir == null ? null : File('$_seedDir/manifest.json');
+    final seedAtMs = seedManifest != null && await seedManifest.exists()
+        ? (await seedManifest.lastModified()).millisecondsSinceEpoch
+        : 0;
+    final items = [...base.benchmarks];
+    for (final upload in uploads) {
+      final item = _Roster.item(upload);
+      if (item == null) continue;
+      final at = upload['uploadedAtMs'];
+      final index = items.indexWhere((e) => e.id == item.id);
+      if (index < 0) {
+        items.add(item);
+      } else if (at is! int || at >= seedAtMs) {
+        items[index] = item;
+      }
+    }
+    return _Roster(benchmarks: items, fallbacks: base.fallbacks);
+  }
+
+  Future<_Roster> _readBaseRoster() async {
     final override = File('$_dir/manifest.json');
     if (await override.exists()) {
       try {
@@ -471,12 +647,14 @@ class _RosterItem {
     required this.kind,
     required this.model,
     this.description = '',
+    this.vendor = '',
   });
 
   final String id;
   final String kind;
   final String model;
   final String description;
+  final String vendor;
 }
 
 class _Roster {
@@ -488,26 +666,32 @@ class _Roster {
   final List<_RosterItem> benchmarks;
   final Map<String, String> fallbacks;
 
+  static _RosterItem? item(Map<String, dynamic> e) {
+    final id = e['id'];
+    if (id is! String || !AiBenchmarkStore.idPattern.hasMatch(id)) return null;
+    final kind = e['kind'];
+    final vendor = e['vendor'];
+    return _RosterItem(
+      id: id,
+      kind: kind is String && AiBenchmarkStore.kinds.contains(kind)
+          ? kind
+          : 'pagoda',
+      model: e['model'] as String? ?? id,
+      description: e['description'] as String? ?? '',
+      vendor:
+          vendor is String && AiBenchmarkStore.vendorPattern.hasMatch(vendor)
+              ? vendor
+              : '',
+    );
+  }
+
   static _Roster parse(Object? decoded) {
     if (decoded is! Map<String, dynamic>) return const _Roster.empty();
     return _Roster(
       benchmarks: [
         for (final e in (decoded['benchmarks'] as List? ?? const []))
-          if (e is Map<String, dynamic> &&
-              e['id'] is String &&
-              AiBenchmarkStore.idPattern.hasMatch(e['id'] as String))
-            _RosterItem(
-              id: e['id'] as String,
-              kind: e['kind'] == 'engine'
-                  ? 'engine'
-                  : e['kind'] == 'cathedral'
-                      ? 'cathedral'
-                      : e['kind'] == 'pc'
-                          ? 'pc'
-                          : 'pagoda',
-              model: e['model'] as String? ?? (e['id'] as String),
-              description: e['description'] as String? ?? '',
-            ),
+          if (e is Map<String, dynamic>)
+            if (item(e) case final parsed?) parsed,
       ],
       fallbacks: {
         for (final e

@@ -40,11 +40,18 @@ class _ModelBannerState extends State<ModelBanner> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final repo = AiBenchmarkScope.of(context);
-    final vendor = pagodaVendorName(widget.benchmark.model);
+    final vendor = pagodaVendorName(
+      widget.benchmark.model,
+      vendor: widget.benchmark.vendor,
+    );
     final brand = widget.benchmark.model.contains('Mistral')
         ? const Color(0xFFFF8205)
-        : pagodaBrandStops(widget.benchmark.model).first;
-    final preview = repo.previewFile(widget.benchmark.id) ??
+        : pagodaBrandStops(
+            widget.benchmark.model,
+            vendor: widget.benchmark.vendor,
+          ).first;
+    final preview =
+        repo.previewFile(widget.benchmark.id) ??
         repo.fallbackFile(widget.benchmark.kind);
 
     /// Branded stand-in for artwork that has not downloaded (or was never
@@ -57,27 +64,16 @@ class _ModelBannerState extends State<ModelBanner> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                brand.withValues(alpha: 0.30),
-                luma.surface,
-              ],
+              colors: [brand.withValues(alpha: 0.30), luma.surface],
             ),
           ),
           alignment: Alignment.center,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              VendorLogo(
-                vendor: vendorKey,
-                vendorName: vendorName,
-                size: 44,
-              ),
+              VendorLogo(vendor: vendorKey, vendorName: vendorName, size: 44),
               const SizedBox(height: 8),
-              Icon(
-                widget.fallbackIcon,
-                size: 20,
-                color: luma.textMuted,
-              ),
+              Icon(widget.fallbackIcon, size: 20, color: luma.textMuted),
             ],
           ),
         );
@@ -91,10 +87,7 @@ class _ModelBannerState extends State<ModelBanner> {
           duration: const Duration(milliseconds: 160),
           decoration: BoxDecoration(
             color: _hovered ? luma.surfaceHover : luma.surface,
-            border: Border.all(
-              color: _hovered ? brand : luma.border,
-              width: 1,
-            ),
+            border: Border.all(color: _hovered ? brand : luma.border, width: 1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -108,8 +101,15 @@ class _ModelBannerState extends State<ModelBanner> {
                 child: AspectRatio(
                   aspectRatio: 16 / 10,
                   child: preview == null
-                      ? placeholder(brand,
-                          pagodaVendorKey(widget.benchmark.model) ?? '', vendor)
+                      ? placeholder(
+                          brand,
+                          pagodaVendorKey(
+                                widget.benchmark.model,
+                                vendor: widget.benchmark.vendor,
+                              ) ??
+                              '',
+                          vendor,
+                        )
                       : Image.file(
                           preview,
                           // Previews are 1120px wide; the card shows about half
@@ -121,9 +121,14 @@ class _ModelBannerState extends State<ModelBanner> {
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               placeholder(
-                                  brand,
-                                  pagodaVendorKey(widget.benchmark.model) ?? '',
-                                  vendor),
+                                brand,
+                                pagodaVendorKey(
+                                      widget.benchmark.model,
+                                      vendor: widget.benchmark.vendor,
+                                    ) ??
+                                    '',
+                                vendor,
+                              ),
                         ),
                 ),
               ),
@@ -132,7 +137,12 @@ class _ModelBannerState extends State<ModelBanner> {
                 child: Row(
                   children: [
                     VendorLogo(
-                      vendor: pagodaVendorKey(widget.benchmark.model) ?? '',
+                      vendor:
+                          pagodaVendorKey(
+                            widget.benchmark.model,
+                            vendor: widget.benchmark.vendor,
+                          ) ??
+                          '',
                       vendorName: vendor,
                       size: 30,
                     ),
@@ -204,8 +214,8 @@ class ModelBannerGrid extends StatelessWidget {
         final columns = constraints.maxWidth >= 900
             ? 4
             : constraints.maxWidth > 560
-                ? 2
-                : 1;
+            ? 2
+            : 1;
         final width =
             (constraints.maxWidth - spacing * (columns - 1)) / columns;
         // Image row (16:10) plus the label row below it, with a few pixels

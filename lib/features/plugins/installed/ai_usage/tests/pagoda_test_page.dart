@@ -36,7 +36,11 @@ class PagodaTestPage extends StatefulWidget {
 /// Matching is case-insensitive: the roster's capitalisation drifts over time
 /// (`MiMo V2.5` vs `Mimo v2.5 Pro`) and a missed match silently shows the
 /// model name as its own vendor.
-String? pagodaVendorKey(String model) {
+///
+/// A [vendor] the roster names (set when a scene is uploaded from the admin
+/// dashboard) wins over the name matching.
+String? pagodaVendorKey(String model, {String vendor = ''}) {
+  if (vendor.isNotEmpty) return vendor;
   final m = model.toLowerCase();
   if (m.contains('space bunny')) return 'spacebunny';
   if (m.contains('step 5') || m.contains('stepfun')) return 'stepfun';
@@ -71,9 +75,9 @@ String? pagodaVendorKey(String model) {
 
 /// Display name of the vendor behind [model], for by-vendor lines and
 /// logo tooltips.
-String pagodaVendorName(String model) {
+String pagodaVendorName(String model, {String vendor = ''}) {
   final m = model;
-  switch (pagodaVendorKey(model)) {
+  switch (pagodaVendorKey(model, vendor: vendor)) {
     case 'spacebunny':
       return 'Space Bunny';
     case 'stepfun':
@@ -119,11 +123,41 @@ String pagodaVendorName(String model) {
   }
 }
 
+/// A model-name fragment per vendor key that [pagodaBrandStops] matches to
+/// that vendor, so a roster-named vendor gets the same colors as a matched
+/// name without a second copy of the palette.
+const _vendorNameTokens = <String, String>{
+  'spacebunny': 'space bunny',
+  'stepfun': 'stepfun',
+  'mistralai': 'mistral',
+  'nvidia': 'nemotron',
+  'anthropic': 'claude',
+  'meta': 'llama',
+  'x-ai': 'grok',
+  'hy4': 'hy4',
+  'google': 'gemini',
+  'openai': 'openai',
+  'z-ai': 'zhipu',
+  'qwen': 'qwen',
+  'deepseek': 'deepseek',
+  'moonshotai': 'moonshot',
+  'minimax': 'minimax',
+  'seed': 'seed',
+  'xiaomi': 'xiaomi',
+  'github': 'github',
+  'pickle': 'pickle',
+  'laguna': 'laguna',
+};
+
 /// Company brand color(s) behind a model button, keyed off the shared vendor
 /// palette ([vendorColor]) so every model — present or added later — gets
 /// its provider's color. Vendors with no shared entry fall back to a local
 /// constant. Mistral returns three colors (yellow/orange/red blocks).
-List<Color> pagodaBrandStops(String model) {
+List<Color> pagodaBrandStops(String model, {String vendor = ''}) {
+  if (vendor.isNotEmpty) {
+    final token = _vendorNameTokens[vendor];
+    return token == null ? [vendorColor(vendor)] : pagodaBrandStops(token);
+  }
   final m = model.toLowerCase();
   if (m.contains('space bunny')) {
     return const [Color(0xFF7C5CFF), Color(0xFF2DD4BF)];
@@ -132,11 +166,7 @@ List<Color> pagodaBrandStops(String model) {
     return [vendorColor('stepfun')];
   }
   if (m.contains('mistral')) {
-    return const [
-      Color(0xFFFFD800),
-      Color(0xFFFF8205),
-      Color(0xFFE10500),
-    ];
+    return const [Color(0xFFFFD800), Color(0xFFFF8205), Color(0xFFE10500)];
   }
   if (m.contains('nemotron')) return [vendorColor('nvidia')];
   if (m.contains('haiku') ||
@@ -174,9 +204,7 @@ List<Color> pagodaBrandStops(String model) {
   if (m.contains('mimo') || m.contains('xiaomi')) {
     return const [Color(0xFFFF6900)];
   }
-  if (m.contains('mai code') ||
-      m.contains('copilot') ||
-      m.contains('github')) {
+  if (m.contains('mai code') || m.contains('copilot') || m.contains('github')) {
     return const [Color(0xFF6E40C9)];
   }
   if (m.contains('pickle')) return const [Color(0xFF6DBE45)];
@@ -259,7 +287,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             id: 'pagoda_space_bunny_xhigh',
             kind: 'pagoda',
             model: 'Space Bunny (Xhigh)',
-            description: 'Independent voxel garden benchmark — flying island, '
+            description:
+                'Independent voxel garden benchmark — flying island, '
                 'sky waterfalls and a five-storey pagoda',
             sizeBytes: 0,
             sha256: '',
@@ -268,7 +297,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             id: 'pagoda_sonnet55_xhigh',
             kind: 'pagoda',
             model: 'Sonnet 5.5 (Xhigh)',
-            description: 'Sonnet 5.5 at extra-high reasoning effort — a '
+            description:
+                'Sonnet 5.5 at extra-high reasoning effort — a '
                 'floating garden island with a waterfall and a five-storey '
                 'pagoda',
             sizeBytes: 0,
@@ -278,7 +308,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             id: 'pagoda_gpt_sol_61_xhigh',
             kind: 'pagoda',
             model: 'GPT 6.1 Sol (Xhigh)',
-            description: 'GPT 6.1 Sol at extra-high reasoning effort — '
+            description:
+                'GPT 6.1 Sol at extra-high reasoning effort — '
                 'spring festival voxel garden with a five-storey pagoda',
             sizeBytes: 0,
             sha256: '',
@@ -287,7 +318,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
             id: 'pagoda_gpt_sol_61_low',
             kind: 'pagoda',
             model: 'GPT 6.1 Sol (Low)',
-            description: 'GPT 6.1 Sol at low reasoning effort — '
+            description:
+                'GPT 6.1 Sol at low reasoning effort — '
                 'spring festival voxel garden with a five-storey pagoda',
             sizeBytes: 0,
             sha256: '',
@@ -352,10 +384,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
               'Spring Festival at the Five-Story Pagoda — an interactive voxel '
               'garden benchmark with procedural terrain, animated elements, and '
               'dynamic lighting.',
-              style: TextStyle(
-                color: luma.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
             ModelSearchField(
@@ -409,9 +438,9 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
                 title: 'No benchmarks yet',
                 subtitle: repo.canRefresh
                     ? 'The benchmark list could not be loaded. Try again, or '
-                        'ask the server operator to add scenes.'
+                          'ask the server operator to add scenes.'
                     : 'Benchmarks download from the luma server. Sign in to '
-                        'an approved account to fetch them.',
+                          'an approved account to fetch them.',
                 action: LumaGhostButton(
                   label: repo.refreshing ? 'Refreshing…' : 'Retry',
                   icon: Icons.refresh_rounded,
@@ -430,6 +459,7 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
               for (final entry in filtered) ...[
                 ModelButton(
                   model: entry.model,
+                  vendor: entry.vendor,
                   description: entry.description,
                   onTap: () => setState(() => _selectedId = entry.id),
                   isSelected: false,
@@ -463,7 +493,8 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           child: LumaEmptyState(
             icon: Icons.computer_rounded,
             title: 'Not available on this platform',
-            subtitle: 'The Pagoda Test requires a Windows desktop. '
+            subtitle:
+                'The Pagoda Test requires a Windows desktop. '
                 'Mobile and Linux support are coming soon.',
           ),
         ),
@@ -491,42 +522,44 @@ class _PagodaTestPageState extends State<PagodaTestPage> {
           : FutureBuilder<File>(
               future: repo.sceneFile(benchmark.id),
               builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(luma.accent),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Downloading ${benchmark.model}…',
-                    style: TextStyle(color: luma.textMuted, fontSize: 13),
-                  ),
-                ],
-              ),
-            );
-          }
-          if (snapshot.hasError || !snapshot.hasData) {
-            return Padding(
-              padding: const EdgeInsets.all(24),
-              child: LumaEmptyState(
-                icon: Icons.cloud_off_rounded,
-                title: 'Could not load ${benchmark.model}',
-                subtitle: '${snapshot.error ?? 'The download failed.'} '
-                    'Scenes are cached after the first download, so a retry '
-                    'is usually all it takes.',
-                action: LumaGhostButton(
-                  label: 'Retry',
-                  icon: Icons.refresh_rounded,
-                  onTap: () => setState(() {}),
-                ),
-              ),
-            );
-          }
-          return _SceneWebview(path: snapshot.data!.path);
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            luma.accent,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Downloading ${benchmark.model}…',
+                          style: TextStyle(color: luma.textMuted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: LumaEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Could not load ${benchmark.model}',
+                      subtitle:
+                          '${snapshot.error ?? 'The download failed.'} '
+                          'Scenes are cached after the first download, so a retry '
+                          'is usually all it takes.',
+                      action: LumaGhostButton(
+                        label: 'Retry',
+                        icon: Icons.refresh_rounded,
+                        onTap: () => setState(() {}),
+                      ),
+                    ),
+                  );
+                }
+                return _SceneWebview(path: snapshot.data!.path);
               },
             ),
     );
@@ -556,8 +589,9 @@ class _SceneWebviewState extends State<_SceneWebview> {
         Positioned.fill(
           child: WindowsWebview(
             key: ValueKey(widget.path ?? 'native-pagoda'),
-            fileUrl:
-                widget.path == null ? null : Uri.file(widget.path!).toString(),
+            fileUrl: widget.path == null
+                ? null
+                : Uri.file(widget.path!).toString(),
             html: widget.html,
             onLoaded: () {
               if (mounted) setState(() => _loading = false);
@@ -583,10 +617,14 @@ class ModelButton extends StatefulWidget {
     required this.description,
     required this.onTap,
     required this.isSelected,
+    this.vendor = '',
   });
 
   final String model;
   final String description;
+
+  /// Vendor key the roster names for [model], or '' to match on the name.
+  final String vendor;
   final VoidCallback onTap;
   final bool isSelected;
 
@@ -597,13 +635,14 @@ class ModelButton extends StatefulWidget {
 class _ModelButtonState extends State<ModelButton> {
   bool _hovered = false;
 
-  bool get _isMistral => widget.model.contains('Mistral');
+  bool get _isMistral => _vendorKey() == 'mistralai';
 
-  List<Color> _brandStops() => pagodaBrandStops(widget.model);
+  List<Color> _brandStops() =>
+      pagodaBrandStops(widget.model, vendor: widget.vendor);
 
-  String? _vendorKey() => pagodaVendorKey(widget.model);
+  String? _vendorKey() => pagodaVendorKey(widget.model, vendor: widget.vendor);
 
-  String _badgeLabel() => pagodaVendorName(widget.model);
+  String _badgeLabel() => pagodaVendorName(widget.model, vendor: widget.vendor);
 
   /// Company logo mark for the full-left of the button — the hand-drawn
   /// [VendorLogo], never an initial in a circle. Unknown models get the
@@ -639,10 +678,7 @@ class _ModelButtonState extends State<ModelButton> {
     return LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.center,
-      colors: [
-        brand.withValues(alpha: 0.38),
-        brand.withValues(alpha: 0.0),
-      ],
+      colors: [brand.withValues(alpha: 0.38), brand.withValues(alpha: 0.0)],
     );
   }
 
@@ -659,10 +695,7 @@ class _ModelButtonState extends State<ModelButton> {
         duration: const Duration(milliseconds: 160),
         decoration: BoxDecoration(
           color: base,
-          border: Border.all(
-            color: _hovered ? brand : luma.border,
-            width: 1,
-          ),
+          border: Border.all(color: _hovered ? brand : luma.border, width: 1),
           borderRadius: BorderRadius.circular(12),
         ),
         // Static gradient underlay: hover animates only the base color and
@@ -677,56 +710,58 @@ class _ModelButtonState extends State<ModelButton> {
               ),
             ),
             Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: widget.onTap,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    _logoBadge(),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.model,
-                            style: TextStyle(
-                              color: luma.textPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: widget.onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      _logoBadge(),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.model,
+                              style: TextStyle(
+                                color: luma.textPrimary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.description,
-                            style: TextStyle(
-                              color: luma.textMuted,
-                              fontSize: 12,
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.description,
+                              style: TextStyle(
+                                color: luma.textMuted,
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    AnimatedSlide(
-                      duration: const Duration(milliseconds: 160),
-                      offset: Offset(_hovered ? 0.2 : 0, 0),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 20,
-                        color: brand,
+                      const SizedBox(width: 12),
+                      AnimatedSlide(
+                        duration: const Duration(milliseconds: 160),
+                        offset: Offset(_hovered ? 0.2 : 0, 0),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: brand,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
           ],
         ),
       ),

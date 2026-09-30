@@ -93,11 +93,10 @@
   // Browsers only start audio after the reader has touched the page, so
   // everything is built on the first click or key press.
   //
-  // Real rain is not a hiss but thousands of separate drops: sharp ticks
-  // where they hit leaves and ground, and little rising "plinks" where they
-  // land in water and trap a bubble. So the rain here is written drop by
-  // drop into loops, over a soft wash for the far-off drops that blur
-  // together. Thunder is written fresh for every strike: close by, a
+  // Rain outdoors is a real recording (rain_audio.js), dulled through the
+  // walls indoors. If it cannot be decoded, the rain is written drop by
+  // drop instead: sharp ticks where drops hit leaves and ground and little
+  // "plinks" where they land in water, over a soft wash. Thunder is written fresh for every strike: close by, a
   // tearing crack of discharges and a boom; then a low rumble that rolls in
   // several swells as the sound comes back from different parts of the bolt.
   function createAudio() {
@@ -310,6 +309,31 @@
       return src;
     }
 
+    // The recording, decoded and made seamless: its last seconds are faded
+    // out over its first as those fade in, and the rest is dropped, so the
+    // end runs straight into the start. Any padding the codec left at
+    // either end falls where it is faded to nothing.
+    function recording() {
+      const data = window.LibraryRainRecording;
+      if (!data) return Promise.reject(new Error('no recording'));
+      const bytes = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+      return new Promise((ok, fail) => A.ctx.decodeAudioData(bytes.buffer, ok, fail)).then(src => {
+        const sr = src.sampleRate, fade = Math.floor(sr * 3);
+        const n = src.length - fade;
+        if (n <= fade) throw new Error('recording too short');
+        const out = A.ctx.createBuffer(src.numberOfChannels, n, sr);
+        for (let c = 0; c < src.numberOfChannels; c++) {
+          const from = src.getChannelData(c), to = out.getChannelData(c);
+          to.set(from.subarray(0, n));
+          for (let i = 0; i < fade; i++) {
+            const w = i / fade;
+            to[i] = from[i] * Math.sin(w * Math.PI / 2) + from[n + i] * Math.cos(w * Math.PI / 2);
+          }
+        }
+        return out;
+      });
+    }
+
     function build() {
       if (A.ctx || !AC) return;
       try { A.ctx = new AC(); } catch { return; }
@@ -326,9 +350,13 @@
       A.lightGain = ctx.createGain(); A.lightGain.gain.value = 0; A.lightGain.connect(A.rainMuffle);
       A.heavyGain = ctx.createGain(); A.heavyGain.gain.value = 0; A.heavyGain.connect(A.rainMuffle);
       A.roofGain = ctx.createGain(); A.roofGain.gain.value = 0; A.roofGain.connect(A.master);
-      work(rainLoop(7, 220, 'open'), b => loop(b, A.lightGain));
-      work(rainLoop(9, 1100, 'open'), b => loop(b, A.heavyGain));
-      work(rainLoop(8, 500, 'roof'), b => loop(b, A.roofGain));
+      A.recordedGain = ctx.createGain(); A.recordedGain.gain.value = 0; A.recordedGain.connect(A.rainMuffle);
+      const written = () => {
+        work(rainLoop(7, 220, 'open'), b => loop(b, A.lightGain));
+        work(rainLoop(9, 1100, 'open'), b => loop(b, A.heavyGain));
+        work(rainLoop(8, 500, 'roof'), b => loop(b, A.roofGain));
+      };
+      recording().then(b => { A.recorded = true; loop(b, A.recordedGain); }, written);
       // Wind: brown noise through a band that wanders.
       A.windBand = ctx.createBiquadFilter(); A.windBand.type = 'bandpass'; A.windBand.frequency.value = 320; A.windBand.Q.value = 0.9;
       A.windGain = ctx.createGain(); A.windGain.gain.value = 0;
@@ -353,8 +381,10 @@
       const heavy = Math.max(0, Math.min(1, (rain - 0.35) / 0.55));
       A.lightGain.gain.setTargetAtTime(rain * 0.55 * (1 - heavy * 0.7) * (1 - m * 0.55), t, 0.4);
       A.heavyGain.gain.setTargetAtTime(rain * 0.6 * heavy * (1 - m * 0.55), t, 0.4);
-      A.rainMuffle.frequency.setTargetAtTime(16000 - m * 14800, t, 0.3);
+      A.rainMuffle.frequency.setTargetAtTime(A.recorded ? 16000 * Math.pow(650 / 16000, m) : 16000 - m * 14800, t, 0.3);
       A.roofGain.gain.setTargetAtTime(rain * m * 0.5, t, 0.3);
+      // The recording is a downpour; a shower is the same rain, quieter.
+      A.recordedGain.gain.setTargetAtTime(Math.pow(rain, 0.8) * 0.9 * (1 - m * 0.35), t, 0.4);
       windPhase += dt * (0.2 + wind * 0.4);
       const gust = 0.6 + 0.4 * Math.sin(windPhase) * Math.sin(windPhase * 0.37 + 1.3);
       A.windGain.gain.setTargetAtTime(wind * gust * (0.5 - m * 0.3), t, 0.4);
