@@ -81,6 +81,10 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
+# System-wide mic EQ (Audio Tools): the APO and its elevated installer,
+# placed next to luma.exe. Added here, after INSTALL_BUNDLE_LIB_DIR exists.
+add_subdirectory("luma_apo")
+
 install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   COMPONENT Runtime)
 

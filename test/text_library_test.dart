@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/plugins/installed/text_library/data/text_library_database.dart';
 import 'package:luma/features/plugins/installed/text_library/text_library_models.dart';
 import 'package:luma/features/plugins/installed/text_library/text_library_repository.dart';
+import 'package:luma/features/plugins/installed/text_library/ui/rich_text_controller.dart';
 import 'package:luma/storage/storage_guard.dart';
 
 void main() {
@@ -53,6 +54,37 @@ void main() {
         const RichSpan('cd', RichStyle(color: McColor.darkAqua)),
       ]);
       expect(RichDoc.fromStyles(doc.plainText, doc.styles), doc);
+    });
+
+    test('keeps the Minecraft view\'s drawings through a round trip', () {
+      const star = {
+        'k': 'star',
+        'p': 0,
+        'x0': 10,
+        'y0': 20,
+        'x1': 50,
+        'y1': 60,
+        'c': 'gold',
+        'f': true,
+      };
+      final doc = RichDoc.decode(
+        '{"v":1,"spans":[{"t":"hi"}],"drawings":[{"k":"star","p":0,"x0":10,"y0":20,"x1":50,"y1":60,"c":"gold","f":true}]}',
+      );
+      expect(doc.drawings, [star]);
+      expect(RichDoc.decode(doc.encode()), doc);
+      expect(RichDoc.plain('').withDrawings([star]).isBlank, isFalse);
+      // A body without drawings is written exactly as before.
+      expect(RichDoc.plain('hi').encode(), '{"v":1,"spans":[{"t":"hi"}]}');
+    });
+
+    test('the classic editor carries drawings through an edit', () {
+      final doc = RichDoc.decode(
+        '{"v":1,"spans":[{"t":"hi"}],"drawings":[{"k":"heart","p":1}]}',
+      );
+      final controller = RichTextController(doc);
+      controller.text = 'hi there';
+      expect(controller.doc.plainText, 'hi there');
+      expect(controller.doc.drawings, doc.drawings);
     });
 
     test('preview flattens whitespace and truncates', () {

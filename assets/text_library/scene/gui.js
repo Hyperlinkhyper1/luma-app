@@ -33,7 +33,9 @@
     particlesAll: 'All', particlesDecreased: 'Decreased', particlesMinimal: 'Minimal', renderScale: 'Resolution: {0}',
     on: 'ON', off: 'OFF', weather: 'Weather: {0}', weatherClear: 'Clear', weatherRain: 'Rain', weatherStorm: 'Storm',
     weatherThunder: 'Thunderstorm', weatherCycle: 'Changing', sound: 'Sound: {0}', upstairs: 'Go upstairs', downstairs: 'Go downstairs',
-    shapes: 'Shapes',
+    shapes: 'Shapes', shapeCircle: 'Circle', shapeSquare: 'Square', shapeTriangle: 'Triangle', shapeStar: 'Star',
+    shapeHeart: 'Heart', shapeLine: 'Line', shapeFill: 'Filled or outline',
+    drawHint: 'drag on the page to draw it · right-click a drawing to remove it',
   };
 
   const MC_COLORS = [

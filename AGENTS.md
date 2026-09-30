@@ -52,6 +52,10 @@ lib/
   storage/                   StorageGuard: local-disk-usage display only, no cap
   sync/                      Server sync (SyncService coordinates multiple SyncCollection adapters)
     server_access.dart       The app-wide gate: no luma-server traffic without an approved account
+windows/luma_apo/            Audio Tools' system-wide mic EQ: an APO DLL audiodg loads onto a mic
+                             (so Discord hears the EQ with no virtual cable) and the elevated
+                             luma_apo_setup.exe that installs it. test/apo_test.cpp drives it
+                             like the audio engine does; the eq.bin layout mirrors system_eq.dart
 server/                      Standalone Dart HTTP server; deploy via docker-compose
 plugins/
   registry.json              Catalog of available plugins (fetched at runtime)

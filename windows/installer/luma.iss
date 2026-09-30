@@ -65,6 +65,13 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 ; bugs and prevents a terminal window from appearing during an update.
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch luma"; Flags: nowait postinstall runhidden; BeforeInstall: DelayLumaRelaunch
 
+[UninstallRun]
+; Audio Tools' system-wide mic EQ lives outside {app} (Program Files and the
+; mic's audio registry keys), so put every microphone back before the files
+; go. The helper exits at once, without a UAC prompt, when it was never
+; enabled.
+Filename: "{app}\luma_apo_setup.exe"; Parameters: "uninstall-all"; Flags: runhidden waituntilterminated; RunOnceId: "LumaApoUninstall"
+
 [Code]
 procedure DelayLumaRelaunch;
 begin

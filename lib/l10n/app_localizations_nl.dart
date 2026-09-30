@@ -1234,6 +1234,34 @@ class LNl extends L {
   String get textLibraryMcCloseDoor => 'Doe de deur dicht';
 
   @override
+  String get textLibraryMcShapes => 'Vormen';
+
+  @override
+  String get textLibraryMcShapeCircle => 'Cirkel';
+
+  @override
+  String get textLibraryMcShapeSquare => 'Vierkant';
+
+  @override
+  String get textLibraryMcShapeTriangle => 'Driehoek';
+
+  @override
+  String get textLibraryMcShapeStar => 'Ster';
+
+  @override
+  String get textLibraryMcShapeHeart => 'Hart';
+
+  @override
+  String get textLibraryMcShapeLine => 'Lijn';
+
+  @override
+  String get textLibraryMcShapeFill => 'Gevuld of omlijnd';
+
+  @override
+  String get textLibraryMcDrawHint =>
+      'sleep over de bladzijde om te tekenen · rechtsklik op een tekening om die weg te halen';
+
+  @override
   String textLibraryMcSkinCurrent(String name) {
     return 'Skin: $name';
   }
@@ -1558,4 +1586,69 @@ class LNl extends L {
 
   @override
   String get audioToolsPresetCustom => 'Eigen';
+
+  @override
+  String get audioToolsSystemTitle => 'Gebruik het in Discord';
+
+  @override
+  String audioToolsSystemBody(String mic) {
+    return 'luma kan de EQ op $mic zelf zetten, zodat Discord, OBS en games hem horen zonder extra software. Windows vraagt één keer om beheerdersrechten en het geluid valt een seconde weg tijdens het omschakelen.';
+  }
+
+  @override
+  String get audioToolsSystemEnable => 'Aanzetten voor deze microfoon';
+
+  @override
+  String audioToolsSystemActive(String mic) {
+    return 'Aan voor $mic';
+  }
+
+  @override
+  String get audioToolsSystemPaused => 'Gepauzeerd';
+
+  @override
+  String get audioToolsSystemEveryApp => 'EQ in elke app';
+
+  @override
+  String get audioToolsSystemEveryAppBody =>
+      'Pauzeren vraagt geen beheerdersrechten en laat alles ingesteld.';
+
+  @override
+  String audioToolsSystemDiscordHint(String mic) {
+    return 'Houd $mic in Discord als invoerapparaat. Klinkt de EQ vlak, zet dan de ruisonderdrukking en automatische versterking van Discord uit.';
+  }
+
+  @override
+  String get audioToolsSystemOutdated =>
+      'luma heeft zijn EQ-engine bijgewerkt. Pas de update toe om deze microfoon gelijk te houden.';
+
+  @override
+  String get audioToolsSystemUpdate => 'Bijwerken';
+
+  @override
+  String get audioToolsSystemRemove => 'Uitzetten en herstellen';
+
+  @override
+  String get audioToolsSystemCancelled =>
+      'Windows kreeg geen toestemming, er is niets veranderd.';
+
+  @override
+  String get audioToolsSystemFailed =>
+      'Dat lukte niet, de microfoon is gelaten zoals hij was.';
+
+  @override
+  String get audioToolsSystemRestart =>
+      'Bijna klaar: start je pc opnieuw zodat Windows de wijziging oppikt.';
+
+  @override
+  String get audioToolsSystemNoDevice =>
+      'Die microfoon is nu niet aangesloten.';
+
+  @override
+  String get audioToolsSystemMissing =>
+      'Er ontbreken onderdelen van luma. Installeer luma opnieuw en probeer het nog eens.';
+
+  @override
+  String get audioToolsSystemNoMic =>
+      'Geen microfoon gevonden. Sluit er een aan en vernieuw de apparatenlijst.';
 }

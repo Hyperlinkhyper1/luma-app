@@ -74,6 +74,7 @@ test('the real camera climbs both flights, reverses, and respects reduced motion
   const view = {pos: new T.Vector3(3.5, 1.9, 4.5), target: new T.Vector3(3.5, 1.9, 3), fov: 70};
   const harness = {T, S, view, LibraryStairs: stairs, W: {HALL: {eye: 1.9}}, V: {bobbing: true},
     camera: new T.PerspectiveCamera(), walkFov: () => 70, setMode: mode => {S.mode = mode;},
+    floorY: () => S.built.layout.bases[S.floor], blocked: () => false,
     rebuildA11y: () => {}, baseModePose: () => null};
   vm.runInNewContext(`let flight = null;
     ${cut('  const easeInOut =', '  // Standing in the hall')}

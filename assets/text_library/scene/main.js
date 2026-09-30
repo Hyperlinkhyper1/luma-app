@@ -229,10 +229,6 @@
   outline.userData.noShadow = true;
   scene.add(outline);
 
-  const slotHi = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.28, depthWrite: false}));
-  slotHi.visible = false;
-  slotHi.userData.noShadow = true;
-  scene.add(slotHi);
 
   // The book being carried: built once per book at the origin, moved by
   // its transform.
@@ -244,6 +240,9 @@
     labels.flush();
     held.mesh = new T.Mesh(mb.geometry(T), heldMat);
     held.mesh.userData.noShadow = true;
+    // In the hand it is drawn with the hand's wider view, which the camera's
+    // frustum does not know about.
+    held.mesh.frustumCulled = false;
     held.book = book;
     scene.add(held.mesh);
     return held.mesh;
@@ -449,8 +448,15 @@
     handMat.uniforms.handProjection.value.copy(handCam.projectionMatrix);
   }
 
-  // Where the carried book sits: in the arm's hand.
-  function handTransform() {
+  // The carried book once it is in the hand is drawn like the arm, with
+  // the hand's own projection, so the two overlap as one thing.
+  const heldHandMat = R.blockMaterial({viewmodel: true});
+  heldHandMat.uniforms.handProjection = handMat.uniforms.handProjection;
+
+  // Where the carried book sits: in the arm's hand. `asHand` gives the spot
+  // for drawing with the hand's projection; otherwise the spot that looks
+  // the same drawn with the view's.
+  function handTransform(asHand = false) {
     if (!hand.arm) {
       const q = camera.quaternion.clone();
       return {pos: new T.Vector3(0.3, -0.28, -0.75).applyQuaternion(q).add(camera.position), quat: q, scale: 0.5};
@@ -458,10 +464,22 @@
     hand.root.position.copy(camera.position);
     hand.root.quaternion.copy(camera.quaternion);
     hand.root.updateMatrixWorld(true);
-    const pos = new T.Vector3(-1 / 16, -11 / 16, -0.5 / 16).applyMatrix4(hand.arm.matrixWorld);
-    const q = camera.quaternion.clone();
-    const tilt = new T.Quaternion().setFromEuler(new T.Euler(0.2, -0.6, 0.15));
-    return {pos, quat: q.multiply(tilt).multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), Math.PI / 2)), scale: 0.5};
+    // Gripped just past the fist, its cover turned to the reader, as the
+    // game shows an item in the hand.
+    const pos = new T.Vector3(-1 / 16, -15 / 16, -2 / 16).applyMatrix4(hand.arm.matrixWorld);
+    const quat = camera.quaternion.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(0.25, -0.5, 0.1)));
+    if (asHand) return {pos, quat, scale: 0.6};
+    // The arm is drawn with the game's own field of view, the book with the
+    // view's; narrower in front of a bookcase, where the hand's spot would
+    // land off the edge of the screen. Pulling the spot toward the middle of
+    // the view (and shrinking the book to match) puts the book on screen
+    // exactly where the hand is, at whatever the view's field of view.
+    camera.updateMatrixWorld();
+    const k = Math.tan(camera.fov * DEG / 2) / Math.tan(handCam.fov * DEG / 2);
+    const inView = pos.applyMatrix4(camera.matrixWorldInverse);
+    inView.x *= k; inView.y *= k;
+    inView.applyMatrix4(camera.matrixWorld);
+    return {pos: inView, quat, scale: 0.6 * k};
   }
 
   // The reader themself, sitting at the desk while a book is open on it.
@@ -998,12 +1016,14 @@
   const view = {pos: new T.Vector3(0, 2.35, 5.2), target: new T.Vector3(0, 1.8, 0), fov: 55};
   let flight = null;
   const easeInOut = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-  // Only ease at the landings; keep an even walking pace around the post.
-  function stairProgress(t) {
-    if (t > 0.9) return 1 - stairProgress(1 - t);
-    if (t >= 0.1) return (t - 0.05) / 0.9;
-    const u = t / 0.1;
-    return 0.1 * (u * u * u - 0.5 * u * u * u * u) / 0.9;
+  // Only ease at the ends, over the first and last `f` of the time; keep
+  // an even walking pace in between.
+  function stairProgress(t, f = 0.1) {
+    if (t > 1 - f) return 1 - stairProgress(1 - t, f);
+    const pace = 1 / (1 - f);
+    if (t >= f) return (t - f / 2) * pace;
+    const u = t / f;
+    return f * (u * u * u - 0.5 * u * u * u * u) * pace;
   }
 
   // Standing in the hall, with a slight bob while walking.
@@ -1082,7 +1102,7 @@
     let bob = 0;
     if (flight) {
       flight.t = Math.min(1, flight.t + dt / flight.d);
-      const e = flight.sample ? stairProgress(flight.t) : easeInOut(flight.t);
+      const e = flight.sample ? stairProgress(flight.t, flight.ease) : easeInOut(flight.t);
       if (flight.sample) {
         const pose = flight.sample(e);
         S.stride += view.pos.distanceTo(pose.pos);
@@ -1090,7 +1110,7 @@
         view.target.copy(pose.target);
         view.fov = pose.fov;
         S.yaw = pose.yaw;
-        S.pitch = 0;
+        S.pitch = pose.pitch || 0;
         S.vel = [1.8, 0];
       } else {
         view.pos.lerpVectors(flight.from.pos, flight.to.pos, e);
@@ -1317,6 +1337,19 @@
     return t1 < 0 ? null : Math.max(0, t0);
   }
 
+  // A box turned by `turn` (a model's yaw) about its own centre: the ray
+  // is turned back into the box's frame and tested there.
+  function turnedBoxHit(ray, [min, max], turn) {
+    if (!turn) return boxHit(ray, min, max);
+    const c = min.map((v, k) => (v + max[k]) / 2);
+    const cos = Math.cos(-turn), sin = Math.sin(-turn);
+    const spin = (x, z) => [x * cos - z * sin, x * sin + z * cos];
+    const [ox, oz] = spin(ray.origin.x - c[0], ray.origin.z - c[2]);
+    const [dx, dz] = spin(ray.direction.x, ray.direction.z);
+    const local = new T.Ray(new T.Vector3(ox, ray.origin.y - c[1], oz), new T.Vector3(dx, ray.direction.y, dz));
+    return boxHit(local, min.map((v, k) => v - c[k]), max.map((v, k) => v - c[k]));
+  }
+
   function caseBox(c) {
     const x0 = c.faceX - c.facing * 1, x1 = c.faceX + c.facing * 0.05;
     return [[Math.min(x0, x1), c.y0, c.z0], [Math.max(x0, x1), c.y1, c.z1]];
@@ -1404,7 +1437,7 @@
     }
     S.built.seats.forEach((seat, i) => {
       if (S.seat && S.seat.box === seat.box) return;
-      const t = boxHit(ray, ...seat.box);
+      const t = turnedBoxHit(ray, seat.box, seat.turn);
       if (t != null && t < REACH) consider(t, {kind: 'seat', i, at: ray.at(t, new T.Vector3()).toArray()});
     });
     const t = S.floor === 0 ? boxHit(ray, ...doorBox()) : null;
@@ -1430,8 +1463,9 @@
     } else setHover(null);
   }
 
-  function outlineBox([min, max]) {
+  function outlineBox([min, max], turn = 0) {
     outline.position.set((min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2);
+    outline.rotation.y = -turn;
     outline.scale.set(max[0] - min[0] + 0.01, max[1] - min[1] + 0.01, max[2] - min[2] + 0.01);
     outline.visible = true;
   }
@@ -1439,7 +1473,6 @@
   function setHover(h, x = pointer.x, y = pointer.y) {
     hover = h;
     outline.visible = false;
-    slotHi.visible = false;
     canvas.classList.toggle('pointer', !!h);
     if (!h) { gui.tooltip(null); return; }
     if (h.kind === 'case') {
@@ -1447,7 +1480,7 @@
       outlineBox(caseBox(c));
       gui.tooltip(c.subject ? [c.subject.name, gui.t('books', c.subject.books.length)] : [gui.t('newCase')], x, y);
     } else if (h.kind === 'seat') {
-      outlineBox(S.built.seats[h.i].box);
+      outlineBox(S.built.seats[h.i].box, S.built.seats[h.i].turn);
       gui.tooltip([gui.t('sit')], x, y);
     } else if (h.kind === 'door') {
       outlineBox(doorBox());
@@ -1457,19 +1490,17 @@
       gui.tooltip([gui.t(h.dir > 0 ? 'upstairs' : 'downstairs')], x, y);
     } else {
       const g = h.g;
-      // Over a book the highlight covers just its spine; over an empty
-      // slot, the gap it would fill.
-      if (h.book && S.mode !== 'placing') {
-        const {w, h: bh, back} = W.bookDims(h.book);
-        const center = W.bookCenter(g, h.book).pos;
-        slotHi.position.set(g.faceX - g.facing * (back - 0.004), center[1], center[2]);
-        slotHi.scale.set(w + 0.01, bh + 0.01, 1);
+      // The game's thin dark outline: round the book under the pointer, or
+      // while carrying one, round where it would stand in the gap.
+      const shown = S.mode === 'placing' && S.editing ? editingBook() : h.book;
+      if (shown) {
+        const {w, h: bh, d, back} = W.bookDims(shown);
+        const z = (g.z0 + g.z1) / 2, front = g.faceX - g.facing * back, rear = g.faceX - g.facing * (back + d);
+        outlineBox([[Math.min(front, rear), g.y0, z - w / 2], [Math.max(front, rear), g.y0 + bh, z + w / 2]]);
       } else {
-        slotHi.position.set(g.faceX + g.facing * 0.004, (g.y0 + g.y1) / 2 - 0.04, (g.z0 + g.z1) / 2);
-        slotHi.scale.set((g.z1 - g.z0) * 0.86, (g.y1 - g.y0) * 0.78, 1);
+        const rear = g.faceX - g.facing * 0.9;
+        outlineBox([[Math.min(g.faceX, rear), g.y0, g.z0], [Math.max(g.faceX, rear), g.y1, g.z1]]);
       }
-      slotHi.rotation.set(0, g.facing > 0 ? Math.PI / 2 : -Math.PI / 2, 0);
-      slotHi.visible = true;
       if (S.mode === 'placing') gui.tooltip(null);
       else if (h.book) {
         const preview = Book.plainText(h.book.body).replace(/\s+/g, ' ').trim();
@@ -1610,7 +1641,11 @@
       tw.mesh.scale.setScalar(tw.from.scale + (to.scale - tw.from.scale) * e);
       if (tw.t >= 1) { tweens.delete(tw); tw.resolve(); }
     }
-    if (S.mode === 'placing' && held.mesh && ![...tweens].some(t => t.mesh === held.mesh)) applyTransform(held.mesh, handTransform());
+    if (held.mesh) {
+      const inHand = S.mode === 'placing' && !!hand.arm && ![...tweens].some(t => t.mesh === held.mesh);
+      if (inHand) applyTransform(held.mesh, handTransform(true));
+      held.mesh.material = inHand ? heldHandMat : heldMat;
+    }
     // The desk book opens and closes on its hinge.
     if (deskBook.group && deskBook.open !== deskBook.target) {
       const step = dt * (S.reducedMotion ? 20 : 3.2);
@@ -1632,7 +1667,7 @@
     return id;
   }
 
-  const isBlank = body => !Book.plainText(body).trim();
+  const isBlank = body => Book.isBlank(body);
 
   // A new book that was never written in vanishes instead of being shelved.
   async function discardBlank(e) {
@@ -1791,18 +1826,51 @@
     return false;
   }
 
-  // A single continuous walk along the actual spiral, with a level gaze.
+  // One continuous walk: from where the reader stands to the foot of the
+  // stair, round the spiral and off onto the landing, at an even pace. The
+  // gaze is level and follows the way ahead smoothed over two strides, so
+  // corners and the joins between line and spiral never jerk the view.
   async function climb(dir) {
+    const smooth = x => { const c = Math.max(0, Math.min(1, x)); return c * c * (3 - 2 * c); };
+    const wrapAngle = a => (((a % (Math.PI * 2)) + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     const st = S.built?.stairs, bases = S.built?.layout.bases;
     const to = S.floor + dir;
     if (!st || S.mode === 'climbing' || ![-1, 1].includes(dir) || to < 0 || to >= bases.length) return;
     const stairFlight = st.flights[Math.min(S.floor, to)];
-    const route = t => LibraryStairs.route(st, stairFlight, dir > 0 ? t : 1 - t);
-    const sample = t => {
-      const p = route(t), a = route(Math.max(0, t - 0.002)), b = route(Math.min(1, t + 0.002));
-      const yaw = Math.atan2(-(b[0] - a[0]), -(b[2] - a[2]));
+    // Walk there when the way is clear, straight or round a corner or two
+    // past whatever stands in the way; otherwise glide to the foot.
+    const y = floorY();
+    const here = [S.px, y, S.pz];
+    const foot = LibraryStairs.route(st, stairFlight, dir > 0 ? 0 : 1);
+    const front = [foot[0], y, foot[2] + 1];
+    const ways = [[here], [here, [foot[0], y, here[2]]], [here, [here[0], y, foot[2]]], [here, front], [here, [here[0], y, front[2]], front]];
+    const open = way => way.every((p, j) => {
+      const q = way[j + 1] || foot;
+      const len = Math.hypot(q[0] - p[0], q[2] - p[2]) || 1;
+      for (let d = 0; d <= len; d += 0.15) if (blocked(p[0] + (q[0] - p[0]) * d / len, p[2] + (q[2] - p[2]) * d / len)) return false;
+      return true;
+    });
+    const way = S.mode === 'overview' && Math.hypot(foot[0] - here[0], foot[2] - here[2]) < 7 ? ways.find(open) : null;
+    const clear = !!way;
+    const path = LibraryStairs.walk(st, stairFlight, dir, way || []);
+    const heading = s => {
+      const a = path.place(s + 0.8), b = path.place(s - 0.8);
+      return Math.atan2(-(a[0] - b[0]), -(a[2] - b[2]));
+    };
+    // The head turns from where it was looking onto the way ahead, and
+    // levels, once, by the shorter side, easing out over a distance that
+    // grows with the turn.
+    const yawOff = clear ? wrapAngle(S.yaw - heading(0)) : 0, pitchOff = clear ? S.pitch : 0;
+    const settle = Math.max(0.8, Math.abs(yawOff) * 0.9);
+    const sample = e => {
+      const s = e * path.length;
+      const p = path.place(s);
+      const still = 1 - smooth(s / settle);
+      const yaw = heading(s) + yawOff * still;
+      const pitch = pitchOff * still;
       const pos = new T.Vector3(p[0], p[1] + W.HALL.eye, p[2]);
-      return {pos, target: pos.clone().add(new T.Vector3(-Math.sin(yaw) * 4, 0, -Math.cos(yaw) * 4)), fov: walkFov(), yaw};
+      const look = new T.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+      return {pos, target: pos.clone().addScaledVector(look, 4), fov: walkFov(), yaw, pitch};
     };
     S.goal = null;
     S.vel = [0, 0];
@@ -1810,18 +1878,21 @@
     if (S.reducedMotion) {
       await flyTo(sample(1), {duration: 0.25});
     } else {
-      const entry = sample(0);
-      await flyTo(entry, {duration: Math.max(0.4, Math.min(1.8, view.pos.distanceTo(entry.pos) / 2.5))});
-      if (S.mode !== 'climbing') return;
+      if (!clear) {
+        const entry = sample(0);
+        await flyTo(entry, {duration: Math.max(0.4, Math.min(1.8, view.pos.distanceTo(entry.pos) / 2.5))});
+        if (S.mode !== 'climbing') return;
+      }
+      const d = Math.max(3, path.length / 2.1);
       await new Promise(resolve => {
-        flight = {sample, t: 0, d: Math.max(7.5, stairFlight.height * 0.95), resolve};
+        flight = {sample, t: 0, d, ease: Math.min(0.2, 0.45 / d), resolve};
       });
     }
     if (S.mode !== 'climbing') return;
-    const end = route(1);
+    const end = sample(1);
     S.floor = to;
-    S.px = end[0]; S.pz = end[2];
-    S.yaw = sample(1).yaw; S.pitch = 0;
+    S.px = end.pos.x; S.pz = end.pos.z;
+    S.yaw = end.yaw; S.pitch = 0;
     S.vel = [0, 0];
     setMode('overview');
     rebuildA11y();
@@ -2484,6 +2555,8 @@
       ]},
     ];
     if (params.has('empty')) subjects.length = 0;
+    // `?subjects=8` fills out more cases, enough for an upstairs.
+    for (let i = subjects.length; i < Number(params.get('subjects') || 0); i++) subjects.push({id: 50 + i, name: `Subject ${i + 1}`, color: i % 16, books: []});
     const emit = m => setTimeout(() => receive(JSON.parse(JSON.stringify(m))), 20);
     const snapshot = () => emit({type: 'library', subjects});
     const findBook = id => { for (const s of subjects) { const b = s.books.find(x => x.id === id); if (b) return [s, b]; } return [null, null]; };
@@ -2577,7 +2650,7 @@
 
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
-    S, R, W, V, view, hand, sitter, door, weather, climb,
+    S, R, W, V, view, hand, sitter, door, weather, climb, blocked,
     get hover() { return hover; },
     // Steps the simulation without waiting on the display.
     advance(seconds) {
