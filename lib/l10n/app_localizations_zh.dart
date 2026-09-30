@@ -1608,4 +1608,69 @@ class LZh extends L {
   @override
   String get audioToolsSystemNoMic =>
       'No microphone found. Plug one in and refresh the device list.';
+
+  @override
+  String get assistantAddMenu => '添加';
+
+  @override
+  String get assistantModePlan => '计划模式';
+
+  @override
+  String get assistantModePlanHint => '先出计划，再动手';
+
+  @override
+  String get assistantModeResearch => '深度研究';
+
+  @override
+  String get assistantModeResearchHint => '多个智能体深入调查后汇报';
+
+  @override
+  String get assistantModeResearchUnavailable =>
+      '请切换到 Nebula、Pulsar 或 Luma Assistant';
+
+  @override
+  String get assistantModePicture => '图片';
+
+  @override
+  String assistantModePictureHint(int percent) {
+    return '生成图片 · 占用每周额度的 $percent%';
+  }
+
+  @override
+  String get assistantModePictureUnavailable => '需要登录 luma 账户';
+
+  @override
+  String get assistantModeOff => '关闭';
+
+  @override
+  String get assistantPlanComposerHint => '要我计划什么？';
+
+  @override
+  String get assistantResearchComposerHint => '要让智能体研究什么？';
+
+  @override
+  String get assistantPictureComposerHint => '描述这张图片';
+
+  @override
+  String get assistantResearchPlanning => '正在规划研究…';
+
+  @override
+  String assistantResearchProgress(int done, int total) {
+    return '已完成 $done/$total 个智能体';
+  }
+
+  @override
+  String get assistantResearchParallel => '智能体并行工作';
+
+  @override
+  String get assistantResearchSequential => '智能体在本设备上轮流工作';
+
+  @override
+  String get assistantResearchWriting => '正在撰写答案…';
+
+  @override
+  String get assistantPictureDrawing => '正在绘制图片…';
+
+  @override
+  String get assistantPictureMissing => '此图片不在本设备上';
 }

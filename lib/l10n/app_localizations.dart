@@ -3066,6 +3066,126 @@ abstract class L {
   /// In en, this message translates to:
   /// **'No microphone found. Plug one in and refresh the device list.'**
   String get audioToolsSystemNoMic;
+
+  /// No description provided for @assistantAddMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get assistantAddMenu;
+
+  /// No description provided for @assistantModePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan mode'**
+  String get assistantModePlan;
+
+  /// No description provided for @assistantModePlanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a plan before anything happens'**
+  String get assistantModePlanHint;
+
+  /// No description provided for @assistantModeResearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep research'**
+  String get assistantModeResearch;
+
+  /// No description provided for @assistantModeResearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Several agents dig in, then report back'**
+  String get assistantModeResearchHint;
+
+  /// No description provided for @assistantModeResearchUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Nebula, Pulsar or Luma Assistant'**
+  String get assistantModeResearchUnavailable;
+
+  /// No description provided for @assistantModePicture.
+  ///
+  /// In en, this message translates to:
+  /// **'Picture'**
+  String get assistantModePicture;
+
+  /// No description provided for @assistantModePictureHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw an image · uses {percent}% of your weekly limit'**
+  String assistantModePictureHint(int percent);
+
+  /// No description provided for @assistantModePictureUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a signed-in luma account'**
+  String get assistantModePictureUnavailable;
+
+  /// No description provided for @assistantModeOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off'**
+  String get assistantModeOff;
+
+  /// No description provided for @assistantPlanComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should I plan?'**
+  String get assistantPlanComposerHint;
+
+  /// No description provided for @assistantResearchComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should the agents research?'**
+  String get assistantResearchComposerHint;
+
+  /// No description provided for @assistantPictureComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the picture'**
+  String get assistantPictureComposerHint;
+
+  /// No description provided for @assistantResearchPlanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Planning the research…'**
+  String get assistantResearchPlanning;
+
+  /// No description provided for @assistantResearchProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} of {total} agents done'**
+  String assistantResearchProgress(int done, int total);
+
+  /// No description provided for @assistantResearchParallel.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents working side by side'**
+  String get assistantResearchParallel;
+
+  /// No description provided for @assistantResearchSequential.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents taking turns on this device'**
+  String get assistantResearchSequential;
+
+  /// No description provided for @assistantResearchWriting.
+  ///
+  /// In en, this message translates to:
+  /// **'Writing up the answer…'**
+  String get assistantResearchWriting;
+
+  /// No description provided for @assistantPictureDrawing.
+  ///
+  /// In en, this message translates to:
+  /// **'Drawing your picture…'**
+  String get assistantPictureDrawing;
+
+  /// No description provided for @assistantPictureMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'This picture isn\'t on this device'**
+  String get assistantPictureMissing;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

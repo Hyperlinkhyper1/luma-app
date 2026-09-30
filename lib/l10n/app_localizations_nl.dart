@@ -1651,4 +1651,75 @@ class LNl extends L {
   @override
   String get audioToolsSystemNoMic =>
       'Geen microfoon gevonden. Sluit er een aan en vernieuw de apparatenlijst.';
+
+  @override
+  String get assistantAddMenu => 'Toevoegen';
+
+  @override
+  String get assistantModePlan => 'Planmodus';
+
+  @override
+  String get assistantModePlanHint =>
+      'Krijg eerst een plan voordat er iets gebeurt';
+
+  @override
+  String get assistantModeResearch => 'Diepgaand onderzoek';
+
+  @override
+  String get assistantModeResearchHint =>
+      'Meerdere agents zoeken het uit en rapporteren terug';
+
+  @override
+  String get assistantModeResearchUnavailable =>
+      'Kies Nebula, Pulsar of Luma Assistant';
+
+  @override
+  String get assistantModePicture => 'Afbeelding';
+
+  @override
+  String assistantModePictureHint(int percent) {
+    return 'Maak een afbeelding · kost $percent% van je weeklimiet';
+  }
+
+  @override
+  String get assistantModePictureUnavailable =>
+      'Vereist een ingelogd luma-account';
+
+  @override
+  String get assistantModeOff => 'Uitzetten';
+
+  @override
+  String get assistantPlanComposerHint => 'Wat moet ik plannen?';
+
+  @override
+  String get assistantResearchComposerHint =>
+      'Wat moeten de agents onderzoeken?';
+
+  @override
+  String get assistantPictureComposerHint => 'Beschrijf de afbeelding';
+
+  @override
+  String get assistantResearchPlanning => 'Onderzoek plannen…';
+
+  @override
+  String assistantResearchProgress(int done, int total) {
+    return '$done van $total agents klaar';
+  }
+
+  @override
+  String get assistantResearchParallel => 'Agents werken naast elkaar';
+
+  @override
+  String get assistantResearchSequential =>
+      'Agents om de beurt op dit apparaat';
+
+  @override
+  String get assistantResearchWriting => 'Antwoord uitschrijven…';
+
+  @override
+  String get assistantPictureDrawing => 'Je afbeelding tekenen…';
+
+  @override
+  String get assistantPictureMissing =>
+      'Deze afbeelding staat niet op dit apparaat';
 }

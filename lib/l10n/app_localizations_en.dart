@@ -1643,4 +1643,73 @@ class LEn extends L {
   @override
   String get audioToolsSystemNoMic =>
       'No microphone found. Plug one in and refresh the device list.';
+
+  @override
+  String get assistantAddMenu => 'Add';
+
+  @override
+  String get assistantModePlan => 'Plan mode';
+
+  @override
+  String get assistantModePlanHint => 'Get a plan before anything happens';
+
+  @override
+  String get assistantModeResearch => 'Deep research';
+
+  @override
+  String get assistantModeResearchHint =>
+      'Several agents dig in, then report back';
+
+  @override
+  String get assistantModeResearchUnavailable =>
+      'Switch to Nebula, Pulsar or Luma Assistant';
+
+  @override
+  String get assistantModePicture => 'Picture';
+
+  @override
+  String assistantModePictureHint(int percent) {
+    return 'Draw an image · uses $percent% of your weekly limit';
+  }
+
+  @override
+  String get assistantModePictureUnavailable =>
+      'Needs a signed-in luma account';
+
+  @override
+  String get assistantModeOff => 'Turn off';
+
+  @override
+  String get assistantPlanComposerHint => 'What should I plan?';
+
+  @override
+  String get assistantResearchComposerHint =>
+      'What should the agents research?';
+
+  @override
+  String get assistantPictureComposerHint => 'Describe the picture';
+
+  @override
+  String get assistantResearchPlanning => 'Planning the research…';
+
+  @override
+  String assistantResearchProgress(int done, int total) {
+    return '$done of $total agents done';
+  }
+
+  @override
+  String get assistantResearchParallel => 'Agents working side by side';
+
+  @override
+  String get assistantResearchSequential =>
+      'Agents taking turns on this device';
+
+  @override
+  String get assistantResearchWriting => 'Writing up the answer…';
+
+  @override
+  String get assistantPictureDrawing => 'Drawing your picture…';
+
+  @override
+  String get assistantPictureMissing => 'This picture isn\'t on this device';
 }

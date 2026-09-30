@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../settings/settings_controller.dart';
 import '../../sync/sync_service.dart';
 import '../plugins/installed/ai_usage/ai_usage_repository.dart';
 import 'ai_key_store.dart';
+import 'assistant_compose_mode.dart';
 import 'ai_tools.dart';
 import 'chat_usage.dart';
 import 'memory/assistant_memory_repository.dart';
@@ -14,6 +19,7 @@ import 'providers/ai_providers.dart';
 import 'providers/ai_usage.dart';
 import 'providers/google_client.dart';
 import 'providers/local_qwen_client.dart';
+import 'providers/luma_image_client.dart';
 import 'providers/mistral_proxy_client.dart';
 
 /// Orchestrates one chat turn: persists the user's message, calls whichever
@@ -34,13 +40,20 @@ class ChatController extends ChangeNotifier {
     SyncService? syncService,
     AiUsageRepository? aiUsage,
     AssistantMemoryRepository? memory,
+    AiClient? clientOverride,
+    LumaImageClient Function(String serverUrl)? imageClientFor,
+    Future<Directory> Function()? imageDirectory,
   }) : _repository = repository,
        _keyStore = keyStore,
        _tools = tools,
        _settings = settings,
        _syncService = syncService,
        _aiUsage = aiUsage,
-       _memory = memory;
+       _memory = memory,
+       _clientOverride = clientOverride,
+       _imageClientFor =
+           imageClientFor ?? ((url) => LumaImageClient(serverUrl: url)),
+       _imageDirectory = imageDirectory ?? _defaultImageDirectory;
 
   final ChatRepository _repository;
   final AiKeyStore _keyStore;
@@ -54,6 +67,20 @@ class ChatController extends ChangeNotifier {
   /// The user's profile, memory and reply language, folded into the system
   /// prompt on every turn.
   final AssistantMemoryRepository? _memory;
+
+  /// Replaces the provider's client, for tests.
+  final AiClient? _clientOverride;
+  final LumaImageClient Function(String serverUrl) _imageClientFor;
+
+  /// Where picture mode keeps the pictures it draws.
+  final Future<Directory> Function() _imageDirectory;
+
+  static Future<Directory> _defaultImageDirectory() async {
+    final support = await getApplicationSupportDirectory();
+    return Directory(
+      '${support.path}${Platform.pathSeparator}assistant_images',
+    );
+  }
 
   static const _maxHistoryTurns = 20;
 
@@ -85,9 +112,13 @@ class ChatController extends ChangeNotifier {
   /// A separate notifier so only the draft rebuilds on every token.
   final ValueNotifier<String> draftReply = ValueNotifier('');
 
+  /// What a deep research or picture turn is busy with, while it runs.
+  final ValueNotifier<AssistantActivity?> activity = ValueNotifier(null);
+
   @override
   void dispose() {
     draftReply.dispose();
+    activity.dispose();
     super.dispose();
   }
 
@@ -95,8 +126,21 @@ class ChatController extends ChangeNotifier {
   /// immediately, then the assistant's reply (or an inline error message) —
   /// the UI should be watching `ChatRepository.watchMessages` and needs no
   /// return value from this call.
-  Future<void> sendMessage(int conversationId, String userText) async {
+  ///
+  /// [mode] is the composer's + menu choice; anything but a plain chat is
+  /// Nova only, and falls back to a plain chat on other plans.
+  Future<void> sendMessage(
+    int conversationId,
+    String userText, {
+    AssistantComposeMode mode = AssistantComposeMode.chat,
+  }) async {
     if (_sending) return;
+    if (!composeModesUnlocked(_settings.selectedPlanId)) {
+      mode = AssistantComposeMode.chat;
+    }
+    if (mode == AssistantComposeMode.picture) {
+      return _sendPicture(conversationId, userText);
+    }
 
     final providerId = _settings.aiProviderId;
     final usingLocalModel = providerId == AiProviderId.local.name;
@@ -127,6 +171,15 @@ class ChatController extends ChangeNotifier {
       client = MistralProxyClient(serverUrl: sync.serverUrl!);
       apiKey = sync.authToken!;
     }
+    client = _clientOverride ?? client;
+
+    if (mode == AssistantComposeMode.deepResearch &&
+        !deepResearchAvailable(
+          providerId,
+          googleMode?.name ?? _settings.aiMode,
+        )) {
+      mode = AssistantComposeMode.chat;
+    }
 
     if (apiKey == null) {
       final provider = aiProviderById(providerId);
@@ -150,29 +203,58 @@ class ChatController extends ChangeNotifier {
           ? _tools.localAssistantSchemas
           : _tools.schemas;
 
-      final result = await client.chat(
-        apiKey: apiKey,
-        history: turns,
-        systemPrompt: _fullSystemPrompt,
-        tools: toolSchemas,
-        executeTool: (name, input) async {
-          if (name == 'web_search' && !usingLocalModel) {
-            return {
-              'status': 'unavailable',
-              'message': 'Web search is only available in Luma Assistant.',
-            };
-          }
-          return _tools.execute(name, input);
-        },
-        metadataFor: AiToolRegistry.metadataFor,
-        onText: (text) => draftReply.value = text,
-      );
+      Future<Map<String, dynamic>> executeTool(
+        String name,
+        Map<String, dynamic> input,
+      ) async {
+        if (name == 'web_search' && !usingLocalModel) {
+          return {
+            'status': 'unavailable',
+            'message': 'Web search is only available in Luma Assistant.',
+          };
+        }
+        return _tools.execute(name, input);
+      }
+
+      final AiChatResult result;
+      if (mode == AssistantComposeMode.deepResearch) {
+        result = await DeepResearch(
+          client: client,
+          apiKey: apiKey,
+          parallel: deepResearchRunsInParallel(providerId),
+          systemPrompt: _fullSystemPrompt,
+          agentTools: [
+            for (final tool in toolSchemas)
+              if (tool.name == 'web_search') tool,
+          ],
+          executeTool: executeTool,
+          agentCount: usingLocalModel ? 2 : 3,
+          onActivity: (value) => activity.value = value,
+          onText: (text) => draftReply.value = text,
+        ).run(turns);
+      } else {
+        final planning = mode == AssistantComposeMode.plan;
+        result = await client.chat(
+          apiKey: apiKey,
+          history: turns,
+          systemPrompt: planning
+              ? '$_fullSystemPrompt\n\n$kPlanModePrompt'
+              : _fullSystemPrompt,
+          tools: planning ? const [] : toolSchemas,
+          executeTool: executeTool,
+          metadataFor: AiToolRegistry.metadataFor,
+          onText: (text) => draftReply.value = text,
+        );
+      }
 
       await _repository.addMessage(
         conversationId,
         'assistant',
         result.text,
-        metadataJson: chatMetadataWithUsage(result.metadataJson, result.usage),
+        metadataJson: chatMetadataWithComposeMode(
+          chatMetadataWithUsage(result.metadataJson, result.usage),
+          mode,
+        ),
       );
       _settings.recordModelUsage(
         modelUsageKeyFor(providerId, mode: googleMode),
@@ -197,6 +279,69 @@ class ChatController extends ChangeNotifier {
     } finally {
       _sending = false;
       draftReply.value = '';
+      activity.value = null;
+      notifyListeners();
+    }
+  }
+
+  /// Picture mode: the luma server draws [prompt] with the operator's
+  /// picture model, charged as a flat share of the selected Luma AI mode's
+  /// weekly limit. The picture is kept on this device and the reply points
+  /// at it.
+  Future<void> _sendPicture(int conversationId, String prompt) async {
+    final sync = _syncService;
+    if (sync == null || !sync.serverReady) {
+      await _repository.addMessage(
+        conversationId,
+        'error',
+        'Picture mode needs this device signed in to an approved luma account.',
+      );
+      return;
+    }
+    final selected = aiModeById(_settings.aiMode);
+    final mode = selected.availableForPlan(_settings.selectedPlanId)
+        ? selected
+        : AiMode.normal;
+
+    _sending = true;
+    activity.value = const AssistantActivity.picture();
+    notifyListeners();
+    try {
+      await _repository.addMessage(conversationId, 'user', prompt);
+      await _maybeTitleConversation(conversationId, prompt);
+
+      final image = await _imageClientFor(sync.serverUrl!).generate(
+        authToken: sync.authToken!,
+        prompt: prompt,
+        mode: mode.name,
+      );
+      final dir = await _imageDirectory();
+      await dir.create(recursive: true);
+      final file = File(
+        '${dir.path}${Platform.pathSeparator}'
+        '${DateTime.now().microsecondsSinceEpoch}.${image.extension}',
+      );
+      await file.writeAsBytes(image.bytes, flush: true);
+      await _repository.addMessage(
+        conversationId,
+        'assistant',
+        image.text ?? '',
+        metadataJson: chatMetadataWithComposeMode(
+          jsonEncode({'imagePath': file.path}),
+          AssistantComposeMode.picture,
+        ),
+      );
+    } on AiError catch (e) {
+      await _repository.addMessage(conversationId, 'error', e.message);
+    } catch (e) {
+      await _repository.addMessage(
+        conversationId,
+        'error',
+        'Something went wrong: $e',
+      );
+    } finally {
+      _sending = false;
+      activity.value = null;
       notifyListeners();
     }
   }
@@ -235,6 +380,14 @@ class ChatController extends ChangeNotifier {
     final tail = turns.length > _maxHistoryTurns
         ? turns.skip(turns.length - _maxHistoryTurns)
         : turns;
-    return [for (final m in tail) AiTurn(role: m.role, text: m.content)];
+    return [
+      for (final m in tail)
+        AiTurn(
+          role: m.role,
+          text: m.content.trim().isEmpty && m.role == 'assistant'
+              ? '[picture]'
+              : m.content,
+        ),
+    ];
   }
 }

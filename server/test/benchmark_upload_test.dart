@@ -88,6 +88,37 @@ void main() {
       expect((await store.list()).single.model, 'Demo 1.0');
     });
 
+    test('an edit changes the roster fields and keeps the scene', () async {
+      final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
+      await File('${seed.path}/manifest.json')
+          .setLastModified(DateTime.now().subtract(const Duration(hours: 1)));
+      await store.saveUpload(
+        kind: 'pagoda',
+        id: 'pagoda_demo',
+        model: 'Demo 1.0 (Max)',
+        vendor: 'openai',
+        description: 'Edited',
+        bytes: null,
+      );
+      final entry = (await store.editableEntries()).single;
+      expect(entry['model'], 'Demo 1.0 (Max)');
+      expect(entry['vendor'], 'openai');
+      expect(entry['description'], 'Edited');
+      expect(utf8.decode((await store.readScene('pagoda_demo'))!.bytes),
+          '<html>seed</html>');
+
+      expect(
+          () => store.saveUpload(
+                kind: 'pagoda',
+                id: 'pagoda_nothing',
+                model: 'Nothing',
+                vendor: '',
+                description: '',
+                bytes: null,
+              ),
+          throwsArgumentError);
+    });
+
     test('rejects uploads that do not fit the test', () {
       Map<String, dynamic> check(
               {String kind = 'pagoda',

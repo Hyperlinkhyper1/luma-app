@@ -43,22 +43,26 @@ class BenchmarkGithubPublisher {
 
   bool get enabled => _token.isNotEmpty;
 
+  /// With [bytes] null only the manifest stanza changes (an edit).
+  ///
   /// Commits [bytes] as `scenes/<id>.<ext>` and upserts [entry] into the
   /// manifest. Returns the new commit's web URL. Retries when someone else
   /// moved the branch in between; throws [GithubPublishException] otherwise.
   Future<String> publish({
     required Map<String, dynamic> entry,
     required String fileName,
-    required List<int> bytes,
+    required List<int>? bytes,
   }) async {
     if (!enabled) {
       throw const GithubPublishException(
           'LUMA_BENCHMARK_GITHUB_TOKEN is not set on the server.');
     }
-    final sceneBlob = await _post('/git/blobs', {
-      'content': base64Encode(bytes),
-      'encoding': 'base64',
-    });
+    final sceneBlob = bytes == null
+        ? null
+        : await _post('/git/blobs', {
+            'content': base64Encode(bytes),
+            'encoding': 'base64',
+          });
     for (var attempt = 0;; attempt++) {
       final head = await _get('/git/ref/heads/$branch');
       final headSha = (head['object'] as Map)['sha'] as String;
@@ -72,12 +76,13 @@ class BenchmarkGithubPublisher {
       final tree = await _post('/git/trees', {
         'base_tree': baseTree,
         'tree': [
-          {
-            'path': '$scenesPath/$fileName',
-            'mode': '100644',
-            'type': 'blob',
-            'sha': sceneBlob['sha'],
-          },
+          if (sceneBlob != null)
+            {
+              'path': '$scenesPath/$fileName',
+              'mode': '100644',
+              'type': 'blob',
+              'sha': sceneBlob['sha'],
+            },
           {
             'path': manifestPath,
             'mode': '100644',
@@ -87,8 +92,9 @@ class BenchmarkGithubPublisher {
         ],
       });
       final created = await _post('/git/commits', {
-        'message': 'benchmarks: add ${entry['model']} '
-            '(${entry['id']}) from the admin dashboard [skip ci]',
+        'message':
+            'benchmarks: ${bytes == null ? 'edit' : 'add'} ${entry['model']} '
+                '(${entry['id']}) from the admin dashboard [skip ci]',
         'tree': tree['sha'],
         'parents': [headSha],
       });

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'assistant_compose_mode.dart';
 import 'data/chat_repository.dart';
 import 'providers/ai_client.dart';
 import 'providers/ai_providers.dart';
@@ -22,6 +23,40 @@ String? chatMetadataWithUsage(String? metadataJson, AiTokenUsage? usage) {
     'output': usage.outputTokens,
   };
   return jsonEncode(map);
+}
+
+/// Tags a reply with the + menu mode that produced it, so the transcript
+/// can label plan, deep research and picture replies. Plain chats are left
+/// untagged.
+String? chatMetadataWithComposeMode(
+  String? metadataJson,
+  AssistantComposeMode mode,
+) {
+  if (mode == AssistantComposeMode.chat) return metadataJson;
+  return jsonEncode({..._decodeMetadata(metadataJson), 'composeMode': mode.name});
+}
+
+/// The + menu mode stored by [chatMetadataWithComposeMode], if any.
+AssistantComposeMode? chatComposeModeOf(String? metadataJson) {
+  final name = _decodeMetadata(metadataJson)['composeMode'];
+  return name is String
+      ? AssistantComposeMode.values.asNameMap()[name]
+      : null;
+}
+
+/// Where a picture mode reply's picture was saved on this device.
+String? chatImagePathOf(String? metadataJson) {
+  final path = _decodeMetadata(metadataJson)['imagePath'];
+  return path is String && path.isNotEmpty ? path : null;
+}
+
+Map<String, dynamic> _decodeMetadata(String? metadataJson) {
+  if (metadataJson == null) return const {};
+  try {
+    final decoded = jsonDecode(metadataJson);
+    if (decoded is Map) return decoded.cast<String, dynamic>();
+  } catch (_) {}
+  return const {};
 }
 
 /// What the newest reply in a conversation cost, as stored by

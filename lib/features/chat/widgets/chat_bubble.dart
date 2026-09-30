@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,10 +7,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/luma_theme.dart';
+import '../assistant_compose_mode.dart';
+import '../chat_usage.dart';
 import '../memory/assistant_memory_repository.dart';
 import '../memory/assistant_memory_scope.dart';
 import '../data/chat_repository.dart';
 import 'chat_markdown.dart';
+import 'compose_mode_menu.dart';
 
 /// Renders a single message the way the Claude app does: the user's turns
 /// sit in a soft bubble on the right, the assistant's are unboxed prose
@@ -112,10 +116,41 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget _assistantReply(BuildContext context) {
     final luma = context.luma;
     final qrUrl = _qrUrlFrom(widget.message.metadataJson);
+    final composeMode = chatComposeModeOf(widget.message.metadataJson);
+    final imagePath = chatImagePathOf(widget.message.metadataJson);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ChatMarkdown(source: widget.message.content),
+        if (composeMode != null &&
+            composeMode != AssistantComposeMode.picture) ...[
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                composeModeIcon(composeMode),
+                size: 14,
+                color: luma.textMuted,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                composeModeLabel(L.of(context), composeMode),
+                style: TextStyle(
+                  color: luma.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+        ],
+        if (imagePath != null) ...[
+          _ChatPicture(path: imagePath),
+          if (widget.message.content.trim().isNotEmpty)
+            const SizedBox(height: 10),
+        ],
+        if (widget.message.content.trim().isNotEmpty || imagePath == null)
+          ChatMarkdown(source: widget.message.content),
         if (qrUrl != null) ...[
           const SizedBox(height: 14),
           Container(
@@ -228,5 +263,50 @@ class _ChatBubbleState extends State<ChatBubble> {
     } catch (_) {
       return null;
     }
+  }
+}
+
+/// A picture mode reply's picture, read from where the controller saved it
+/// on this device. Chats synced from another device only carry the path,
+/// so a missing file gets a quiet notice instead.
+class _ChatPicture extends StatelessWidget {
+  const _ChatPicture({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420, maxHeight: 420),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.file(
+          File(path),
+          fit: BoxFit.contain,
+          errorBuilder: (context, _, _) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: luma.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: luma.border),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.hide_image_outlined, size: 18, color: luma.textMuted),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    L.of(context).assistantPictureMissing,
+                    style: TextStyle(color: luma.textMuted, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

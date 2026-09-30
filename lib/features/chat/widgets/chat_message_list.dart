@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../../../app/widgets.dart';
 import '../data/chat_repository.dart';
+import '../assistant_compose_mode.dart';
+import 'chat_activity_card.dart';
 import 'chat_bubble.dart';
 import 'chat_moon.dart';
 
@@ -22,6 +24,7 @@ class ChatMessageList extends StatefulWidget {
     required this.onOpenQrPlugin,
     this.thinking = false,
     this.draft,
+    this.activity,
   });
 
   final Stream<List<ChatMessageRecord>> stream;
@@ -30,6 +33,10 @@ class ChatMessageList extends StatefulWidget {
 
   /// The partial reply while [thinking]; empty until the first words arrive.
   final ValueListenable<String>? draft;
+
+  /// What a deep research or picture turn is busy with, shown in place of
+  /// the moon until the reply starts arriving.
+  final ValueListenable<AssistantActivity?>? activity;
 
   @override
   State<ChatMessageList> createState() => _ChatMessageListState();
@@ -99,13 +106,23 @@ class _ChatMessageListState extends State<ChatMessageList> {
     ),
   );
 
+  Widget _waiting() {
+    final activity = widget.activity;
+    if (activity == null) return _moon;
+    return ValueListenableBuilder<AssistantActivity?>(
+      valueListenable: activity,
+      builder: (context, value, _) =>
+          value == null ? _moon : ChatActivityCard(activity: value),
+    );
+  }
+
   Widget _pendingReply() {
     final draft = widget.draft;
-    if (draft == null) return _moon;
+    if (draft == null) return _waiting();
     return ValueListenableBuilder<String>(
       valueListenable: draft,
       builder: (context, text, _) => text.isEmpty
-          ? _moon
+          ? _waiting()
           : ChatBubble(
               message: ChatMessageRecord(
                 id: -1,

@@ -1654,4 +1654,74 @@ class LFr extends L {
   @override
   String get audioToolsSystemNoMic =>
       'No microphone found. Plug one in and refresh the device list.';
+
+  @override
+  String get assistantAddMenu => 'Ajouter';
+
+  @override
+  String get assistantModePlan => 'Mode plan';
+
+  @override
+  String get assistantModePlanHint => 'Obtenez un plan avant toute action';
+
+  @override
+  String get assistantModeResearch => 'Recherche approfondie';
+
+  @override
+  String get assistantModeResearchHint =>
+      'Plusieurs agents enquêtent puis font leur rapport';
+
+  @override
+  String get assistantModeResearchUnavailable =>
+      'Passez à Nebula, Pulsar ou Luma Assistant';
+
+  @override
+  String get assistantModePicture => 'Image';
+
+  @override
+  String assistantModePictureHint(int percent) {
+    return 'Créer une image · utilise $percent% de votre limite hebdomadaire';
+  }
+
+  @override
+  String get assistantModePictureUnavailable =>
+      'Nécessite un compte luma connecté';
+
+  @override
+  String get assistantModeOff => 'Désactiver';
+
+  @override
+  String get assistantPlanComposerHint => 'Que dois-je planifier ?';
+
+  @override
+  String get assistantResearchComposerHint =>
+      'Que doivent rechercher les agents ?';
+
+  @override
+  String get assistantPictureComposerHint => 'Décrivez l\'image';
+
+  @override
+  String get assistantResearchPlanning => 'Préparation de la recherche…';
+
+  @override
+  String assistantResearchProgress(int done, int total) {
+    return '$done agents sur $total ont terminé';
+  }
+
+  @override
+  String get assistantResearchParallel => 'Les agents travaillent en parallèle';
+
+  @override
+  String get assistantResearchSequential =>
+      'Les agents se relaient sur cet appareil';
+
+  @override
+  String get assistantResearchWriting => 'Rédaction de la réponse…';
+
+  @override
+  String get assistantPictureDrawing => 'Création de votre image…';
+
+  @override
+  String get assistantPictureMissing =>
+      'Cette image n\'est pas sur cet appareil';
 }

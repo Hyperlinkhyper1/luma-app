@@ -128,16 +128,36 @@ class AiBenchmarkStore {
 
   File get _uploadsRoster => File('$_dir/uploads.json');
 
+  /// Every roster entry with a servable scene, with the fields the
+  /// dashboard's edit form shows.
+  Future<List<Map<String, dynamic>>> editableEntries() async {
+    final roster = await _readRoster();
+    final byId = {for (final item in roster.benchmarks) item.id: item};
+    return [
+      for (final c in await previewCoverage())
+        {
+          'id': c.id,
+          'kind': byId[c.id]?.kind ?? _kindOf(c.id),
+          'model': byId[c.id]?.model ?? _prettyId(c.id),
+          'vendor': byId[c.id]?.vendor ?? '',
+          'description': byId[c.id]?.description ?? '',
+        },
+    ];
+  }
+
   /// Stores a scene uploaded from the admin dashboard and adds (or replaces)
   /// its roster stanza. Returns the stanza as it belongs in the manifest, or
   /// throws [ArgumentError] with a message fit for the dashboard.
+  ///
+  /// With [bytes] null this edits an existing entry: only the stanza
+  /// changes, and the scene already served for [id] stays.
   Future<Map<String, dynamic>> saveUpload({
     required String kind,
     required String id,
     required String model,
     required String vendor,
     required String description,
-    required List<int> bytes,
+    required List<int>? bytes,
   }) async {
     final entry = validateUpload(
       kind: kind,
@@ -147,12 +167,18 @@ class AiBenchmarkStore {
       description: description,
       bytes: bytes,
     );
-    final dir = Directory(_uploadsDir);
-    await dir.create(recursive: true);
-    final target = File('${dir.path}/$id.${extForKind(kind)}');
-    final tmp = File('${target.path}.tmp');
-    await tmp.writeAsBytes(bytes, flush: true);
-    await tmp.rename(target.path);
+    if (bytes == null) {
+      if (await _sceneFile(id) == null) {
+        throw ArgumentError('There is no test "$id" to edit.');
+      }
+    } else {
+      final dir = Directory(_uploadsDir);
+      await dir.create(recursive: true);
+      final target = File('${dir.path}/$id.${extForKind(kind)}');
+      final tmp = File('${target.path}.tmp');
+      await tmp.writeAsBytes(bytes, flush: true);
+      await tmp.rename(target.path);
+    }
 
     final uploads = await _readUploads();
     uploads.removeWhere((e) => e['id'] == id);
@@ -166,14 +192,15 @@ class AiBenchmarkStore {
     return entry;
   }
 
-  /// Checks an upload's metadata and bytes and returns its manifest stanza.
+  /// Checks an upload's metadata and bytes (unless null, for an edit) and
+  /// returns its manifest stanza.
   static Map<String, dynamic> validateUpload({
     required String kind,
     required String id,
     required String model,
     required String vendor,
     required String description,
-    required List<int> bytes,
+    required List<int>? bytes,
   }) {
     if (!kinds.contains(kind)) throw ArgumentError('Unknown test "$kind".');
     if (!idPattern.hasMatch(id) ||
@@ -192,6 +219,17 @@ class AiBenchmarkStore {
     if (description.length > 300) {
       throw ArgumentError('Keep the description under 300 characters.');
     }
+    if (bytes != null) _checkSceneBytes(kind, bytes);
+    return {
+      'id': id,
+      'kind': kind,
+      'model': name,
+      if (vendor.isNotEmpty) 'vendor': vendor,
+      'description': description.trim(),
+    };
+  }
+
+  static void _checkSceneBytes(String kind, List<int> bytes) {
     if (bytes.isEmpty) throw ArgumentError('The file is empty.');
     if (bytes.length > maxUploadBytes) {
       throw ArgumentError(
@@ -210,13 +248,6 @@ class AiBenchmarkStore {
             'The $kind test takes a self-contained .html page.');
       }
     }
-    return {
-      'id': id,
-      'kind': kind,
-      'model': name,
-      if (vendor.isNotEmpty) 'vendor': vendor,
-      'description': description.trim(),
-    };
   }
 
   Future<List<Map<String, dynamic>>> _readUploads() async {

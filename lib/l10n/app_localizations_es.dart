@@ -1650,4 +1650,74 @@ class LEs extends L {
   @override
   String get audioToolsSystemNoMic =>
       'No microphone found. Plug one in and refresh the device list.';
+
+  @override
+  String get assistantAddMenu => 'Añadir';
+
+  @override
+  String get assistantModePlan => 'Modo plan';
+
+  @override
+  String get assistantModePlanHint => 'Obtén un plan antes de que pase nada';
+
+  @override
+  String get assistantModeResearch => 'Investigación profunda';
+
+  @override
+  String get assistantModeResearchHint =>
+      'Varios agentes investigan y luego informan';
+
+  @override
+  String get assistantModeResearchUnavailable =>
+      'Cambia a Nebula, Pulsar o Luma Assistant';
+
+  @override
+  String get assistantModePicture => 'Imagen';
+
+  @override
+  String assistantModePictureHint(int percent) {
+    return 'Crea una imagen · usa el $percent% de tu límite semanal';
+  }
+
+  @override
+  String get assistantModePictureUnavailable =>
+      'Requiere una cuenta de luma con sesión iniciada';
+
+  @override
+  String get assistantModeOff => 'Desactivar';
+
+  @override
+  String get assistantPlanComposerHint => '¿Qué debo planificar?';
+
+  @override
+  String get assistantResearchComposerHint =>
+      '¿Qué deben investigar los agentes?';
+
+  @override
+  String get assistantPictureComposerHint => 'Describe la imagen';
+
+  @override
+  String get assistantResearchPlanning => 'Planificando la investigación…';
+
+  @override
+  String assistantResearchProgress(int done, int total) {
+    return '$done de $total agentes terminados';
+  }
+
+  @override
+  String get assistantResearchParallel => 'Los agentes trabajan en paralelo';
+
+  @override
+  String get assistantResearchSequential =>
+      'Los agentes se turnan en este dispositivo';
+
+  @override
+  String get assistantResearchWriting => 'Redactando la respuesta…';
+
+  @override
+  String get assistantPictureDrawing => 'Dibujando tu imagen…';
+
+  @override
+  String get assistantPictureMissing =>
+      'Esta imagen no está en este dispositivo';
 }

@@ -1704,6 +1704,8 @@ class AiServerStatus {
     required this.webSearchLimit,
     this.modes = const {},
     this.modeVersions = const {},
+    this.pictureConfigured = false,
+    this.pictureWeeklyPct,
   });
 
   /// Whether the operator configured a shared Luma Support (Mistral) key.
@@ -1728,6 +1730,13 @@ class AiServerStatus {
   final Map<String, AiModeUsage> modes;
   final Map<String, String> modeVersions;
 
+  /// Whether the operator set up a model for the Assistant's picture mode.
+  final bool pictureConfigured;
+
+  /// Share of the weekly limit one picture costs on this plan; null when
+  /// the plan can't make pictures.
+  final int? pictureWeeklyPct;
+
   AiModeUsage usageFor(String mode) =>
       modes[mode] ??
       AiModeUsage(fiveHourPct: fiveHourPct, weeklyPct: weeklyPct);
@@ -1737,8 +1746,13 @@ class AiServerStatus {
 
   factory AiServerStatus.fromJson(Map<String, dynamic> json) {
     final usage = json['usage'] as Map<String, dynamic>? ?? const {};
+    final picture = json['picture'] is Map ? json['picture'] as Map : const {};
     int intOf(Object? v, [int fallback = 0]) => v is num ? v.toInt() : fallback;
     return AiServerStatus(
+      pictureConfigured: picture['configured'] == true,
+      pictureWeeklyPct: picture['weeklyPct'] is num
+          ? (picture['weeklyPct'] as num).toInt()
+          : null,
       mistralConfigured: json['mistralConfigured'] == true,
       googleConfigured: json['googleConfigured'] == true,
       fiveHourPct: intOf(usage['fiveHourPct']),

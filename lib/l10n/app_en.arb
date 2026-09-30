@@ -729,5 +729,42 @@
   "audioToolsSystemRestart": "Almost there: restart your PC so Windows picks up the change.",
   "audioToolsSystemNoDevice": "That microphone isn't connected right now.",
   "audioToolsSystemMissing": "Parts of luma are missing. Reinstall luma and try again.",
-  "audioToolsSystemNoMic": "No microphone found. Plug one in and refresh the device list."
+  "audioToolsSystemNoMic": "No microphone found. Plug one in and refresh the device list.",
+  "assistantAddMenu": "Add",
+  "assistantModePlan": "Plan mode",
+  "assistantModePlanHint": "Get a plan before anything happens",
+  "assistantModeResearch": "Deep research",
+  "assistantModeResearchHint": "Several agents dig in, then report back",
+  "assistantModeResearchUnavailable": "Switch to Nebula, Pulsar or Luma Assistant",
+  "assistantModePicture": "Picture",
+  "assistantModePictureHint": "Draw an image · uses {percent}% of your weekly limit",
+  "@assistantModePictureHint": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantModePictureUnavailable": "Needs a signed-in luma account",
+  "assistantModeOff": "Turn off",
+  "assistantPlanComposerHint": "What should I plan?",
+  "assistantResearchComposerHint": "What should the agents research?",
+  "assistantPictureComposerHint": "Describe the picture",
+  "assistantResearchPlanning": "Planning the research…",
+  "assistantResearchProgress": "{done} of {total} agents done",
+  "@assistantResearchProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "assistantResearchParallel": "Agents working side by side",
+  "assistantResearchSequential": "Agents taking turns on this device",
+  "assistantResearchWriting": "Writing up the answer…",
+  "assistantPictureDrawing": "Drawing your picture…",
+  "assistantPictureMissing": "This picture isn't on this device"
 }

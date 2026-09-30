@@ -9,6 +9,7 @@ import 'package:shelf_router/shelf_router.dart';
 
 import 'ai_benchmark_store.dart';
 import 'ai_detector_review.dart';
+import 'ai_image.dart';
 import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
@@ -509,6 +510,7 @@ class Api {
       ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
+      ..post('/api/v1/ai/image', _requireAuth(_aiImage))
       ..post('/api/v1/ai/web-search', _requireAuth(_webSearch))
       ..post('/api/v1/ai/detect', _requireAuth(_aiDetect))
       ..get('/api/v1/steam/itad/status', _requireAuth(_itadStatus))
@@ -622,6 +624,7 @@ class Api {
       ..post('/admin/ai-prices/accept', _requireAdmin(_adminAiPriceAccept))
       ..post('/admin/ai-prices/guard', _requireAdmin(_adminAiPriceGuard))
       ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
+      ..post('/admin/ai-image', _requireAdmin(_adminAiImageSave))
       ..post('/admin/benchmark-banners/render',
           _requireAdmin(_adminBannersRender))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
@@ -642,6 +645,8 @@ class Api {
       ..post('/admin/benchmarks/upload', _requireAdmin(_adminBenchmarkUpload))
       ..get('/admin/benchmarks/upload/status',
           _requireAdmin(_adminBenchmarkUploadStatus))
+      ..get('/admin/benchmarks/entries',
+          _requireAdmin(_adminBenchmarkEntries))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..post('/admin/system/check-updates',
@@ -2262,6 +2267,11 @@ class Api {
         'webSearchUsed': aiUsage.webSearchesUsed(user.id),
         'webSearchLimit': webSearchWeeklyLimitForPlan(user.planId),
       },
+      'picture': {
+        'configured':
+            aiImageConfig.resolve(config.configuredAiUpstreams) != null,
+        'weeklyPct': aiImageWeeklyPercentForPlan(user.planId),
+      },
     });
   }
 
@@ -3122,6 +3132,129 @@ class Api {
             '${saved.instructions == null ? 'default' : 'custom'} instructions');
     return _adminFormResponse(request, '/admin',
         fragment: 'assistant', json: {'ok': true, ...saved.toJson()});
+  }
+
+  /// The Assistant's picture mode model, picked on the Assistant tab.
+  late final AiImageConfigStore aiImageConfig =
+      AiImageConfigStore(config.dataDir);
+
+  /// The Assistant's picture mode: draws one image with the operator's
+  /// picture model. Each picture costs a flat share of the user's weekly
+  /// budget for the mode they have selected ([kAiImageWeeklyPercent]),
+  /// rather than its token count, since image models bill per picture.
+  Future<Response> _aiImage(Request request, StoredUser user) async {
+    final pct = aiImageWeeklyPercentForPlan(user.planId);
+    if (pct == null) {
+      return errorResponse(
+          403, 'plan_required', 'Picture mode requires a Nova (\$5/month) plan.');
+    }
+    final route = aiImageConfig.resolve(config.configuredAiUpstreams);
+    if (route == null) {
+      return errorResponse(
+          404, 'not_configured', 'No picture model is configured.');
+    }
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    final raw = body['prompt'];
+    final prompt = raw is String ? raw.trim() : '';
+    if (prompt.isEmpty) {
+      return errorResponse(400, 'bad_request', 'prompt is required.');
+    }
+    if (prompt.length > kAiImageMaxPromptChars) {
+      return errorResponse(400, 'too_long', 'That description is too long.');
+    }
+    final requested = body['mode'];
+    var mode = requested is String && kAiModeNames.containsKey(requested)
+        ? requested
+        : 'normal';
+    if (mode == 'smartest' && user.planId != 'nova') mode = 'normal';
+
+    final budget = aiTokenBudget(user.planId, mode);
+    final cost = budget.weekly * pct ~/ 100;
+    if (aiUsage.tokensUsed(user.id, const Duration(days: 7), mode: mode) +
+            cost >
+        budget.weekly) {
+      return errorResponse(429, 'usage_limit',
+          "There isn't enough of your weekly limit left for a picture — it "
+              'frees up again over the coming days.');
+    }
+    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5), mode: mode) +
+            cost >
+        budget.fiveHour) {
+      return errorResponse(429, 'usage_limit',
+          "There isn't enough of your usage limit left for a picture right "
+              'now — it frees up again over the next few hours.');
+    }
+
+    try {
+      final (status, responseBody) = await _postJsonWithRetry(
+        aiImageEndpoint(route.upstream),
+        {
+          HttpHeaders.authorizationHeader:
+              'Bearer ${config.aiUpstreamKey(route.upstream)}',
+          if (route.upstream == AiUpstream.openrouter) ...{
+            'HTTP-Referer': config.publicUrl,
+            'X-Title': 'luma',
+          },
+        },
+        jsonEncode(aiImageRequestBody(route, prompt)),
+        timeout: const Duration(seconds: 120),
+      );
+      if (status != HttpStatus.ok) {
+        stderr.writeln('[luma] picture model ${route.model} answered $status');
+        return errorResponse(502, 'upstream_error',
+            'The picture model could not draw that. Try again.');
+      }
+      final image = parseAiImageResponse(responseBody);
+      if (image == null) {
+        return errorResponse(502, 'no_image',
+            'The picture model answered without a picture. Try rewording it.');
+      }
+      await aiUsage.recordTokens(user.id, cost, mode: mode);
+      return jsonResponse(200, {
+        'image': image.base64,
+        'mimeType': image.mimeType,
+        if (image.text != null) 'text': image.text,
+        'model': route.model,
+        'weeklyPct': pct,
+      });
+    } catch (_) {
+      return errorResponse(
+          502, 'upstream_error', 'Could not reach the picture model.');
+    }
+  }
+
+  /// Saves the Assistant tab's picture model card. A blank model falls back
+  /// to the default of the first provider with a key.
+  Future<Response> _adminAiImageSave(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    AiModeRoute? route;
+    final model = (form['picture.model'] ?? '').trim();
+    if (model.isNotEmpty) {
+      final upstream = AiUpstream.parse(form['picture.upstream']);
+      if (upstream == null || !kAiImageUpstreams.contains(upstream)) {
+        return errorResponse(
+            400, 'bad_request', 'Pick Google AI Studio or OpenRouter.');
+      }
+      if (!isValidAiModelId(model)) {
+        return errorResponse(
+            400, 'bad_request', '"$model" is not a valid model id.');
+      }
+      route = AiModeRoute(upstream, model);
+    }
+    await aiImageConfig.save(route);
+    await store.logActivity('ai_routes_changed',
+        'Picture model → ${route?.model ?? 'default'}');
+    return _adminFormResponse(request, '/admin',
+        fragment: 'assistant',
+        json: {'ok': true, if (route != null) 'route': route.toJson()});
   }
 
   Response _itadStatus(Request request, StoredUser user) =>
@@ -3994,6 +4127,10 @@ class Api {
         'maxBytes': AiBenchmarkStore.maxUploadBytes,
       });
 
+  /// Every test with its roster fields, for the dashboard's edit picker.
+  Future<Response> _adminBenchmarkEntries(Request request) async =>
+      jsonResponse(200, {'entries': await aiBenchmarks.editableEntries()});
+
   /// Raw-body scene upload (no multipart, like the website editor's image
   /// upload): the roster fields travel in the query, the file in the body.
   /// The scene goes live on this server at once, is committed to the repo
@@ -4013,7 +4150,9 @@ class Api {
     }
     final kind = q['kind'] ?? '';
     final id = q['id'] ?? '';
-    final data = bytes.takeBytes();
+    // No body: an edit of an existing entry's roster fields only.
+    final taken = bytes.takeBytes();
+    final List<int>? data = taken.isEmpty ? null : taken;
     final Map<String, dynamic> entry;
     try {
       entry = await aiBenchmarks.saveUpload(
@@ -4046,7 +4185,8 @@ class Api {
     }
 
     String? render;
-    if (await aiBenchmarks.readPreview(id) == null) {
+    // A new or replaced scene gets a fresh banner; an edit keeps its own.
+    if (data != null || await aiBenchmarks.readPreview(id) == null) {
       final queued = await previewRenders.enqueue([id]);
       render = queued == null ? 'started' : queued;
     }
@@ -9581,6 +9721,8 @@ syncToolbar();
         '<div class="maint-actions">'
         '<button id="bmUploadBtn" type="button" class="btn btn-primary">'
         'Upload test…</button>'
+        '<button id="bmEditBtn" type="button" class="btn btn-ghost">'
+        'Edit test…</button>'
         '</div>'
         '<div id="bmUploadSummary" class="maint-status"></div>'
         '$_bmUploadDialogHtml'
@@ -9923,6 +10065,7 @@ syncToolbar();
         '<script type="application/json" id="aiPickerData">$pickerJson</script>'
         '</div>'
         '${_adminAiDetectorCard(configured)}'
+        '${_adminAiImageCard(configured)}'
         '</div>';
   }
 
@@ -10007,6 +10150,66 @@ syncToolbar();
         '<div class="maint-actions" style="margin:16px 0 0">'
         '<button type="submit" class="btn btn-primary">Save detector</button>'
         '<span class="muted" style="font-size:12px">Leave the model blank to follow Nebula.</span>'
+        '</div>'
+        '</form>'
+        '</div>';
+  }
+
+  /// The Assistant tab's picture model card: which model the Assistant's
+  /// picture mode draws with. Uses the `picture` mode name so the model
+  /// browser and the provider → suggestions swap work on it unchanged.
+  String _adminAiImageCard(Set<AiUpstream> configured) {
+    String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
+    final stored = aiImageConfig.stored;
+    final live = aiImageConfig.resolve(configured);
+    final upstream = stored?.upstream ??
+        live?.upstream ??
+        kAiImageUpstreams.firstWhere(configured.contains,
+            orElse: () => AiUpstream.google);
+    final upstreamOptions = kAiImageUpstreams.map((u) {
+      final hasKey = configured.contains(u);
+      return '<option value="${u.name}"${u == upstream ? ' selected' : ''}>'
+          '${esc(u.label)}${hasKey ? '' : ' (no key)'}</option>';
+    }).join();
+    final String status;
+    if (live == null) {
+      status = '<span class="badge err">no key</span>';
+    } else if (stored != null && stored.upstream != live.upstream) {
+      status = '<span class="badge warn">key missing — using '
+          '${esc(live.model)}</span>';
+    } else if (stored == null) {
+      status = '<span class="badge warn">default · ${esc(live.model)}</span>';
+    } else {
+      status = '<span class="badge ok">custom</span>';
+    }
+    final costs = kAiImageWeeklyPercent.entries
+        .map((e) => '${esc(e.key)} ${e.value}%')
+        .join(', ');
+    return '<div class="card" style="margin-top:18px">'
+        '<h2>Picture model</h2>'
+        '<div class="maint-desc">The model behind the Assistant\'s picture '
+        'mode. Google AI Studio draws with Imagen through its images '
+        'endpoint; OpenRouter uses any model that can output images (for '
+        'example Gemini Flash Image). Each picture takes a flat share of the '
+        'user\'s weekly limit for the mode they have selected: $costs.</div>'
+        '<form method="post" action="/admin/ai-image" class="ai-routes" '
+        'id="aiImageForm">'
+        '<div class="ai-detector-grid">'
+        '<div><label for="ai-upstream-picture">Provider</label>'
+        '<select name="picture.upstream" id="ai-upstream-picture" '
+        'class="ai-upstream" data-mode="picture">$upstreamOptions</select></div>'
+        '<div><label for="ai-model-picture">Model</label>'
+        '<input type="text" name="picture.model" id="ai-model-picture" '
+        'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
+        'placeholder="${esc(live?.model ?? kDefaultAiImageModels[upstream]!)}" '
+        'maxlength="200" spellcheck="false" autocomplete="off">'
+        '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
+        'data-mode="picture">Browse models</button></div>'
+        '<div><span class="ai-detector-label">Status</span>$status</div>'
+        '</div>'
+        '<div class="maint-actions" style="margin:16px 0 0">'
+        '<button type="submit" class="btn btn-primary">Save picture model</button>'
+        '<span class="muted" style="font-size:12px">Leave the model blank for the default.</span>'
         '</div>'
         '</form>'
         '</div>';
@@ -10966,6 +11169,9 @@ window.lumaAskReason = function (form, message) {
       '<button type="button" class="bn-icon-btn" data-close aria-label="Close">'
       '$_bnCloseIcon</button></div>'
       '<div class="bm-grid">'
+      '<label class="bm-field bm-wide"><span>Entry</span>'
+      '<select id="bmEntry" class="bn-input"><option value="">New test'
+      '</option></select></label>'
       '<label class="bm-field"><span>Test</span>'
       '<select id="bmKind" class="bn-input">${_bmOptions(_bmKinds)}'
       '</select></label>'
@@ -10982,7 +11188,7 @@ window.lumaAskReason = function (form, message) {
       '<input id="bmDesc" class="bn-input" maxlength="300" '
       'placeholder="Shown under the model name in the app" autocomplete="off">'
       '</label>'
-      '<label class="bm-field bm-wide"><span>File</span>'
+      '<label class="bm-field bm-wide"><span id="bmFileLabel">File</span>'
       '<input id="bmFile" class="bn-input" type="file" accept=".html,.htm">'
       '</label>'
       '<label id="bmPasteField" class="bm-field bm-wide"><span>…or paste the '
@@ -11032,8 +11238,59 @@ window.lumaAskReason = function (form, message) {
   const effort = $('bmEffort'), desc = $('bmDesc'), file = $('bmFile');
   const idBox = $('bmId'), status = $('bmStatus'), submit = $('bmSubmit');
   const summary = $('bmUploadSummary');
+  const entryPick = $('bmEntry'), editBtn = $('bmEditBtn');
   let idEdited = false;
   let maxBytes = 60 * 1024 * 1024;
+  let entries = [];
+  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard' };
+
+  function editing() {
+    return entries.find(function (e) { return e.id === entryPick.value; }) || null;
+  }
+  function loadEntries() {
+    return fetch('/admin/benchmarks/entries').then(function (r) { return r.json(); })
+      .then(function (j) {
+        const keep = entryPick.value;
+        entries = (j.entries || []).slice().sort(function (a, b) {
+          return a.kind === b.kind ? a.model.localeCompare(b.model) : a.kind.localeCompare(b.kind);
+        });
+        entryPick.innerHTML = '<option value="">New test</option>';
+        entries.forEach(function (e) {
+          const o = document.createElement('option');
+          o.value = e.id;
+          o.textContent = (KIND_LABEL[e.kind] || e.kind) + ' · ' + e.model + ' (' + e.id + ')';
+          entryPick.appendChild(o);
+        });
+        entryPick.value = keep;
+      })
+      .catch(function () {});
+  }
+  // Picking an entry fills the form with its roster fields and locks what
+  // names the scene; the file becomes optional (only to replace the scene).
+  function applyEntry() {
+    const e = editing();
+    kind.disabled = idBox.disabled = !!e;
+    $('bmUploadTitle').textContent = e ? 'Edit a test' : 'Upload a test';
+    $('bmFileLabel').textContent = e ? 'Replace file (optional)' : 'File';
+    submit.textContent = e ? 'Save' : 'Upload';
+    if (e) {
+      kind.value = e.kind;
+      model.value = e.model;
+      effort.value = '';
+      vendor.value = e.vendor || '';
+      if (vendor.value !== (e.vendor || '')) vendor.value = '';
+      desc.value = e.description || '';
+      idBox.value = e.id;
+      idEdited = true;
+    } else {
+      form.reset();
+      idEdited = false;
+    }
+    file.value = '';
+    $('bmPaste').value = '';
+    refresh();
+  }
+  entryPick.addEventListener('change', applyEntry);
 
   function slug(s) {
     return s.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/\./g, '')
@@ -11065,11 +11322,13 @@ window.lumaAskReason = function (form, message) {
     if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
   });
 
-  btn.addEventListener('click', function () {
+  function open(edit) {
     status.textContent = '';
     submit.disabled = false;
+    entryPick.value = '';
+    applyEntry();
     dlg.showModal();
-    refresh();
+    loadEntries().then(function () { if (edit) entryPick.focus(); });
     fetch('/admin/benchmarks/upload/status').then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.maxBytes) maxBytes = j.maxBytes;
@@ -11078,21 +11337,25 @@ window.lumaAskReason = function (form, message) {
           : 'GitHub is not set up (LUMA_BENCHMARK_GITHUB_TOKEN) — the scene only goes live on this server.';
       })
       .catch(function () { $('bmGithubNote').textContent = ''; });
-  });
+  }
+  btn.addEventListener('click', function () { open(false); });
+  if (editBtn) editBtn.addEventListener('click', function () { open(true); });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    const edit = editing();
     const pasted = kind.value === 'cathedral' ? '' : $('bmPaste').value.trim();
     const picked = file.files && file.files[0];
     // A picked file wins; otherwise the pasted page goes up as the file.
+    // Editing without either sends no body: only the roster fields change.
     const f = picked || (pasted
       ? new Blob([pasted], { type: 'text/html' }) : null);
-    if (!f) {
+    if (!f && !edit) {
       status.textContent = kind.value === 'cathedral'
         ? 'Pick the .glb file.' : 'Pick a file or paste the HTML.';
       return;
     }
-    if (f.size > maxBytes) {
+    if (f && f.size > maxBytes) {
       status.textContent = 'That file is over ' + Math.round(maxBytes / 1048576) + ' MB.';
       return;
     }
@@ -11107,10 +11370,11 @@ window.lumaAskReason = function (form, message) {
       vendor: vendor.value, description: desc.value.trim(),
     });
     submit.disabled = true;
-    status.textContent = 'Uploading ' + (f.size / 1048576).toFixed(1) + ' MB…';
+    status.textContent = f
+      ? 'Uploading ' + (f.size / 1048576).toFixed(1) + ' MB…' : 'Saving…';
     fetch('/admin/benchmarks/upload?' + q.toString(), {
       method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/octet-stream' }, body: f,
+      headers: { 'Content-Type': 'application/octet-stream' }, body: f || '',
     }).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
@@ -11120,7 +11384,7 @@ window.lumaAskReason = function (form, message) {
         return;
       }
       const j = res.j;
-      let line = j.id + ' is live.';
+      let line = j.id + (edit ? ' saved.' : ' is live.');
       if (j.github === 'committed') line += ' Committed to GitHub.';
       else if (j.github === 'failed') line += ' GitHub commit failed: ' + j.githubError;
       else line += ' Not pushed (no GitHub token).';
@@ -11134,8 +11398,8 @@ window.lumaAskReason = function (form, message) {
         summary.appendChild(a);
       }
       if (j.github === 'failed') { status.textContent = line; return; }
-      form.reset();
-      idEdited = false;
+      entryPick.value = '';
+      applyEntry();
       dlg.close();
     }).catch(function () {
       submit.disabled = false;

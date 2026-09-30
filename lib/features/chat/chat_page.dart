@@ -23,6 +23,7 @@ import '../plugins/installed/steam_tools/cs2_market_scope.dart';
 import '../notes/notes_repository.dart';
 import 'account/assistant_panels.dart';
 import 'ai_key_store.dart';
+import 'assistant_compose_mode.dart';
 import 'local_model_store.dart';
 import 'ai_tools.dart';
 import 'web_search_client.dart';
@@ -40,6 +41,7 @@ import 'widgets/chat_markdown.dart';
 import 'widgets/chat_message_list.dart';
 import 'widgets/chat_moon.dart';
 import 'widgets/chat_usage_meter.dart';
+import 'widgets/compose_mode_menu.dart';
 
 const _wideBreakpoint = 760.0;
 
@@ -319,6 +321,23 @@ class _ChatLayoutState extends State<_ChatLayout> {
   final _homeFocus = FocusNode();
   bool _sidebarOpen = true;
 
+  /// The + menu mode, kept here so it survives the greeting screen turning
+  /// into the new chat's thread.
+  AssistantComposeMode _composeMode = AssistantComposeMode.chat;
+
+  /// [_composeMode] as it applies right now: off without Nova, and deep
+  /// research only on the models that can run it.
+  AssistantComposeMode _effectiveComposeMode(SettingsController settings) {
+    if (!composeModesUnlocked(settings.selectedPlanId)) {
+      return AssistantComposeMode.chat;
+    }
+    if (_composeMode == AssistantComposeMode.deepResearch &&
+        !deepResearchAvailable(settings.aiProviderId, settings.aiMode)) {
+      return AssistantComposeMode.chat;
+    }
+    return _composeMode;
+  }
+
   /// The conversation a reply is being fetched for, so the thinking moon
   /// only shows in that chat even if the user wanders to another one.
   int? _pendingConversationId;
@@ -339,12 +358,13 @@ class _ChatLayoutState extends State<_ChatLayout> {
   /// into a brand-new chat, which is only created once there's something to
   /// put in it (so "New chat" never leaves empty conversations behind).
   Future<void> _send(int? conversationId, String text) async {
+    final mode = _effectiveComposeMode(SettingsScope.of(context));
     final id =
         conversationId ?? await ChatScope.of(context).createConversation();
     if (conversationId == null) widget.onSelectConversation(id);
     setState(() => _pendingConversationId = id);
     try {
-      await widget.controller.sendMessage(id, text);
+      await widget.controller.sendMessage(id, text, mode: mode);
     } finally {
       if (mounted) setState(() => _pendingConversationId = null);
     }
@@ -381,6 +401,8 @@ class _ChatLayoutState extends State<_ChatLayout> {
               : null,
           minLines: activeId == null ? 2 : 1,
           autofocus: true,
+          composeMode: _effectiveComposeMode(settings),
+          onComposeModeChanged: (mode) => setState(() => _composeMode = mode),
           onSend: (text) => _send(activeId, text),
         );
 
@@ -403,6 +425,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
                     widget.controller.isSending &&
                     _pendingConversationId == activeId,
                 draft: widget.controller.draftReply,
+                activity: widget.controller.activity,
                 composer: composer,
                 onOpenPlugin: widget.onOpenPlugin,
               );
@@ -1447,6 +1470,7 @@ class _ConversationThread extends StatelessWidget {
     required this.conversationId,
     required this.thinking,
     required this.draft,
+    required this.activity,
     required this.composer,
     required this.onOpenPlugin,
   });
@@ -1454,6 +1478,7 @@ class _ConversationThread extends StatelessWidget {
   final int conversationId;
   final bool thinking;
   final ValueListenable<String> draft;
+  final ValueListenable<AssistantActivity?> activity;
   final Widget composer;
   final ValueChanged<String> onOpenPlugin;
 
@@ -1468,6 +1493,7 @@ class _ConversationThread extends StatelessWidget {
             stream: repo.watchMessages(conversationId),
             thinking: thinking,
             draft: draft,
+            activity: activity,
             onOpenQrPlugin: () => onOpenPlugin('qr-code-generator'),
           ),
         ),
@@ -1500,6 +1526,8 @@ class _ChatComposer extends StatefulWidget {
     required this.settings,
     required this.onSend,
     required this.onOpenPlugin,
+    required this.composeMode,
+    required this.onComposeModeChanged,
     this.textController,
     this.focusNode,
     this.hintText,
@@ -1515,6 +1543,8 @@ class _ChatComposer extends StatefulWidget {
   final SettingsController settings;
   final ValueChanged<String> onSend;
   final ValueChanged<String> onOpenPlugin;
+  final AssistantComposeMode composeMode;
+  final ValueChanged<AssistantComposeMode> onComposeModeChanged;
   final TextEditingController? textController;
   final FocusNode? focusNode;
   final String? hintText;
@@ -1632,12 +1662,22 @@ class _ChatComposerState extends State<_ChatComposer> {
     });
   }
 
+  Future<ComposeModeAvailability> _composeModeAvailability() async {
+    final settings = widget.settings;
+    final status = await widget.syncService.aiStatus();
+    return ComposeModeAvailability(
+      research: deepResearchAvailable(settings.aiProviderId, settings.aiMode),
+      picture: status?.pictureConfigured ?? false,
+      picturePercent: status?.pictureWeeklyPct,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = widget.settings;
     final t = L.of(context);
     final providerId = settings.aiProviderId;
-    final meter = StreamBuilder<List<ChatMessageRecord>>(
+    final meter =StreamBuilder<List<ChatMessageRecord>>(
       stream: _messages,
       builder: (context, snap) => ChatUsageMeter(
         contextWindow: contextWindowFor(providerId),
@@ -1651,10 +1691,18 @@ class _ChatComposerState extends State<_ChatComposer> {
             : null,
       ),
     );
+    final composeMode = widget.composeMode;
     return ChatInputBar(
       sending: widget.controller.isSending,
       enabled: !_blocked,
       caption: '',
+      leading: composeModesUnlocked(settings.selectedPlanId)
+          ? ComposeModeButton(
+              mode: composeMode,
+              onChanged: widget.onComposeModeChanged,
+              availability: _composeModeAvailability,
+            )
+          : null,
       modelSelector: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1664,7 +1712,12 @@ class _ChatComposerState extends State<_ChatComposer> {
       ),
       controller: widget.textController,
       focusNode: widget.focusNode,
-      hintText: widget.hintText,
+      hintText: switch (composeMode) {
+        AssistantComposeMode.plan => t.assistantPlanComposerHint,
+        AssistantComposeMode.deepResearch => t.assistantResearchComposerHint,
+        AssistantComposeMode.picture => t.assistantPictureComposerHint,
+        AssistantComposeMode.chat => widget.hintText,
+      },
       minLines: widget.minLines,
       autofocus: widget.autofocus,
       onSend: widget.onSend,

@@ -20,6 +20,7 @@ class ChatInputBar extends StatefulWidget {
     required this.enabled,
     required this.caption,
     required this.modelSelector,
+    this.leading,
     this.hintText,
     this.controller,
     this.focusNode,
@@ -34,6 +35,9 @@ class ChatInputBar extends StatefulWidget {
 
   /// Rendered bottom-right inside the composer, next to the send button.
   final Widget modelSelector;
+
+  /// Rendered bottom-left inside the composer, e.g. the + menu.
+  final Widget? leading;
 
   final String? hintText;
 
@@ -184,6 +188,8 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: Row(
                   children: [
+                    if (widget.leading != null)
+                      Flexible(child: widget.leading!),
                     const Spacer(),
                     widget.modelSelector,
                     const SizedBox(width: 6),
