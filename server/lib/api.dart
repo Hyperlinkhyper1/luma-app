@@ -10983,8 +10983,13 @@ window.lumaAskReason = function (form, message) {
       'placeholder="Shown under the model name in the app" autocomplete="off">'
       '</label>'
       '<label class="bm-field bm-wide"><span>File</span>'
-      '<input id="bmFile" class="bn-input" type="file" accept=".html,.htm" '
-      'required></label>'
+      '<input id="bmFile" class="bn-input" type="file" accept=".html,.htm">'
+      '</label>'
+      '<label id="bmPasteField" class="bm-field bm-wide"><span>…or paste the '
+      'HTML</span>'
+      '<textarea id="bmPaste" class="bn-input bm-paste" spellcheck="false" '
+      'placeholder="Click here and Ctrl+V the whole page" '
+      'autocomplete="off"></textarea></label>'
       '<label class="bm-field bm-wide"><span>Id (file name)</span>'
       '<input id="bmId" class="bn-input" required pattern="[a-z0-9_]{3,80}" '
       'autocomplete="off" spellcheck="false"></label>'
@@ -11006,6 +11011,8 @@ window.lumaAskReason = function (form, message) {
 .bm-field{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:#9b94b3;min-width:0}
 .bm-field .bn-input{min-width:0;flex:none;width:100%;box-sizing:border-box}
 .bm-wide{grid-column:1/-1}
+.bm-paste{min-height:110px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:pre;overflow:auto}
+.bm-field[hidden]{display:none}
 .bm-preview{background:#12101e;border:1px solid #241e36;border-radius:9px;padding:10px 12px;color:#ece8f7;font-size:13.5px}
 @media (max-width:700px){.bm-grid{grid-template-columns:1fr;padding-left:14px;padding-right:14px}}
 ''';
@@ -11043,6 +11050,7 @@ window.lumaAskReason = function (form, message) {
       idBox.value = s ? [kind.value, s, effort.value].filter(Boolean).join('_') : '';
     }
     file.accept = kind.value === 'cathedral' ? '.glb' : '.html,.htm';
+    $('bmPasteField').hidden = kind.value === 'cathedral';
     $('bmPreviewName').textContent = displayName() || '—';
     $('bmPreviewVendor').textContent = vendor.value
       ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
@@ -11074,14 +11082,22 @@ window.lumaAskReason = function (form, message) {
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    const f = file.files && file.files[0];
-    if (!f) { status.textContent = 'Pick a file.'; return; }
+    const pasted = kind.value === 'cathedral' ? '' : $('bmPaste').value.trim();
+    const picked = file.files && file.files[0];
+    // A picked file wins; otherwise the pasted page goes up as the file.
+    const f = picked || (pasted
+      ? new Blob([pasted], { type: 'text/html' }) : null);
+    if (!f) {
+      status.textContent = kind.value === 'cathedral'
+        ? 'Pick the .glb file.' : 'Pick a file or paste the HTML.';
+      return;
+    }
     if (f.size > maxBytes) {
       status.textContent = 'That file is over ' + Math.round(maxBytes / 1048576) + ' MB.';
       return;
     }
     const want = kind.value === 'cathedral' ? /\.glb$/i : /\.html?$/i;
-    if (!want.test(f.name)) {
+    if (picked && !want.test(picked.name)) {
       status.textContent = kind.value === 'cathedral'
         ? 'The Cathedral test takes a .glb file.' : 'This test takes an .html file.';
       return;

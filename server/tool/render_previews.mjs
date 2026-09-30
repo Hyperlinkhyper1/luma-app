@@ -299,6 +299,28 @@ async function shootEngine(page) {
   await sleep(5000);
 }
 
+async function shootKeyboard(page) {
+  // Keyboard scenes are drawn every which way — canvas, SVG, or plain CSS
+  // keycaps — so wait for the page to have painted anything rather than for
+  // a canvas, then let the assembly animation play out.
+  await page
+    .waitForFunction(
+      `document.readyState === 'complete' && document.querySelector('canvas,svg,[class*="key"],[id*="key"]') !== null`,
+      { timeout: 60000, polling: 500 },
+    )
+    .catch(() => {});
+  // Most scenes assemble the board first; skip that where the scene offers
+  // it, otherwise wait it out so the banner shows the finished keyboard.
+  const skipped = await page.evaluate(() => {
+    const skip = [...document.querySelectorAll('button')].find((b) =>
+      /skip/i.test(b.textContent || b.title || ''),
+    );
+    if (skip) skip.click();
+    return Boolean(skip);
+  });
+  await sleep(skipped ? 4000 : 20000);
+}
+
 async function shootPc(page) {
   // PC scenes are bespoke: the power control and the online indicator
   // differ per scene. The module scripts (and their click handlers) only
@@ -435,13 +457,15 @@ async function main() {
   const kindOf = (id) =>
     manifest.benchmarks.find((x) => x.id === id)?.kind ??
     (id.startsWith('engine_') ? 'engine' : id.startsWith('pc_') ? 'pc' :
-      id.startsWith('cathedral_') ? 'cathedral' : 'pagoda');
+      id.startsWith('cathedral_') ? 'cathedral' : id.startsWith('keyboard_') ? 'keyboard' : 'pagoda');
   const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
   const sceneFile = (id) => {
     const ext = sceneExtension(id);
     const candidates = [
       override && path.join(override, `${id}.${ext}`),
       override && ext === 'html' && path.join(override, id, 'index.html'),
+      // Scenes uploaded from the admin dashboard (AiBenchmarkStore.saveUpload).
+      override && path.join(override, 'uploads', `${id}.${ext}`),
       path.join(root, 'scenes', `${id}.${ext}`),
       ext === 'html' && path.join(root, 'scenes', id, 'index.html'),
     ].filter(Boolean);
@@ -547,6 +571,7 @@ async function main() {
         if (kind === 'pagoda') await shootPagoda(page, framing);
         else if (kind !== 'cathedral') {
           if (kind === 'engine') await shootEngine(page);
+          else if (kind === 'keyboard') await shootKeyboard(page);
           else await shootPc(page);
           if (framing) console.log(`  framing: ${(await applyFraming(page, framing)).camera}`);
         }
