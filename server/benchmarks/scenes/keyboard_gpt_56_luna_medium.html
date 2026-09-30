@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obsidian 68 — Mechanical Keyboard Showcase</title>
+<style>
+:root{
+  --bg:#080b12;
+  --panel:#101622;
+  --ink:#e8edf7;
+  --muted:#8490a5;
+  --cyan:#63e6e0;
+  --violet:#9a7cff;
+  --case:#202938;
+  --case-edge:#111722;
+  --key:#dce4ef;
+  --key-side:#a9b5c7;
+  --dark-key:#38465b;
+  --s:1;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:
+ radial-gradient(circle at 50% -10%,#1a2440 0,#080b12 48%,#05070b 100%);
+ color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}
+body{display:flex;justify-content:center;overflow-x:hidden}
+main{width:min(1180px,100%);padding:28px 24px 38px}
+header{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:16px}
+.eyebrow{color:var(--cyan);font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase}
+h1{font-size:clamp(28px,5vw,54px);line-height:.95;margin:8px 0 0;letter-spacing:-.055em}
+.subtitle{color:var(--muted);margin:10px 0 0;font-size:14px}
+.controls{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+button{font:inherit;color:var(--ink);background:#182131;border:1px solid #30405a;border-radius:9px;padding:10px 14px;cursor:pointer;transition:.2s}
+button:hover{background:#22304a;border-color:#60749a}
+button:active{transform:translateY(1px)}
+button.primary{background:linear-gradient(135deg,#246b75,#51408b);border-color:#6dcbd3}
+button[aria-pressed="true"]{color:var(--cyan);border-color:var(--cyan)}
+.note{min-height:25px;color:var(--muted);font-size:12px;text-align:center;margin:3px 0 0}
+.scene-wrap{position:relative;margin:12px auto 0;height:min(58vw,500px);min-height:310px;display:grid;place-items:center;overflow:visible}
+.scene{width:900px;height:430px;position:relative;perspective:1200px;transform:scale(var(--s));transform-origin:center center}
+.keyboard{position:absolute;left:20px;top:35px;width:860px;height:350px;transform-style:preserve-3d;transform:rotateX(56deg) rotateZ(-4deg) translateZ(0)}
+.case{position:absolute;inset:0;border-radius:25px;background:
+ linear-gradient(135deg,#344156 0,#202a3a 46%,#151c29 100%);
+ border:2px solid #45536a;box-shadow:0 26px 35px #000b, inset 0 2px 0 #718099, inset 0 -10px 20px #0c111a;transform:translateZ(-35px);transform-style:preserve-3d}
+.case:before{content:"";position:absolute;inset:14px;border-radius:17px;background:#0c121c;box-shadow:inset 0 0 0 2px #111a28,inset 0 10px 18px #0008}
+.case:after{content:"OBSIDIAN / 68";position:absolute;right:24px;bottom:15px;color:#65748c;font-size:8px;letter-spacing:.22em}
+.assembly{position:absolute;inset:0;transform-style:preserve-3d}
+.layer{position:absolute;transform-style:preserve-3d;left:45px;top:58px;width:770px;height:270px;border-radius:8px;opacity:0}
+#pcb{background:linear-gradient(135deg,#122f39,#0b202c);border:2px solid #22606a;box-shadow:0 8px 0 #07151c,0 0 25px #39d3d033}
+#pcb:before{content:"";position:absolute;inset:15px;border:1px solid #31828a;border-radius:4px;opacity:.55;background:repeating-linear-gradient(90deg,transparent 0 38px,#44b8ba18 39px 40px)}
+#pcb:after{content:"68% / HOT-SWAP / REV.03";position:absolute;bottom:13px;right:18px;color:#5ce0d5;font-size:8px;letter-spacing:.15em}
+#foam{left:50px;top:62px;width:760px;height:260px;background:#18202b;border:2px solid #303c4e;box-shadow:0 7px 0 #0b1018, inset 0 0 20px #0008}
+#plate{left:43px;top:53px;width:774px;height:273px;background:linear-gradient(135deg,#b8c4ce,#667384 65%,#3d4959);border:2px solid #d8e2e8;box-shadow:0 8px 0 #202a37,0 0 18px #b9e6ee22}
+#plate:before{content:"";position:absolute;inset:9px;border:1px solid #f1f8ff88;border-radius:4px}
+.pcb-in{animation:pcbIn 1.2s cubic-bezier(.2,.75,.2,1) .1s forwards}
+.foam-in{animation:foamIn 1s cubic-bezier(.2,.75,.2,1) 1s forwards}
+.plate-in{animation:plateIn 1s cubic-bezier(.2,.75,.2,1) 1.85s forwards}
+@keyframes pcbIn{from{opacity:0;transform:translate3d(-100px,35px,-260px) rotateX(35deg) rotateZ(-10deg)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes foamIn{from{opacity:0;transform:translate3d(70px,-45px,180px) rotateZ(8deg)}to{opacity:1;transform:translate3d(0,0,28px)}}
+@keyframes plateIn{from{opacity:0;transform:translate3d(-40px,-30px,210px) rotateZ(-5deg)}to{opacity:1;transform:translate3d(0,0,45px)}}
+.switch,.keycap{position:absolute;transform-style:preserve-3d;opacity:0}
+.switch{height:42px;background:linear-gradient(135deg,#273a50,#102334);border:1px solid #5b8290;border-radius:4px;box-shadow:0 5px 0 #09131d,0 0 12px #50d8d333}
+.switch:before{content:"";position:absolute;left:9px;right:9px;top:5px;height:5px;border-radius:3px;background:#6ce2d8;box-shadow:0 0 9px #6ce2d8}
+.switch-in{animation:switchIn .55s cubic-bezier(.2,.8,.2,1) var(--delay) forwards}
+@keyframes switchIn{from{opacity:0;transform:translate3d(0,-90px,190px) rotateX(70deg)}to{opacity:1;transform:translate3d(0,0,58px)}}
+.keycap{height:42px;border-radius:5px;padding-top:8px;text-align:center;color:#182230;font-size:10px;font-weight:800;letter-spacing:.02em;background:linear-gradient(145deg,#f5f8fb,#ccd6e3 65%,#a9b5c5);border:1px solid #fff;box-shadow:0 5px 0 #7f8b9c,0 8px 12px #0008;transition:filter .15s}
+.keycap:after{content:"";position:absolute;inset:4px;border-radius:3px;border:1px solid #fff8;pointer-events:none}
+.keycap.dark{background:linear-gradient(145deg,#53647c,#35445a 65%,#253246);color:#e7effb;border-color:#6d7c92;box-shadow:0 5px 0 #1a2330,0 8px 12px #0008}
+.cap-in{animation:capIn .48s cubic-bezier(.2,.8,.2,1) var(--delay) forwards}
+@keyframes capIn{from{opacity:0;transform:translate3d(0,80px,240px) rotateX(-75deg)}to{opacity:1;transform:translate3d(0,0,88px)}}
+.keycap.pressed{transform:translate3d(0,0,78px)!important;filter:brightness(.9)}
+.legend{position:absolute;left:28px;bottom:18px;color:#748198;font-size:11px;letter-spacing:.04em}
+.legend b{color:#aeb9ca}
+@media(max-width:800px){
+ :root{--s:.72}
+ .scene-wrap{height:390px}
+ header{align-items:start;flex-direction:column}
+ .controls{justify-content:flex-start}
+}
+@media(max-width:520px){
+ :root{--s:.53}
+ main{padding:22px 14px}
+ .scene-wrap{height:300px;min-height:270px}
+ h1{font-size:34px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*:before,*:after{animation-duration:.01ms!important;animation-delay:0!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Precision mechanical systems · 2024</div>
+      <h1>Obsidian 68</h1>
+      <p class="subtitle">A compact hot-swap board assembled in six deliberate layers.</p>
+    </div>
+    <div class="controls">
+      <button class="primary" id="replay">↻ Replay assembly</button>
+      <button id="mute" aria-pressed="false">◉ Sound on</button>
+    </div>
+  </header>
+  <div class="note" id="hint">Click any key to interact · press a key on your keyboard</div>
+  <section class="scene-wrap" aria-label="Interactive 3D mechanical keyboard">
+    <div class="scene">
+      <div class="keyboard">
+        <div class="case"></div>
+        <div class="assembly" id="assembly">
+          <div class="layer pcb-in" id="pcb"></div>
+          <div class="layer foam-in" id="foam"></div>
+          <div class="layer plate-in" id="plate"></div>
+          <div id="switches"></div>
+          <div id="caps"></div>
+        </div>
+        <div class="legend"><b>OBSIDIAN 68</b> &nbsp; gasket mount · tactile / linear compatible</div>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const rows=[
+ [["Esc",1],["1",1],["2",1],["3",1],["4",1],["5",1],["6",1],["7",1],["8",1],["9",1],["0",1],["-",1],["=",1],["Backspace",2]],
+ [["Tab",1.5],["Q",1],["W",1],["E",1],["R",1],["T",1],["Y",1],["U",1],["I",1],["O",1],["P",1],["[",1],["]",1],["\\",1.5]],
+ [["Caps Lock",1.75],["A",1],["S",1],["D",1],["F",1],["G",1],["H",1],["J",1],["K",1],["L",1],[";",1],[ "'",1],["Enter",2.25]],
+ [["Shift",2.25],["Z",1],["X",1],["C",1],["V",1],["B",1],["N",1],["M",1],[",",1],[".",1],["/",1],["Shift",2.75]],
+ [["Ctrl",1.25],["Alt",1.25],["Meta",1.25],["Space",6.25],["Alt",1.25],["Fn",1.25],["Menu",1.25],["Ctrl",1.25]]
+];
+const switches=document.querySelector("#switches"),caps=document.querySelector("#caps");
+const unit=46,gap=5, startY=32, rowGap=52;
+let keys=[], order=0;
+function keyClass(n){return ["Space","Enter","Backspace","Shift","Tab","Caps Lock","Ctrl","Alt","Meta","Fn","Menu"].includes(n)?"dark":""}
+rows.forEach((row,r)=>{
+ const total=row.reduce((a,k)=>a+k[1]*unit,0)+(row.length-1)*gap;
+ let x=(770-total)/2;
+ row.forEach(([name,w])=>{
+   const width=w*unit+(w-1)*gap, id="key-"+order++;
+   const s=document.createElement("div"), c=document.createElement("div");
+   s.className="switch"; c.className="keycap "+keyClass(name);
+   s.style.cssText=`left:${x}px;top:${startY+r*rowGap}px;width:${width}px;--delay:${2.35+(keys.length*.055)}s`;
+   c.style.cssText=`left:${x}px;top:${startY+r*rowGap}px;width:${width}px;--delay:${3.65+(keys.length*.055)}s`;
+   c.textContent=name==="Space"?"":name; c.dataset.key=name; s.dataset.key=name;
+   switches.append(s);caps.append(c);keys.push({name,cap:c,switch:s});
+   x+=width+gap;
+ });
+});
+function normalize(k){
+ const map={" ":"Space","Escape":"Esc","Enter":"Enter","Backspace":"Backspace","Tab":"Tab","CapsLock":"Caps Lock","Shift":"Shift","Control":"Ctrl","Alt":"Alt","Meta":"Meta","ContextMenu":"Menu","Fn":"Fn"};
+ return map[k]||map[k?.replace(/^Key/,"")]||k;
+}
+let audioCtx, muted=false;
+function unlock(){
+ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+ if(audioCtx.state==="suspended") audioCtx.resume();
+ document.querySelector("#hint").textContent="Audio enabled · click or type to play the board";
+}
+function sound(name){
+ if(muted)return; unlock();
+ const now=audioCtx.currentTime, osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+ const deep=name==="Space", enter=name==="Enter", mod=["Shift","Ctrl","Alt","Meta","Fn","Menu","Tab","Caps Lock"].includes(name);
+ osc.type=deep?"triangle":mod?"square":"sine";
+ osc.frequency.setValueAtTime(deep?92:enter?145:mod?190:230,now);
+ osc.frequency.exponentialRampToValueAtTime(deep?58:110,now+.12);
+ gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(deep?.22:.11,now+.006);gain.gain.exponentialRampToValueAtTime(.0001,now+(deep?.24:.12));
+ osc.connect(gain).connect(audioCtx.destination);osc.start(now);osc.stop(now+.3);
+}
+function press(name){
+ const item=keys.find(k=>k.name.toLowerCase()===String(name).toLowerCase());
+ if(!item)return;
+ unlock(); item.cap.classList.add("pressed"); sound(item.name);
+ clearTimeout(item.timer);item.timer=setTimeout(()=>item.cap.classList.remove("pressed"),130);
+}
+keys.forEach(k=>k.cap.addEventListener("click",()=>press(k.name)));
+window.addEventListener("keydown",e=>{if(!e.repeat){const n=normalize(e.key);if(keys.some(k=>k.name.toLowerCase()===String(n).toLowerCase())){e.preventDefault();press(n)}}});
+document.querySelector("#mute").onclick=e=>{
+ muted=!muted;e.currentTarget.textContent=muted?"◌ Sound off":"◉ Sound on";e.currentTarget.setAttribute("aria-pressed",muted);
+ if(!muted)unlock();
+};
+document.querySelector("#replay").onclick=()=>{
+ const a=document.querySelector("#assembly");a.classList.remove("run");void a.offsetWidth;a.classList.add("run");
+ document.querySelectorAll(".layer").forEach(x=>x.classList.remove("pcb-in","foam-in","plate-in"));
+ document.querySelector("#pcb").classList.add("pcb-in");document.querySelector("#foam").classList.add("foam-in");document.querySelector("#plate").classList.add("plate-in");
+ document.querySelectorAll(".switch").forEach((x,i)=>{x.classList.remove("switch-in");x.style.setProperty("--delay",`${2.35+i*.055}s`);void x.offsetWidth;x.classList.add("switch-in")});
+ document.querySelectorAll(".keycap").forEach((x,i)=>{x.classList.remove("cap-in");x.style.setProperty("--delay",`${3.65+i*.055}s`);void x.offsetWidth;x.classList.add("cap-in")});
+};
+document.querySelector("#assembly").classList.add("run");
+document.querySelectorAll(".switch").forEach(x=>x.classList.add("switch-in"));
+document.querySelectorAll(".keycap").forEach(x=>x.classList.add("cap-in"));
+</script>
+</body>
+</html>
