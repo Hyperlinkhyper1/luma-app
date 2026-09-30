@@ -11866,8 +11866,11 @@ window.lumaAskReason = function (form, message) {
     clearInterval(ticker);
     if (running) ticker = setInterval(drawProgress, 1000);
 
-    logBox.style.display = items.length ? 'block' : 'none';
-    rows.innerHTML = items.map((i) => {
+    const shown = items.concat((data.queued || [])
+      .filter((id) => !items.some((i) => i.id === id))
+      .map((id) => ({ id: id, state: 'queued', detail: 'waits for the running job' })));
+    logBox.style.display = shown.length ? 'block' : 'none';
+    rows.innerHTML = shown.map((i) => {
       const b = BADGE[i.state] || ['', i.state];
       const stamp = i.finishedAtMs || data.finishedAtMs || 0;
       const img = i.state === 'ok'
