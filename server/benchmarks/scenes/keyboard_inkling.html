@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AURA 75 — Mechanical Keyboard Showcase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@300;500&display=swap" rel="stylesheet">
+
+  <style type="text/tailwindcss">
+    @theme {
+      --font-display: 'Space Grotesk', system-ui, sans-serif;
+      --font-body: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      --color-void: #06060a;
+      --color-surface: #0d0d12;
+      --color-panel: #13131a;
+      --color-keycap: #1a2332;
+      --color-keycap-deep: #0f172a;
+      --color-keycap-legend: #f0ebe0;
+      --color-brass: #c9a84c;
+      --color-brass-deep: #8a6e2f;
+      --color-pcb-trace: #2dd4a0;
+      --color-foam: #16161a;
+      --color-plate-top: #b8b0a0;
+      --color-plate-edge: #7a756a;
+    }
+  </style>
+
+  <style>
+    html, body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #06060a;
+      color: #e2e2e2;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Scene */
+    .scene-wrapper {
+      perspective: 1400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      position: relative;
+      overflow: hidden;
+      padding: 2rem;
+    }
+    .ambient-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .ambient-orb-1 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, #2a2a40 0%, transparent 70%);
+      top: -10%; left: -10%;
+    }
+    .ambient-orb-2 {
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, #3a2a1a 0%, transparent 70%);
+      bottom: -5%; right: -5%;
+    }
+
+    /* Keyboard 3D Body */
+    .kb-body {
+      position: relative;
+      width: 720px;
+      max-width: 92vw;
+      height: 270px;
+      transform-style: preserve-3d;
+      transform: rotateX(22deg) rotateY(-16deg) rotateZ(-1.5deg);
+      animation: slowDrift 10s ease-in-out infinite;
+      border-radius: 14px;
+      border: 16px solid #18181b;
+      background: linear-gradient(145deg, #24242a 0%, #16161b 100%);
+      box-shadow:
+        0 50px 100px rgba(0,0,0,0.95),
+        0 20px 40px rgba(0,0,0,0.6),
+        inset 0 2px 12px rgba(255,255,255,0.04),
+        inset 0 -4px 16px rgba(0,0,0,0.6);
+    }
+    @keyframes slowDrift {
+      0%, 100% { transform: rotateX(22deg) rotateY(-16deg) rotateZ(-1.5deg); }
+      33%  { transform: rotateX(18deg) rotateY(-22deg) rotateZ(-0.5deg); }
+      66%  { transform: rotateX(26deg) rotateY(-10deg) rotateZ(-2.5deg); }
+    }
+
+    /* Case side edges (visible thickness) */
+    .kb-body::before {
+      content: '';
+      position: absolute;
+      bottom: -16px;
+      left: 0;
+      width: 100%;
+      height: 16px;
+      background: #111113;
+      border-radius: 0 0 6px 6px;
+      transform-origin: top;
+      transform: rotateX(-90deg) translateZ(8px);
+      box-shadow: inset 0 4px 8px rgba(0,0,0,0.8);
+    }
+    .kb-body::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: -16px;
+      width: 16px;
+      height: 100%;
+      background: #18181b;
+      border-radius: 0 6px 6px 0;
+      transform-origin: left;
+      transform: rotateY(90deg) translateZ(8px);
+      box-shadow: inset -4px 0 8px rgba(0,0,0,0.8);
+    }
+
+    /* Layers */
+    .layer {
+      position: absolute;
+      left: 24px;
+      top: 14px;
+      width: calc(100% - 48px);
+      height: calc(100% - 28px);
+      border-radius: 8px;
+      transform-style: preserve-3d;
+    }
+
+    /* PCB */
+    .pcb-layer {
+      background: linear-gradient(135deg, #041a0e 0%, #052a16 100%);
+      border: 2px solid #0a2e1a;
+      box-shadow: inset 0 0 30px rgba(40, 220, 140, 0.15), 0 8px 30px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+    .pcb-layer::before {
+      content: '';
+      position: absolute;
+      inset: 12px;
+      border: 1px dashed rgba(60, 230, 160, 0.25);
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    .trace-line {
+      position: absolute;
+      background: linear-gradient(90deg, transparent, rgba(60, 230, 160, 0.6), transparent);
+      height: 2px;
+      border-radius: 1px;
+      box-shadow: 0 0 6px rgba(60, 230, 160, 0.4);
+    }
+
+    /* Foam */
+    .foam-layer {
+      background: #131318;
+      border-top: 5px solid #1a1a22;
+      border-bottom: 5px solid #0e0e12;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 6px 20px rgba(0,0,0,0.4);
+      background-image: radial-gradient(circle, #1e1e28 1px, transparent 1px);
+      background-size: 10px 10px;
+    }
+
+    /* Plate */
+    .plate-layer {
+      background: linear-gradient(135deg, #c4baa0 0%, #9a9486 100%);
+      border-top: 2px solid #ddd8cd;
+      border-bottom: 3px solid #7a756a;
+      box-shadow: inset 0 2px 8px rgba(255,255,255,0.3), 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Switches Layer */
+    .switches-layer {
+      display: grid;
+      grid-template-columns: repeat(14, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 3px;
+      padding: 28px 18px;
+    }
+    .switch {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: #0a0a10;
+      border-radius: 3px 3px 2px 2px;
+      box-shadow:
+        0 3px 0 #05050a,
+        0 5px 10px rgba(0,0,0,0.7),
+        inset 0 -3px 4px rgba(255,255,255,0.04);
+      transform-style: preserve-3d;
+      transition: transform 0.08s ease;
+      overflow: hidden;
+    }
+    .switch.pressed {
+      transform: translateZ(-3px) scale(0.96);
+    }
+    .switch-housing {
+      position: absolute;
+      bottom: 0;
+      left: 8%;
+      width: 84%;
+      height: 65%;
+      background: linear-gradient(180deg, #111116 0%, #06060a 100%);
+      border-radius: 3px 3px 2px 2px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .switch-stem {
+      position: absolute;
+      top: 4px;
+      left: 28%;
+      width: 44%;
+      height: 40%;
+      background: linear-gradient(180deg, #e8e4d8 0%, #b0a898 60%, #8a8275 100%);
+      border-radius: 2px;
+      box-shadow: inset 0 -2px 3px rgba(0,0,0,0.3);
+      transition: transform 0.08s ease;
+    }
+    .switch.pressed .switch-stem {
+      transform: translateY(3px);
+    }
+
+    /* Keycaps Layer */
+    .keycaps-layer {
+      display: grid;
+      grid-template-columns: repeat(14, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 3px;
+      padding: 28px 18px;
+    }
+    .key {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .key-cap {
+      width: 88%;
+      height: 88%;
+      background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid #334155;
+      border-radius: 5px;
+      box-shadow:
+        0 4px 0 #0f172a,
+        0 6px 12px rgba(0,0,0,0.5);
+      color: #f0ebe0;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      position: relative;
+      transform: translateZ(6px);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      user-select: none;
+    }
+    .key-cap::after {
+      content: '';
+      position: absolute;
+      bottom: -3px;
+      left: 6%;
+      width: 88%;
+      height: 3px;
+      background: #0f172a;
+      border-radius: 0 0 3px 3px;
+      transform: rotateX(-90deg) translateY(-3px);
+      transform-origin: top;
+    }
+    .key.pressed .key-cap {
+      transform: translateZ(2px) translateY(2px);
+      box-shadow:
+        0 1px 0 #0f172a,
+        0 2px 6px rgba(0,0,0,0.4);
+    }
+    .key-cap.sub {
+      font-size: 7px;
+      opacity: 0.9;
+    }
+
+    /* Rotary Knob */
+    .knob-container {
+      position: absolute;
+      top: 18px;
+      right: 36px;
+      width: 32px;
+      height: 32px;
+      transform: translateZ(14px);
+      z-index: 10;
+    }
+    .knob {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #e6c882 0%, #b08a3e 60%, #6e4a18 100%);
+      border: 2px solid #4a3010;
+      box-shadow:
+        0 3px 8px rgba(0,0,0,0.6),
+        inset 0 1px 4px rgba(255,255,255,0.35),
+        inset 0 -2px 6px rgba(0,0,0,0.4);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    .knob:hover { transform: rotate(25deg); }
+    .knob-indicator {
+      position: absolute;
+      top: 4px;
+      left: 50%;
+      width: 2px;
+      height: 8px;
+      background: #3a2a10;
+      border-radius: 1px;
+      transform: translateX(-50%);
+    }
+
+    /* Assembly Animations */
+    .kb-body.animated .layer,
+    .kb-body.animated .switch,
+    .kb-body.animated .key-cap {
+      animation-fill-mode: forwards;
+    }
+    .kb-body.animated .pcb-layer {
+      animation: layerIn 1s ease-out forwards;
+      animation-delay: 0.2s;
+      opacity: 0;
+      transform: translateY(-140px) translateZ(50px) rotateX(15deg);
+    }
+    .kb-body.animated .foam-layer {
+      animation: layerIn 1s ease-out forwards;
+      animation-delay: 0.9s;
+      opacity: 0;
+      transform: translateY(-130px) translateZ(45px) rotateX(12deg);
+    }
+    .kb-body.animated .plate-layer {
+      animation: layerIn 1s ease-out forwards;
+      animation-delay: 1.6s;
+      opacity: 0;
+      transform: translateY(-120px) translateZ(40px) rotateX(10deg);
+    }
+    @keyframes layerIn {
+      to { opacity: 1; transform: translateY(0) translateZ(var(--layer-z, 0px)) rotateX(0deg); }
+    }
+
+    /* Each layer's final translateZ */
+    .pcb-layer { --layer-z: 0px; }
+    .foam-layer { --layer-z: 6px; }
+    .plate-layer { --layer-z: 10px; }
+
+    /* Switches */
+    .kb-body.animated .switch {
+      animation: switchIn 0.35s ease-out forwards;
+      animation-delay: calc(2.4s + var(--i) * 0.035s);
+      opacity: 0;
+      transform: translateY(-80px) translateZ(25px) rotateX(20deg) scale(0.9);
+    }
+    @keyframes switchIn {
+      to { opacity: 1; transform: translateY(0) translateZ(0) rotateX(0deg) scale(1); }
+    }
+
+    /* Keycaps */
+    .kb-body.animated .key-cap {
+      animation: keyIn 0.3s ease-out forwards;
+      animation-delay: calc(5.0s + var(--i) * 0.03s);
+      opacity: 0;
+      transform: translateY(-70px) translateZ(30px) rotateX(18deg) scale(0.92);
+    }
+    @keyframes keyIn {
+      to { opacity: 1; transform: translateZ(6px) translateY(0) rotateX(0deg) scale(1); }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .kb-body { animation: none !important; }
+      .kb-body.animated .layer,
+      .kb-body.animated .switch,
+      .kb-body.animated .key-cap {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: translateY(0) translateZ(var(--layer-z, 6px)) rotateX(0deg) scale(1) !important;
+      }
+    }
+
+    /* Controls */
+    .controls-bar {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      background: rgba(6, 6, 10, 0.75);
+      backdrop-filter: blur(16px) saturate(140%);
+      -webkit-backdrop-filter: blur(16px) saturate(140%);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+    }
+    .ctrl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #e2e2e2;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .ctrl-btn:hover {
+      background: rgba(255,255,255,0.09);
+      border-color: rgba(255,255,255,0.15);
+    }
+    .ctrl-btn.active { border-color: rgba(201, 168, 76, 0.5); color: #c9a84c; }
+    .ctrl-btn svg { width: 16px; height: 16px; }
+
+    /* Audio hint */
+    .audio-hint {
+      position: fixed;
+      top: 1.25rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(201, 168, 76, 0.12);
+      border: 1px solid rgba(201, 168, 76, 0.25);
+      color: #c9a84c;
+      padding: 0.6rem 1.2rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      z-index: 60;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+    }
+    .audio-hint.hidden { opacity: 0; }
+
+    /* Info overlay */
+    .info-panel {
+      position: fixed;
+      top: 1.5rem;
+      left: 1.5rem;
+      z-index: 40;
+      max-width: 380px;
+    }
+    .info-panel h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 2.5rem;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin-bottom: 0.5rem;
+      color: #f4f2eb;
+    }
+    .info-panel h1 span { color: #c9a84c; }
+    .info-panel p {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: #8a859a;
+      margin-bottom: 1rem;
+    }
+    .badge-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: #a8a5b5;
+    }
+
+    /* RGB mode */
+    .rgb-active .key-cap {
+      border-color: rgba(201, 168, 76, 0.6);
+      box-shadow:
+        0 4px 0 #0f172a,
+        0 6px 15px rgba(201, 168, 76, 0.15);
+    }
+    .rgb-active .pcb-layer {
+      box-shadow: inset 0 0 30px rgba(60, 230, 160, 0.35), 0 8px 30px rgba(0,0,0,0.5);
+    }
+    .rgb-active .plate-layer {
+      background: linear-gradient(135deg, #d4c8a8 0%, #b0a688 100%);
+      border-top: 2px solid #e0d8c8;
+    }
+
+    /* Small screens */
+    @media (max-width: 640px) {
+      .kb-body { width: 95vw; height: 220px; }
+      .key-cap { font-size: 7px; }
+      .info-panel { position: relative; top: auto; left: auto; max-width: 100%; padding: 1rem; }
+      .info-panel h1 { font-size: 1.75rem; }
+      .controls-bar { flex-wrap: wrap; justify-content: center; padding: 0.6rem; }
+    }
+  </style>
+</head>
+
+<body class="bg-void min-h-screen flex flex-col">
+
+  <!-- Ambient background -->
+  <div class="ambient-orb ambient-orb-1"></div>
+  <div class="ambient-orb ambient-orb-2"></div>
+
+  <!-- Audio hint -->
+  <div id="audioHint" class="audio-hint" aria-live="polite">Click anywhere to enable sound</div>
+
+  <!-- Info -->
+  <aside class="info-panel" aria-label="Product info">
+    <h1>AURA <span>75</span></h1>
+    <p>A premium 75% mechanical keyboard with an exploded 3D assembly view. Watch each layer settle into place, then interact with the keys.</p>
+    <div class="badge-row">
+      <span class="badge">75% Layout</span>
+      <span class="badge">PBT Keycaps</span>
+      <span class="badge">Linear Switches</span>
+      <span class="badge">Brass Rotary Knob</span>
+      <span class="badge">Per-Key RGB</span>
+    </div>
+  </aside>
+
+  <!-- Main Scene -->
+  <main class="scene-wrapper" role="main" aria-label="Keyboard 3D scene">
+    <div class="keyboard-scene" aria-label="Keyboard assembly animation" id="keyboardScene">
+
+      <div class="kb-body" id="kbBody" role="img" aria-label="3D keyboard model">
+
+        <!-- PCB Layer -->
+        <div class="layer pcb-layer" aria-label="Motherboard layer" role="img">
+          <div class="trace-line" style="top: 22%; left: 8%; width: 80%;"></div>
+          <div class="trace-line" style="top: 38%; left: 12%; width: 60%;"></div>
+          <div class="trace-line" style="top: 55%; left: 10%; width: 70%;"></div>
+          <div class="trace-line" style="top: 72%; left: 15%; width: 55%;"></div>
+          <div class="trace-line" style="top: 30%; left: 20%; width: 45%; height: 2px; background: linear-gradient(90deg, transparent, rgba(60,230,160,0.4), transparent);"></div>
+        </div>
+
+        <!-- Foam Layer -->
+        <div class="layer foam-layer" aria-label="Sound dampening foam" role="img"></div>
+
+        <!-- Plate Layer -->
+        <div class="layer plate-layer" aria-label="Switch plate" role="img"></div>
+
+        <!-- Switches -->
+        <div class="layer switches-layer" aria-label="Mechanical switches" role="list" id="switchesLayer"></div>
+
+        <!-- Keycaps -->
+        <div class="layer keycaps-layer" aria-label="Keycaps" role="list" id="keycapsLayer"></div>
+
+        <!-- Rotary Knob -->
+        <div class="knob-container" aria-label="Rotary knob control" role="button" tabindex="0" onclick="rotateKnob()" onkeydown="if(event.key==='Enter'||event.key===' '){rotateKnob();event.preventDefault();}">
+          <div class="knob" id="knob" aria-label="Brass rotary knob">
+            <div class="knob-indicator"></div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Controls -->
+  <nav class="controls-bar" aria-label="Keyboard controls">
+    <button class="ctrl-btn" onclick="replayAnimation()" aria-label="Replay assembly animation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      Replay
+    </button>
+    <button class="ctrl-btn" onclick="toggleMute()" aria-label="Toggle mute" id="muteBtn">
+      <svg id="muteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      <span>Mute</span>
+    </button>
+    <button class="ctrl-btn" onclick="toggleRGB()" aria-label="Toggle RGB lighting" id="rgbBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v6m0 6v6m-9-9h6m6 0h6"/></svg>
+      <span>RGB</span>
+    </button>
+  </nav>
+
+  <script>
+    // --- Layout Data ---
+    const rows = [
+      { keys: ['Esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12','Del'], spans: [1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+      { keys: ['`','1','2','3','4','5','6','7','8','9','0','-','=','Backspace'], spans: [1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+      { keys: ['Tab','Q','W','E','R','T','Y','U','I','O','P','[',']','\\'], spans: [1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+      { keys: ['Caps','A','S','D','F','G','H','J','K','L',';','\'','Enter'], spans: [1,1,1,1,1,1,1,1,1,1,1,1,2] },
+      { keys: ['Shift','Z','X','C','V','B','N','M',',','.','/','Shift'], spans: [2,1,1,1,1,1,1,1,1,1,1,2] }
+    ];
+
+    const labelToCode = (label) => {
+      const map = {
+        'Esc':'Escape','Backspace':'Backspace','Tab':'Tab','Caps':'CapsLock',
+        'Shift':'ShiftLeft','Ctrl':'ControlLeft','Alt':'AltLeft','Enter':'Enter',
+        'Space':'Space','Del':'Delete','`':'Backquote','-':'Minus','=':'Equal',
+        '[':'BracketLeft',']':'BracketRight','\\':'Backslash',';':'Semicolon',
+        "'":'Quote',',':'Comma','.':'Period','/':'Slash'
+      };
+      if (map[label]) return map[label];
+      if (label.length === 1 && /[a-zA-Z0-9]/.test(label)) {
+        return /^[0-9]$/.test(label) ? `Digit${label}` : `Key${label.toUpperCase()}`;
+      }
+      return label;
+    };
+
+    const soundTypeFor = (label) => {
+      if (label === 'Space') return 'space';
+      if (label === 'Enter') return 'enter';
+      if (label === 'Backspace') return 'backspace';
+      if (['Shift','Ctrl','Alt','Caps','Tab','Esc','Del','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'].includes(label)) return 'modifier';
+      return 'letter';
+    };
+
+    // --- State ---
+    let audioCtx = null;
+    let audioEnabled = false;
+    let isMuted = false;
+    let rgbActive = false;
+    const keyMap = new Map(); // code -> element
+    const indexMap = new Map(); // index -> element
+
+    // --- Audio ---
+    function initAudio() {
+      if (!audioCtx) {
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) { return; }
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (!audioEnabled) {
+        audioEnabled = true;
+        document.getElementById('audioHint').classList.add('hidden');
+        document.body.removeEventListener('click', initAudio);
+      }
+    }
+    document.body.addEventListener('click', initAudio, { once: true });
+    document.body.addEventListener('keydown', () => {
+      if (!audioEnabled) initAudio();
+    }, { once: true });
+
+    function playSound(type) {
+      if (!audioCtx || isMuted) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      if (type === 'space') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(55, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === 'enter') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(160, now + 0.08);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (type === 'backspace') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.linearRampToValueAtTime(180, now + 0.06);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } else if (type === 'modifier') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(380, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(320, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.06);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+    }
+
+    // --- Build Keyboard ---
+    function buildKeyboard() {
+      const switchLayer = document.getElementById('switchesLayer');
+      const keyLayer = document.getElementById('keycapsLayer');
+      let idx = 0;
+      rows.forEach((row, r) => {
+        row.keys.forEach((label, c) => {
+          const span = row.spans ? (row.spans[c] || 1) : 1;
+          const code = labelToCode(label);
+
+          // Switch
+          const sw = document.createElement('div');
+          sw.className = 'switch';
+          sw.style.gridColumn = `${c + 1} / span ${span}`;
+          sw.style.gridRow = `${r + 1}`;
+          sw.style.setProperty('--i', idx);
+          sw.innerHTML = `<div class="switch-housing"></div><div class="switch-stem"></div>`;
+          sw.setAttribute('data-index', idx);
+          switchLayer.appendChild(sw);
+
+          // Keycap
+          const key = document.createElement('button');
+          key.className = 'key';
+          key.style.gridColumn = `${c + 1} / span ${span}`;
+          key.style.gridRow = `${r + 1}`;
+          key.setAttribute('data-key', code);
+          key.setAttribute('data-label', label);
+          key.setAttribute('data-index', idx);
+          key.setAttribute('aria-label', label);
+          const shortLabel = label.length > 6 ? label.substring(0, 3) : label;
+          key.innerHTML = `<span class="key-cap">${shortLabel}</span>`;
+          key.addEventListener('click', () => {
+            pressKey(key);
+          });
+          key.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              pressKey(key);
+              e.preventDefault();
+            }
+          });
+          keyLayer.appendChild(key);
+
+          if (code && code !== label) {
+            keyMap.set(code, key);
+          } else if (label.length === 1) {
+            keyMap.set('Key' + label.toUpperCase(), key);
+          }
+          indexMap.set(String(idx), key);
+
+          idx++;
+        });
+      });
+    }
+
+    // --- Interaction ---
+    function pressKey(el) {
+      if (el.classList.contains('pressed')) return;
+      const label = el.getAttribute('data-label') || '';
+      const type = soundTypeFor(label);
+      const idx = el.getAttribute('data-index');
+      const sw = document.querySelector('.switch[data-index="' + idx + '"]');
+      if (sw) sw.classList.add('pressed');
+      if (audioEnabled && !isMuted) playSound(type);
+      el.classList.add('pressed');
+      setTimeout(() => {
+        el.classList.remove('pressed');
+        if (sw) sw.classList.remove('pressed');
+      }, 130);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const code = e.code;
+      const el = keyMap.get(code);
+      if (!el || e.repeat) return;
+      pressKey(el);
+      // Prevent default only for letter/number keys to avoid page scroll
+      if (code.startsWith('Key') || code.startsWith('Digit')) {
+        e.preventDefault();
+      }
+    });
+
+    // --- Replay ---
+    function replayAnimation() {
+      const kb = document.getElementById('kbBody');
+      kb.classList.remove('animated');
+      document.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+      // Small delay for reflow
+      setTimeout(() => {
+        kb.classList.add('animated');
+      }, 80);
+    }
+
+    // --- Mute ---
+    function toggleMute() {
+      isMuted = !isMuted;
+      const btn = document.getElementById('muteBtn');
+      const icon = document.getElementById('muteIcon');
+      btn.classList.toggle('active', isMuted);
+      if (isMuted) {
+        btn.querySelector('span').textContent = 'Unmute';
+        icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>';
+      } else {
+        btn.querySelector('span').textContent = 'Mute';
+        icon.innerHTML = '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19"/><line x1="23" y1="9" x2="17" y2="15"/>';
+      }
+    }
+
+    // --- RGB Toggle ---
+    function toggleRGB() {
+      rgbActive = !rgbActive;
+      document.getElementById('rgbBtn').classList.toggle('active', rgbActive);
+      document.getElementById('keyboardScene').classList.toggle('rgb-active', rgbActive);
+    }
+
+    // --- Rotary Knob ---
+    let knobRotation = 0;
+    function rotateKnob() {
+      knobRotation += 45;
+      const knob = document.getElementById('knob');
+      knob.style.transform = `rotate(${knobRotation}deg)`;
+      if (audioEnabled && !isMuted) {
+        // A soft click
+        playSound('modifier');
+      }
+    }
+
+    // --- Initialization ---
+    buildKeyboard();
+    setTimeout(() => {
+      document.getElementById('kbBody').classList.add('animated');
+    }, 300);
+  </script>
+</body>
+</html>
