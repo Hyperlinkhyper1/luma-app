@@ -1139,10 +1139,6 @@ class _DataDeletionRequestDialogState
   }
 
   Future<void> _submit() async {
-    if (_reason.text.trim().isEmpty) {
-      setState(() => _error = 'Tell the operator why, so they can decide.');
-      return;
-    }
     setState(() {
       _busy = true;
       _error = null;
@@ -1206,8 +1202,8 @@ class _DataDeletionRequestDialogState
                 maxLength: 2000,
                 textCapitalization: TextCapitalization.sentences,
                 style: TextStyle(color: luma.textPrimary, fontSize: 14),
-                decoration: _fieldDecoration(context, 'Why?',
-                    hint: 'They read this before deciding.'),
+                decoration: _fieldDecoration(context, 'Why? (optional)',
+                    hint: "You don't have to give a reason."),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 4),

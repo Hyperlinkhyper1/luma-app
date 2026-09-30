@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../account/plan.dart';
@@ -401,6 +402,7 @@ class _ChatLayoutState extends State<_ChatLayout> {
                 thinking:
                     widget.controller.isSending &&
                     _pendingConversationId == activeId,
+                draft: widget.controller.draftReply,
                 composer: composer,
                 onOpenPlugin: widget.onOpenPlugin,
               );
@@ -1444,12 +1446,14 @@ class _ConversationThread extends StatelessWidget {
     super.key,
     required this.conversationId,
     required this.thinking,
+    required this.draft,
     required this.composer,
     required this.onOpenPlugin,
   });
 
   final int conversationId;
   final bool thinking;
+  final ValueListenable<String> draft;
   final Widget composer;
   final ValueChanged<String> onOpenPlugin;
 
@@ -1463,6 +1467,7 @@ class _ConversationThread extends StatelessWidget {
           child: ChatMessageList(
             stream: repo.watchMessages(conversationId),
             thinking: thinking,
+            draft: draft,
             onOpenQrPlugin: () => onOpenPlugin('qr-code-generator'),
           ),
         ),

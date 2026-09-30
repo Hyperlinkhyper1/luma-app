@@ -600,5 +600,87 @@
     }
   },
   "textLibraryTitleHint": "Title",
-  "textLibraryUnderline": "Underline"
+  "textLibraryUnderline": "Underline",
+  "audioToolsTitle": "Audio Tools",
+  "audioToolsSubtitle": "Shape your voice with an equalizer and send it to Discord, OBS or any app that takes a microphone.",
+  "audioToolsWindowsOnly": "Windows only",
+  "audioToolsWindowsOnlyBody": "Audio Tools routes your microphone in real time, which luma can only do in the Windows desktop app.",
+  "audioToolsStart": "Start",
+  "audioToolsStop": "Stop",
+  "audioToolsLive": "Live",
+  "audioToolsOff": "Off",
+  "audioToolsRouting": "Routing",
+  "audioToolsMicrophone": "Microphone",
+  "audioToolsSendTo": "Send to",
+  "audioToolsWindowsDefault": "Windows default ({name})",
+  "@audioToolsWindowsDefault": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "audioToolsWindowsDefaultPlain": "Windows default",
+  "audioToolsRefreshDevices": "Refresh devices",
+  "audioToolsVirtualCableTag": "Virtual cable",
+  "audioToolsNotACable": "This output is a speaker, not a virtual cable, so other apps won't hear it as a microphone.",
+  "audioToolsHearMyself": "Hear myself",
+  "audioToolsHearMyselfBody": "Also play the result on your default speakers or headset.",
+  "audioToolsBypass": "Bypass equalizer",
+  "audioToolsBypassBody": "Send your voice through untouched, to compare.",
+  "audioToolsAutoStart": "Start with luma",
+  "audioToolsAutoStartBody": "Turn the voice changer on as soon as luma opens.",
+  "audioToolsDiscordTitle": "Use it in Discord",
+  "audioToolsCableFound": "Virtual cable found",
+  "audioToolsCableMissingTitle": "One-time setup: a virtual cable",
+  "audioToolsCableMissingBody": "Windows can't add a new microphone without a driver, so luma sends your processed voice through a free virtual cable. Install VB-CABLE once, then come back here. Discord, OBS and games will see it as a microphone.",
+  "audioToolsGetCable": "Get VB-CABLE",
+  "audioToolsInstalledCheck": "I installed it",
+  "audioToolsStepSendTo": "Set Send to to {device}.",
+  "@audioToolsStepSendTo": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "audioToolsUseCable": "Use it",
+  "audioToolsStepDiscord": "In Discord, open Settings → Voice & Video and set Input Device to {device}.",
+  "@audioToolsStepDiscord": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "audioToolsStepStart": "Press Start. If the effect sounds washed out, turn off Discord's noise suppression.",
+  "audioToolsErrDeviceMissing": "That audio device isn't connected any more. Pick another one.",
+  "audioToolsErrDeviceInUse": "Another app is using that device in exclusive mode.",
+  "audioToolsErrDeviceLost": "The audio device was disconnected, so the voice changer stopped.",
+  "audioToolsErrMicBlocked": "Windows is blocking the microphone. Turn on \"Let desktop apps access your microphone\" in Privacy settings.",
+  "audioToolsErrFailed": "Couldn't start audio. Try another device.",
+  "audioToolsOpenSettings": "Open settings",
+  "audioToolsDismiss": "Dismiss",
+  "audioToolsEqualizer": "Equalizer",
+  "audioToolsReset": "Reset",
+  "audioToolsEqHint": "Drag a point to shape your voice. Scroll over the graph to make the selected band wider or narrower.",
+  "audioToolsPreamp": "Preamp",
+  "audioToolsFrequency": "Frequency",
+  "audioToolsGain": "Gain",
+  "audioToolsWidth": "Width (Q)",
+  "audioToolsBandOn": "On",
+  "audioToolsTypeHighPass": "Low cut",
+  "audioToolsTypeLowShelf": "Low shelf",
+  "audioToolsTypePeak": "Bell",
+  "audioToolsTypeHighShelf": "High shelf",
+  "audioToolsTypeLowPass": "High cut",
+  "audioToolsPresetFlat": "Flat",
+  "audioToolsPresetClear": "Clear",
+  "audioToolsPresetDeep": "Deep",
+  "audioToolsPresetRadio": "Radio",
+  "audioToolsPresetTelephone": "Telephone",
+  "audioToolsPresetMegaphone": "Megaphone",
+  "audioToolsPresetMuffled": "Through a wall",
+  "audioToolsPresetTiny": "Tiny",
+  "audioToolsPresetCustom": "Custom"
 }

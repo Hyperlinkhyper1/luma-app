@@ -27,12 +27,24 @@ void _handleInferenceRequest(
       final modelParams = bindings.llama_model_default_params();
       modelParams.n_gpu_layers = request.nGpuLayers;
 
+      // luma patch: with no layers offloaded, llama.cpp still hands large
+      // prompt batches to any registered GPU (op offload), so a bundled
+      // Vulkan backend runs anyway — and a bad mobile driver aborts the
+      // process. An empty device list keeps the model entirely on the CPU.
+      ffi.Pointer<ffi.Pointer<ggml_backend_device>>? noDevices;
+      if (request.nGpuLayers == 0) {
+        noDevices = calloc<ffi.Pointer<ggml_backend_device>>();
+        noDevices.value = ffi.nullptr;
+        modelParams.devices = noDevices;
+      }
+
       final modelPathPtr = request.modelPath.toNativeUtf8();
       model = bindings.llama_model_load_from_file(
         modelPathPtr.cast(),
         modelParams,
       );
       calloc.free(modelPathPtr);
+      if (noDevices != null) calloc.free(noDevices);
     }
 
     if (model.address == 0) {

@@ -55,6 +55,7 @@ class OpenAiCompatibleClient implements AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
+    AiTextProgress? onText,
   }) async {
     final messages = <Map<String, dynamic>>[
       if (systemPrompt.isNotEmpty) {'role': 'system', 'content': systemPrompt},

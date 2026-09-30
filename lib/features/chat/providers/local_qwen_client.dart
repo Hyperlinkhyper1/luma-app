@@ -35,8 +35,56 @@ class LocalQwenClient implements AiClient {
   /// ships and falls back to the CPU by itself when there's no usable GPU —
   /// on an RX 9060 XT it evaluates prompts ~2.5× faster than six CPU
   /// threads. Android stays on the CPU: mobile Vulkan drivers are too
-  /// uneven, and a driver fault takes the whole app down.
+  /// uneven, and a driver fault takes the whole app down. 0 also keeps the
+  /// bundled Vulkan backend out entirely (see LUMA_PATCH.md).
   static int get _gpuLayers => Platform.isAndroid ? 0 : 99;
+
+  /// On Android, one thread per performance core. Phones pair a few fast
+  /// cores with slower efficiency cores, and llama.cpp's threads wait for
+  /// each other every step, so the default of four threads on a 2 + 6
+  /// Snapdragon ran at the pace of its little cores. Null (llama.cpp's
+  /// default) elsewhere, or when the kernel doesn't describe its cores.
+  static final int? _threads = Platform.isAndroid ? _androidThreads() : null;
+
+  static int? _androidThreads() {
+    try {
+      final cores = Directory('/sys/devices/system/cpu')
+          .listSync()
+          .where((entry) => RegExp(r'/cpu\d+$').hasMatch(entry.path));
+      final capacities = <int>[];
+      final frequencies = <int>[];
+      for (final core in cores) {
+        final capacity = _readInt('${core.path}/cpu_capacity');
+        if (capacity != null) capacities.add(capacity);
+        final frequency = _readInt('${core.path}/cpufreq/cpuinfo_max_freq');
+        if (frequency != null) frequencies.add(frequency);
+      }
+      return performanceCoreCount(
+        capacities.isNotEmpty ? capacities : frequencies,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static int? _readInt(String path) {
+    try {
+      return int.tryParse(File(path).readAsStringSync().trim());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The number of cores faster than the slowest ones, given one capacity
+  /// (or max frequency) per core. When every core is alike there is no
+  /// slow tier to leave out, so all of them count, up to eight.
+  @visibleForTesting
+  static int? performanceCoreCount(List<int> coreSpeeds) {
+    if (coreSpeeds.isEmpty) return null;
+    final slowest = coreSpeeds.reduce((a, b) => a < b ? a : b);
+    final fast = coreSpeeds.where((speed) => speed > slowest).length;
+    return fast > 0 ? fast : coreSpeeds.length.clamp(1, 8);
+  }
 
   static const _options = LLMChatOptions(
     toolAttempts: 5,
@@ -77,6 +125,7 @@ class LocalQwenClient implements AiClient {
           path,
           contextSize: contextSize,
           nGpuLayers: _gpuLayers,
+          threads: _threads,
           maxToolAttempts: 5,
         ),
       );
@@ -139,6 +188,7 @@ class LocalQwenClient implements AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
+    AiTextProgress? onText,
   }) async {
     final path = await _modelPath();
     if (path == null) {
@@ -162,15 +212,36 @@ class LocalQwenClient implements AiClient {
         ),
     ];
 
+    // Read the stream rather than awaiting chatResponse, so the reply can be
+    // shown while it is written: on a phone CPU the whole reply takes tens
+    // of seconds. Text is concatenated across tool rounds and the last
+    // round's token counts are kept, exactly as chatResponse does.
+    var reply = '';
+    var shown = '';
+    var promptTokens = 0;
+    var outputTokens = 0;
     try {
-      final response = await repository.chatResponse(
+      await for (final chunk in repository.streamChat(
         _modelName,
         messages: _messages(systemPrompt, _fitHistory(history)),
         tools: nativeTools,
         options: _options,
-      );
-      final usage = response.usage;
-      final text = stripThinking(response.content ?? '');
+      )) {
+        final message = chunk.message;
+        if (message?.role == LLMRole.assistant && message?.content != null) {
+          reply += message!.content!;
+          final visible = stripThinking(reply);
+          if (onText != null && visible != shown) {
+            shown = visible;
+            onText(visible);
+          }
+        }
+        if (chunk.done ?? false) {
+          promptTokens = chunk.promptEvalCount ?? promptTokens;
+          outputTokens = chunk.evalCount ?? outputTokens;
+        }
+      }
+      final text = stripThinking(reply);
       return AiChatResult(
         text: text.isNotEmpty
             ? text
@@ -178,8 +249,8 @@ class LocalQwenClient implements AiClient {
         metadataJson: metadataJson,
         usage: AiTokenUsage(
           model: 'Qwen3.5-0.8B (on-device)',
-          inputTokens: usage.promptTokens,
-          outputTokens: usage.completionTokens,
+          inputTokens: promptTokens,
+          outputTokens: outputTokens,
         ),
       );
     } on AiError {

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: September 12, 2026**
+**Last updated: September 30, 2026**
 
 luma is a local-first app. This policy explains, plainly, what that means in
 practice: what stays on your device, what an optional account sends to the
@@ -27,12 +27,16 @@ If anything here is unclear, email me — see [Contact](#contact).
   submitted prompts. Do not interpret snapshot encryption as a guarantee
   covering every online feature.
 - **The AI Assistant** either talks straight from your device to the AI
-  provider you choose using your own API key, or — for the built-in
-  free-tier modes — is relayed through my server, which never stores what
-  you asked or what you got back, only how much you've used against your
-  plan's allowance.
+  provider you choose using your own API key, or — for the built-in modes
+  (Aurora, Nebula, Pulsar) — is relayed through my server to Google,
+  OpenRouter or Mistral. My server doesn't store what you asked or what you
+  got back, only how much you've used. **The AI service that answers can
+  keep your messages under its own terms, and Google may use them to
+  improve its products.** Don't put anything in a built-in-mode chat that
+  you wouldn't want a third party to read. See [The AI Assistant](#the-ai-assistant).
 - **No ads, no analytics SDK, no crash reporter, no data broker.** I don't
-  sell or share your data with anyone, for any reason.
+  sell your data, and I don't share it except with the services listed in
+  this policy, for the feature you're using.
 
 ## Data you keep entirely on your device
 
@@ -111,21 +115,95 @@ described above and are never exposed this way.
 
 ## The AI Assistant
 
-The Assistant supports Anthropic, OpenAI, Mistral, and Google models,
-in two different modes:
+The Assistant can reach an AI model in three ways. Which one you're using
+decides who sees your messages.
 
-- **Your own API key ("bring your own key")**: the app talks directly to
-  that provider's API from your device, using a key you enter yourself.
-  I never see this traffic; it doesn't pass through my server at all. Your
-  key is stored on your device, encrypted at rest, and is never sent
-  anywhere except to that provider.
-- **The built-in free-tier modes**: requests are relayed through my
-  server, which attaches its own provider key so you don't need one. In
-  this mode I do not store the content of your messages or the model's
-  replies — only a running count of tokens or messages used, to enforce
-  your plan's usage allowance. Your conversation history itself is only
-  ever stored locally on your device, never on the server, regardless of
-  which mode you use.
+### An on-device model
+
+If you download a local model, the whole conversation runs on your own
+device. Nothing you type is sent anywhere. The only network traffic is the
+one-time model download from Hugging Face.
+
+### Your own API key
+
+The app talks directly from your device to the provider you pick
+(Anthropic, OpenAI, Mistral or Google), using a key you enter yourself.
+This traffic never passes through my server. Your key is stored on your
+device, encrypted at rest, and is sent only to that provider. That
+provider's own privacy policy and terms cover what you send it.
+
+### The built-in modes (Aurora, Nebula, Pulsar)
+
+These need an approved account. The app sends your request to my server,
+which adds its own provider key and passes the request on to one of these
+AI services:
+
+| Service | Run by | Where |
+|---|---|---|
+| Google AI Studio (Gemini API) | Google | United States |
+| OpenRouter | OpenRouter, Inc. | United States. OpenRouter hands the request to the company that runs the chosen model, which can be in the US, the EU, China or elsewhere. |
+| Mistral | Mistral AI | France (EU) |
+
+I choose which service and model answers each mode. That can change without
+notice, for example when a model is retired or a free quota runs out. The
+AI Detector plugin and the "Luma Support" chat use the same relay. Luma
+Support always goes to Mistral.
+
+**What the AI service receives:**
+
+- The messages in the conversation you're having, including earlier
+  messages in that chat that the app sends along for context.
+- The instructions the app adds. These can include your saved Assistant
+  memory and the profile notes you wrote in Assistant settings.
+- Not your email address, your luma account ID or your IP address. The
+  request comes from my server.
+
+**What my server keeps:** not the content of your messages or the replies.
+It keeps only usage counts with timestamps, used to enforce your plan's
+allowance:
+
+- tokens per mode
+- the number of Luma Support messages
+- the number of web searches
+
+These counts are deleted with your account.
+
+**What the AI service may keep.** Each service handles your request under
+its own terms, not mine:
+
+- **Google:** the built-in modes may run on Google's free (unpaid) tier. On
+  that tier, Google keeps prompts and responses, uses them to improve its
+  products, and may have human reviewers read them.
+- **OpenRouter:** OpenRouter and the model provider it passes your request
+  to each apply their own policies. Some providers keep or train on
+  prompts, especially for free models.
+- **Mistral:** Mistral's API data policy applies.
+
+So treat a built-in-mode chat like any other message sent to an outside
+company. **Don't put passwords, health details, financial account numbers
+or other people's personal information in it.** If you need a provider's
+stricter business terms, use your own API key instead.
+
+**Leaving the EU:** Google and OpenRouter are US companies, and OpenRouter
+can pass your request to a provider in another country. Using the built-in
+modes therefore sends your messages outside the European Union.
+
+### Web search
+
+When the Assistant searches the web in a built-in mode, it writes a search
+query from your conversation. That query goes to a search service
+(SearXNG) that I run, which passes it on to public search engines such as
+Google, Bing and DuckDuckGo. The engines receive the query text only. They
+see it coming from my server, not from your device or IP address. The
+search results go back to the AI service answering you, as part of the
+conversation.
+
+### Your conversations
+
+Your conversation history is stored only on your device, whichever way you
+reach a model. Your Assistant memory and profile notes sync between your
+devices through the encrypted sync described above, like any other
+collection.
 
 ## Secure Chat (the messaging plugin)
 
@@ -144,12 +222,24 @@ in the Terms for what happens next.
 
 No crash reporting, no analytics or telemetry SDK, no advertising network,
 and no data broker of any kind is built into luma or its server. I don't
-sell, rent, or otherwise share your personal data with third parties for
-their own purposes.
+sell or rent your personal data. The only third parties that receive it are
+the ones this policy names, for the feature you're using. Note that some of
+them apply their own terms to it, as [The AI Assistant](#the-ai-assistant)
+explains.
 
-The only aggregate, non-personal data the server records is operational:
-host-level metrics (CPU/memory/disk of the server itself) and per-plugin
-download counts, neither of which is tied to your identity.
+Besides your account and sync data, the server records:
+
+- **Anonymous operational data:** host-level metrics (CPU, memory and disk
+  of the server itself) and per-plugin download counts. Neither is tied to
+  you.
+- **Per-account counters:** AI usage counts (see above) and how many
+  requests and bytes your account has sent and received, used to spot
+  abuse.
+- **An activity log** of account events such as registrations, sign-ins
+  and password resets, which names the account's email.
+
+All of these are deleted, or scrubbed of your email, when your account is
+deleted.
 
 ## Third-party services a handful of features talk to
 
@@ -161,7 +251,8 @@ only the minimum needed to do their job:
 | App auto-updater | GitHub Releases | An anonymous check for the latest version |
 | Plugin marketplace | GitHub (raw content) | An anonymous fetch of the plugin catalog |
 | Finance → Stocks | Yahoo Finance / Stooq | The ticker symbol you're looking up — no account or key |
-| AI Assistant (BYOK mode) | Your chosen AI provider | Your prompts, using your own API key |
+| AI Assistant (your own key) | Your chosen AI provider | Your prompts, using your own API key |
+| AI Assistant (on-device model) | Hugging Face | A one-time model download — not your data |
 | Wi-Fi Speed Test plugin | Cloudflare | A bandwidth test, like any speed-test site |
 | Minecraft Launcher plugin | Microsoft/Xbox login, Mojang, Modrinth, and mod-loader metadata services | Your own Microsoft account sign-in (handled entirely by Microsoft) plus public version/mod metadata lookups |
 | Groceries plugin | groceries.luma-app.cc | Product search terms, to look up prices |
@@ -180,19 +271,40 @@ advertising cookies are used anywhere.
 ## Data retention and deletion
 
 You can delete your account at any time from Settings → Sync & account →
-Delete account. Doing so removes your account record, signs out every
-device, and deletes your encrypted sync data from the server. Data already
-stored locally on your own devices isn't touched — deleting your account
-only affects the server copy.
+Delete account. Doing so signs out every device and removes from the
+server:
 
-Some limited records may persist after deletion for operational reasons:
-security logs used to prevent abuse are kept for a bounded period, and
-records tied to features you shared with other people (for example, a
-family group you were a member of) may still reference your former
-membership, since removing it entirely could affect data those other
-people still legitimately have. If you'd like help with a specific case —
-including removing lingering references after account deletion — email me
-and I'll sort it out by hand.
+- your account record, sign-in links and encrypted sync data
+- a family you own, including its members, invites and shared events
+- in a family you only belong to: your membership and the events you
+  shared
+- your Secure Chat key, your chat invites, and every conversation you were
+  part of, with its relayed messages
+- the recipes you published, with their reviews and photos, and your
+  reviews of other people's recipes
+- Subway Builder rooms you own, plus your place in anyone else's
+- your AI usage and traffic counts
+
+Data already stored locally on your own devices, or on the devices of
+people you shared with, isn't touched. Deleting your account only affects
+the server.
+
+A few records survive in scrubbed form:
+
+- The activity log keeps its entries, but your email is replaced with "a
+  deleted account".
+- A deletion request you filed keeps its status and date, but loses your
+  email and reason.
+- Security records used to prevent abuse, such as blocked IP addresses, are
+  kept for a bounded period.
+
+If you'd like help with a specific case, email me and I'll sort it out by
+hand.
+
+You can also ask for deletion from Settings instead of deleting the account
+yourself. You don't have to give a reason. I'll only decline if the law
+allows or requires me to keep something (for example, an ongoing abuse
+report), and I'll tell you why.
 
 Session tokens expire automatically after a period of inactivity and are
 stored only as irreversible hashes, never as usable tokens.

@@ -238,4 +238,28 @@ class ChatStore {
     if (sinceMs == null) return List.of(all);
     return all.where((m) => m.createdAtMs > sinceMs).toList();
   }
+
+  /// Removes everything tied to a deleted account and persists the result:
+  /// its public key, invites it sent or was sent (by lowercased [email]),
+  /// and every conversation it was part of along with that conversation's
+  /// relayed messages. The other party keeps whatever their own device
+  /// already decrypted and stored locally.
+  Future<void> deleteUser(String userId, String email) async {
+    final lowerEmail = email.toLowerCase();
+    publicKeyByUserId.remove(userId);
+    invitesById.removeWhere(
+        (_, i) => i.fromUserId == userId || i.toEmail == lowerEmail);
+    final conversationIds = conversationsById.values
+        .where((c) => c.hasUser(userId))
+        .map((c) => c.id)
+        .toList();
+    for (final id in conversationIds) {
+      conversationsById.remove(id);
+      messagesByConversationId.remove(id);
+    }
+    await saveKeys();
+    await saveInvites();
+    await saveConversations();
+    await saveMessages();
+  }
 }

@@ -259,4 +259,26 @@ class RecipeStore {
     await saveRecipes();
     await saveReviews();
   }
+
+  /// Removes everything a deleted account published: its recipes (with their
+  /// reviews and photos) and its reviews of other people's recipes.
+  Future<void> deleteUser(String userId) async {
+    for (final recipe in recipesById.values
+        .where((r) => r.authorId == userId)
+        .toList()) {
+      recipesById.remove(recipe.id);
+      await deleteMedia(recipe.photoId);
+      for (final r in reviewsByRecipeId.remove(recipe.id) ?? const []) {
+        await deleteMedia(r.photoId);
+      }
+    }
+    for (final reviews in reviewsByRecipeId.values) {
+      for (final r in reviews.where((r) => r.userId == userId).toList()) {
+        reviews.remove(r);
+        await deleteMedia(r.photoId);
+      }
+    }
+    await saveRecipes();
+    await saveReviews();
+  }
 }

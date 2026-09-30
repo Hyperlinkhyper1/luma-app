@@ -629,14 +629,13 @@ void main() {
       expect((requests.first as Map)['pending'], isTrue);
     });
 
-    test('a reason is required and only one request may be open', () async {
+    test('a reason is optional and only one request may be open', () async {
       final token = await register('bye2@example.com', 'old-password-1');
       final blank = await call('POST', '/api/v1/account/deletion-request',
           token: token, json: {'reason': '   '});
-      expect(blank['httpStatus'], 400);
+      expect(blank['httpStatus'], 200);
+      expect((blank['request'] as Map)['reason'], '');
 
-      await call('POST', '/api/v1/account/deletion-request',
-          token: token, json: {'reason': 'First.'});
       final second = await call('POST', '/api/v1/account/deletion-request',
           token: token, json: {'reason': 'Second.'});
       expect(second['httpStatus'], 409);
@@ -695,10 +694,18 @@ void main() {
       expect((await call('GET', '/api/v1/account', token: token))['httpStatus'],
           401);
 
-      // The decision itself survives as history for the Inbox.
+      // The decision itself survives as history for the Inbox, but without
+      // the email or the reason.
       final inbox = await call('GET', '/admin/deletion-requests', admin: true);
       final requests = inbox['requests'] as List;
-      expect((requests.single as Map)['status'], 'accepted');
+      final kept = requests.single as Map;
+      expect(kept['status'], 'accepted');
+      expect(kept['email'], Store.deletedAccountLabel);
+      expect(kept['reason'] ?? '', isEmpty);
+
+      // Nothing in the activity feed still names the deleted address.
+      expect(store.activity.map((a) => a.message).join('\n'),
+          isNot(contains('gone@example.com')));
     });
 
     test('a decided request cannot be decided again', () async {

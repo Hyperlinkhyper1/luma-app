@@ -202,6 +202,16 @@
       "version": "1.0.0"
     },
     {
+      "id": "audio-tools",
+      "name": "Audio Tools",
+      "description": "A voice changer for Windows. Run your microphone through a nine-band equalizer with presets like Deep, Radio, Telephone and Megaphone, then send the result to a virtual cable so Discord, OBS or any game can pick it as a microphone.",
+      "icon": "graphic_eq",
+      "category": "Utility",
+      "tags": ["Utility", "Audio"],
+      "free": true,
+      "version": "1.0.0"
+    },
+    {
       "id": "auto-clicker",
       "name": "Auto Clicker",
       "description": "Automate mouse clicks at a set interval, with a global hotkey to start and stop from anywhere. Click at your cursor or a fixed spot, single or double, left/middle/right button, repeat forever or a set number of times.",

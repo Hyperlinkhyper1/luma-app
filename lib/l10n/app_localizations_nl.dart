@@ -1354,4 +1354,208 @@ class LNl extends L {
 
   @override
   String get textLibraryUnderline => 'Onderstrepen';
+
+  @override
+  String get audioToolsTitle => 'Audio Tools';
+
+  @override
+  String get audioToolsSubtitle =>
+      'Geef je stem vorm met een equalizer en stuur hem naar Discord, OBS of elke app die een microfoon gebruikt.';
+
+  @override
+  String get audioToolsWindowsOnly => 'Alleen op Windows';
+
+  @override
+  String get audioToolsWindowsOnlyBody =>
+      'Audio Tools stuurt je microfoon live door, en dat kan luma alleen in de Windows-app.';
+
+  @override
+  String get audioToolsStart => 'Starten';
+
+  @override
+  String get audioToolsStop => 'Stoppen';
+
+  @override
+  String get audioToolsLive => 'Live';
+
+  @override
+  String get audioToolsOff => 'Uit';
+
+  @override
+  String get audioToolsRouting => 'Routering';
+
+  @override
+  String get audioToolsMicrophone => 'Microfoon';
+
+  @override
+  String get audioToolsSendTo => 'Sturen naar';
+
+  @override
+  String audioToolsWindowsDefault(String name) {
+    return 'Windows-standaard ($name)';
+  }
+
+  @override
+  String get audioToolsWindowsDefaultPlain => 'Windows-standaard';
+
+  @override
+  String get audioToolsRefreshDevices => 'Apparaten vernieuwen';
+
+  @override
+  String get audioToolsVirtualCableTag => 'Virtuele kabel';
+
+  @override
+  String get audioToolsNotACable =>
+      'Dit is een speaker, geen virtuele kabel, dus andere apps horen het niet als microfoon.';
+
+  @override
+  String get audioToolsHearMyself => 'Mezelf horen';
+
+  @override
+  String get audioToolsHearMyselfBody =>
+      'Speel het resultaat ook af op je standaardspeakers of headset.';
+
+  @override
+  String get audioToolsBypass => 'Equalizer omzeilen';
+
+  @override
+  String get audioToolsBypassBody =>
+      'Stuur je stem onbewerkt door, om te vergelijken.';
+
+  @override
+  String get audioToolsAutoStart => 'Starten met luma';
+
+  @override
+  String get audioToolsAutoStartBody =>
+      'Zet de stemvervormer aan zodra luma opent.';
+
+  @override
+  String get audioToolsDiscordTitle => 'Gebruiken in Discord';
+
+  @override
+  String get audioToolsCableFound => 'Virtuele kabel gevonden';
+
+  @override
+  String get audioToolsCableMissingTitle =>
+      'Eenmalig instellen: een virtuele kabel';
+
+  @override
+  String get audioToolsCableMissingBody =>
+      'Windows kan zonder driver geen nieuwe microfoon toevoegen, dus luma stuurt je bewerkte stem via een gratis virtuele kabel. Installeer VB-CABLE één keer en kom dan hier terug. Discord, OBS en games zien hem als microfoon.';
+
+  @override
+  String get audioToolsGetCable => 'VB-CABLE downloaden';
+
+  @override
+  String get audioToolsInstalledCheck => 'Ik heb hem geïnstalleerd';
+
+  @override
+  String audioToolsStepSendTo(String device) {
+    return 'Zet Sturen naar op $device.';
+  }
+
+  @override
+  String get audioToolsUseCable => 'Gebruiken';
+
+  @override
+  String audioToolsStepDiscord(String device) {
+    return 'Open in Discord Instellingen → Spraak en video en zet Invoerapparaat op $device.';
+  }
+
+  @override
+  String get audioToolsStepStart =>
+      'Druk op Starten. Klinkt het effect vlak, zet dan de ruisonderdrukking van Discord uit.';
+
+  @override
+  String get audioToolsErrDeviceMissing =>
+      'Dat audioapparaat is niet meer aangesloten. Kies een ander.';
+
+  @override
+  String get audioToolsErrDeviceInUse =>
+      'Een andere app gebruikt dat apparaat exclusief.';
+
+  @override
+  String get audioToolsErrDeviceLost =>
+      'Het audioapparaat is losgekoppeld, dus de stemvervormer is gestopt.';
+
+  @override
+  String get audioToolsErrMicBlocked =>
+      'Windows blokkeert de microfoon. Zet \"Desktop-apps toegang geven tot je microfoon\" aan in de privacyinstellingen.';
+
+  @override
+  String get audioToolsErrFailed =>
+      'Audio kon niet starten. Probeer een ander apparaat.';
+
+  @override
+  String get audioToolsOpenSettings => 'Instellingen openen';
+
+  @override
+  String get audioToolsDismiss => 'Sluiten';
+
+  @override
+  String get audioToolsEqualizer => 'Equalizer';
+
+  @override
+  String get audioToolsReset => 'Herstellen';
+
+  @override
+  String get audioToolsEqHint =>
+      'Sleep een punt om je stem vorm te geven. Scroll boven de grafiek om de gekozen band breder of smaller te maken.';
+
+  @override
+  String get audioToolsPreamp => 'Voorversterking';
+
+  @override
+  String get audioToolsFrequency => 'Frequentie';
+
+  @override
+  String get audioToolsGain => 'Versterking';
+
+  @override
+  String get audioToolsWidth => 'Breedte (Q)';
+
+  @override
+  String get audioToolsBandOn => 'Aan';
+
+  @override
+  String get audioToolsTypeHighPass => 'Lage tonen weg';
+
+  @override
+  String get audioToolsTypeLowShelf => 'Lage shelf';
+
+  @override
+  String get audioToolsTypePeak => 'Klok';
+
+  @override
+  String get audioToolsTypeHighShelf => 'Hoge shelf';
+
+  @override
+  String get audioToolsTypeLowPass => 'Hoge tonen weg';
+
+  @override
+  String get audioToolsPresetFlat => 'Vlak';
+
+  @override
+  String get audioToolsPresetClear => 'Helder';
+
+  @override
+  String get audioToolsPresetDeep => 'Diep';
+
+  @override
+  String get audioToolsPresetRadio => 'Radio';
+
+  @override
+  String get audioToolsPresetTelephone => 'Telefoon';
+
+  @override
+  String get audioToolsPresetMegaphone => 'Megafoon';
+
+  @override
+  String get audioToolsPresetMuffled => 'Door de muur';
+
+  @override
+  String get audioToolsPresetTiny => 'Piepklein';
+
+  @override
+  String get audioToolsPresetCustom => 'Eigen';
 }

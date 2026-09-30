@@ -1312,4 +1312,207 @@ class LZh extends L {
 
   @override
   String get textLibraryUnderline => 'Underline';
+
+  @override
+  String get audioToolsTitle => 'Audio Tools';
+
+  @override
+  String get audioToolsSubtitle =>
+      'Shape your voice with an equalizer and send it to Discord, OBS or any app that takes a microphone.';
+
+  @override
+  String get audioToolsWindowsOnly => 'Windows only';
+
+  @override
+  String get audioToolsWindowsOnlyBody =>
+      'Audio Tools routes your microphone in real time, which luma can only do in the Windows desktop app.';
+
+  @override
+  String get audioToolsStart => 'Start';
+
+  @override
+  String get audioToolsStop => 'Stop';
+
+  @override
+  String get audioToolsLive => 'Live';
+
+  @override
+  String get audioToolsOff => 'Off';
+
+  @override
+  String get audioToolsRouting => 'Routing';
+
+  @override
+  String get audioToolsMicrophone => 'Microphone';
+
+  @override
+  String get audioToolsSendTo => 'Send to';
+
+  @override
+  String audioToolsWindowsDefault(String name) {
+    return 'Windows default ($name)';
+  }
+
+  @override
+  String get audioToolsWindowsDefaultPlain => 'Windows default';
+
+  @override
+  String get audioToolsRefreshDevices => 'Refresh devices';
+
+  @override
+  String get audioToolsVirtualCableTag => 'Virtual cable';
+
+  @override
+  String get audioToolsNotACable =>
+      'This output is a speaker, not a virtual cable, so other apps won\'t hear it as a microphone.';
+
+  @override
+  String get audioToolsHearMyself => 'Hear myself';
+
+  @override
+  String get audioToolsHearMyselfBody =>
+      'Also play the result on your default speakers or headset.';
+
+  @override
+  String get audioToolsBypass => 'Bypass equalizer';
+
+  @override
+  String get audioToolsBypassBody =>
+      'Send your voice through untouched, to compare.';
+
+  @override
+  String get audioToolsAutoStart => 'Start with luma';
+
+  @override
+  String get audioToolsAutoStartBody =>
+      'Turn the voice changer on as soon as luma opens.';
+
+  @override
+  String get audioToolsDiscordTitle => 'Use it in Discord';
+
+  @override
+  String get audioToolsCableFound => 'Virtual cable found';
+
+  @override
+  String get audioToolsCableMissingTitle => 'One-time setup: a virtual cable';
+
+  @override
+  String get audioToolsCableMissingBody =>
+      'Windows can\'t add a new microphone without a driver, so luma sends your processed voice through a free virtual cable. Install VB-CABLE once, then come back here. Discord, OBS and games will see it as a microphone.';
+
+  @override
+  String get audioToolsGetCable => 'Get VB-CABLE';
+
+  @override
+  String get audioToolsInstalledCheck => 'I installed it';
+
+  @override
+  String audioToolsStepSendTo(String device) {
+    return 'Set Send to to $device.';
+  }
+
+  @override
+  String get audioToolsUseCable => 'Use it';
+
+  @override
+  String audioToolsStepDiscord(String device) {
+    return 'In Discord, open Settings → Voice & Video and set Input Device to $device.';
+  }
+
+  @override
+  String get audioToolsStepStart =>
+      'Press Start. If the effect sounds washed out, turn off Discord\'s noise suppression.';
+
+  @override
+  String get audioToolsErrDeviceMissing =>
+      'That audio device isn\'t connected any more. Pick another one.';
+
+  @override
+  String get audioToolsErrDeviceInUse =>
+      'Another app is using that device in exclusive mode.';
+
+  @override
+  String get audioToolsErrDeviceLost =>
+      'The audio device was disconnected, so the voice changer stopped.';
+
+  @override
+  String get audioToolsErrMicBlocked =>
+      'Windows is blocking the microphone. Turn on \"Let desktop apps access your microphone\" in Privacy settings.';
+
+  @override
+  String get audioToolsErrFailed =>
+      'Couldn\'t start audio. Try another device.';
+
+  @override
+  String get audioToolsOpenSettings => 'Open settings';
+
+  @override
+  String get audioToolsDismiss => 'Dismiss';
+
+  @override
+  String get audioToolsEqualizer => 'Equalizer';
+
+  @override
+  String get audioToolsReset => 'Reset';
+
+  @override
+  String get audioToolsEqHint =>
+      'Drag a point to shape your voice. Scroll over the graph to make the selected band wider or narrower.';
+
+  @override
+  String get audioToolsPreamp => 'Preamp';
+
+  @override
+  String get audioToolsFrequency => 'Frequency';
+
+  @override
+  String get audioToolsGain => 'Gain';
+
+  @override
+  String get audioToolsWidth => 'Width (Q)';
+
+  @override
+  String get audioToolsBandOn => 'On';
+
+  @override
+  String get audioToolsTypeHighPass => 'Low cut';
+
+  @override
+  String get audioToolsTypeLowShelf => 'Low shelf';
+
+  @override
+  String get audioToolsTypePeak => 'Bell';
+
+  @override
+  String get audioToolsTypeHighShelf => 'High shelf';
+
+  @override
+  String get audioToolsTypeLowPass => 'High cut';
+
+  @override
+  String get audioToolsPresetFlat => 'Flat';
+
+  @override
+  String get audioToolsPresetClear => 'Clear';
+
+  @override
+  String get audioToolsPresetDeep => 'Deep';
+
+  @override
+  String get audioToolsPresetRadio => 'Radio';
+
+  @override
+  String get audioToolsPresetTelephone => 'Telephone';
+
+  @override
+  String get audioToolsPresetMegaphone => 'Megaphone';
+
+  @override
+  String get audioToolsPresetMuffled => 'Through a wall';
+
+  @override
+  String get audioToolsPresetTiny => 'Tiny';
+
+  @override
+  String get audioToolsPresetCustom => 'Custom';
 }

@@ -2544,6 +2544,372 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Underline'**
   String get textLibraryUnderline;
+
+  /// No description provided for @audioToolsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Tools'**
+  String get audioToolsTitle;
+
+  /// No description provided for @audioToolsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape your voice with an equalizer and send it to Discord, OBS or any app that takes a microphone.'**
+  String get audioToolsSubtitle;
+
+  /// No description provided for @audioToolsWindowsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows only'**
+  String get audioToolsWindowsOnly;
+
+  /// No description provided for @audioToolsWindowsOnlyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio Tools routes your microphone in real time, which luma can only do in the Windows desktop app.'**
+  String get audioToolsWindowsOnlyBody;
+
+  /// No description provided for @audioToolsStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get audioToolsStart;
+
+  /// No description provided for @audioToolsStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get audioToolsStop;
+
+  /// No description provided for @audioToolsLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get audioToolsLive;
+
+  /// No description provided for @audioToolsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get audioToolsOff;
+
+  /// No description provided for @audioToolsRouting.
+  ///
+  /// In en, this message translates to:
+  /// **'Routing'**
+  String get audioToolsRouting;
+
+  /// No description provided for @audioToolsMicrophone.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone'**
+  String get audioToolsMicrophone;
+
+  /// No description provided for @audioToolsSendTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to'**
+  String get audioToolsSendTo;
+
+  /// No description provided for @audioToolsWindowsDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows default ({name})'**
+  String audioToolsWindowsDefault(String name);
+
+  /// No description provided for @audioToolsWindowsDefaultPlain.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows default'**
+  String get audioToolsWindowsDefaultPlain;
+
+  /// No description provided for @audioToolsRefreshDevices.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh devices'**
+  String get audioToolsRefreshDevices;
+
+  /// No description provided for @audioToolsVirtualCableTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual cable'**
+  String get audioToolsVirtualCableTag;
+
+  /// No description provided for @audioToolsNotACable.
+  ///
+  /// In en, this message translates to:
+  /// **'This output is a speaker, not a virtual cable, so other apps won\'t hear it as a microphone.'**
+  String get audioToolsNotACable;
+
+  /// No description provided for @audioToolsHearMyself.
+  ///
+  /// In en, this message translates to:
+  /// **'Hear myself'**
+  String get audioToolsHearMyself;
+
+  /// No description provided for @audioToolsHearMyselfBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Also play the result on your default speakers or headset.'**
+  String get audioToolsHearMyselfBody;
+
+  /// No description provided for @audioToolsBypass.
+  ///
+  /// In en, this message translates to:
+  /// **'Bypass equalizer'**
+  String get audioToolsBypass;
+
+  /// No description provided for @audioToolsBypassBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Send your voice through untouched, to compare.'**
+  String get audioToolsBypassBody;
+
+  /// No description provided for @audioToolsAutoStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start with luma'**
+  String get audioToolsAutoStart;
+
+  /// No description provided for @audioToolsAutoStartBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn the voice changer on as soon as luma opens.'**
+  String get audioToolsAutoStartBody;
+
+  /// No description provided for @audioToolsDiscordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it in Discord'**
+  String get audioToolsDiscordTitle;
+
+  /// No description provided for @audioToolsCableFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Virtual cable found'**
+  String get audioToolsCableFound;
+
+  /// No description provided for @audioToolsCableMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time setup: a virtual cable'**
+  String get audioToolsCableMissingTitle;
+
+  /// No description provided for @audioToolsCableMissingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows can\'t add a new microphone without a driver, so luma sends your processed voice through a free virtual cable. Install VB-CABLE once, then come back here. Discord, OBS and games will see it as a microphone.'**
+  String get audioToolsCableMissingBody;
+
+  /// No description provided for @audioToolsGetCable.
+  ///
+  /// In en, this message translates to:
+  /// **'Get VB-CABLE'**
+  String get audioToolsGetCable;
+
+  /// No description provided for @audioToolsInstalledCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'I installed it'**
+  String get audioToolsInstalledCheck;
+
+  /// No description provided for @audioToolsStepSendTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Set Send to to {device}.'**
+  String audioToolsStepSendTo(String device);
+
+  /// No description provided for @audioToolsUseCable.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it'**
+  String get audioToolsUseCable;
+
+  /// No description provided for @audioToolsStepDiscord.
+  ///
+  /// In en, this message translates to:
+  /// **'In Discord, open Settings → Voice & Video and set Input Device to {device}.'**
+  String audioToolsStepDiscord(String device);
+
+  /// No description provided for @audioToolsStepStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Press Start. If the effect sounds washed out, turn off Discord\'s noise suppression.'**
+  String get audioToolsStepStart;
+
+  /// No description provided for @audioToolsErrDeviceMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'That audio device isn\'t connected any more. Pick another one.'**
+  String get audioToolsErrDeviceMissing;
+
+  /// No description provided for @audioToolsErrDeviceInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Another app is using that device in exclusive mode.'**
+  String get audioToolsErrDeviceInUse;
+
+  /// No description provided for @audioToolsErrDeviceLost.
+  ///
+  /// In en, this message translates to:
+  /// **'The audio device was disconnected, so the voice changer stopped.'**
+  String get audioToolsErrDeviceLost;
+
+  /// No description provided for @audioToolsErrMicBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows is blocking the microphone. Turn on \"Let desktop apps access your microphone\" in Privacy settings.'**
+  String get audioToolsErrMicBlocked;
+
+  /// No description provided for @audioToolsErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t start audio. Try another device.'**
+  String get audioToolsErrFailed;
+
+  /// No description provided for @audioToolsOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get audioToolsOpenSettings;
+
+  /// No description provided for @audioToolsDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get audioToolsDismiss;
+
+  /// No description provided for @audioToolsEqualizer.
+  ///
+  /// In en, this message translates to:
+  /// **'Equalizer'**
+  String get audioToolsEqualizer;
+
+  /// No description provided for @audioToolsReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get audioToolsReset;
+
+  /// No description provided for @audioToolsEqHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag a point to shape your voice. Scroll over the graph to make the selected band wider or narrower.'**
+  String get audioToolsEqHint;
+
+  /// No description provided for @audioToolsPreamp.
+  ///
+  /// In en, this message translates to:
+  /// **'Preamp'**
+  String get audioToolsPreamp;
+
+  /// No description provided for @audioToolsFrequency.
+  ///
+  /// In en, this message translates to:
+  /// **'Frequency'**
+  String get audioToolsFrequency;
+
+  /// No description provided for @audioToolsGain.
+  ///
+  /// In en, this message translates to:
+  /// **'Gain'**
+  String get audioToolsGain;
+
+  /// No description provided for @audioToolsWidth.
+  ///
+  /// In en, this message translates to:
+  /// **'Width (Q)'**
+  String get audioToolsWidth;
+
+  /// No description provided for @audioToolsBandOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get audioToolsBandOn;
+
+  /// No description provided for @audioToolsTypeHighPass.
+  ///
+  /// In en, this message translates to:
+  /// **'Low cut'**
+  String get audioToolsTypeHighPass;
+
+  /// No description provided for @audioToolsTypeLowShelf.
+  ///
+  /// In en, this message translates to:
+  /// **'Low shelf'**
+  String get audioToolsTypeLowShelf;
+
+  /// No description provided for @audioToolsTypePeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Bell'**
+  String get audioToolsTypePeak;
+
+  /// No description provided for @audioToolsTypeHighShelf.
+  ///
+  /// In en, this message translates to:
+  /// **'High shelf'**
+  String get audioToolsTypeHighShelf;
+
+  /// No description provided for @audioToolsTypeLowPass.
+  ///
+  /// In en, this message translates to:
+  /// **'High cut'**
+  String get audioToolsTypeLowPass;
+
+  /// No description provided for @audioToolsPresetFlat.
+  ///
+  /// In en, this message translates to:
+  /// **'Flat'**
+  String get audioToolsPresetFlat;
+
+  /// No description provided for @audioToolsPresetClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get audioToolsPresetClear;
+
+  /// No description provided for @audioToolsPresetDeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Deep'**
+  String get audioToolsPresetDeep;
+
+  /// No description provided for @audioToolsPresetRadio.
+  ///
+  /// In en, this message translates to:
+  /// **'Radio'**
+  String get audioToolsPresetRadio;
+
+  /// No description provided for @audioToolsPresetTelephone.
+  ///
+  /// In en, this message translates to:
+  /// **'Telephone'**
+  String get audioToolsPresetTelephone;
+
+  /// No description provided for @audioToolsPresetMegaphone.
+  ///
+  /// In en, this message translates to:
+  /// **'Megaphone'**
+  String get audioToolsPresetMegaphone;
+
+  /// No description provided for @audioToolsPresetMuffled.
+  ///
+  /// In en, this message translates to:
+  /// **'Through a wall'**
+  String get audioToolsPresetMuffled;
+
+  /// No description provided for @audioToolsPresetTiny.
+  ///
+  /// In en, this message translates to:
+  /// **'Tiny'**
+  String get audioToolsPresetTiny;
+
+  /// No description provided for @audioToolsPresetCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get audioToolsPresetCustom;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

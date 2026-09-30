@@ -36,6 +36,12 @@ A copy of [llm_llamacpp 0.7.0](https://pub.dev/packages/llm_llamacpp)
 - `streamChat` maps `LLMChatOptions` (`maxOutputTokens`, `temperature`,
   `topP`, `topK`) onto `GenerationOptions`. Upstream passed
   `const GenerationOptions()`, silently ignoring them (2048-token cap).
+- A request with `nGpuLayers == 0` loads the model with an empty
+  `llama_model_params.devices` list (`src/inference_isolate_handler.dart`).
+  Otherwise llama.cpp still offloads large prompt batches to any registered
+  GPU backend, and the Android arm64 bundle ships `libggml-vulkan.so`, which
+  the loader registers — so a phone that asked for the CPU ran Vulkan anyway,
+  and a mobile driver fault killed the app on its first prompt.
 - `pubspec.yaml`: `resolution: workspace` and `dev_dependencies` removed so it
   resolves as a path dependency.
 

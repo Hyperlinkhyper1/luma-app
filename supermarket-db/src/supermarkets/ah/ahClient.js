@@ -24,6 +24,19 @@ let inFlightToken = null;
 // refresh of the same member, so doing it often is cheap.
 const MAX_TOKEN_AGE_MS = 30 * 60 * 1000;
 
+// Refreshing keeps the same member, and the member itself only lives about a
+// week (the 604800s `expires_in`) no matter how often it is refreshed. The api
+// process runs for days, so without this it keeps rotating one member until AH
+// deactivates it and every request comes back "member not active". Register a
+// replacement well before that point instead of recovering after it.
+const MAX_MEMBER_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+
+// Access tokens look like "<memberId>_<uuid-ish>"; the prefix makes it visible
+// in the logs whether a retry actually moved to a new member.
+function memberIdOf(token) {
+  return typeof token === 'string' ? token.split('_')[0] : '?';
+}
+
 // A rejected token is usually AH shedding load rather than a permanently dead
 // one, so a replacement minted in the same millisecond gets rejected just as
 // readily. Back off between attempts instead of giving up after one. The tail
@@ -48,7 +61,9 @@ function isDeadMember(body) {
 }
 
 async function getAccessToken({ forceRefresh = false, newMember = false } = {}) {
-  if (newMember) session = null;
+  if (newMember || (session && Date.now() - session.memberCreatedAt > MAX_MEMBER_AGE_MS)) {
+    session = null;
+  }
   if (!forceRefresh && session && Date.now() < session.expiresAt) {
     return session.accessToken;
   }
@@ -74,7 +89,10 @@ async function renewToken() {
       console.warn(`AH token refresh failed, registering a new anonymous member: ${error.message}`);
     }
   }
-  return requestToken('/mobile-auth/v1/auth/token/anonymous', { clientId: 'appie' });
+  const token = await requestToken('/mobile-auth/v1/auth/token/anonymous', { clientId: 'appie' });
+  session.memberCreatedAt = Date.now();
+  console.log(`AH: registered anonymous member ${memberIdOf(token)}`);
+  return token;
 }
 
 async function requestToken(path, payload) {
@@ -91,6 +109,7 @@ async function requestToken(path, payload) {
   session = {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || session?.refreshToken || null,
+    memberCreatedAt: session?.memberCreatedAt ?? Date.now(),
     // Refresh a little early so we never call the API with an expired token.
     expiresAt: Date.now() + Math.min((data.expires_in - 60) * 1000, MAX_TOKEN_AGE_MS),
   };
@@ -119,6 +138,10 @@ async function authedGet(path, params = {}, { _attempt = 0 } = {}) {
       // advertised expiry (e.g. after a very large burst of requests, like a
       // full-catalog sync). Let the pressure ease, get a fresh one and try
       // again rather than failing the whole sync.
+      console.warn(
+        `AH ${path}: HTTP ${response.status} on member ${memberIdOf(token)} ` +
+          `(attempt ${_attempt + 1}/${AUTH_RETRY_DELAYS_MS.length}): ${body.slice(0, 120)}`
+      );
       await sleep(AUTH_RETRY_DELAYS_MS[_attempt]);
       await getAccessToken({ forceRefresh: true, newMember: isDeadMember(body) });
       return authedGet(path, params, { _attempt: _attempt + 1 });

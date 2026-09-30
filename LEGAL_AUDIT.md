@@ -38,8 +38,15 @@ This is the biggest single exposure in the project.
 
 ### 2. The Privacy Policy is wrong about the AI relay
 
-- [ ] Update the "AI Assistant" section of `PRIVACY.md`.
+- [x] Update the "AI Assistant" section of `PRIVACY.md`. Done September 30,
+  2026: names Google AI Studio, OpenRouter and Mistral, says what each
+  receives and may keep, covers web search, Luma Support and the transfer
+  outside the EU.
+- [ ] Republish the updated policy at `wiki.luma-app.cc/privacy`.
 - [ ] Check which Google tier (free or paid) your relay keys are on.
+- [ ] Name the legal safeguard for the transfer outside the EU (for
+  example, the EU–US Data Privacy Framework, or the providers' standard
+  contractual clauses) once you've checked what Google and OpenRouter offer.
 
 The policy says built-in modes go to Anthropic, OpenAI, Mistral or Google,
 and that nothing is stored. `server/lib/ai_mode_routing.dart:8` actually
@@ -62,6 +69,9 @@ routes to **OpenRouter**, **Google AI Studio** (free-tier keys) and
 with the data, and describe the transfers outside the EU.
 
 ### 3. Basic GDPR requirements are missing (Dutch operator)
+
+> **Deferred** until the app is publicly launched (owner's decision,
+> September 30, 2026).
 
 The privacy policy is missing the information GDPR Art. 13 requires.
 
@@ -92,10 +102,13 @@ The privacy policy is missing the information GDPR Art. 13 requires.
 
 ### 4. Account deletion leaves data behind
 
-- [ ] Make `_tearDownAccount` remove everything tied to the user, or update
-  the policy to say exactly what stays.
-- [ ] Drop the mandatory reason from deletion requests, and justify any
-  refusal.
+- [x] Make `_tearDownAccount` remove everything tied to the user, and update
+  the policy to say exactly what stays. Done September 30, 2026: each store
+  has a `deleteUser`, `Store.forgetUser` scrubs the email, and
+  `server/test/account_deletion_test.dart` covers it.
+- [x] Drop the mandatory reason from deletion requests (server and app).
+- [ ] When you decline a deletion request, give the legal ground in the
+  note.
 
 `_tearDownAccount` (`server/lib/api.dart:2101`) does **not** remove:
 
@@ -115,6 +128,9 @@ The "request deletion" flow (`_requestAccountDeletion`) has two problems:
   Art. 17(3) grounds.
 
 ### 5. Syncfusion is commercial software
+
+> **In progress:** Community License applied for (September 30, 2026);
+> waiting for the verification email.
 
 - [ ] Register a Syncfusion Community License if you qualify: under
   $1M revenue and 5 developers or fewer.

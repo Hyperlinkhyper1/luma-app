@@ -162,6 +162,12 @@ class AiUsageStore {
     await _save();
   }
 
+  /// Forgets a deleted account's usage history.
+  Future<void> deleteUser(String userId) async {
+    if (_data.remove(userId) == null) return;
+    await _save();
+  }
+
   Future<void> _save() {
     final snapshot = jsonEncode(_data);
     final save = _saveTail.then((_) async {

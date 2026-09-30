@@ -36,6 +36,7 @@ class AnthropicClient implements AiClient {
     required List<AiToolDefinition> tools,
     required AiToolExecutor executeTool,
     required AiToolMetadata metadataFor,
+    AiTextProgress? onText,
   }) async {
     final messages = <Map<String, dynamic>>[
       for (final t in history)
