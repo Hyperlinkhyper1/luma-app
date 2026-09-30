@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100 antialiased select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AETHER 65 // Custom 3D Mechanical Keyboard Showcase</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    /* Custom scrollbars & fonts */
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Subtle glassmorphism */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-button {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-button:hover {
+      background: rgba(51, 65, 85, 0.85);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+    .glass-button:active {
+      transform: translateY(1px);
+    }
+
+    /* Range slider custom styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      height: 6px;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+      border: 2px solid #0f172a;
+    }
+
+    /* Pulse animation */
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+    .pulse-glow {
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+
+    /* 3D Canvas absolute fill */
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body class="h-full w-full bg-[#090d16] text-slate-200 overflow-hidden select-none">
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- HUD Overlay Layer -->
+  <div class="relative z-10 pointer-events-none w-full h-full flex flex-col justify-between p-4 md:p-6">
+    
+    <!-- Header: Title, Status, and Quick Actions -->
+    <header class="flex items-start justify-between gap-4 pointer-events-auto">
+      <div class="flex items-center gap-3.5 glass-panel px-4 py-2.5 rounded-2xl">
+        <div class="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 shadow-lg shadow-cyan-500/20">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2.5" />
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+              AETHER 65
+              <span class="text-[10px] uppercase font-mono tracking-widest px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">Custom Mech</span>
+            </h1>
+          </div>
+          <p class="text-xs text-slate-400 font-mono flex items-center gap-1.5">
+            <span id="status-indicator" class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+            <span id="keyboard-stage-label" class="text-slate-300">Assembling PCB...</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="flex items-center gap-2 glass-panel p-1.5 rounded-2xl">
+        <!-- Replay Assembly -->
+        <button id="btn-replay" title="Replay Assembly Animation" class="glass-button p-2.5 rounded-xl text-slate-300 hover:text-white flex items-center gap-2 text-xs font-medium cursor-pointer">
+          <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 3v5h5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="hidden sm:inline">Reassemble</span>
+        </button>
+
+        <!-- Exploded View Toggle -->
+        <button id="btn-explode" title="Toggle Layer Explosion" class="glass-button p-2.5 rounded-xl text-slate-300 hover:text-white flex items-center gap-2 text-xs font-medium cursor-pointer">
+          <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+            <path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>
+          </svg>
+          <span id="explode-btn-text" class="hidden sm:inline">Exploded View</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="btn-mute" title="Toggle Sound (M)" class="glass-button p-2.5 rounded-xl text-slate-300 hover:text-white flex items-center gap-2 text-xs font-medium cursor-pointer">
+          <svg id="icon-sound-on" class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+          <svg id="icon-sound-off" class="w-4 h-4 text-rose-400 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+          <span id="mute-label" class="hidden sm:inline">Audio On</span>
+        </button>
+
+        <!-- Settings / Control Drawer Toggle -->
+        <button id="btn-settings" title="Toggle Controls & Customization" class="glass-button p-2.5 rounded-xl text-slate-300 hover:text-white cursor-pointer">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Assembly Stage Progress Bar (Visible during assembly) -->
+    <div id="assembly-banner" class="pointer-events-auto self-center max-w-md w-full glass-panel px-5 py-3 rounded-2xl flex flex-col gap-2 transition-all duration-500 transform">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-mono text-cyan-400 font-semibold tracking-wider uppercase flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 animate-spin text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+          </svg>
+          <span id="assembly-step-title">Building Keyboard</span>
+        </span>
+        <div class="flex items-center gap-2">
+          <span id="assembly-step-count" class="font-mono text-slate-400 text-[11px]">Layer 1/5</span>
+          <button id="btn-skip-assembly" class="text-[11px] font-mono text-slate-400 hover:text-white px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 transition cursor-pointer">Skip</button>
+        </div>
+      </div>
+      <div class="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+        <div id="assembly-progress-bar" class="bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-400 h-full w-0 transition-all duration-200"></div>
+      </div>
+    </div>
+
+    <!-- Live Interactive Typing Indicator & Audio Hint -->
+    <div class="flex flex-col gap-2 pointer-events-auto w-full">
+      
+      <!-- Interactive Typing Terminal Bar -->
+      <div class="glass-panel px-4 py-2 rounded-2xl flex items-center justify-between gap-3 w-full border border-cyan-500/20 shadow-lg">
+        <div class="flex items-center gap-2 shrink-0">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-[11px] font-mono text-cyan-400 uppercase tracking-wider font-semibold">TYPING STREAM:</span>
+        </div>
+        <div class="flex-1 overflow-x-auto whitespace-nowrap scrollbar-none font-mono text-xs text-slate-200">
+          <span id="live-typing-stream" class="text-white font-bold tracking-wide">CLICK OR TYPE ANY KEY TO TEST ACOUSTICS</span>
+          <span class="inline-block w-1.5 h-3.5 bg-cyan-400 align-middle ml-1 animate-pulse"></span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btn-clear-text" title="Clear typed buffer" class="text-[10px] font-mono text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 transition cursor-pointer">CLEAR</button>
+        </div>
+      </div>
+
+      <!-- Controls Row: Key Stats, Hint, and Camera Presets -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
+        <!-- Interactive Typing Monitor Box -->
+        <div class="glass-panel px-3.5 py-2 rounded-2xl flex items-center gap-3 w-full sm:w-auto">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50"></span>
+            <span class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Input</span>
+          </div>
+          <div class="h-3.5 w-[1px] bg-white/10"></div>
+          <div class="flex items-center gap-1.5 overflow-hidden">
+            <span class="text-[11px] text-slate-400 font-mono">Key:</span>
+            <span id="last-key-badge" class="font-mono font-bold text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/50 min-w-8 text-center shadow-inner">
+              READY
+            </span>
+          </div>
+          <div class="hidden md:flex items-center gap-1.5 text-[11px] font-mono text-slate-400">
+            <span>Strokes:</span>
+            <span id="keystroke-counter" class="text-white font-bold">0</span>
+          </div>
+        </div>
+
+        <!-- Center Tip: 3D Interaction Hint -->
+        <div id="interaction-hint" class="hidden lg:flex items-center gap-2 text-xs text-slate-400 font-mono bg-slate-900/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/5 shadow-md">
+          <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4M12 8h.01"/>
+          </svg>
+          <span>Physical keyboard mapped // Click 3D keys // Drag to orbit scene</span>
+        </div>
+
+        <!-- Camera View Angles -->
+        <div class="flex items-center gap-1 glass-panel p-1.5 rounded-2xl self-end sm:self-auto">
+        <button data-camera="persp" class="cam-preset-btn px-2.5 py-1 rounded-xl text-xs font-mono text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 transition cursor-pointer">
+          3D View
+        </button>
+        <button data-camera="top" class="cam-preset-btn px-2.5 py-1 rounded-xl text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer">
+          Top
+        </button>
+        <button data-camera="front" class="cam-preset-btn px-2.5 py-1 rounded-xl text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer">
+          Front
+        </button>
+        <button data-camera="side" class="cam-preset-btn px-2.5 py-1 rounded-xl text-xs font-mono text-slate-400 hover:text-white hover:bg-white/5 transition cursor-pointer">
+          Side
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Audio Permission Banner (Required by browsers before first interaction) -->
+    <div id="audio-start-banner" class="absolute bottom-20 left-1/2 -translate-x-1/2 pointer-events-auto bg-gradient-to-r from-cyan-900/90 to-indigo-900/90 border border-cyan-400/40 text-cyan-100 text-xs px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 backdrop-blur-md cursor-pointer hover:border-cyan-300 transition">
+      <svg class="w-4 h-4 text-cyan-300 animate-bounce" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+      </svg>
+      <span>Click anywhere to enable synthesized mechanical acoustics</span>
+    </div>
+
+  </div>
+
+  <!-- Slide-out Customization & Sound Settings Drawer -->
+  <aside id="settings-drawer" class="fixed top-0 right-0 h-full w-80 md:w-96 glass-panel z-20 transform translate-x-full transition-transform duration-300 ease-out flex flex-col p-6 shadow-2xl overflow-y-auto">
+    <div class="flex items-center justify-between pb-4 border-b border-white/10">
+      <div class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <h2 class="font-bold text-base text-white tracking-wide">Studio Configuration</h2>
+      </div>
+      <button id="btn-close-settings" class="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="flex-1 py-4 space-y-6 text-sm">
+      
+      <!-- Switch Sound Profile -->
+      <section class="space-y-2.5">
+        <label class="block text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
+          Switch Sound Profile (Acoustics)
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <button data-switch="thock" class="switch-opt-btn active glass-button p-2.5 rounded-xl text-left border-cyan-500/50 bg-cyan-950/40 text-cyan-200">
+            <div class="font-bold text-xs text-white">Thock Linear</div>
+            <div class="text-[10px] text-slate-400">Deep, lubed black ink</div>
+          </button>
+          <button data-switch="clack" class="switch-opt-btn glass-button p-2.5 rounded-xl text-left">
+            <div class="font-bold text-xs text-white">Panda Tactile</div>
+            <div class="text-[10px] text-slate-400">Snappy bump & clack</div>
+          </button>
+          <button data-switch="clicky" class="switch-opt-btn glass-button p-2.5 rounded-xl text-left">
+            <div class="font-bold text-xs text-white">Clicky Jade</div>
+            <div class="text-[10px] text-slate-400">Sharp acoustic leaf</div>
+          </button>
+          <button data-switch="muted" class="switch-opt-btn glass-button p-2.5 rounded-xl text-left">
+            <div class="font-bold text-xs text-white">Electro-Cap</div>
+            <div class="text-[10px] text-slate-400">Cushioned Topre thud</div>
+          </button>
+        </div>
+      </section>
+
+      <!-- Exploded View Distance -->
+      <section class="space-y-2.5">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
+            Exploded Separation
+          </label>
+          <span id="explode-slider-val" class="font-mono text-xs text-cyan-400">0%</span>
+        </div>
+        <input id="slider-explode" type="range" min="0" max="100" value="0" class="w-full cursor-pointer accent-cyan-400">
+        <div class="flex justify-between text-[10px] font-mono text-slate-500">
+          <span>Assembled</span>
+          <span>Half</span>
+          <span>Expanded 3D</span>
+        </div>
+      </section>
+
+      <!-- RGB Lighting Controls -->
+      <section class="space-y-3">
+        <div class="flex items-center justify-between">
+          <label class="text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
+            RGB Backlighting
+          </label>
+          <span id="rgb-mode-badge" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/40">Active</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <button data-rgb-mode="reactive" class="rgb-mode-btn active glass-button py-2 px-1 text-center rounded-xl text-xs font-medium text-cyan-300 border-cyan-500/50">
+            Reactive
+          </button>
+          <button data-rgb-mode="wave" class="rgb-mode-btn glass-button py-2 px-1 text-center rounded-xl text-xs font-medium text-slate-300">
+            Spectrum Wave
+          </button>
+          <button data-rgb-mode="breathe" class="rgb-mode-btn glass-button py-2 px-1 text-center rounded-xl text-xs font-medium text-slate-300">
+            Breathing
+          </button>
+          <button data-rgb-mode="static" class="rgb-mode-btn glass-button py-2 px-1 text-center rounded-xl text-xs font-medium text-slate-300">
+            Static Glow
+          </button>
+          <button data-rgb-mode="off" class="rgb-mode-btn glass-button py-2 px-1 text-center rounded-xl text-xs font-medium text-slate-300 col-span-2">
+            Lighting Off
+          </button>
+        </div>
+
+        <!-- Color Palette Picker -->
+        <div class="pt-2">
+          <span class="text-[11px] text-slate-400 font-mono block mb-2">Backlight Palette</span>
+          <div class="flex items-center gap-2">
+            <button data-color="#00ffff" class="color-swatch-btn w-7 h-7 rounded-full bg-cyan-400 ring-2 ring-white/80 cursor-pointer shadow-lg shadow-cyan-500/50"></button>
+            <button data-color="#ec4899" class="color-swatch-btn w-7 h-7 rounded-full bg-pink-500 ring-1 ring-white/20 cursor-pointer shadow-lg"></button>
+            <button data-color="#a855f7" class="color-swatch-btn w-7 h-7 rounded-full bg-purple-500 ring-1 ring-white/20 cursor-pointer shadow-lg"></button>
+            <button data-color="#10b981" class="color-swatch-btn w-7 h-7 rounded-full bg-emerald-500 ring-1 ring-white/20 cursor-pointer shadow-lg"></button>
+            <button data-color="#f59e0b" class="color-swatch-btn w-7 h-7 rounded-full bg-amber-500 ring-1 ring-white/20 cursor-pointer shadow-lg"></button>
+            <button data-color="#ffffff" class="color-swatch-btn w-7 h-7 rounded-full bg-slate-100 ring-1 ring-white/20 cursor-pointer shadow-lg"></button>
+          </div>
+        </div>
+
+        <!-- Brightness Slider -->
+        <div class="pt-2 space-y-1">
+          <div class="flex justify-between text-xs text-slate-400 font-mono">
+            <span>Brightness</span>
+            <span id="rgb-brightness-val">80%</span>
+          </div>
+          <input id="slider-rgb-brightness" type="range" min="0" max="100" value="80" class="w-full cursor-pointer accent-cyan-400">
+        </div>
+      </section>
+
+      <!-- Keyboard Color Theme / Material -->
+      <section class="space-y-2.5">
+        <label class="block text-xs font-mono font-bold tracking-wider text-slate-300 uppercase">
+          Case Finish & Keycaps
+        </label>
+        <div class="grid grid-cols-3 gap-2">
+          <button data-theme="midnight" class="theme-btn active glass-button p-2 rounded-xl text-center border-cyan-500/50">
+            <div class="w-full h-4 rounded bg-gradient-to-r from-slate-900 to-indigo-950 mb-1 border border-white/20"></div>
+            <span class="text-[11px] font-mono text-slate-300">Midnight</span>
+          </button>
+          <button data-theme="botanical" class="theme-btn glass-button p-2 rounded-xl text-center">
+            <div class="w-full h-4 rounded bg-gradient-to-r from-emerald-900 to-slate-800 mb-1 border border-white/20"></div>
+            <span class="text-[11px] font-mono text-slate-300">Botanical</span>
+          </button>
+          <button data-theme="cyber" class="theme-btn glass-button p-2 rounded-xl text-center">
+            <div class="w-full h-4 rounded bg-gradient-to-r from-purple-900 to-cyan-900 mb-1 border border-white/20"></div>
+            <span class="text-[11px] font-mono text-slate-300">Cyber</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Specifications Card -->
+      <section class="glass-panel p-3 rounded-xl border border-white/5 space-y-2 text-[11px] font-mono text-slate-400">
+        <div class="text-white font-bold tracking-wide uppercase text-xs mb-1">Keyboard Specifications</div>
+        <div class="flex justify-between"><span>Form Factor:</span> <span class="text-slate-200">65% Custom (67 Keys)</span></div>
+        <div class="flex justify-between"><span>Rotary Encoder:</span> <span class="text-slate-200">Knurled CNC Aluminum</span></div>
+        <div class="flex justify-between"><span>Plate Material:</span> <span class="text-amber-300">Brushed Brass CNC</span></div>
+        <div class="flex justify-between"><span>Acoustic Layer:</span> <span class="text-slate-200">PORON Gasket Foam</span></div>
+        <div class="flex justify-between"><span>PCB:</span> <span class="text-slate-200">FR4 Immersion Gold Hotswap</span></div>
+        <div class="flex justify-between"><span>Keycap Profile:</span> <span class="text-slate-200">Sculpted Cherry PBT</span></div>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- Interactive 3D Canvas Engine Script -->
+  <script>
+    /**
+     * AETHER 65 - Full 3D Mechanical Keyboard Showcase & Web Audio Synthesizer
+     * Pure Three.js + Web Audio API
+     */
+
+    // --- Web Audio API Mechanical Sound Engine ---
+    class KeyboardAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+        this.currentProfile = 'thock'; // 'thock', 'clack', 'clicky', 'muted'
+        this.masterGain = null;
+        this.initialized = false;
+      }
+
+      init() {
+        if (this.initialized) return;
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContextClass();
+          this.masterGain = this.ctx.createGain();
+          this.masterGain.gain.value = 0.55;
+          this.masterGain.connect(this.ctx.destination);
+          this.initialized = true;
+
+          // Remove audio hint banner
+          const banner = document.getElementById('audio-start-banner');
+          if (banner) {
+            banner.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => banner.remove(), 500);
+          }
+        } catch (e) {
+          console.warn('AudioContext failed to start', e);
+        }
+      }
+
+      resume() {
+        if (!this.initialized) {
+          this.init();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      setMuted(mute) {
+        this.isMuted = mute;
+        if (this.masterGain && this.ctx) {
+          this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.55, this.ctx.currentTime);
+        }
+      }
+
+      setProfile(profile) {
+        this.currentProfile = profile;
+      }
+
+      // Synthesize realistic acoustic keypress
+      playKey(type = 'alpha', isRelease = false) {
+        if (this.isMuted) return;
+        this.resume();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const profile = this.currentProfile;
+
+        // Base frequency parameters based on key type
+        let baseFreq = 420;
+        let resonance = 3.5;
+        let subThump = 130;
+        let decay = 0.045;
+
+        if (type === 'space') {
+          // Spacebar has large acoustic cavity, deep resonance, dampening wire rattle
+          baseFreq = 160;
+          subThump = 85;
+          resonance = 5.0;
+          decay = 0.08;
+        } else if (type === 'enter' || type === 'backspace') {
+          baseFreq = 260;
+          subThump = 110;
+          decay = 0.06;
+        } else if (type === 'modifier') {
+          baseFreq = 320;
+          subThump = 120;
+          decay = 0.05;
+        }
+
+        if (isRelease) {
+          // Key release (top-out snap) is lighter and higher pitched
+          baseFreq *= 1.35;
+          decay *= 0.65;
+        }
+
+        // Apply sound profile characteristics
+        if (profile === 'thock') {
+          // Low, deep, lubed sound with warm sub-bass bottom out
+          baseFreq *= 0.8;
+          subThump *= 0.85;
+        } else if (profile === 'clack') {
+          // Snappy, higher, distinct high-mid impact
+          baseFreq *= 1.25;
+          resonance *= 1.4;
+        } else if (profile === 'clicky') {
+          // Has distinct high frequency leaf click transient
+          this.synthesizeClickLeaf(now, isRelease);
+          baseFreq *= 1.1;
+        } else if (profile === 'muted') {
+          // Silent/Topre: heavy lowpass, muffled
+          baseFreq *= 0.6;
+          decay *= 0.6;
+        }
+
+        // 1. Transient Impact (Bottom-Out Clack / Top-Out Snap)
+        const bufferSize = Math.floor(this.ctx.sampleRate * decay);
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.28));
+        }
+
+        const noiseSource = this.ctx.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+
+        const bandpass = this.ctx.createBiquadFilter();
+        bandpass.type = 'bandpass';
+        bandpass.frequency.setValueAtTime(baseFreq, now);
+        bandpass.Q.setValueAtTime(resonance, now);
+
+        const noiseGain = this.ctx.createGain();
+        noiseGain.gain.setValueAtTime(isRelease ? 0.35 : 0.7, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+        noiseSource.connect(bandpass);
+        bandpass.connect(noiseGain);
+        noiseGain.connect(this.masterGain);
+
+        noiseSource.start(now);
+        noiseSource.stop(now + decay);
+
+        // 2. Sub Acoustic Body Resonance (Case & Desk thud)
+        if (!isRelease && profile !== 'clicky') {
+          const osc = this.ctx.createOscillator();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(subThump, now);
+          osc.frequency.exponentialRampToValueAtTime(subThump * 0.5, now + 0.05);
+
+          const subGain = this.ctx.createGain();
+          subGain.gain.setValueAtTime(type === 'space' ? 0.55 : 0.3, now);
+          subGain.gain.exponentialRampToValueAtTime(0.0001, now + (type === 'space' ? 0.09 : 0.055));
+
+          osc.connect(subGain);
+          subGain.connect(this.masterGain);
+
+          osc.start(now);
+          osc.stop(now + 0.1);
+        }
+      }
+
+      synthesizeClickLeaf(time, isRelease) {
+        // High-pitched tactile leaf click
+        const osc = this.ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(isRelease ? 2200 : 2800, time);
+        osc.frequency.exponentialRampToValueAtTime(isRelease ? 1600 : 2100, time + 0.015);
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'highpass';
+        filter.frequency.setValueAtTime(1400, time);
+
+        const clickGain = this.ctx.createGain();
+        clickGain.gain.setValueAtTime(0.4, time);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, time + 0.02);
+
+        osc.connect(filter);
+        filter.connect(clickGain);
+        clickGain.connect(this.masterGain);
+
+        osc.start(time);
+        osc.stop(time + 0.025);
+      }
+
+      // Tactile knob micro-click
+      playKnobClick() {
+        if (this.isMuted) return;
+        this.resume();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1200, now);
+        osc.frequency.exponentialRampToValueAtTime(400, now + 0.012);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.02);
+      }
+
+      // Snapping layer into socket sound during assembly
+      playAssemblySnap(layer = 'switch') {
+        if (this.isMuted) return;
+        this.resume();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        osc.type = layer === 'plate' ? 'sine' : 'square';
+        const startFreq = layer === 'pcb' ? 180 : layer === 'foam' ? 220 : layer === 'plate' ? 440 : 620;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(startFreq * 0.5, now + 0.04);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(layer === 'keycap' ? 0.2 : 0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      }
+    }
+
+    const soundEngine = new KeyboardAudioEngine();
+
+    // --- Color Themes ---
+    const THEMES = {
+      midnight: {
+        caseColor: 0x111625,
+        caseMetalness: 0.85,
+        caseRoughness: 0.28,
+        weightColor: 0xd4af37, // Brass weight
+        plateColor: 0xd8b548,  // Brushed brass plate
+        foamColor: 0x1a1a1a,   // Dark Poron foam
+        pcbColor: 0x0c120c,    // Dark FR4
+        traceColor: 0xd4af37,  // Gold traces
+        capAlphaBg: '#1e293b',
+        capAlphaText: '#e2e8f0',
+        capModBg: '#0f172a',
+        capModText: '#38bdf8',
+        capAccentBg: '#0284c7',
+        capAccentText: '#ffffff',
+        switchStem: 0xf97316,  // Tangerine POM stem
+        switchHousing: 0x1e293b
+      },
+      botanical: {
+        caseColor: 0x1f2923,
+        caseMetalness: 0.8,
+        caseRoughness: 0.35,
+        weightColor: 0x475569,
+        plateColor: 0x2e4034,
+        foamColor: 0x111a14,
+        pcbColor: 0x091c10,
+        traceColor: 0x34d399,
+        capAlphaBg: '#2d3e35',
+        capAlphaText: '#ecfdf5',
+        capModBg: '#1c2822',
+        capModText: '#34d399',
+        capAccentBg: '#059669',
+        capAccentText: '#ffffff',
+        switchStem: 0x10b981,
+        switchHousing: 0x064e3b
+      },
+      cyber: {
+        caseColor: 0x171026,
+        caseMetalness: 0.9,
+        caseRoughness: 0.2,
+        weightColor: 0xec4899,
+        plateColor: 0x581c87,
+        foamColor: 0x10081d,
+        pcbColor: 0x160528,
+        traceColor: 0xec4899,
+        capAlphaBg: '#261b3d',
+        capAlphaText: '#f472b6',
+        capModBg: '#150f24',
+        capModText: '#38bdf8',
+        capAccentBg: '#d946ef',
+        capAccentText: '#ffffff',
+        switchStem: 0x06b6d4,
+        switchHousing: 0x701a75
+      }
+    };
+
+    let activeTheme = THEMES.midnight;
+
+    // --- Keyboard Layout Definition (65% Layout with Rotary Knob) ---
+    // Standard unit: 1u = 1.905 units in 3D scene
+    const U = 1.9;
+    const GAP = 0.08; // gap between keycaps
+
+    const LAYOUT_ROWS = [
+      // Row 0 (Top / Numbers)
+      [
+        { code: 'Escape', label: 'ESC', u: 1, type: 'modifier', accent: true },
+        { code: 'Digit1', label: '1 !', u: 1, type: 'alpha' },
+        { code: 'Digit2', label: '2 @', u: 1, type: 'alpha' },
+        { code: 'Digit3', label: '3 #', u: 1, type: 'alpha' },
+        { code: 'Digit4', label: '4 $', u: 1, type: 'alpha' },
+        { code: 'Digit5', label: '5 %', u: 1, type: 'alpha' },
+        { code: 'Digit6', label: '6 ^', u: 1, type: 'alpha' },
+        { code: 'Digit7', label: '7 &', u: 1, type: 'alpha' },
+        { code: 'Digit8', label: '8 *', u: 1, type: 'alpha' },
+        { code: 'Digit9', label: '9 (', u: 1, type: 'alpha' },
+        { code: 'Digit0', label: '0 )', u: 1, type: 'alpha' },
+        { code: 'Minus', label: '- _', u: 1, type: 'alpha' },
+        { code: 'Equal', label: '= +', u: 1, type: 'alpha' },
+        { code: 'Backspace', label: 'BACKSPACE', u: 2, type: 'backspace' },
+        { code: 'Knob', label: '', u: 1, type: 'knob', isKnob: true }
+      ],
+      // Row 1 (QWERTY)
+      [
+        { code: 'Tab', label: 'TAB', u: 1.5, type: 'modifier' },
+        { code: 'KeyQ', label: 'Q', u: 1, type: 'alpha' },
+        { code: 'KeyW', label: 'W', u: 1, type: 'alpha' },
+        { code: 'KeyE', label: 'E', u: 1, type: 'alpha' },
+        { code: 'KeyR', label: 'R', u: 1, type: 'alpha' },
+        { code: 'KeyT', label: 'T', u: 1, type: 'alpha' },
+        { code: 'KeyY', label: 'Y', u: 1, type: 'alpha' },
+        { code: 'KeyU', label: 'U', u: 1, type: 'alpha' },
+        { code: 'KeyI', label: 'I', u: 1, type: 'alpha' },
+        { code: 'KeyO', label: 'O', u: 1, type: 'alpha' },
+        { code: 'KeyP', label: 'P', u: 1, type: 'alpha' },
+        { code: 'BracketLeft', label: '[ {', u: 1, type: 'alpha' },
+        { code: 'BracketRight', label: '] }', u: 1, type: 'alpha' },
+        { code: 'Backslash', label: '\\ |', u: 1.5, type: 'alpha' },
+        { code: 'Delete', label: 'DEL', u: 1, type: 'modifier' }
+      ],
+      // Row 2 (Home Row)
+      [
+        { code: 'CapsLock', label: 'CAPS', u: 1.75, type: 'modifier' },
+        { code: 'KeyA', label: 'A', u: 1, type: 'alpha' },
+        { code: 'KeyS', label: 'S', u: 1, type: 'alpha' },
+        { code: 'KeyD', label: 'D', u: 1, type: 'alpha' },
+        { code: 'KeyF', label: 'F', u: 1, type: 'alpha' },
+        { code: 'KeyG', label: 'G', u: 1, type: 'alpha' },
+        { code: 'KeyH', label: 'H', u: 1, type: 'alpha' },
+        { code: 'KeyJ', label: 'J', u: 1, type: 'alpha' },
+        { code: 'KeyK', label: 'K', u: 1, type: 'alpha' },
+        { code: 'KeyL', label: 'L', u: 1, type: 'alpha' },
+        { code: 'Semicolon', label: '; :', u: 1, type: 'alpha' },
+        { code: 'Quote', label: '\' "', u: 1, type: 'alpha' },
+        { code: 'Enter', label: 'ENTER', u: 2.25, type: 'enter', accent: true },
+        { code: 'PageUp', label: 'PGUP', u: 1, type: 'modifier' }
+      ],
+      // Row 3 (Shift Row)
+      [
+        { code: 'ShiftLeft', label: 'SHIFT', u: 2.25, type: 'modifier' },
+        { code: 'KeyZ', label: 'Z', u: 1, type: 'alpha' },
+        { code: 'KeyX', label: 'X', u: 1, type: 'alpha' },
+        { code: 'KeyC', label: 'C', u: 1, type: 'alpha' },
+        { code: 'KeyV', label: 'V', u: 1, type: 'alpha' },
+        { code: 'KeyB', label: 'B', u: 1, type: 'alpha' },
+        { code: 'KeyN', label: 'N', u: 1, type: 'alpha' },
+        { code: 'KeyM', label: 'M', u: 1, type: 'alpha' },
+        { code: 'Comma', label: '< ,', u: 1, type: 'alpha' },
+        { code: 'Period', label: '> .', u: 1, type: 'alpha' },
+        { code: 'Slash', label: '? /', u: 1, type: 'alpha' },
+        { code: 'ShiftRight', label: 'SHIFT', u: 1.75, type: 'modifier' },
+        { code: 'ArrowUp', label: '▲', u: 1, type: 'modifier' },
+        { code: 'PageDown', label: 'PGDN', u: 1, type: 'modifier' }
+      ],
+      // Row 4 (Bottom / Space Row) - with 65% blocker offset
+      [
+        { code: 'ControlLeft', label: 'CTRL', u: 1.25, type: 'modifier' },
+        { code: 'MetaLeft', label: 'WIN', u: 1.25, type: 'modifier' },
+        { code: 'AltLeft', label: 'ALT', u: 1.25, type: 'modifier' },
+        { code: 'Space', label: '', u: 6.25, type: 'space' },
+        { code: 'AltRight', label: 'ALT', u: 1.25, type: 'modifier' },
+        { code: 'Fn', label: 'FN', u: 1.25, type: 'modifier' },
+        // Blocker gap of 0.5u before arrow cluster
+        { code: 'ArrowLeft', label: '◀', u: 1, type: 'modifier', spacerBefore: 0.5 },
+        { code: 'ArrowDown', label: '▼', u: 1, type: 'modifier' },
+        { code: 'ArrowRight', label: '▶', u: 1, type: 'modifier' }
+      ]
+    ];
+
+    // Total layout dimensions
+    const TOTAL_COLS = 16.0;
+    const TOTAL_ROWS = 5.0;
+    const KEYBOARD_WIDTH = TOTAL_COLS * U;
+    const KEYBOARD_DEPTH = TOTAL_ROWS * U;
+    const CASE_PADDING_X = 0.8;
+    const CASE_PADDING_Z = 0.8;
+    const CASE_WIDTH = KEYBOARD_WIDTH + CASE_PADDING_X * 2;
+    const CASE_DEPTH = KEYBOARD_DEPTH + CASE_PADDING_Z * 2;
+
+    // --- Three.js Scene Setup ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0e17);
+    scene.fog = new THREE.FogExp2(0x0a0e17, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 22, 28);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't go below desk surface
+    controls.minDistance = 8;
+    controls.maxDistance = 55;
+    controls.target.set(0, 0, 0);
+
+    // --- Lighting ---
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.65);
+    scene.add(ambientLight);
+
+    // Key directional light for crisp shadows & metallic bevels
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+    keyLight.position.set(15, 28, 18);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 5;
+    keyLight.shadow.camera.far = 60;
+    keyLight.shadow.camera.left = -22;
+    keyLight.shadow.camera.right = 22;
+    keyLight.shadow.camera.top = 22;
+    keyLight.shadow.camera.bottom = -22;
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+
+    // Cool rim light for silhouette edge highlights
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.2);
+    rimLight.position.set(-20, 15, -20);
+    scene.add(rimLight);
+
+    // Warm soft fill light from opposite angle
+    const fillLight = new THREE.DirectionalLight(0xf8fafc, 0.4);
+    fillLight.position.set(-15, 12, 15);
+    scene.add(fillLight);
+
+    // Large desk mat / surface underneath with soft shadow catcher
+    const deskGeo = new THREE.PlaneGeometry(120, 120);
+    const deskMat = new THREE.MeshStandardMaterial({
+      color: 0x070a10,
+      roughness: 0.85,
+      metalness: 0.1
+    });
+    const desk = new THREE.Mesh(deskGeo, deskMat);
+    desk.rotation.x = -Math.PI / 2;
+    desk.position.y = -1.2;
+    desk.receiveShadow = true;
+    scene.add(desk);
+
+    // Deskmat stitching border accent
+    const padGeo = new THREE.PlaneGeometry(KEYBOARD_WIDTH + 14, KEYBOARD_DEPTH + 12);
+    const padMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.9,
+      metalness: 0.05
+    });
+    const pad = new THREE.Mesh(padGeo, padMat);
+    pad.rotation.x = -Math.PI / 2;
+    pad.position.y = -1.18;
+    pad.receiveShadow = true;
+    scene.add(pad);
+
+    // Deskmat subtle border line
+    const padBorderGeo = new THREE.RingGeometry(0.5, 0.52, 4); // outline helper
+    // Clean subtle desk grid
+    const gridHelper = new THREE.GridHelper(90, 45, 0x1e293b, 0x0f172a);
+    gridHelper.position.y = -1.19;
+    scene.add(gridHelper);
+
+    // --- Master Groups for Exploded Assembly Layers ---
+    // Hierarchy:
+    // RootKeyboardGroup
+    //   ├── CaseGroup (Bottom case, brass weight, rubber feet, USB-C port)
+    //   ├── PCBGroup (Motherboard, gold traces, hotswap sockets, MCU)
+    //   ├── FoamGroup (PORON dampener sheet with switch cutouts)
+    //   ├── PlateGroup (Brushed brass switch plate)
+    //   ├── SwitchesGroup (All 67 individual switches)
+    //   └── KeycapsGroup (All 67 sculpted keycaps + Rotary Knob)
+
+    const keyboardRoot = new THREE.Group();
+    // Subtle typing incline: 5.5 degree tilt
+    keyboardRoot.rotation.x = 0.095;
+    scene.add(keyboardRoot);
+
+    const caseGroup = new THREE.Group();
+    const pcbGroup = new THREE.Group();
+    const foamGroup = new THREE.Group();
+    const plateGroup = new THREE.Group();
+    const switchesGroup = new THREE.Group();
+    const keycapsGroup = new THREE.Group();
+
+    keyboardRoot.add(caseGroup);
+    keyboardRoot.add(pcbGroup);
+    keyboardRoot.add(foamGroup);
+    keyboardRoot.add(plateGroup);
+    keyboardRoot.add(switchesGroup);
+    keyboardRoot.add(keycapsGroup);
+
+    // Key lookup maps & arrays for interaction & animations
+    const keyDataList = [];
+    const keyMeshesByCode = {};
+    const switchMeshesByCode = {};
+    const rgbPointLights = [];
+    let rotaryKnobMesh = null;
+    let rotaryKnobBase = null;
+
+    // --- Texture Generator for Keycaps & PCB ---
+    const keyTextureCache = {};
+
+    function generateKeyTexture(label, isMod, isAccent, widthU) {
+      const cacheKey = `${label}_${isMod}_${isAccent}_${widthU}_${activeTheme.capAlphaBg}`;
+      if (keyTextureCache[cacheKey]) return keyTextureCache[cacheKey];
+
+      const canvas = document.createElement('canvas');
+      const resolution = 256;
+      canvas.width = Math.round(resolution * Math.max(1, widthU * 0.9));
+      canvas.height = resolution;
+      const ctx = canvas.getContext('2d');
+
+      let bgColor = activeTheme.capAlphaBg;
+      let textColor = activeTheme.capAlphaText;
+
+      if (isAccent) {
+        bgColor = activeTheme.capAccentBg;
+        textColor = activeTheme.capAccentText;
+      } else if (isMod) {
+        bgColor = activeTheme.capModBg;
+        textColor = activeTheme.capModText;
+      }
+
+      // Base fill
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Subtle keycap concave gradient highlight
+      const grad = ctx.createRadialGradient(
+        canvas.width * 0.5, canvas.height * 0.45, 10,
+        canvas.width * 0.5, canvas.height * 0.45, canvas.height * 0.65
+      );
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.22)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Border bevel highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+
+      // Render Legend text
+      if (label) {
+        ctx.fillStyle = textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (label.includes('\n') || label.includes(' ')) {
+          const parts = label.split(' ');
+          if (parts.length === 2 && !label.includes('BACKSPACE')) {
+            // Dual legend (e.g. "1 !")
+            ctx.font = 'bold 36px "JetBrains Mono", monospace';
+            ctx.fillText(parts[0], canvas.width * 0.4, canvas.height * 0.55);
+            ctx.font = '28px "JetBrains Mono", monospace';
+            ctx.fillStyle = isAccent ? '#ffffff' : 'rgba(255,255,255,0.6)';
+            ctx.fillText(parts[1], canvas.width * 0.68, canvas.height * 0.4);
+          } else {
+            ctx.font = 'bold 32px "Space Grotesk", sans-serif';
+            ctx.fillText(label, canvas.width * 0.5, canvas.height * 0.5);
+          }
+        } else {
+          // Standard single legend
+          const fontSize = label.length > 4 ? 28 : (label.length > 1 ? 34 : 44);
+          ctx.font = `bold ${fontSize}px "Space Grotesk", -apple-system, sans-serif`;
+          ctx.fillText(label, canvas.width * 0.5, canvas.height * 0.48);
+        }
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      keyTextureCache[cacheKey] = texture;
+      return texture;
+    }
+
+    // Generate PCB gold traces and electronic components procedural texture
+    function generatePCBTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d');
+
+      // Dark solder mask
+      ctx.fillStyle = '#08100a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Traces pattern
+      ctx.strokeStyle = 'rgba(212, 175, 55, 0.45)'; // Gold immersion traces
+      ctx.lineWidth = 2;
+
+      for (let i = 0; i < 40; i++) {
+        ctx.beginPath();
+        let x = Math.random() * canvas.width;
+        let y = Math.random() * canvas.height;
+        ctx.moveTo(x, y);
+        for (let j = 0; j < 3; j++) {
+          x += (Math.random() - 0.5) * 80;
+          y += (Math.random() - 0.5) * 80;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      // SMD diodes and solder pads
+      ctx.fillStyle = 'rgba(212, 175, 55, 0.7)';
+      for (let x = 30; x < canvas.width; x += 60) {
+        for (let y = 30; y < canvas.height; y += 70) {
+          ctx.fillRect(x, y, 6, 12);
+          ctx.fillRect(x + 14, y, 6, 12);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(x + 5, y + 2, 10, 8); // SMD body
+          ctx.fillStyle = 'rgba(212, 175, 55, 0.7)';
+        }
+      }
+
+      // Custom PCB silkscreen branding
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.font = 'bold 24px "JetBrains Mono", monospace';
+      ctx.fillText('VERTEX LABS // AETHER 65 PCB REV 2.4', 50, 480);
+      ctx.font = '16px "JetBrains Mono", monospace';
+      ctx.fillText('HOTSWAP ANSI // QMK/VIA COMPATIBLE // ESD PROTECTED', 50, 502);
+
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.anisotropy = 4;
+      return tex;
+    }
+
+    // --- Build Layer 1: Case (Bottom CNC Case, Brass Weight, Feet, USB-C) ---
+    function buildCase() {
+      // Clear any prior children
+      while (caseGroup.children.length > 0) {
+        caseGroup.remove(caseGroup.children[0]);
+      }
+
+      const caseMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.caseColor,
+        metalness: activeTheme.caseMetalness,
+        roughness: activeTheme.caseRoughness,
+      });
+
+      // Main CNC Beveled Aluminum Chassis
+      // Sculpted outer tray with rounded chamfers
+      const caseShape = new THREE.Shape();
+      const halfW = CASE_WIDTH / 2;
+      const halfD = CASE_DEPTH / 2;
+      const r = 0.5; // corner radius
+
+      caseShape.moveTo(-halfW + r, -halfD);
+      caseShape.lineTo(halfW - r, -halfD);
+      caseShape.quadraticCurveTo(halfW, -halfD, halfW, -halfD + r);
+      caseShape.lineTo(halfW, halfD - r);
+      caseShape.quadraticCurveTo(halfW, halfD, halfW - r, halfD);
+      caseShape.lineTo(-halfW + r, halfD);
+      caseShape.quadraticCurveTo(-halfW, halfD, -halfW, halfD - r);
+      caseShape.lineTo(-halfW, -halfD + r);
+      caseShape.quadraticCurveTo(-halfW, -halfD, -halfW + r, -halfD);
+
+      const caseExtrudeSettings = {
+        depth: 1.4,
+        bevelEnabled: true,
+        bevelSegments: 4,
+        steps: 1,
+        bevelSize: 0.15,
+        bevelThickness: 0.15
+      };
+
+      const caseGeo = new THREE.ExtrudeGeometry(caseShape, caseExtrudeSettings);
+      caseGeo.center();
+      const caseMesh = new THREE.Mesh(caseGeo, caseMat);
+      caseMesh.rotation.x = Math.PI / 2;
+      caseMesh.position.y = -0.7;
+      caseMesh.castShadow = true;
+      caseMesh.receiveShadow = true;
+      caseGroup.add(caseMesh);
+
+      // Inner Switch Cavity Rim (Recessed tray for PCB & Plate gasket mount)
+      const rimGeo = new THREE.BoxGeometry(KEYBOARD_WIDTH + 0.3, 0.4, KEYBOARD_DEPTH + 0.3);
+      const rimMat = new THREE.MeshStandardMaterial({
+        color: 0x090d16,
+        metalness: 0.5,
+        roughness: 0.6
+      });
+      const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+      rimMesh.position.y = -0.15;
+      caseGroup.add(rimMesh);
+
+      // Inlaid Heavy Brass Weight Bar underneath
+      const weightMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.weightColor,
+        metalness: 0.95,
+        roughness: 0.18
+      });
+      const weightGeo = new THREE.BoxGeometry(CASE_WIDTH * 0.65, 0.12, CASE_DEPTH * 0.45);
+      const weightMesh = new THREE.Mesh(weightGeo, weightMat);
+      weightMesh.position.set(0, -1.45, 0);
+      weightMesh.castShadow = true;
+      caseGroup.add(weightMesh);
+
+      // 4 Non-slip Silicone Rubber Feet
+      const footMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 });
+      const footGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16);
+      const footOffsets = [
+        [-halfW + 1.6, halfD - 1.4],
+        [halfW - 1.6, halfD - 1.4],
+        [-halfW + 1.6, -halfD + 1.4],
+        [halfW - 1.6, -halfD + 1.4]
+      ];
+      footOffsets.forEach(([fx, fz]) => {
+        const foot = new THREE.Mesh(footGeo, footMat);
+        foot.position.set(fx, -1.45, fz);
+        caseGroup.add(foot);
+      });
+
+      // Rear USB Type-C Port Housing
+      const usbMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+      const usbGeo = new THREE.BoxGeometry(1.6, 0.45, 0.35);
+      const usbMesh = new THREE.Mesh(usbGeo, usbMat);
+      usbMesh.position.set(-halfW + 4, -0.2, -halfD - 0.05);
+      caseGroup.add(usbMesh);
+
+      // Gold USB contacts
+      const contactMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9 });
+      const contactGeo = new THREE.BoxGeometry(0.8, 0.12, 0.2);
+      const contactMesh = new THREE.Mesh(contactGeo, contactMat);
+      contactMesh.position.set(-halfW + 4, -0.2, -halfD - 0.1);
+      caseGroup.add(contactMesh);
+    }
+
+    // --- Build Layer 2: PCB Motherboard ---
+    function buildPCB() {
+      while (pcbGroup.children.length > 0) {
+        pcbGroup.remove(pcbGroup.children[0]);
+      }
+
+      const pcbTex = generatePCBTexture();
+      const pcbMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.pcbColor,
+        map: pcbTex,
+        roughness: 0.35,
+        metalness: 0.6
+      });
+
+      const pcbGeo = new THREE.BoxGeometry(KEYBOARD_WIDTH + 0.1, 0.12, KEYBOARD_DEPTH + 0.1);
+      const pcbMesh = new THREE.Mesh(pcbGeo, pcbMat);
+      pcbMesh.position.y = -0.25;
+      pcbMesh.receiveShadow = true;
+      pcbMesh.castShadow = true;
+      pcbGroup.add(pcbMesh);
+
+      // Microcontroller chip (RP2040)
+      const mcuMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4 });
+      const mcuGeo = new THREE.BoxGeometry(0.9, 0.1, 0.9);
+      const mcuMesh = new THREE.Mesh(mcuGeo, mcuMat);
+      mcuMesh.position.set(6, -0.15, -KEYBOARD_DEPTH / 2 + 1.2);
+      pcbGroup.add(mcuMesh);
+
+      // Reset tactile switch on PCB
+      const rstGeo = new THREE.BoxGeometry(0.4, 0.12, 0.4);
+      const rstMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8 });
+      const rstMesh = new THREE.Mesh(rstGeo, rstMat);
+      rstMesh.position.set(4.5, -0.15, -KEYBOARD_DEPTH / 2 + 1.2);
+      pcbGroup.add(rstMesh);
+    }
+
+    // --- Build Layer 3: Acoustic PORON Foam Dampener ---
+    function buildFoam() {
+      while (foamGroup.children.length > 0) {
+        foamGroup.remove(foamGroup.children[0]);
+      }
+
+      const foamMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.foamColor,
+        roughness: 0.98,
+        metalness: 0.05
+      });
+
+      // PORON foam slab with distinct texture & thickness
+      const foamGeo = new THREE.BoxGeometry(KEYBOARD_WIDTH - 0.05, 0.16, KEYBOARD_DEPTH - 0.05);
+      const foamMesh = new THREE.Mesh(foamGeo, foamMat);
+      foamMesh.position.y = -0.1;
+      foamMesh.receiveShadow = true;
+      foamGroup.add(foamMesh);
+    }
+
+    // --- Build Layer 4: Switch Plate (Brushed Brass CNC) ---
+    function buildPlate() {
+      while (plateGroup.children.length > 0) {
+        plateGroup.remove(plateGroup.children[0]);
+      }
+
+      const plateMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.plateColor,
+        metalness: 0.9,
+        roughness: 0.25
+      });
+
+      // Plate geometry with laser-cut perimeter
+      const plateGeo = new THREE.BoxGeometry(KEYBOARD_WIDTH, 0.15, KEYBOARD_DEPTH);
+      const plateMesh = new THREE.Mesh(plateGeo, plateMat);
+      plateMesh.position.y = 0.06;
+      plateMesh.castShadow = true;
+      plateMesh.receiveShadow = true;
+      plateGroup.add(plateMesh);
+
+      // Plate perimeter gasket tabs (Poron gasket strips along edge)
+      const gasketMat = new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.9 });
+      const tabGeo = new THREE.BoxGeometry(1.2, 0.22, 0.3);
+      [-KEYBOARD_WIDTH * 0.35, 0, KEYBOARD_WIDTH * 0.35].forEach(gx => {
+        const topGasket = new THREE.Mesh(tabGeo, gasketMat);
+        topGasket.position.set(gx, 0.06, -KEYBOARD_DEPTH / 2 - 0.1);
+        plateGroup.add(topGasket);
+
+        const botGasket = new THREE.Mesh(tabGeo, gasketMat);
+        botGasket.position.set(gx, 0.06, KEYBOARD_DEPTH / 2 + 0.1);
+        plateGroup.add(botGasket);
+      });
+    }
+
+    // --- Build Layer 5 & 6: Switches & Sculpted Keycaps ---
+    function buildSwitchesAndKeycaps() {
+      // Clear prior meshes
+      while (switchesGroup.children.length > 0) switchesGroup.remove(switchesGroup.children[0]);
+      while (keycapsGroup.children.length > 0) keycapsGroup.remove(keycapsGroup.children[0]);
+      keyDataList.length = 0;
+      for (const k in keyMeshesByCode) delete keyMeshesByCode[k];
+      for (const k in switchMeshesByCode) delete switchMeshesByCode[k];
+      rgbPointLights.length = 0;
+
+      // Shared materials for switches
+      const switchLowerMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.switchHousing,
+        roughness: 0.4,
+        metalness: 0.2
+      });
+
+      const switchUpperMat = new THREE.MeshPhysicalMaterial({
+        color: 0x94a3b8,
+        transmission: 0.65, // semi-transparent polycarbonate housing
+        opacity: 0.85,
+        transparent: true,
+        roughness: 0.25,
+        ior: 1.5
+      });
+
+      const switchStemMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.switchStem,
+        roughness: 0.35
+      });
+
+      const startZ = -KEYBOARD_DEPTH / 2 + U / 2;
+
+      LAYOUT_ROWS.forEach((row, rowIndex) => {
+        let currentX = -KEYBOARD_WIDTH / 2;
+
+        row.forEach((key) => {
+          if (key.spacerBefore) {
+            currentX += key.spacerBefore * U;
+          }
+
+          const keyWidth = key.u * U;
+          const posX = currentX + keyWidth / 2;
+          const posZ = startZ + rowIndex * U;
+
+          // 1. ROTARY KNOB (Top right position)
+          if (key.isKnob) {
+            buildRotaryKnob(posX, posZ);
+            currentX += keyWidth;
+            return;
+          }
+
+          // 2. SWITCH ASSEMBLY
+          const switchObj = new THREE.Group();
+          switchObj.position.set(posX, 0.22, posZ);
+
+          // Lower housing (14x14mm standard MX socket)
+          const lowerGeo = new THREE.BoxGeometry(1.4, 0.4, 1.4);
+          const lowerMesh = new THREE.Mesh(lowerGeo, switchLowerMat);
+          lowerMesh.castShadow = true;
+          switchObj.add(lowerMesh);
+
+          // Upper transparent housing
+          const upperGeo = new THREE.BoxGeometry(1.35, 0.45, 1.35);
+          const upperMesh = new THREE.Mesh(upperGeo, switchUpperMat);
+          upperMesh.position.y = 0.35;
+          switchObj.add(upperMesh);
+
+          // MX Cross Stem
+          const stemGroup = new THREE.Group();
+          stemGroup.position.y = 0.55;
+          const stemVGeo = new THREE.BoxGeometry(0.18, 0.45, 0.55);
+          const stemHGeo = new THREE.BoxGeometry(0.55, 0.45, 0.18);
+          const stemV = new THREE.Mesh(stemVGeo, switchStemMat);
+          const stemH = new THREE.Mesh(stemHGeo, switchStemMat);
+          stemGroup.add(stemV);
+          stemGroup.add(stemH);
+          switchObj.add(stemGroup);
+
+          // Mini per-switch RGB SMD LED
+          const ledMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+          const ledGeo = new THREE.BoxGeometry(0.3, 0.08, 0.2);
+          const ledMesh = new THREE.Mesh(ledGeo, ledMat);
+          ledMesh.position.set(0, 0.12, -0.45);
+          switchObj.add(ledMesh);
+
+          switchesGroup.add(switchObj);
+          switchMeshesByCode[key.code] = switchObj;
+
+          // 3. KEYCAP ASSEMBLY
+          const isMod = key.type === 'modifier';
+          const isAccent = !!key.accent;
+          const capTex = generateKeyTexture(key.label, isMod, isAccent, key.u);
+
+          // Sculpted Cherry profile: slightly tapered sides, beveled top
+          const capW = keyWidth - GAP;
+          const capD = U - GAP;
+          const capH = 0.95;
+
+          // Create sculpted keycap mesh using tapered box
+          const capGeo = new THREE.BoxGeometry(capW, capH, capD);
+          // Slightly taper the top vertices inward for realistic sculpted keycap profile
+          const posAttr = capGeo.attributes.position;
+          for (let i = 0; i < posAttr.count; i++) {
+            const y = posAttr.getY(i);
+            if (y > 0) {
+              posAttr.setX(i, posAttr.getX(i) * 0.88);
+              posAttr.setZ(i, posAttr.getZ(i) * 0.88);
+            }
+          }
+          capGeo.computeVertexNormals();
+
+          // Multi-material box: Top has legend texture, sides have smooth matte PBT plastic
+          const capSideMat = new THREE.MeshStandardMaterial({
+            color: isAccent ? activeTheme.capAccentBg : (isMod ? activeTheme.capModBg : activeTheme.capAlphaBg),
+            roughness: 0.4,
+            metalness: 0.1
+          });
+
+          const capTopMat = new THREE.MeshStandardMaterial({
+            map: capTex,
+            roughness: 0.4,
+            metalness: 0.1
+          });
+
+          const capMaterials = [
+            capSideMat, // right
+            capSideMat, // left
+            capTopMat,  // top (+y)
+            capSideMat, // bottom
+            capSideMat, // front (+z)
+            capSideMat  // back (-z)
+          ];
+
+          const keycapMesh = new THREE.Mesh(capGeo, capMaterials);
+          keycapMesh.position.set(posX, 0.92, posZ);
+          keycapMesh.castShadow = true;
+          keycapMesh.receiveShadow = true;
+
+          // Store reference
+          keycapMesh.userData = {
+            code: key.code,
+            label: key.label,
+            type: key.type,
+            homeY: 0.92,
+            targetY: 0.92,
+            isPressed: false,
+            ledMesh: ledMesh,
+            posX: posX,
+            posZ: posZ
+          };
+
+          keycapsGroup.add(keycapMesh);
+          keyMeshesByCode[key.code] = keycapMesh;
+
+          keyDataList.push({
+            code: key.code,
+            label: key.label,
+            type: key.type,
+            posX: posX,
+            posZ: posZ,
+            switchMesh: switchObj,
+            keycapMesh: keycapMesh
+          });
+
+          currentX += keyWidth;
+        });
+      });
+    }
+
+    // --- Build Premium CNC Rotary Knob ---
+    function buildRotaryKnob(x, z) {
+      const knobGroup = new THREE.Group();
+      knobGroup.position.set(x, 0.15, z);
+
+      // Base encoder shaft collar
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9, roughness: 0.2 });
+      const baseGeo = new THREE.CylinderGeometry(0.7, 0.75, 0.35, 32);
+      rotaryKnobBase = new THREE.Mesh(baseGeo, baseMat);
+      knobGroup.add(rotaryKnobBase);
+
+      // Knurled Aluminum Knob Outer Body
+      const knobMat = new THREE.MeshStandardMaterial({
+        color: activeTheme.weightColor,
+        metalness: 0.92,
+        roughness: 0.22
+      });
+
+      // Knurled cylinder geometry
+      const knobGeo = new THREE.CylinderGeometry(0.78, 0.78, 1.1, 32);
+      rotaryKnobMesh = new THREE.Mesh(knobGeo, knobMat);
+      rotaryKnobMesh.position.y = 0.7;
+      rotaryKnobMesh.castShadow = true;
+
+      // Top indicator notch/dot
+      const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const dotGeo = new THREE.BoxGeometry(0.1, 0.08, 0.4);
+      const dotMesh = new THREE.Mesh(dotGeo, dotMat);
+      dotMesh.position.set(0, 0.56, -0.45);
+      rotaryKnobMesh.add(dotMesh);
+
+      knobGroup.add(rotaryKnobMesh);
+      keycapsGroup.add(knobGroup);
+
+      rotaryKnobMesh.userData = {
+        code: 'Knob',
+        label: 'KNOB',
+        type: 'knob',
+        homeY: 0.7,
+        isPressed: false,
+        angle: 0
+      };
+
+      keyMeshesByCode['Knob'] = rotaryKnobMesh;
+    }
+
+    // --- Rebuild Keyboard with Theme ---
+    function rebuildKeyboard() {
+      // Clear key texture cache when theme switches
+      for (const k in keyTextureCache) delete keyTextureCache[k];
+      buildCase();
+      buildPCB();
+      buildFoam();
+      buildPlate();
+      buildSwitchesAndKeycaps();
+    }
+
+    // --- Exploded Assembly Animation Controller ---
+    // Smooth, deliberate layered assembly:
+    // PCB -> Foam -> Plate -> Switches (left-to-right) -> Keycaps (left-to-right) -> Knob
+    let assemblyActive = false;
+    let assemblyStartTime = 0;
+    let assemblyDuration = 10000; // 10 seconds complete deliberate sequence
+
+    // Individual layer offsets during animation or manual explode slider
+    const layerOffsets = {
+      pcb: 0,
+      foam: 0,
+      plate: 0,
+      switches: 0,
+      keycaps: 0
+    };
+
+    function startAssemblyAnimation() {
+      assemblyActive = true;
+      assemblyStartTime = performance.now();
+      lastSnapStage = '';
+
+      // Reset explode slider UI
+      const explodeSlider = document.getElementById('slider-explode');
+      if (explodeSlider) explodeSlider.value = 0;
+      const explodeSliderVal = document.getElementById('explode-slider-val');
+      if (explodeSliderVal) explodeSliderVal.textContent = '0%';
+      const explodeText = document.getElementById('explode-btn-text');
+      if (explodeText) explodeText.textContent = 'Exploded View';
+
+      // Reset group base offsets
+      switchesGroup.position.y = 0;
+      keycapsGroup.position.y = 0;
+
+      document.getElementById('assembly-banner').classList.remove('opacity-0', 'pointer-events-none');
+      document.getElementById('status-indicator').className = 'inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping';
+      document.getElementById('keyboard-stage-label').textContent = 'Assembling PCB...';
+      
+      // Sort switches and keycaps strictly left-to-right (by posX)
+      keyDataList.sort((a, b) => a.posX - b.posX);
+
+      // Reset initial positions high in 3D space
+      pcbGroup.position.y = 12;
+      foamGroup.position.y = 14;
+      plateGroup.position.y = 16;
+
+      keyDataList.forEach((k) => {
+        k.switchMesh.userData.snapped = false;
+        k.keycapMesh.userData.snapped = false;
+        k.switchMesh.position.y = 18;
+        k.keycapMesh.position.y = 22;
+      });
+
+      if (rotaryKnobMesh && rotaryKnobMesh.parent) {
+        rotaryKnobMesh.parent.position.y = 22;
+      }
+    }
+
+    function instantAssemble() {
+      assemblyActive = false;
+      pcbGroup.position.y = 0;
+      foamGroup.position.y = 0;
+      plateGroup.position.y = 0;
+
+      keyDataList.forEach((k) => {
+        k.switchMesh.position.y = 0.22;
+        k.keycapMesh.position.y = k.keycapMesh.userData.homeY;
+      });
+
+      if (rotaryKnobMesh && rotaryKnobMesh.parent) {
+        rotaryKnobMesh.parent.position.y = 0.15;
+      }
+
+      document.getElementById('assembly-banner').classList.add('opacity-0', 'pointer-events-none');
+      document.getElementById('status-indicator').className = 'inline-block w-2 h-2 rounded-full bg-emerald-400';
+      document.getElementById('keyboard-stage-label').textContent = 'Assembled & Ready';
+    }
+
+    // --- Smooth easing helper ---
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+    function easeOutBounce(t) {
+      const n1 = 7.5625;
+      const d1 = 2.75;
+      if (t < 1 / d1) {
+        return n1 * t * t;
+      } else if (t < 2 / d1) {
+        return n1 * (t -= 1.5 / d1) * t + 0.75;
+      } else if (t < 2.5 / d1) {
+        return n1 * (t -= 2.25 / d1) * t + 0.9375;
+      } else {
+        return n1 * (t -= 2.625 / d1) * t + 0.984375;
+      }
+    }
+
+    // Update the assembly animation step in frame loop
+    let lastSnapStage = '';
+    function updateAssembly(now) {
+      if (!assemblyActive) return;
+
+      const elapsed = now - assemblyStartTime;
+      const progress = Math.min(1, elapsed / assemblyDuration);
+
+      // Progress bar UI
+      const progressBar = document.getElementById('assembly-progress-bar');
+      if (progressBar) {
+        progressBar.style.width = `${(progress * 100).toFixed(1)}%`;
+      }
+
+      // Stage 1: PCB descends into case (0% -> 18%)
+      if (progress < 0.18) {
+        const t = progress / 0.18;
+        const eased = easeOutBounce(t);
+        pcbGroup.position.y = 12 * (1 - eased);
+        document.getElementById('assembly-step-title').textContent = 'Installing FR4 Motherboard/PCB';
+        document.getElementById('assembly-step-count').textContent = 'Layer 1/5';
+        document.getElementById('keyboard-stage-label').textContent = 'Aligning PCB Gold Sockets';
+
+        if (t > 0.95 && lastSnapStage !== 'pcb') {
+          lastSnapStage = 'pcb';
+          soundEngine.playAssemblySnap('pcb');
+        }
+      } else {
+        pcbGroup.position.y = 0;
+      }
+
+      // Stage 2: Acoustic PORON Foam descends onto PCB (18% -> 34%)
+      if (progress >= 0.18 && progress < 0.34) {
+        const t = (progress - 0.18) / 0.16;
+        const eased = easeOutCubic(t);
+        foamGroup.position.y = 14 * (1 - eased);
+        document.getElementById('assembly-step-title').textContent = 'Laying Acoustic PORON Dampener';
+        document.getElementById('assembly-step-count').textContent = 'Layer 2/5';
+        document.getElementById('keyboard-stage-label').textContent = 'Applying Gasket Foam';
+
+        if (t > 0.95 && lastSnapStage !== 'foam') {
+          lastSnapStage = 'foam';
+          soundEngine.playAssemblySnap('foam');
+        }
+      } else if (progress >= 0.34) {
+        foamGroup.position.y = 0;
+      }
+
+      // Stage 3: Brushed Brass Switch Plate descends (34% -> 48%)
+      if (progress >= 0.34 && progress < 0.48) {
+        const t = (progress - 0.34) / 0.14;
+        const eased = easeOutBounce(t);
+        plateGroup.position.y = 16 * (1 - eased);
+        document.getElementById('assembly-step-title').textContent = 'Securing Brushed Brass Plate';
+        document.getElementById('assembly-step-count').textContent = 'Layer 3/5';
+        document.getElementById('keyboard-stage-label').textContent = 'Mounting Gasket Plate';
+
+        if (t > 0.95 && lastSnapStage !== 'plate') {
+          lastSnapStage = 'plate';
+          soundEngine.playAssemblySnap('plate');
+        }
+      } else if (progress >= 0.48) {
+        plateGroup.position.y = 0;
+      }
+
+      // Stage 4: Switches snap in one-by-one from left-to-right (48% -> 70%)
+      if (progress >= 0.48 && progress < 0.70) {
+        document.getElementById('assembly-step-title').textContent = 'Seating Mechanical Switches (Left → Right)';
+        document.getElementById('assembly-step-count').textContent = 'Layer 4/5';
+        document.getElementById('keyboard-stage-label').textContent = 'Hotswap MX Switch Insertion';
+
+        const stageProgress = (progress - 0.48) / 0.22; // 0 to 1
+        const totalSwitches = keyDataList.length;
+
+        keyDataList.forEach((k, idx) => {
+          const switchStart = idx / totalSwitches;
+          const switchEnd = (idx + 1) / totalSwitches;
+
+          if (stageProgress < switchStart) {
+            k.switchMesh.position.y = 14;
+          } else if (stageProgress >= switchStart && stageProgress <= switchEnd + 0.08) {
+            const localT = Math.min(1, (stageProgress - switchStart) / 0.08);
+            const eased = easeOutBounce(localT);
+            k.switchMesh.position.y = 14 * (1 - eased) + 0.22;
+            if (localT > 0.85 && k.switchMesh.userData.snapped !== true) {
+              k.switchMesh.userData.snapped = true;
+              if (idx % 3 === 0) soundEngine.playAssemblySnap('switch');
+            }
+          } else {
+            k.switchMesh.position.y = 0.22;
+          }
+        });
+      } else if (progress >= 0.70) {
+        keyDataList.forEach(k => k.switchMesh.position.y = 0.22);
+      }
+
+      // Stage 5: Keycaps snap in one-by-one from left-to-right (70% -> 94%)
+      if (progress >= 0.70 && progress < 0.94) {
+        document.getElementById('assembly-step-title').textContent = 'Mounting PBT Sculpted Keycaps';
+        document.getElementById('assembly-step-count').textContent = 'Layer 5/5';
+        document.getElementById('keyboard-stage-label').textContent = 'Fitting Cherry Profile Caps';
+
+        const stageProgress = (progress - 0.70) / 0.24;
+        const totalKeys = keyDataList.length;
+
+        keyDataList.forEach((k, idx) => {
+          const keyStart = idx / totalKeys;
+          if (stageProgress < keyStart) {
+            k.keycapMesh.position.y = 16;
+          } else {
+            const localT = Math.min(1, (stageProgress - keyStart) / 0.06);
+            const eased = easeOutBounce(localT);
+            k.keycapMesh.position.y = 16 * (1 - eased) + k.keycapMesh.userData.homeY;
+            if (localT > 0.85 && k.keycapMesh.userData.snapped !== true) {
+              k.keycapMesh.userData.snapped = true;
+              if (idx % 2 === 0) soundEngine.playAssemblySnap('keycap');
+            }
+          }
+        });
+      } else if (progress >= 0.94) {
+        keyDataList.forEach(k => k.keycapMesh.position.y = k.keycapMesh.userData.homeY);
+      }
+
+      // Stage 6: Rotary knob threads into place (94% -> 100%)
+      if (progress >= 0.94 && progress <= 1.0) {
+        const t = (progress - 0.94) / 0.06;
+        if (rotaryKnobMesh && rotaryKnobMesh.parent) {
+          const eased = easeOutCubic(t);
+          rotaryKnobMesh.parent.position.y = 20 * (1 - eased) + 0.15;
+          rotaryKnobMesh.rotation.y = t * Math.PI * 4; // Threading spin
+        }
+      }
+
+      // Assembly Finish
+      if (progress >= 1.0) {
+        assemblyActive = false;
+        instantAssemble();
+        soundEngine.playKey('space');
+      }
+    }
+
+    // --- Exploded Separation View Slider & Mode ---
+    let manualExplodeFactor = 0; // 0 (assembled) to 1 (fully separated)
+
+    function applyExplodedSeparation(factor) {
+      manualExplodeFactor = factor;
+      if (assemblyActive) return; // Don't conflict with animated assembly
+
+      // Calculate vertical offsets for each layer
+      const maxDisplacement = 6.0;
+      pcbGroup.position.y = factor * (maxDisplacement * 0.2);
+      foamGroup.position.y = factor * (maxDisplacement * 0.45);
+      plateGroup.position.y = factor * (maxDisplacement * 0.75);
+      switchesGroup.position.y = factor * (maxDisplacement * 1.15);
+      keycapsGroup.position.y = factor * (maxDisplacement * 1.6);
+    }
+
+    // --- Interactive Key Press Animation & Audio ---
+    let keystrokeTotal = 0;
+    let liveTextBuffer = '';
+    let hasTypedFirstChar = false;
+
+    function updateLiveStream(code, label) {
+      const streamEl = document.getElementById('live-typing-stream');
+      if (!streamEl) return;
+
+      if (!hasTypedFirstChar) {
+        liveTextBuffer = '';
+        hasTypedFirstChar = true;
+      }
+
+      if (code === 'Backspace') {
+        liveTextBuffer = liveTextBuffer.slice(0, -1);
+      } else if (code === 'Space') {
+        liveTextBuffer += ' ';
+      } else if (code === 'Enter') {
+        liveTextBuffer += ' ↵ ';
+      } else if (code === 'Knob') {
+        // Knob event indication
+      } else if (label && label.length <= 4 && !label.includes('SHIFT') && !label.includes('CTRL') && !label.includes('ALT') && !label.includes('WIN') && !label.includes('FN') && !label.includes('CAPS') && !label.includes('TAB') && !label.includes('ESC') && !label.includes('DEL') && !label.includes('PG')) {
+        // Take primary character from label
+        const char = label.split(' ')[0];
+        liveTextBuffer += char;
+      } else if (code.startsWith('Key')) {
+        liveTextBuffer += code.replace('Key', '');
+      } else if (code.startsWith('Digit')) {
+        liveTextBuffer += code.replace('Digit', '');
+      }
+
+      // Keep last 60 characters for clean horizontal stream
+      if (liveTextBuffer.length > 60) {
+        liveTextBuffer = liveTextBuffer.slice(-60);
+      }
+
+      streamEl.textContent = liveTextBuffer || ' ';
+    }
+
+    function triggerKeyPress(code, isRelease = false) {
+      const keyMesh = keyMeshesByCode[code];
+      const data = keyMesh ? keyMesh.userData : null;
+
+      // Update badge in UI
+      const badge = document.getElementById('last-key-badge');
+      if (badge) {
+        const displayLabel = data ? (data.label || code) : code;
+        badge.textContent = displayLabel.replace('\n', ' ');
+        badge.classList.add('bg-cyan-500', 'text-slate-950');
+        setTimeout(() => badge.classList.remove('bg-cyan-500', 'text-slate-950'), 150);
+      }
+
+      if (!isRelease) {
+        keystrokeTotal++;
+        const counter = document.getElementById('keystroke-counter');
+        if (counter) counter.textContent = keystrokeTotal;
+        updateLiveStream(code, data ? data.label : '');
+      }
+
+      // Play Sound
+      const soundType = data ? data.type : 'alpha';
+      if (code === 'Knob') {
+        soundEngine.playKnobClick();
+        if (rotaryKnobMesh) {
+          rotaryKnobMesh.rotation.y += 0.2;
+        }
+      } else {
+        soundEngine.playKey(soundType, isRelease);
+      }
+
+      // Animate 3D Keycap depression
+      if (keyMesh && code !== 'Knob') {
+        if (!isRelease) {
+          keyMesh.userData.isPressed = true;
+          keyMesh.position.y = keyMesh.userData.homeY - 0.22; // Physical 3.5mm switch travel
+
+          // Reactive RGB Glow effect
+          if (rgbConfig.mode === 'reactive') {
+            triggerReactiveLED(keyMesh);
+          }
+        } else {
+          keyMesh.userData.isPressed = false;
+          keyMesh.position.y = keyMesh.userData.homeY;
+        }
+      }
+    }
+
+    // --- RGB Backlighting Engine ---
+    const rgbConfig = {
+      mode: 'reactive', // 'reactive', 'wave', 'breathe', 'static', 'off'
+      color: new THREE.Color(0x00ffff),
+      brightness: 0.8
+    };
+
+    function triggerReactiveLED(keyMesh) {
+      if (!keyMesh.userData.ledMesh) return;
+      const led = keyMesh.userData.ledMesh;
+      led.material.color.set(rgbConfig.color);
+      led.material.color.multiplyScalar(2.5 * rgbConfig.brightness);
+
+      // Fade out smoothly
+      const startFade = performance.now();
+      const fadeInterval = setInterval(() => {
+        const diff = (performance.now() - startFade) / 450;
+        if (diff >= 1) {
+          led.material.color.setHex(0x111111);
+          clearInterval(fadeInterval);
+        } else {
+          led.material.color.lerp(new THREE.Color(0x050505), diff);
+        }
+      }, 30);
+    }
+
+    function updateRGB(time) {
+      if (rgbConfig.mode === 'off') {
+        keyDataList.forEach(k => {
+          if (k.keycapMesh.userData.ledMesh) {
+            k.keycapMesh.userData.ledMesh.material.color.setHex(0x000000);
+          }
+        });
+        return;
+      }
+
+      const tSec = time * 0.002;
+      const brightness = rgbConfig.brightness;
+
+      if (rgbConfig.mode === 'wave') {
+        // Rainbow wave sweeping horizontally across keyboard
+        keyDataList.forEach(k => {
+          const led = k.keycapMesh.userData.ledMesh;
+          if (led) {
+            const hue = (k.posX * 0.05 + tSec * 0.6) % 1;
+            led.material.color.setHSL(hue, 0.9, 0.5 * brightness);
+          }
+        });
+      } else if (rgbConfig.mode === 'breathe') {
+        // Smooth sine wave pulse
+        const pulse = (Math.sin(tSec * 2.5) * 0.5 + 0.5) * brightness;
+        const col = rgbConfig.color.clone().multiplyScalar(pulse * 1.5);
+        keyDataList.forEach(k => {
+          const led = k.keycapMesh.userData.ledMesh;
+          if (led) led.material.color.copy(col);
+        });
+      } else if (rgbConfig.mode === 'static') {
+        const col = rgbConfig.color.clone().multiplyScalar(brightness);
+        keyDataList.forEach(k => {
+          const led = k.keycapMesh.userData.ledMesh;
+          if (led) led.material.color.copy(col);
+        });
+      }
+    }
+
+    // --- Raycasting Mouse & Touch Key Clicking ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredKey = null;
+
+    function getIntersectedKey(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+      const clientY = event.clientY || (event.touches && event.touches[0].clientY);
+      if (clientX === undefined) return null;
+
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      // Gather interactive key meshes
+      const interactiveMeshes = Object.values(keyMeshesByCode);
+      const intersects = raycaster.intersectObjects(interactiveMeshes, true);
+
+      if (intersects.length > 0) {
+        let obj = intersects[0].object;
+        while (obj && !obj.userData.code && obj.parent) {
+          obj = obj.parent;
+        }
+        if (obj && obj.userData.code) return obj;
+      }
+      return null;
+    }
+
+    window.addEventListener('pointerdown', (e) => {
+      soundEngine.resume();
+      const targetKey = getIntersectedKey(e);
+      if (targetKey) {
+        hoveredKey = targetKey;
+        triggerKeyPress(targetKey.userData.code, false);
+      }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      if (hoveredKey) {
+        triggerKeyPress(hoveredKey.userData.code, true);
+        hoveredKey = null;
+      }
+    });
+
+    // --- Physical Keyboard Listeners ---
+    const pressedKeys = new Set();
+
+    window.addEventListener('keydown', (e) => {
+      // Don't intercept if user is typing in form input
+      if (e.target.tagName === 'INPUT') return;
+
+      soundEngine.resume();
+
+      const code = e.code;
+      if (!pressedKeys.has(code)) {
+        pressedKeys.add(code);
+        triggerKeyPress(code, false);
+      }
+
+      // Quick shortcut 'M' for mute
+      if (code === 'KeyM' && !e.ctrlKey && !e.metaKey) {
+        toggleMute();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      const code = e.code;
+      if (pressedKeys.has(code)) {
+        pressedKeys.delete(code);
+        triggerKeyPress(code, true);
+      }
+    });
+
+    // --- Camera View Presets ---
+    const CAM_PRESETS = {
+      persp: { x: 0, y: 22, z: 28, tx: 0, ty: 0, tz: 0 },
+      top: { x: 0, y: 35, z: 0.1, tx: 0, ty: 0, tz: 0 },
+      front: { x: 0, y: 6, z: 32, tx: 0, ty: 0, tz: 0 },
+      side: { x: 30, y: 8, z: 0, tx: 0, ty: 0, tz: 0 }
+    };
+
+    function setCameraPreset(presetName) {
+      const p = CAM_PRESETS[presetName];
+      if (!p) return;
+
+      const startPos = camera.position.clone();
+      const endPos = new THREE.Vector3(p.x, p.y, p.z);
+      const startTarget = controls.target.clone();
+      const endTarget = new THREE.Vector3(p.tx, p.ty, p.tz);
+
+      let animStartTime = performance.now();
+      const dur = 800;
+
+      function stepCam() {
+        const elapsed = performance.now() - animStartTime;
+        const t = Math.min(1, elapsed / dur);
+        const ease = 0.5 - Math.cos(t * Math.PI) / 2;
+
+        camera.position.lerpVectors(startPos, endPos, ease);
+        controls.target.lerpVectors(startTarget, endTarget, ease);
+        controls.update();
+
+        if (t < 1) {
+          requestAnimationFrame(stepCam);
+        }
+      }
+      stepCam();
+    }
+
+    // --- UI Button & Controls Setup ---
+    function setupUI() {
+      // Reassemble button
+      document.getElementById('btn-replay').addEventListener('click', () => {
+        soundEngine.resume();
+        startAssemblyAnimation();
+      });
+
+      // Skip assembly button
+      document.getElementById('btn-skip-assembly').addEventListener('click', () => {
+        instantAssemble();
+      });
+
+      // Explode view toggle button
+      let isExploded = false;
+      const explodeBtn = document.getElementById('btn-explode');
+      const explodeText = document.getElementById('explode-btn-text');
+      const explodeSlider = document.getElementById('slider-explode');
+      const explodeSliderVal = document.getElementById('explode-slider-val');
+
+      explodeBtn.addEventListener('click', () => {
+        isExploded = !isExploded;
+        const targetVal = isExploded ? 0.75 : 0;
+        explodeSlider.value = targetVal * 100;
+        explodeSliderVal.textContent = `${Math.round(targetVal * 100)}%`;
+        applyExplodedSeparation(targetVal);
+        explodeText.textContent = isExploded ? 'Collapse' : 'Exploded View';
+      });
+
+      explodeSlider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value) / 100;
+        explodeSliderVal.textContent = `${Math.round(val * 100)}%`;
+        applyExplodedSeparation(val);
+      });
+
+      // Mute toggle
+      window.toggleMute = function() {
+        const muted = !soundEngine.isMuted;
+        soundEngine.setMuted(muted);
+        document.getElementById('icon-sound-on').classList.toggle('hidden', muted);
+        document.getElementById('icon-sound-off').classList.toggle('hidden', !muted);
+        document.getElementById('mute-label').textContent = muted ? 'Muted' : 'Audio On';
+      };
+      document.getElementById('btn-mute').addEventListener('click', toggleMute);
+
+      // Settings Drawer toggle
+      const drawer = document.getElementById('settings-drawer');
+      document.getElementById('btn-settings').addEventListener('click', () => {
+        drawer.classList.remove('translate-x-full');
+      });
+      document.getElementById('btn-close-settings').addEventListener('click', () => {
+        drawer.classList.add('translate-x-full');
+      });
+
+      // Camera Presets
+      document.querySelectorAll('.cam-preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.cam-preset-btn').forEach(b => {
+            b.classList.remove('bg-white/10', 'text-white');
+            b.classList.add('text-slate-400');
+          });
+          e.target.classList.add('bg-white/10', 'text-white');
+          e.target.classList.remove('text-slate-400');
+          setCameraPreset(e.target.dataset.camera);
+        });
+      });
+
+      // Sound Profile Selector
+      document.querySelectorAll('.switch-opt-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.switch-opt-btn').forEach(b => {
+            b.classList.remove('active', 'border-cyan-500/50', 'bg-cyan-950/40', 'text-cyan-200');
+          });
+          const target = e.currentTarget;
+          target.classList.add('active', 'border-cyan-500/50', 'bg-cyan-950/40', 'text-cyan-200');
+          const profile = target.dataset.switch;
+          soundEngine.setProfile(profile);
+          soundEngine.playKey('space'); // sample the profile sound
+        });
+      });
+
+      // RGB Modes
+      document.querySelectorAll('.rgb-mode-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.rgb-mode-btn').forEach(b => {
+            b.classList.remove('active', 'text-cyan-300', 'border-cyan-500/50');
+            b.classList.add('text-slate-300');
+          });
+          e.currentTarget.classList.add('active', 'text-cyan-300', 'border-cyan-500/50');
+          rgbConfig.mode = e.currentTarget.dataset.rgbMode;
+          const badge = document.getElementById('rgb-mode-badge');
+          if (badge) {
+            badge.textContent = rgbConfig.mode.toUpperCase();
+          }
+        });
+      });
+
+      // Color Swatches
+      document.querySelectorAll('.color-swatch-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.color-swatch-btn').forEach(b => b.classList.remove('ring-2', 'ring-white/80'));
+          e.currentTarget.classList.add('ring-2', 'ring-white/80');
+          rgbConfig.color = new THREE.Color(e.currentTarget.dataset.color);
+        });
+      });
+
+      // RGB Brightness Slider
+      const brightSlider = document.getElementById('slider-rgb-brightness');
+      brightSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        rgbConfig.brightness = val / 100;
+        document.getElementById('rgb-brightness-val').textContent = `${val}%`;
+      });
+
+      // Theme Finish Buttons
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active', 'border-cyan-500/50'));
+          e.currentTarget.classList.add('active', 'border-cyan-500/50');
+          const themeName = e.currentTarget.dataset.theme;
+          if (THEMES[themeName]) {
+            activeTheme = THEMES[themeName];
+            rebuildKeyboard();
+          }
+        });
+      });
+
+      // First click on canvas audio unlock
+      window.addEventListener('click', () => {
+        soundEngine.resume();
+      }, { once: true });
+    }
+
+    // --- Window Resize Handling ---
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- Main Render Loop ---
+    let lastTime = 0;
+    function animate(time) {
+      requestAnimationFrame(animate);
+
+      // Handle Exploded assembly sequence
+      updateAssembly(time);
+
+      // Update RGB lighting effects
+      updateRGB(time);
+
+      // Smooth Orbit Controls
+      controls.update();
+
+      // Render Three.js Scene
+      renderer.render(scene, camera);
+      lastTime = time;
+    }
+
+    // --- Initial Boot Sequence ---
+    rebuildKeyboard();
+    setupUI();
+
+    // Respect reduced-motion preferences
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      instantAssemble();
+    } else {
+      // Begin beautiful exploded assembly animation
+      startAssemblyAnimation();
+    }
+
+    // Start rendering
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
