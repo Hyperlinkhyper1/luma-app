@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KB65 — Mechanical Keyboard Showcase</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 40%, #22252f 0%, #0e1016 55%, #05060a 100%);
+    color: #d0d4dd;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Ambient desk shadow */
+  #scene {
+    position: fixed; inset: 0;
+    perspective: 2600px;
+    perspective-origin: 50% 32%;
+    display: grid;
+    place-items: center;
+  }
+  #stage {
+    transform-style: preserve-3d;
+    transform: scale(1) rotateX(58deg) rotateZ(-9deg);
+    transition: transform 0.6s ease;
+  }
+  #ambient {
+    position: absolute;
+    left: 50%; top: 62%;
+    width: 900px; height: 260px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(ellipse, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 65%);
+    filter: blur(20px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  #keyboard {
+    position: relative;
+    transform-style: preserve-3d;
+  }
+  .layer {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform-style: preserve-3d;
+    transition: transform 1.1s cubic-bezier(.22,1,.36,1), opacity .5s ease;
+    will-change: transform, opacity;
+  }
+  .face {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform-origin: 0 0;
+    backface-visibility: visible;
+  }
+
+  /* ---------- CASE ---------- */
+  .case-top {
+    background:
+      linear-gradient(160deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0) 40%),
+      linear-gradient(135deg, #3a3d46 0%, #2c2f37 45%, #22252c 100%);
+    box-shadow:
+      inset 0 0 0 2px #14161b,
+      inset 0 0 22px rgba(0,0,0,0.55);
+    border-radius: 10px;
+  }
+  .case-bottom {
+    background: linear-gradient(180deg, #16181d 0%, #0c0d11 100%);
+    border-radius: 10px;
+  }
+  .case-side {
+    background: linear-gradient(180deg, #2c2f37 0%, #17191f 100%);
+  }
+
+  /* ---------- PCB ---------- */
+  .pcb-top {
+    background-color: #0d5232;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,220,90,0.09) 0 1px, transparent 1px 24px),
+      repeating-linear-gradient(0deg, rgba(255,220,90,0.09) 0 1px, transparent 1px 24px),
+      radial-gradient(circle at 12% 22%, rgba(255,220,90,0.35) 0 2px, transparent 3px),
+      radial-gradient(circle at 88% 18%, rgba(255,220,90,0.35) 0 2px, transparent 3px),
+      radial-gradient(circle at 6% 80%, rgba(255,220,90,0.35) 0 2px, transparent 3px),
+      radial-gradient(circle at 94% 82%, rgba(255,220,90,0.35) 0 2px, transparent 3px),
+      radial-gradient(circle at 50% 50%, rgba(30,40,25,0.4) 0%, transparent 60%);
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.35);
+  }
+  .pcb-bottom { background: #073d24; }
+  .pcb-side { background: #0a4a2c; }
+
+  /* ---------- FOAM (PORON pink) ---------- */
+  .foam-top {
+    background-color: #d99a9a;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(0,0,0,0.08) 0 3px, transparent 4px),
+      radial-gradient(circle at 60% 60%, rgba(0,0,0,0.06) 0 2px, transparent 3px),
+      radial-gradient(circle at 80% 20%, rgba(0,0,0,0.07) 0 2px, transparent 3px),
+      repeating-radial-gradient(circle at 40% 50%, rgba(255,255,255,0.05) 0 1px, transparent 2px 8px);
+  }
+  .foam-bottom { background: #a06666; }
+  .foam-side { background: #b57878; }
+
+  /* ---------- PLATE (brushed aluminum) ---------- */
+  .plate-top {
+    background:
+      linear-gradient(120deg, rgba(255,255,255,0.14) 0%, rgba(0,0,0,0.15) 100%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 1px, transparent 1px 2px),
+      linear-gradient(180deg, #a9adb7 0%, #74798a 100%);
+  }
+  .plate-bottom { background: #4d525c; }
+  .plate-side { background: linear-gradient(180deg, #74798a 0%, #4a4e58 100%); }
+
+  /* ---------- SWITCH (Gateron-style) ---------- */
+  .switch {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0; height: 0;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+    will-change: transform, opacity;
+    pointer-events: none;
+  }
+  .sw-top {
+    background:
+      radial-gradient(circle at 50% 50%, #e64545 0 2.2px, #1a1a1a 2.4px 100%);
+    border-radius: 2px;
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.7);
+  }
+  .sw-top::before, .sw-top::after {
+    content: '';
+    position: absolute;
+    background: #e64545;
+    left: 50%; top: 50%;
+    border-radius: 0.5px;
+  }
+  .sw-top::before { width: 4px; height: 1.2px; transform: translate(-50%,-50%); }
+  .sw-top::after  { width: 1.2px; height: 4px; transform: translate(-50%,-50%); }
+  .sw-side { background: linear-gradient(180deg, #2a2a2a 0%, #0e0e0e 100%); }
+  .sw-bottom { background: #050505; }
+
+  /* ---------- KEYCAP ---------- */
+  .keycap {
+    position: absolute;
+    left: 0; top: 0;
+    width: 0; height: 0;
+    transform-style: preserve-3d;
+    transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+    cursor: pointer;
+    will-change: transform;
+  }
+  .keycap .face { pointer-events: auto; }
+  .kc-top {
+    background:
+      linear-gradient(160deg, #f2ecdc 0%, #dcd4c0 55%, #cbc3ae 100%);
+    border-radius: 5px 5px 4px 4px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 4px 6px;
+    color: #2a2a2a;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+    box-shadow:
+      inset 0 -2px 3px rgba(0,0,0,0.12),
+      inset 0 1px 1px rgba(255,255,255,0.55),
+      inset 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .kc-top .lg-main { line-height: 1; }
+  .kc-top .lg-sub {
+    position: absolute;
+    top: 4px; left: 6px;
+    font-size: 8px;
+    color: rgba(60,60,60,0.7);
+  }
+  .kc-top.center { justify-content: center; align-items: center; padding: 0; }
+  .kc-side {
+    background: linear-gradient(180deg, #d4ccb6 0%, #a8a08c 100%);
+  }
+  .kc-bottom { background: #6d6858; }
+
+  /* Accent keycaps */
+  .keycap.accent .kc-top {
+    background: linear-gradient(160deg, #f0995a 0%, #d97434 55%, #b85e24 100%);
+    color: #fff5e6;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  }
+  .keycap.accent .kc-side {
+    background: linear-gradient(180deg, #c66a2c 0%, #8a4718 100%);
+  }
+  .keycap.accent .kc-bottom { background: #5a3010; }
+
+  .keycap.mod .kc-top { font-size: 10px; }
+  .keycap.arrow .kc-top { justify-content: center; align-items: center; padding: 0; font-size: 14px; }
+  .keycap.space .kc-top { padding: 0; }
+
+  /* Pressed state */
+  .keycap.pressed { transition: transform .08s ease-out; }
+
+  /* ---------- KNOB ---------- */
+  .knob-base {
+    position: absolute;
+    width: 0; height: 0;
+    transform-style: preserve-3d;
+    transition: transform .55s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+    cursor: pointer;
+  }
+  .knob-base .face { pointer-events: auto; }
+  .knob-top {
+    background:
+      radial-gradient(circle at 35% 35%, #f0995a 0%, #b85e24 55%, #6a3010 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 -3px 6px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.3);
+  }
+  .knob-top::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 6%;
+    width: 3px; height: 30%;
+    background: #fff2e0;
+    border-radius: 2px;
+    transform: translateX(-50%);
+    box-shadow: 0 0 3px rgba(0,0,0,0.4);
+  }
+  .knob-side { background: linear-gradient(180deg, #8a4718 0%, #3a1c08 100%); border-radius: 50% / 6%; }
+
+  /* ---------- RGB underglow ---------- */
+  .rgb-glow {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 780px; height: 300px;
+    transform: translate(-50%, -50%) translateZ(-4px);
+    border-radius: 30px;
+    filter: blur(14px);
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+
+  /* ---------- UI ---------- */
+  .title {
+    position: fixed;
+    top: 22px; left: 26px;
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    z-index: 50;
+  }
+  .title strong { color: #f0e8d0; letter-spacing: 3px; }
+  .subtitle {
+    position: fixed;
+    top: 44px; left: 26px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    z-index: 50;
+    max-width: 240px;
+  }
+
+  .controls {
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 10px; align-items: center;
+    background: rgba(18,20,26,0.72);
+    padding: 10px 16px;
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    z-index: 100;
+    font-size: 12px;
+  }
+  .controls button {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #e0e4ed;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all .18s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .controls button:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); }
+  .controls button:active { transform: translateY(1px); }
+  .controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .controls label {
+    display: flex; align-items: center; gap: 8px;
+    color: rgba(255,255,255,0.55);
+    padding: 0 6px 0 10px;
+    border-left: 1px solid rgba(255,255,255,0.1);
+  }
+  .controls input[type=range] {
+    width: 88px;
+    accent-color: #d97434;
+  }
+  .controls .swatch {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff3a6a, #ff8a3a, #f5d84a, #4ade80, #38bdf8, #a855f7);
+    border: 1px solid rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: transform .15s;
+  }
+  .controls .swatch:hover { transform: scale(1.15); }
+
+  #hint {
+    position: fixed;
+    top: 22px; left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #f5c862, #e0a340);
+    color: #1a1d26;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    z-index: 100;
+    box-shadow: 0 6px 24px rgba(230,180,60,0.35);
+    transition: opacity .5s, transform .5s;
+  }
+  #hint.hidden { opacity: 0; transform: translateX(-50%) translateY(-12px); pointer-events: none; }
+
+  @media (max-width: 820px) {
+    .title, .subtitle { display: none; }
+    .controls { font-size: 11px; padding: 8px 10px; gap: 6px; }
+    .controls button { padding: 6px 10px; font-size: 11px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .layer, .keycap, .switch, .knob-base {
+      transition-duration: 0.25s !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="title"><strong>KB65</strong> · Aluminum · Rev.02</div>
+  <div class="subtitle">Custom 65% · Gasket mount · Cream keycaps</div>
+
+  <div id="scene">
+    <div id="ambient"></div>
+    <div id="stage">
+      <div id="keyboard"></div>
+    </div>
+  </div>
+
+  <div id="hint">Click any key or press a key to enable sound</div>
+
+  <div class="controls">
+    <button id="replay">↻ Replay Assembly</button>
+    <button id="mute">🔊 Sound On</button>
+    <label>
+      Underglow
+      <input type="range" id="rgb" min="0" max="100" value="55">
+    </label>
+    <label style="border-left:none;padding-left:2px;">
+      <span class="swatch" id="rgbSwatch" title="Cycle glow color"></span>
+    </label>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------- Configuration ----------------
+  const U = 44;                       // 1 unit in px
+  const GAP = 4;                      // gap between keycaps
+  const CASE_PAD_X = 22;
+  const CASE_PAD_Y = 22;
+  const CASE_D = 32;
+  const PCB_D = 3;
+  const FOAM_D = 3;
+  const PLATE_D = 3;
+  const SW_W = 14, SW_H = 14, SW_D = 14;
+  const KC_D = 11;
+
+  // 65% layout: rows of [label, width, code, type?]
+  const rowDefs = [
+    [
+      ['`',1,'Backquote'], ['1',1,'Digit1','letter','!'], ['2',1,'Digit2','letter','@'],
+      ['3',1,'Digit3','letter','#'], ['4',1,'Digit4','letter','$'], ['5',1,'Digit5','letter','%'],
+      ['6',1,'Digit6','letter','^'], ['7',1,'Digit7','letter','&'], ['8',1,'Digit8','letter','*'],
+      ['9',1,'Digit9','letter','('], ['0',1,'Digit0','letter',')'], ['-',1,'Minus','letter','_'],
+      ['=',1,'Equal','letter','+'], ['⌫',2,'Backspace','backspace']
+    ],
+    [
+      ['Tab',1.5,'Tab','mod'],
+      ['Q',1,'KeyQ'], ['W',1,'KeyW'], ['E',1,'KeyE'], ['R',1,'KeyR'], ['T',1,'KeyT'],
+      ['Y',1,'KeyY'], ['U',1,'KeyU'], ['I',1,'KeyI'], ['O',1,'KeyO'], ['P',1,'KeyP'],
+      ['[',1,'BracketLeft'], [']',1,'BracketRight'], ['\\',1.5,'Backslash']
+    ],
+    [
+      ['Caps',1.75,'CapsLock','mod'],
+      ['A',1,'KeyA'], ['S',1,'KeyS'], ['D',1,'KeyD'], ['F',1,'KeyF'], ['G',1,'KeyG'],
+      ['H',1,'KeyH'], ['J',1,'KeyJ'], ['K',1,'KeyK'], ['L',1,'KeyL'],
+      [';',1,'Semicolon'], ["'",1,'Quote'],
+      ['Enter',2.25,'Enter','enter']
+    ],
+    [
+      ['Shift',2.25,'ShiftLeft','mod'],
+      ['Z',1,'KeyZ'], ['X',1,'KeyX'], ['C',1,'KeyC'], ['V',1,'KeyV'], ['B',1,'KeyB'],
+      ['N',1,'KeyN'], ['M',1,'KeyM'], [',',1,'Comma'], ['.',1,'Period'], ['/',1,'Slash'],
+      ['Shift',1.75,'ShiftRight','mod'],
+      ['↑',1,'ArrowUp','arrow']
+    ],
+    [
+      ['Ctrl',1.25,'ControlLeft','mod'],
+      ['⌘',1.25,'MetaLeft','mod'],
+      ['Alt',1.25,'AltLeft','mod'],
+      [' ',6.25,'Space','space'],
+      ['Alt',1.25,'AltRight','mod'],
+      ['Fn',1,'Fn','mod'],
+      ['←',1,'ArrowLeft','arrow'],
+      ['↓',1,'ArrowDown','arrow'],
+      ['→',1,'ArrowRight','arrow']
+    ]
+  ];
+
+  const ACCENT_CODES = new Set(['Escape','Enter','Backquote']);
+
+  // Build layout array with computed positions
+  const keys = [];
+  rowDefs.forEach((row, rIdx) => {
+    let x = 0;
+    row.forEach(k => {
+      const [label, w, code, type='letter', sub=''] = k;
+      keys.push({ x, y: rIdx, w, label, code, type, sub });
+      x += w;
+    });
+  });
+
+  // Knob occupies the 16th unit column on row 0
+  const KB_INTERIOR_W = 16 * U;       // includes knob column
+  const KB_INTERIOR_H = 5 * U;
+  const CASE_W = KB_INTERIOR_W + CASE_PAD_X * 2;
+  const CASE_H = KB_INTERIOR_H + CASE_PAD_Y * 2;
+
+  // Z stacking (center of each layer, relative to case center at 0)
+  const Z = {};
+  Z.case = 0;
+  Z.pcb  = CASE_D/2 + PCB_D/2 + 1;
+  Z.foam = Z.pcb + PCB_D/2 + FOAM_D/2;
+  Z.plate= Z.foam + FOAM_D/2 + PLATE_D/2;
+  Z.sw   = Z.plate + PLATE_D/2 + SW_D/2 + 1;
+  Z.kc   = Z.sw + SW_D/2 + KC_D/2 + 2;
+  Z.knobBase = Z.plate + 8;   // knob shaft
+  const KNOB_D = 22;
+
+  // ---------------- 3D Box Builder ----------------
+  function addFaces(host, w, h, d, prefix, opts = {}) {
+    // Six faces: top, bottom, left, right, front, back
+    const configs = [
+      { name:'top',    fw:w, fh:h, tr:`translateZ(${d/2}px) translate(-50%,-50%)` },
+      { name:'bottom', fw:w, fh:h, tr:`translateZ(${-d/2}px) rotateY(180deg) translate(-50%,-50%)` },
+      { name:'left',   fw:d, fh:h, tr:`translateX(${-w/2}px) rotateY(-90deg) translate(-50%,-50%)` },
+      { name:'right',  fw:d, fh:h, tr:`translateX(${w/2}px) rotateY(90deg) translate(-50%,-50%)` },
+      { name:'front',  fw:w, fh:d, tr:`translateY(${h/2}px) rotateX(-90deg) translate(-50%,-50%)` },
+      { name:'back',   fw:w, fh:d, tr:`translateY(${-h/2}px) rotateX(90deg) translate(-50%,-50%)` },
+    ];
+    const created = {};
+    configs.forEach(c => {
+      const f = document.createElement('div');
+      const cls = (c.name === 'top') ? `${prefix}-top`
+                : (c.name === 'bottom') ? `${prefix}-bottom`
+                : `${prefix}-side`;
+      f.className = `face ${cls}`;
+      f.style.width = c.fw + 'px';
+      f.style.height = c.fh + 'px';
+      f.style.transform = c.tr;
+      host.appendChild(f);
+      created[c.name] = f;
+    });
+    return created;
+  }
+
+  // ---------------- Build scene ----------------
+  const keyboard = document.getElementById('keyboard');
+  keyboard.style.width = CASE_W + 'px';
+  keyboard.style.height = CASE_H + 'px';
+
+  // RGB glow layer (below case)
+  const rgbGlow = document.createElement('div');
+  rgbGlow.className = 'rgb-glow';
+  rgbGlow.style.background = 'radial-gradient(ellipse, rgba(255,120,60,0.85), rgba(255,120,60,0) 65%)';
+  keyboard.appendChild(rgbGlow);
+
+  // ---- Case (always in place) ----
+  const caseLayer = document.createElement('div');
+  caseLayer.className = 'layer';
+  caseLayer.style.transform = `translate(-50%,-50%) translateZ(${Z.case}px)`;
+  addFaces(caseLayer, CASE_W, CASE_H, CASE_D, 'case');
+  keyboard.appendChild(caseLayer);
+
+  // ---- PCB ----
+  const pcbLayer = document.createElement('div');
+  pcbLayer.className = 'layer';
+  const pcbW = KB_INTERIOR_W + 8;
+  const pcbH = KB_INTERIOR_H + 8;
+  addFaces(pcbLayer, pcbW, pcbH, PCB_D, 'pcb');
+  keyboard.appendChild(pcbLayer);
+
+  // ---- Foam ----
+  const foamLayer = document.createElement('div');
+  foamLayer.className = 'layer';
+  addFaces(foamLayer, pcbW - 4, pcbH - 4, FOAM_D, 'foam');
+  keyboard.appendChild(foamLayer);
+
+  // ---- Plate ----
+  const plateLayer = document.createElement('div');
+  plateLayer.className = 'layer';
+  addFaces(plateLayer, pcbW, pcbH, PLATE_D, 'plate');
+  keyboard.appendChild(plateLayer);
+
+  // ---- Switches & Keycaps ----
+  const keyElements = new Map();  // code -> {keycap, switch}
+  const orderedKeys = keys.slice().sort((a,b) => {
+    // Sort by y then x for install order
+    if (a.y !== b.y) return a.y - b.y;
+    return a.x - b.x;
+  });
+
+  // Compute layout offset (interior top-left in local coords, given center-origin layers)
+  const INT_X0 = -KB_INTERIOR_W/2;
+  const INT_Y0 = -KB_INTERIOR_H/2;
+
+  const switches = [];
+  const keycaps = [];
+
+  orderedKeys.forEach(k => {
+    const kwPx = k.w * U - GAP;
+    const khPx = U - GAP;
+    // Center of key in interior coords
+    const cx = INT_X0 + k.x * U + (k.w * U) / 2;
+    const cy = INT_Y0 + k.y * U + U / 2;
+
+    // ---- Switch ----
+    const swEl = document.createElement('div');
+    swEl.className = 'switch';
+    swEl.dataset.code = k.code;
+    // A switch is single-unit sized (a real board would have one per key mount)
+    addFaces(swEl, SW_W, SW_H, SW_D, 'sw');
+    // Center on interior center + key center
+    swEl.style.left = '50%';
+    swEl.style.top = '50%';
+    swEl._cx = cx; swEl._cy = cy;
+    swEl.style.transform = `translate(-50%,-50%) translate(${cx}px, ${cy}px) translateZ(${Z.sw + 320}px)`;
+    swEl.style.opacity = '0';
+    keyboard.appendChild(swEl);
+    switches.push(swEl);
+
+    // ---- Keycap ----
+    const kc = document.createElement('div');
+    let cls = 'keycap ' + k.type;
+    if (ACCENT_CODES.has(k.code)) cls += ' accent';
+    kc.className = cls;
+    kc.dataset.code = k.code;
+    const faces = addFaces(kc, kwPx, khPx, KC_D, 'kc');
+    // Add legend to top face
+    if (k.type === 'letter' || k.type === 'mod' || k.type === 'arrow' || k.type === 'enter' || k.type === 'backspace' || k.type === 'space') {
+      const top = faces.top;
+      if (k.type === 'arrow' || k.type === 'space' || (k.type === 'mod' && k.label.length <= 2)) top.classList.add('center');
+      if (k.sub) {
+        const sub = document.createElement('span');
+        sub.className = 'lg-sub';
+        sub.textContent = k.sub;
+        top.appendChild(sub);
+      }
+      const main = document.createElement('span');
+      main.className = 'lg-main';
+      main.textContent = k.label;
+      top.appendChild(main);
+    }
+    kc.style.left = '50%';
+    kc.style.top = '50%';
+    kc._cx = cx; kc._cy = cy;
+    kc._baseTransform = `translate(-50%,-50%) translate(${cx}px, ${cy}px) translateZ(${Z.kc}px)`;
+    kc.style.transform = `translate(-50%,-50%) translate(${cx}px, ${cy}px) translateZ(${Z.kc + 480}px)`;
+    kc.style.opacity = '0';
+    keyboard.appendChild(kc);
+    keycaps.push(kc);
+    keyElements.set(k.code, { keycap: kc, switch: swEl, data: k });
+  });
+
+  // ---- Rotary Knob (top-right corner, row 0, column 15) ----
+  const knobCX = INT_X0 + 15 * U + U/2;
+  const knobCY = INT_Y0 + 0 * U + U/2;
+  const knob = document.createElement('div');
+  knob.className = 'knob-base';
+  knob.style.left = '50%';
+  knob.style.top = '50%';
+  addFaces(knob, U - 8, U - 8, KNOB_D, 'knob');
+  knob._baseTransform = `translate(-50%,-50%) translate(${knobCX}px, ${knobCY}px) translateZ(${Z.plate + KNOB_D/2 + 6}px)`;
+  knob.style.transform = `translate(-50%,-50%) translate(${knobCX}px, ${knobCY}px) translateZ(${Z.plate + KNOB_D/2 + 400}px)`;
+  knob.style.opacity = '0';
+  knob._rotation = 0;
+  keyboard.appendChild(knob);
+
+  // ---------------- Audio ----------------
+  let audioCtx = null;
+  let muted = false;
+  let audioReady = false;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch(e) { return null; }
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioReady) {
+      audioReady = true;
+      const hint = document.getElementById('hint');
+      if (hint) hint.classList.add('hidden');
+    }
+    return audioCtx;
+  }
+
+  // Precomputed noise buffer
+  let noiseBuffer = null;
+  function getNoise(ctx) {
+    if (noiseBuffer && noiseBuffer.sampleRate === ctx.sampleRate) return noiseBuffer;
+    const len = ctx.sampleRate * 0.15;
+    noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/len, 2);
+    }
+    return noiseBuffer;
+  }
+
+  // Sound profiles per key group
+  const SOUND_PROFILES = {
+    letter:    { thump: 210, click: 3200, thumpGain: 0.32, clickGain: 0.14, decay: 0.09, q: 3 },
+    space:     { thump: 95,  click: 1600, thumpGain: 0.55, clickGain: 0.18, decay: 0.14, q: 2 },
+    enter:     { thump: 150, click: 2400, thumpGain: 0.45, clickGain: 0.16, decay: 0.11, q: 2.5 },
+    backspace: { thump: 175, click: 2800, thumpGain: 0.38, clickGain: 0.16, decay: 0.10, q: 2.5 },
+    mod:       { thump: 165, click: 2200, thumpGain: 0.30, clickGain: 0.12, decay: 0.09, q: 2.5 },
+    arrow:     { thump: 230, click: 3400, thumpGain: 0.28, clickGain: 0.12, decay: 0.08, q: 3 },
+    knob:      { thump: 260, click: 4200, thumpGain: 0.22, clickGain: 0.10, decay: 0.06, q: 4 },
+    install:   { thump: 140, click: 2600, thumpGain: 0.22, clickGain: 0.09, decay: 0.07, q: 3 },
+  };
+
+  function playKeySound(type='letter', velocity=1) {
+    if (muted) return;
+    const ctx = audioCtx;
+    if (!ctx) return;
+    const p = SOUND_PROFILES[type] || SOUND_PROFILES.letter;
+    const now = ctx.currentTime;
+
+    // Low thump body (sine + subtle pitch drop)
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const pitchJitter = 1 + (Math.random() - 0.5) * 0.08;
+    osc.frequency.setValueAtTime(p.thump * 1.6 * pitchJitter, now);
+    osc.frequency.exponentialRampToValueAtTime(p.thump * pitchJitter, now + 0.04);
+    const oscGain = ctx.createGain();
+    oscGain.gain.setValueAtTime(0, now);
+    oscGain.gain.linearRampToValueAtTime(p.thumpGain * velocity, now + 0.003);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + p.decay);
+    osc.connect(oscGain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + p.decay + 0.02);
+
+    // High click - filtered noise burst
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoise(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = p.click * (0.9 + Math.random() * 0.2);
+    bp.Q.value = p.q;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 900;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(p.clickGain * velocity, now);
+    nGain.gain.exponentialRampToValueAtTime(0.0005, now + 0.05);
+    noise.connect(bp).connect(hp).connect(nGain).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.08);
+  }
+
+  function playReleaseSound(type='letter') {
+    if (muted) return;
+    const ctx = audioCtx;
+    if (!ctx) return;
+    const p = SOUND_PROFILES[type] || SOUND_PROFILES.letter;
+    const now = ctx.currentTime;
+    // softer release tick
+    const noise = ctx.createBufferSource();
+    noise.buffer = getNoise(ctx);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = p.click * 0.7;
+    bp.Q.value = 3;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(p.clickGain * 0.4, now);
+    g.gain.exponentialRampToValueAtTime(0.0005, now + 0.04);
+    noise.connect(bp).connect(g).connect(ctx.destination);
+    noise.start(now);
+    noise.stop(now + 0.06);
+  }
+
+  // ---------------- Interaction ----------------
+  function pressKey(code, viaClick=false) {
+    if (animating) return;
+    const entry = keyElements.get(code);
+    if (!entry) return;
+    const { keycap, data } = entry;
+    if (keycap._pressed) return;
+    keycap._pressed = true;
+    keycap.classList.add('pressed');
+    keycap.style.transform = keycap._baseTransform + ' translateZ(-5px)';
+    ensureAudio();
+    playKeySound(data.type, viaClick ? 1 : 0.9);
+  }
+  function releaseKey(code) {
+    const entry = keyElements.get(code);
+    if (!entry) return;
+    const { keycap, data } = entry;
+    if (!keycap._pressed) return;
+    keycap._pressed = false;
+    keycap.classList.remove('pressed');
+    keycap.style.transform = keycap._baseTransform;
+    playReleaseSound(data.type);
+  }
+
+  // Click handling on keycaps
+  keyboard.addEventListener('pointerdown', (e) => {
+    ensureAudio();
+    const kc = e.target.closest('.keycap');
+    if (kc) {
+      const code = kc.dataset.code;
+      pressKey(code, true);
+      const release = () => {
+        releaseKey(code);
+        window.removeEventListener('pointerup', release);
+        window.removeEventListener('pointercancel', release);
+      };
+      window.addEventListener('pointerup', release);
+      window.addEventListener('pointercancel', release);
+    } else if (e.target.closest('.knob-base')) {
+      ensureAudio();
+      knob._rotation += 30;
+      const base = knob._baseTransform;
+      knob.style.transform = base + ` rotateZ(${knob._rotation}deg)`;
+      playKeySound('knob', 0.8);
+    }
+  });
+
+  // Keyboard handling
+  window.addEventListener('keydown', (e) => {
+    ensureAudio();
+    let code = e.code;
+    // Map some codes
+    if (code === 'MetaRight') code = 'MetaLeft';
+    if (code === 'ControlRight') code = 'ControlLeft';
+    if (keyElements.has(code)) {
+      e.preventDefault();
+      pressKey(code, false);
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    let code = e.code;
+    if (code === 'MetaRight') code = 'MetaLeft';
+    if (code === 'ControlRight') code = 'ControlLeft';
+    if (keyElements.has(code)) {
+      e.preventDefault();
+      releaseKey(code);
+    }
+  });
+
+  // ---------------- Assembly Animation ----------------
+  const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  function resetToExploded() {
+    pcbLayer.style.transition = 'none';
+    foamLayer.style.transition = 'none';
+    plateLayer.style.transition = 'none';
+    pcbLayer.style.transform  = `translate(-50%,-50%) translateZ(${Z.pcb + 380}px)`;
+    pcbLayer.style.opacity = '0';
+    foamLayer.style.transform = `translate(-50%,-50%) translateZ(${Z.foam + 420}px)`;
+    foamLayer.style.opacity = '0';
+    plateLayer.style.transform= `translate(-50%,-50%) translateZ(${Z.plate + 460}px)`;
+    plateLayer.style.opacity = '0';
+
+    switches.forEach(sw => {
+      sw.style.transition = 'none';
+      sw.style.opacity = '0';
+      sw.style.transform = `translate(-50%,-50%) translate(${sw._cx}px, ${sw._cy}px) translateZ(${Z.sw + 340}px)`;
+    });
+    keycaps.forEach(kc => {
+      kc.style.transition = 'none';
+      kc.style.opacity = '0';
+      kc.style.transform = `translate(-50%,-50%) translate(${kc._cx}px, ${kc._cy}px) translateZ(${Z.kc + 500}px) rotateZ(${(Math.random()-0.5)*20}deg)`;
+    });
+    knob.style.transition = 'none';
+    knob.style.opacity = '0';
+    knob.style.transform = `translate(-50%,-50%) translate(${knobCX}px, ${knobCY}px) translateZ(${Z.plate + KNOB_D/2 + 420}px)`;
+
+    // Force reflow
+    void keyboard.offsetHeight;
+
+    pcbLayer.style.transition = '';
+    foamLayer.style.transition = '';
+    plateLayer.style.transition = '';
+    switches.forEach(sw => sw.style.transition = '');
+    keycaps.forEach(kc => kc.style.transition = '');
+    knob.style.transition = '';
+  }
+
+  let animating = false;
+  async function runAssembly() {
+    if (animating) return;
+    animating = true;
+    const replayBtn = document.getElementById('replay');
+    replayBtn.disabled = true;
+    resetToExploded();
+    await sleep(120);
+
+    const fastFactor = prefersReduced ? 0.3 : 1;
+
+    // Stage 1: PCB
+    pcbLayer.style.opacity = '1';
+    pcbLayer.style.transform = `translate(-50%,-50%) translateZ(${Z.pcb}px)`;
+    if (!muted && audioCtx) playKeySound('install', 0.5);
+    await sleep(1100 * fastFactor);
+
+    // Stage 2: Foam
+    foamLayer.style.opacity = '1';
+    foamLayer.style.transform = `translate(-50%,-50%) translateZ(${Z.foam}px)`;
+    if (!muted && audioCtx) playKeySound('space', 0.4);
+    await sleep(950 * fastFactor);
+
+    // Stage 3: Plate
+    plateLayer.style.opacity = '1';
+    plateLayer.style.transform = `translate(-50%,-50%) translateZ(${Z.plate}px)`;
+    if (!muted && audioCtx) playKeySound('install', 0.6);
+    await sleep(1000 * fastFactor);
+
+    // Stage 4: Switches L→R
+    const stagger = prefersReduced ? 8 : 45;
+    for (const sw of switches) {
+      sw.style.opacity = '1';
+      sw.style.transform = `translate(-50%,-50%) translate(${sw._cx}px, ${sw._cy}px) translateZ(${Z.sw}px)`;
+      if (!muted && audioCtx && !prefersReduced) playKeySound('install', 0.25);
+      await sleep(stagger);
+    }
+    await sleep(400 * fastFactor);
+
+    // Knob drops in with switches near end
+    knob.style.opacity = '1';
+    knob.style.transform = knob._baseTransform;
+
+    await sleep(400 * fastFactor);
+
+    // Stage 5: Keycaps L→R
+    for (const kc of keycaps) {
+      kc.style.opacity = '1';
+      kc.style.transform = kc._baseTransform;
+      if (!muted && audioCtx && !prefersReduced) {
+        // Soft install click
+        playKeySound('letter', 0.2);
+      }
+      await sleep(stagger);
+    }
+
+    await sleep(400);
+    animating = false;
+    replayBtn.disabled = false;
+  }
+
+  // ---------------- Controls ----------------
+  document.getElementById('replay').addEventListener('click', () => {
+    ensureAudio();
+    runAssembly();
+  });
+
+  const muteBtn = document.getElementById('mute');
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = muted ? '🔇 Muted' : '🔊 Sound On';
+    if (!muted) ensureAudio();
+  });
+
+  // RGB slider controls glow intensity
+  const rgbSlider = document.getElementById('rgb');
+  function updateGlow() {
+    const v = parseInt(rgbSlider.value, 10) / 100;
+    rgbGlow.style.opacity = String(v * 0.85);
+  }
+  rgbSlider.addEventListener('input', updateGlow);
+  updateGlow();
+
+  // Swatch cycles glow color
+  const glowColors = [
+    'rgba(255,120,60,0.85)',   // orange (matches accent)
+    'rgba(255,60,110,0.85)',   // pink
+    'rgba(160,90,255,0.85)',   // purple
+    'rgba(60,160,255,0.85)',   // blue
+    'rgba(80,220,160,0.85)',   // green
+    'rgba(245,215,80,0.85)',   // amber
+  ];
+  let glowIdx = 0;
+  document.getElementById('rgbSwatch').addEventListener('click', () => {
+    glowIdx = (glowIdx + 1) % glowColors.length;
+    rgbGlow.style.background = `radial-gradient(ellipse, ${glowColors[glowIdx]}, rgba(0,0,0,0) 65%)`;
+  });
+
+  // Dismiss hint on any user gesture
+  ['pointerdown','keydown'].forEach(ev => {
+    window.addEventListener(ev, () => {
+      ensureAudio();
+    }, { once: false, passive: true });
+  });
+
+  // ---------------- Responsive scaling ----------------
+  const stage = document.getElementById('stage');
+  function updateScale() {
+    const availW = window.innerWidth - 40;
+    const availH = window.innerHeight - 140;
+    // Empirical footprint after rotateX(58deg): width ~ CASE_W, height ~ CASE_W * 0.55 (perspective)
+    const kbW = CASE_W;
+    const kbH = CASE_W * 0.62;
+    const scale = Math.min(1, availW / (kbW + 40), availH / (kbH + 40));
+    stage.style.transform = `scale(${scale}) rotateX(58deg) rotateZ(-9deg)`;
+  }
+  window.addEventListener('resize', updateScale);
+  updateScale();
+
+  // Kick off assembly on load
+  window.addEventListener('load', () => {
+    setTimeout(runAssembly, 300);
+  });
+
+  // Auto-hide the audio hint after some time if user hasn't clicked
+  setTimeout(() => {
+    if (!audioReady) {
+      const h = document.getElementById('hint');
+      h.textContent = 'Click any key to enable sound →';
+    }
+  }, 6000);
+
+})();
+</script>
+</body>
+</html>
