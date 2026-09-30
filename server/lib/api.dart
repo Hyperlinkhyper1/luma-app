@@ -2300,16 +2300,85 @@ class Api {
       fetcher.close();
     }
     for (final mode in kAiModeNames.keys) {
-      await _evaluateAiPrice(mode);
+      await _evaluateAiPrice(mode, fetch: true);
+    }
+  }
+
+  final Map<String, ({int atMs, List<AiEndpointPrice> endpoints})>
+      _aiEndpointCache = {};
+
+  /// OpenRouter's per-provider prices for [modelId], cached for one watch
+  /// interval. With [fetch] false only the cache is used, so a chat request
+  /// never waits on OpenRouter's catalogue.
+  Future<List<AiEndpointPrice>?> _openRouterEndpoints(String modelId,
+      {bool fetch = false, bool force = false}) async {
+    final cached = _aiEndpointCache[modelId];
+    final fresh = cached != null &&
+        DateTime.now().millisecondsSinceEpoch - cached.atMs <
+            _aiPriceWatchEvery.inMilliseconds;
+    if (!force && (fresh || !fetch)) return cached?.endpoints;
+    final fetcher = AiCatalogFetcher();
+    try {
+      final endpoints = await fetcher.fetchOpenRouterEndpoints(modelId);
+      if (endpoints.isEmpty) return cached?.endpoints;
+      _aiEndpointCache[modelId] = (
+        atMs: DateTime.now().millisecondsSinceEpoch,
+        endpoints: endpoints,
+      );
+      return endpoints;
+    } catch (e) {
+      stderr.writeln('[luma] could not read $modelId endpoints: $e');
+      return cached?.endpoints;
+    } finally {
+      fetcher.close();
     }
   }
 
   /// Checks [mode]'s route against its accepted price; true when the mode is
-  /// switched off because the price rose.
-  Future<bool> _evaluateAiPrice(String mode, [AiModeRoute? route]) async {
+  /// switched off because the price rose. OpenRouter routes are priced by
+  /// their provider endpoints, since that is where discounts live; the rest
+  /// by their catalogue list price.
+  Future<bool> _evaluateAiPrice(String mode,
+      {AiModeRoute? route, bool fetch = false, bool force = false}) async {
     route ??= aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
     if (route == null) return false;
+    if (route.upstream == AiUpstream.openrouter) {
+      final endpoints = await _openRouterEndpoints(route.model,
+          fetch: fetch, force: force);
+      if (endpoints != null) {
+        return aiPriceGuard.evaluateEndpoints(mode, route, endpoints);
+      }
+      if (aiPriceGuard.entry(mode).source == 'endpoints') {
+        return aiPriceGuard.isDisabled(mode);
+      }
+    }
     return aiPriceGuard.evaluate(mode, route, priceFor(aiCatalog, route));
+  }
+
+  /// Notes which OpenRouter provider served a chat turn and what it charges.
+  Future<void> _recordAiPaid(
+      String mode, AiModeRoute route, String responseBody) async {
+    if (route.upstream != AiUpstream.openrouter) return;
+    String? provider;
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map && decoded['provider'] is String) {
+        provider = decoded['provider'] as String;
+      }
+    } catch (_) {}
+    if (provider == null) return;
+    AiEndpointPrice? served(List<AiEndpointPrice>? list) {
+      for (final e in list ?? const <AiEndpointPrice>[]) {
+        if (e.provider == provider) return e;
+      }
+      return null;
+    }
+
+    final endpoint = served(await _openRouterEndpoints(route.model)) ??
+        served(await _openRouterEndpoints(route.model, force: true));
+    if (endpoint == null) return;
+    await aiPriceGuard.recordPaid(
+        mode, route, provider, AiPrice(endpoint.input, endpoint.output));
   }
 
   /// Live prices and guard state for the Assistant tab, one object per mode.
@@ -2318,9 +2387,12 @@ class Api {
     for (final mode in kAiModeNames.keys) {
       final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
       if (route == null) continue;
-      final price = priceFor(aiCatalog, route);
-      final disabled = await _evaluateAiPrice(mode, route);
+      final disabled =
+          await _evaluateAiPrice(mode, route: route, fetch: true);
       final entry = aiPriceGuard.entry(mode);
+      final price = entry.source == 'endpoints'
+          ? entry.paid ?? entry.latest
+          : priceFor(aiCatalog, route);
       out[mode] = {
         'model': route.model,
         'upstream': route.upstream.label,
@@ -2334,6 +2406,10 @@ class Api {
         'autoDisable': entry.autoDisable,
         'disabled': disabled,
         'disabledAtMs': entry.disabledAtMs,
+        'source': entry.source,
+        'paidProvider': entry.paid == null ? null : entry.paidProvider,
+        'cheapest': entry.source == 'endpoints' ? entry.latest?.toJson() : null,
+        'cheapestProvider': entry.cheapestProvider,
       };
     }
     return jsonResponse(200, {
@@ -2354,7 +2430,14 @@ class Api {
     }
     final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
     if (route != null) {
-      await aiPriceGuard.accept(mode, route, priceFor(aiCatalog, route));
+      await _evaluateAiPrice(mode, route: route, fetch: true, force: true);
+      final entry = aiPriceGuard.entry(mode);
+      if (entry.source == 'endpoints') {
+        await aiPriceGuard.accept(mode, route, entry.paid ?? entry.latest,
+            source: 'endpoints');
+      } else {
+        await aiPriceGuard.accept(mode, route, priceFor(aiCatalog, route));
+      }
       await store.logActivity('ai_price_accepted',
           '${aiModeRoutes.displayName(mode)} re-enabled at the current ${route.model} price');
     }
@@ -2631,15 +2714,37 @@ class Api {
     }
 
     final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams)!;
-    if (await _evaluateAiPrice(meteredMode, route)) {
-      return errorResponse(503, 'model_disabled',
-          'This assistant mode is paused right now. Try another mode.');
+    Response paused() => errorResponse(503, 'model_disabled',
+        'This assistant mode is paused right now. Try another mode.');
+    if (await _evaluateAiPrice(meteredMode, route: route)) return paused();
+
+    final upstreamBody = _aiUpstreamBody(body, route);
+    final maxPrice = aiPriceGuard.maxPrice(meteredMode, route);
+    if (maxPrice != null) {
+      final provider = upstreamBody['provider'];
+      upstreamBody['provider'] = {
+        if (provider is Map) ...provider,
+        'max_price': {
+          if (maxPrice.input != null) 'prompt': maxPrice.input! * 1.000001,
+          if (maxPrice.output != null) 'completion': maxPrice.output! * 1.000001,
+        },
+      };
     }
 
     try {
       final (status, responseBody) =
-          await _callAiUpstream(route, _aiUpstreamBody(body, route));
+          await _callAiUpstream(route, upstreamBody);
+      // OpenRouter refuses when no provider is left at the accepted price.
+      // Re-read the endpoints right away so the refusal pauses the mode
+      // instead of surfacing as a raw upstream error.
+      if (status != 200 &&
+          maxPrice != null &&
+          await _evaluateAiPrice(meteredMode,
+              route: route, fetch: true, force: true)) {
+        return paused();
+      }
       if (status == 200) {
+        await _recordAiPaid(meteredMode, route, responseBody);
         var tokens = 0;
         try {
           final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
@@ -9997,10 +10102,17 @@ syncToolbar();
         el.textContent = priceText(m.price);
         el.className = 'ai-price' + (risen ? ' up' : '');
         var note = document.getElementById('ai-price-note-' + mode);
-        note.textContent = m.price
-          ? (risen ? 'was ' + priceText(m.baseline)
-                   : (m.autoDisable ? 'accepted ' + priceText(m.baseline) : 'guard is off'))
-          : 'not in the OpenRouter list, so it cannot be guarded';
+        var parts = [];
+        if (m.source === 'endpoints') {
+          if (m.paidProvider) parts.push('last request via ' + m.paidProvider);
+          if (m.cheapest) parts.push('cheapest now ' + priceText(m.cheapest) +
+            (m.cheapestProvider ? ' (' + m.cheapestProvider + ')' : ''));
+        }
+        if (!m.autoDisable) parts.push('guard is off');
+        else if (m.baseline) parts.push((risen ? 'was ' : 'max accepted ') + priceText(m.baseline));
+        else if (m.price) parts.push('the first request sets the accepted price');
+        note.textContent = m.price || m.cheapest ? parts.join(' · ')
+          : 'no price found for this model, so it cannot be guarded';
         guard.textContent = m.autoDisable ? 'Guard: on' : 'Guard: off';
         guard.dataset.on = m.autoDisable ? '1' : '0';
         document.getElementById('ai-accept-' + mode).style.display = risen ? '' : 'none';

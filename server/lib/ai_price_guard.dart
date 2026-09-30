@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
+import 'ai_model_sources.dart';
 import 'util.dart';
 
 /// Per-million-token price of the model behind a mode, in USD.
@@ -20,6 +21,10 @@ class AiPrice {
 
   static bool _higher(double? now, double? before) =>
       now != null && before != null && now > before * 1.000001 + 1e-12;
+
+  /// Whether an OpenRouter endpoint charges no more than this on either side.
+  bool admits(AiEndpointPrice e) =>
+      !_higher(e.input, input) && !_higher(e.output, output);
 
   Map<String, dynamic> toJson() => {'input': input, 'output': output};
 
@@ -65,6 +70,16 @@ AiPrice? priceFor(AiModelCatalogStore catalog, AiModeRoute route) {
   return price.known ? price : null;
 }
 
+/// The cheapest endpoint OpenRouter currently reports as up.
+AiEndpointPrice? cheapestEndpoint(List<AiEndpointPrice> endpoints) {
+  AiEndpointPrice? best;
+  for (final e in endpoints) {
+    if (!e.up) continue;
+    if (best == null || e.input + e.output < best.input + best.output) best = e;
+  }
+  return best;
+}
+
 class AiPriceGuardEntry {
   AiPriceGuardEntry({
     this.autoDisable = true,
@@ -73,7 +88,22 @@ class AiPriceGuardEntry {
     this.latest,
     this.disabled = false,
     this.disabledAtMs = 0,
+    this.source,
+    this.paid,
+    this.paidProvider,
+    this.cheapestProvider,
   });
+
+  /// `endpoints` when the baseline is an actually charged OpenRouter
+  /// provider price, `list` when it is a catalogue list price. A list-price
+  /// baseline says nothing about provider discounts, so it is discarded the
+  /// first time the mode is priced by its endpoints.
+  String? source;
+
+  /// Price of the provider that served the most recent request.
+  AiPrice? paid;
+  String? paidProvider;
+  String? cheapestProvider;
 
   /// Whether a price rise switches the mode off.
   bool autoDisable;
@@ -97,6 +127,10 @@ class AiPriceGuardEntry {
         if (latest != null) 'latest': latest!.toJson(),
         'disabled': disabled,
         'disabledAtMs': disabledAtMs,
+        if (source != null) 'source': source,
+        if (paid != null) 'paid': paid!.toJson(),
+        if (paidProvider != null) 'paidProvider': paidProvider,
+        if (cheapestProvider != null) 'cheapestProvider': cheapestProvider,
       };
 
   static AiPriceGuardEntry fromJson(Object? raw) {
@@ -108,6 +142,10 @@ class AiPriceGuardEntry {
       latest: AiPrice.fromJson(raw['latest']),
       disabled: raw['disabled'] == true,
       disabledAtMs: (raw['disabledAtMs'] as num?)?.toInt() ?? 0,
+      source: raw['source'] as String?,
+      paid: AiPrice.fromJson(raw['paid']),
+      paidProvider: raw['paidProvider'] as String?,
+      cheapestProvider: raw['cheapestProvider'] as String?,
     );
   }
 }
@@ -148,14 +186,7 @@ class AiPriceGuardStore {
   /// now switched off.
   Future<bool> evaluate(String mode, AiModeRoute route, AiPrice? price) async {
     final before = jsonEncode(_entries[mode]?.toJson());
-    final e = _entries.putIfAbsent(mode, AiPriceGuardEntry.new);
-    final key = '${route.upstream.name}:${route.model}';
-    if (e.modelKey != key) {
-      e
-        ..modelKey = key
-        ..baseline = price
-        ..disabled = false;
-    }
+    final e = _entryFor(mode, route, 'list');
     if (price != null) {
       e.latest = price;
       e.baseline ??= price;
@@ -169,11 +200,90 @@ class AiPriceGuardStore {
     return e.disabled;
   }
 
+  /// The entry for [mode], reset when the operator has picked another model
+  /// or when its baseline came from a different kind of price than [source].
+  AiPriceGuardEntry _entryFor(String mode, AiModeRoute route, String source) {
+    final e = _entries.putIfAbsent(mode, AiPriceGuardEntry.new);
+    final key = '${route.upstream.name}:${route.model}';
+    if (e.modelKey != key) {
+      e
+        ..modelKey = key
+        ..baseline = null
+        ..paid = null
+        ..paidProvider = null
+        ..disabled = false;
+    }
+    if (e.source != source) {
+      e
+        ..source = source
+        ..baseline = null;
+    }
+    return e;
+  }
+
+  /// Checks an OpenRouter mode against the provider endpoints it can be
+  /// routed to. The mode is switched off once no endpoint that is up still
+  /// charges the accepted price or less — which is what a provider discount
+  /// ending looks like, since the model's list price never moves.
+  Future<bool> evaluateEndpoints(
+      String mode, AiModeRoute route, List<AiEndpointPrice> endpoints) async {
+    final before = jsonEncode(_entries[mode]?.toJson());
+    final e = _entryFor(mode, route, 'endpoints');
+    final cheapest = cheapestEndpoint(endpoints);
+    if (cheapest != null) {
+      e
+        ..latest = AiPrice(cheapest.input, cheapest.output)
+        ..cheapestProvider = cheapest.provider;
+      final base = e.baseline;
+      if (e.autoDisable &&
+          !e.disabled &&
+          base != null &&
+          !endpoints.any((x) => x.up && base.admits(x))) {
+        _disable(e);
+      }
+    }
+    if (jsonEncode(e.toJson()) != before) await _save();
+    return e.disabled;
+  }
+
+  /// Records what the provider that served a request charged for it. The
+  /// first charged price becomes the baseline; a later one above it switches
+  /// the mode off.
+  Future<bool> recordPaid(String mode, AiModeRoute route, String provider,
+      AiPrice price) async {
+    final e = _entryFor(mode, route, 'endpoints');
+    e
+      ..paid = price
+      ..paidProvider = provider;
+    e.baseline ??= price;
+    if (e.autoDisable && !e.disabled && price.risesAbove(e.baseline!)) {
+      _disable(e);
+    }
+    await _save();
+    return e.disabled;
+  }
+
+  void _disable(AiPriceGuardEntry e) => e
+    ..disabled = true
+    ..disabledAtMs = DateTime.now().millisecondsSinceEpoch;
+
+  /// The most OpenRouter may charge [mode] per 1M tokens, sent with every
+  /// request as `provider.max_price` so OpenRouter itself refuses to route
+  /// above it. Null when the guard is off or no price is accepted yet.
+  AiPrice? maxPrice(String mode, AiModeRoute route) {
+    final e = _entries[mode];
+    if (e == null || !e.autoDisable || e.source != 'endpoints') return null;
+    if (e.modelKey != '${route.upstream.name}:${route.model}') return null;
+    return e.baseline;
+  }
+
   /// Accepts the current price as the new baseline and turns the mode back on.
-  Future<void> accept(String mode, AiModeRoute route, AiPrice? price) async {
+  Future<void> accept(String mode, AiModeRoute route, AiPrice? price,
+      {String source = 'list'}) async {
     final e = _entries.putIfAbsent(mode, AiPriceGuardEntry.new);
     e
       ..modelKey = '${route.upstream.name}:${route.model}'
+      ..source = source
       ..baseline = price
       ..latest = price
       ..disabled = false;
