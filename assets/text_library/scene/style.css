@@ -350,18 +350,27 @@ canvas#view.grab { cursor: grabbing; }
   display: flex; flex-direction: column; align-items: flex-end; gap: calc(var(--g) * 4px);
   padding-top: calc(var(--g) * 16px);
 }
-/* Shapes to draw with, two columns down the left margin. */
+/* Shapes to draw with down the left margin: pick one and drag on the page,
+   or drag it onto the page. The last button fills or outlines them. */
 .shapes {
-  display: grid; grid-template-columns: repeat(2, calc(var(--g) * 11px)); gap: var(--px);
+  display: grid; grid-template-columns: repeat(2, calc(var(--g) * 13px)); gap: var(--px);
   margin-top: calc(var(--g) * 4px); padding: var(--px); background: #3a2210;
 }
 .shape {
-  width: calc(var(--g) * 11px); height: calc(var(--g) * 11px); padding: 0;
-  font: inherit; font-size: calc(var(--g) * 8px); line-height: 1; color: #1a1208; cursor: pointer;
+  display: grid; place-items: center;
+  width: calc(var(--g) * 13px); height: calc(var(--g) * 13px); padding: 0;
+  cursor: grab; touch-action: none;
   background: #efe4c6; border: none; outline: none;
   box-shadow: inset 0 var(--px) 0 #fffaf0, inset 0 calc(var(--g) * -1px) 0 #c9b88f;
 }
-.shape:hover, .shape:focus-visible { background: #fffbea; color: #2b50c8; }
+.shape canvas { width: calc(var(--g) * 7px); height: calc(var(--g) * 7px); image-rendering: pixelated; pointer-events: none; }
+.shape:hover, .shape:focus-visible { background: #fffbea; }
+.shape[aria-checked="true"] { background: #fffbea; box-shadow: 0 0 0 var(--px) #fff, inset 0 0 0 var(--px) #2b50c8; }
+.shape.fill { cursor: pointer; grid-column: 1 / -1; width: 100%; }
+.shape-ghost {
+  position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -50%);
+  width: calc(var(--g) * 12px); height: calc(var(--g) * 12px); image-rendering: pixelated; opacity: 0.8;
+}
 .mc-icon {
   width: calc(var(--g) * 14px); height: calc(var(--g) * 12px); padding: 0;
   background: none; border: none; cursor: pointer; outline: none;
@@ -421,6 +430,13 @@ canvas#view.grab { cursor: grabbing; }
   text-underline-position: from-font;
 }
 #book-flow:empty::before { content: attr(data-hint); color: #0005; }
+/* Drawings lie over the text on a pixel grid of their own; they only take
+   the pointer while a shape is picked, so writing is never in the way. */
+#book-art {
+  position: absolute; left: 0; top: 0;
+  image-rendering: pixelated; pointer-events: none;
+}
+#book-art.drawing { pointer-events: auto; cursor: crosshair; }
 #book-prev { position: absolute; left: calc(var(--g) * 43px); top: calc(var(--g) * 157px); }
 #book-next { position: absolute; left: calc(var(--g) * 116px); top: calc(var(--g) * 157px); }
 #sign-screen, #burn-confirm {

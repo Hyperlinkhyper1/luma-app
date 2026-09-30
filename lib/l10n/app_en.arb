@@ -544,6 +544,15 @@
   "textLibraryMcSit": "Sit down",
   "textLibraryMcOpenDoor": "Open the door",
   "textLibraryMcCloseDoor": "Close the door",
+  "textLibraryMcShapes": "Shapes",
+  "textLibraryMcShapeCircle": "Circle",
+  "textLibraryMcShapeSquare": "Square",
+  "textLibraryMcShapeTriangle": "Triangle",
+  "textLibraryMcShapeStar": "Star",
+  "textLibraryMcShapeHeart": "Heart",
+  "textLibraryMcShapeLine": "Line",
+  "textLibraryMcShapeFill": "Filled or outline",
+  "textLibraryMcDrawHint": "drag on the page to draw it · right-click a drawing to remove it",
   "textLibraryMcSkinCurrent": "Skin: {name}",
   "@textLibraryMcSkinCurrent": {
     "placeholders": {
@@ -682,5 +691,43 @@
   "audioToolsPresetMegaphone": "Megaphone",
   "audioToolsPresetMuffled": "Through a wall",
   "audioToolsPresetTiny": "Tiny",
-  "audioToolsPresetCustom": "Custom"
+  "audioToolsPresetCustom": "Custom",
+  "audioToolsSystemTitle": "Use it in Discord",
+  "audioToolsSystemBody": "luma can put the EQ on {mic} itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once, and sound drops out for a second while it switches over.",
+  "@audioToolsSystemBody": {
+    "placeholders": {
+      "mic": {
+        "type": "String"
+      }
+    }
+  },
+  "audioToolsSystemEnable": "Turn on for this mic",
+  "audioToolsSystemActive": "On for {mic}",
+  "@audioToolsSystemActive": {
+    "placeholders": {
+      "mic": {
+        "type": "String"
+      }
+    }
+  },
+  "audioToolsSystemPaused": "Paused",
+  "audioToolsSystemEveryApp": "EQ in every app",
+  "audioToolsSystemEveryAppBody": "Pausing needs no admin permission and keeps everything set up.",
+  "audioToolsSystemDiscordHint": "In Discord, keep {mic} as your input device. If the EQ sounds washed out, turn off Discord's noise suppression and automatic gain control.",
+  "@audioToolsSystemDiscordHint": {
+    "placeholders": {
+      "mic": {
+        "type": "String"
+      }
+    }
+  },
+  "audioToolsSystemOutdated": "luma updated its EQ engine. Apply the update to keep this mic in sync.",
+  "audioToolsSystemUpdate": "Update",
+  "audioToolsSystemRemove": "Turn off and restore",
+  "audioToolsSystemCancelled": "Windows didn't get permission, so nothing changed.",
+  "audioToolsSystemFailed": "That didn't work, and the mic was left as it was.",
+  "audioToolsSystemRestart": "Almost there: restart your PC so Windows picks up the change.",
+  "audioToolsSystemNoDevice": "That microphone isn't connected right now.",
+  "audioToolsSystemMissing": "Parts of luma are missing. Reinstall luma and try again.",
+  "audioToolsSystemNoMic": "No microphone found. Plug one in and refresh the device list."
 }

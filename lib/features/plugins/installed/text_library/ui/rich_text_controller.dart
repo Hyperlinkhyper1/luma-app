@@ -11,20 +11,25 @@ import '../text_library_models.dart';
 class RichTextController extends TextEditingController {
   RichTextController([RichDoc? doc])
     : _styles = List.of((doc ?? RichDoc.empty).styles),
+      _drawings = (doc ?? RichDoc.empty).drawings,
       super(text: (doc ?? RichDoc.empty).plainText);
 
   List<RichStyle> _styles;
+
+  /// The Minecraft view's drawings: not edited here, only kept.
+  List<Object?> _drawings;
 
   /// Set by a format toggle with a collapsed selection; used for the next
   /// characters typed there.
   RichStyle? _pending;
   int? _pendingAt;
 
-  RichDoc get doc => RichDoc.fromStyles(text, _styles);
+  RichDoc get doc => RichDoc.fromStyles(text, _styles).withDrawings(_drawings);
 
   set doc(RichDoc doc) {
     _pending = null;
     _styles = List.of(doc.styles);
+    _drawings = doc.drawings;
     super.value = TextEditingValue(
       text: doc.plainText,
       selection: TextSelection.collapsed(offset: doc.plainText.length),

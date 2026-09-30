@@ -31,6 +31,7 @@
     attribute float emit;
     attribute vec4 label;
     uniform mat4 shadowMatrix;
+    uniform float shadowOffset;
     #ifdef VIEWMODEL
     uniform mat4 handProjection;
     #endif
@@ -49,7 +50,9 @@
       vec4 world = modelMatrix * vec4(position, 1.0);
       vWorld = world.xyz;
       vNormal = normalize(mat3(modelMatrix) * normal);
-      vShadow = shadowMatrix * vec4(world.xyz + vNormal * 0.035, 1.0);
+      // Pushed off the surface by a couple of shadow-map texels, so a face
+      // never shadows itself in stripes (acne) however coarse the map is.
+      vShadow = shadowMatrix * vec4(world.xyz + vNormal * shadowOffset, 1.0);
       vUvp = uvp; vTile = tile; vLight = light; vAo = ao; vTint = tint; vEmit = emit; vLabel = label;
       vec4 view = viewMatrix * world;
       vDepth = -view.z;
@@ -512,7 +515,7 @@
       skin: {value: null},
       shadowMap: {value: null},
       shadowMatrix: {value: new T.Matrix4()},
-      shadowTexel: {value: 1 / 2048},
+      shadowTexel: {value: 1 / 2048}, shadowOffset: {value: 0.035},
       shadowOn: {value: 1},
     };
 
@@ -545,7 +548,10 @@
     });
 
     const scene = new T.Scene();
-    const camera = new T.PerspectiveCamera(55, 1, 0.05, 200);
+    // The walker never stands nearer than a quarter block to anything, so the
+    // near plane can sit at a tenth: twice the depth precision of 0.05, and
+    // far fewer faces flickering against each other in the distance.
+    const camera = new T.PerspectiveCamera(55, 1, 0.1, 200);
 
     const skyUniforms = {...U, zenith: {value: new T.Color(0.25, 0.42, 0.72)}, horizon: {value: new T.Color(0.95, 0.72, 0.5)}, night: {value: 0}, sunPos: {value: new T.Vector3(0.7, 0.55, -0.35).normalize()}};
     const sky = new T.Mesh(new T.BoxGeometry(100, 100, 100), new T.ShaderMaterial({
@@ -592,6 +598,8 @@
       shadowCam.left = x0 - 0.5; shadowCam.right = x1 + 0.5; shadowCam.bottom = y0 - 0.5; shadowCam.top = y1 + 0.5;
       shadowCam.near = Math.max(0.1, -z1 - 12); shadowCam.far = -z0 + 2;
       shadowCam.updateProjectionMatrix();
+      // Two texels of the map in world units, beyond the PCF taps' reach.
+      U.shadowOffset.value = Math.max(0.035, Math.max(shadowCam.right - shadowCam.left, shadowCam.top - shadowCam.bottom) / shadowSize * 2.5);
       U.shadowMatrix.value.copy(bias).multiply(shadowCam.projectionMatrix).multiply(shadowCam.matrixWorldInverse);
       const override = scene.overrideMaterial;
       scene.overrideMaterial = depthMaterial;

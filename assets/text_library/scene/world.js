@@ -877,11 +877,18 @@
     // way they face (as the walker's yaw), `box` what a click lands on.
     const benchSeat = (side, x, za, zb, y = 0) => {
       const x0 = side > 0 ? x : x + 0.25, x1 = side > 0 ? x + 0.75 : x + 1;
-      seats.push({pos: [(x0 + x1) / 2 + side * 0.08, y + 0.64, (za + zb) / 2], yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, box: [[x0, y, za], [x1, y + 1, zb]], along: [za + 0.45, zb - 0.45]});
+      seats.push({pos: [(x0 + x1) / 2 + side * 0.08, y + 0.64, (za + zb) / 2], yaw: side > 0 ? -Math.PI / 2 : Math.PI / 2, box: [[x0, y, za], [x1, y + 1.02, zb]], along: [za + 0.45, zb - 0.45]});
     };
-    const armchairSeat = (cx, cz, yaw, y = 0) => {
+    // An armchair is turned about its cell's centre, so its click box turns
+    // with it (`turn`, the model's yaw): the arms stand a pixel proud each
+    // side and the wings rise to 21.5 pixels. What stops the walker is the
+    // turned footprint's extent, a touch inside.
+    const armchairSeat = (cx, cz, yaw, y = 0, floor = 0) => {
       // The chair faces (sin yaw, -cos yaw); sit a little forward of its back.
-      seats.push({pos: [cx + 0.5 + Math.sin(yaw) * 0.08, y + 10 / 16, cz + 0.5 - Math.cos(yaw) * 0.08], yaw: -yaw, box: [[cx, y, cz], [cx + 1, y + 1.35, cz + 1]]});
+      seats.push({pos: [cx + 0.5 + Math.sin(yaw) * 0.08, y + 10 / 16, cz + 0.5 - Math.cos(yaw) * 0.08], yaw: -yaw, box: [[cx - 1 / 16, y, cz], [cx + 17 / 16, y + 21.5 / 16, cz + 1]], turn: yaw});
+      const reach = (Math.abs(Math.cos(yaw)) * 9 + Math.abs(Math.sin(yaw)) * 8) / 16 - 0.08;
+      const deep = (Math.abs(Math.sin(yaw)) * 9 + Math.abs(Math.cos(yaw)) * 8) / 16 - 0.08;
+      solidBox(cx + 0.5 - reach, cz + 0.5 - deep, cx + 0.5 + reach, cz + 0.5 + deep, floor);
     };
 
     // Window seats in the spans without a case.
@@ -912,9 +919,8 @@
     const chairZ = deskZ + 0.98;
     solidBox(-0.4, chairZ - 0.4, 0.4, chairZ + 0.46);
     later.push(() => Fu.deskChair(K, [0, 0, chairZ]));
-    seats.push({pos: [0, Fu.DESK_SEAT, chairZ - 0.04], yaw: 0, box: [[-0.45, 0, chairZ - 0.4], [0.45, 1.4, chairZ + 0.48]], desk: true});
+    seats.push({pos: [0, Fu.DESK_SEAT, chairZ - 0.04], yaw: 0, box: [[-0.47, 0, chairZ - 0.44], [0.47, 25 / 16, chairZ + 0.44]], desk: true});
     const chairs = [[-3.6, fz + 2.3, 1], [2.6, fz + 2.3, -1]];
-    for (const [cx, cz] of chairs) solidBox(cx + 0.05, cz + 0.05, cx + 0.95, cz + 0.95);
     const chairYaw = (cx, cz) => Math.atan2(-(cx + 0.5), -(fz + 0.5 - (cz + 0.5)));
     for (const [cx, cz] of chairs) armchairSeat(cx, cz, chairYaw(cx, cz));
     later.push(() => {
@@ -958,8 +964,7 @@
       const b = L.bases[f];
       const snug = [[-3.9, fz + 2.2, Math.PI / 2], [1.9, fz + 2.2, -Math.PI / 2]];
       for (const [cx, cz, yaw] of snug) {
-        solidBox(cx + 0.05, cz + 0.05, cx + 0.95, cz + 0.95, f);
-        armchairSeat(cx, cz, yaw, b);
+        armchairSeat(cx, cz, yaw, b, f);
       }
       solidBox(-1.35, fz + 2.3, -0.55, fz + 3.1, f);
       solidBox(-4.3, fz + 0.15, -3.7, fz + 0.75, f);
@@ -1094,7 +1099,8 @@
     return {
       grid, layout: L, cases, placeholder: cases.find(c => c.placeholder), lamps, fires, candles: K.candles,
       geometry: world, glass: glassGeo, colliders: K.colliders, clock: clockAt,
-      desk: {z: deskZ, top: 1, center: [0, 1, deskO[2] + 0.5], chair: seats.find(s => s.desk)},
+      // `top` is the leather inset the open book lies on, a quarter pixel up.
+      desk: {z: deskZ, top: 1 + 0.25 / 16, center: [0, 1, deskO[2] + 0.5], chair: seats.find(s => s.desk)},
       fire: [0, 0.6, fz + 0.5],
       seats,
       door: {z: F, hinges: [[-1, 1], [1, -1]], height: 3},
@@ -1377,7 +1383,7 @@
     }
     const benchZ = deck.z1 - 1;
     solidBox(-1, benchZ + 0.15, 1, benchZ + 0.85);
-    seats.push({pos: [0, 0.5, benchZ + 0.42], yaw: Math.PI, box: [[-1, 0, benchZ + 0.1], [1, 1, benchZ + 0.9]], along: [-0.55, 0.55], alongX: true});
+    seats.push({pos: [0, 0.5, benchZ + 0.42], yaw: Math.PI, box: [[-0.95, 0, benchZ + 0.12], [0.95, 1.15, benchZ + 0.88]], along: [-0.55, 0.55], alongX: true});
     for (const x of [deck.x0, deck.x1]) light(x, 1, deck.z1, 14);
     later.push(() => {
       Fu.fence(K, rail);
@@ -1509,12 +1515,31 @@
         const [x1, z1] = axis === 'x' ? [lx + 3, lz + 1] : [lx + 1, lz + 3];
         solidBox(lx + 0.15, lz + 0.15, x1 - 0.15, z1 - 0.15);
         const yaw = axis === 'x' ? (lz < c[1] ? Math.PI : 0) : Math.PI / 2;
-        seats.push({pos: [(lx + x1) / 2, 0.55, (lz + z1) / 2], yaw, box: [[lx, 0, lz], [x1, 0.7, z1]], along: axis === 'x' ? [lx + 0.5, x1 - 0.5] : [lz + 0.5, z1 - 0.5], alongX: axis === 'x'});
+        seats.push({pos: [(lx + x1) / 2, 0.55, (lz + z1) / 2], yaw, box: axis === 'x' ? [[lx, 0, lz + 0.2], [x1, 0.56, lz + 0.8]] : [[lx + 0.2, 0, lz], [lx + 0.8, 0.56, z1]], along: axis === 'x' ? [lx + 0.5, x1 - 0.5] : [lz + 0.5, z1 - 0.5], alongX: axis === 'x'});
       }
       later.push(() => {
         campfire(K.mb, grid, K.atlas, [c[0], 0, c[1]]);
         for (const [lx, lz, axis] of logs) Fu.logSeat(K, [lx, 0, lz], axis);
       });
+    }
+
+    // Trees, planted before the small scattered things so those fill in
+    // round them: spaced out, never on the path or against the house. Only
+    // the trunk and the cells beside it need to be free; the crowns may
+    // lean over anything, since leaves only fill air.
+    const trees = [];
+    const kinds = ['orange', 'orange', 'red', 'yellow', 'yellow', 'amber', 'red', 'spruce', 'spruce'];
+    for (let attempt = 0; attempt < 2400 && trees.length < 48; attempt++) {
+      const x = isle.x0 + Math.floor(r() * (isle.x1 - isle.x0));
+      const z = isle.z0 + Math.floor(r() * (isle.z1 - isle.z0));
+      if (!inland(x, z, 1) || grid.get(x, 0, z)) continue;
+      let clear = true;
+      for (let dx = -1; dx <= 1 && clear; dx++) for (let dz = -1; dz <= 1; dz++) if (taken.has(key(x + dx, z + dz))) { clear = false; break; }
+      if (!clear || trees.some(t => Math.hypot(t.x - x, t.z - z) < 3.6)) continue;
+      const kind = kinds[Math.floor(r() * kinds.length)];
+      const t = tree(grid, x, z, kind, r);
+      trees.push({x, z, kind, ...t, tint: FOLIAGE[kind]});
+      take(x - 1, z - 1, x + 1, z + 1);
     }
 
     // Boulders, a fallen log with mushrooms on it, and bushes turning with
@@ -1566,22 +1591,6 @@
     later.push(() => {
       for (const [x, z, kind] of flowers) cross(K.mb, grid, K.atlas, [x, 0, z], kind, kind === 'sweet_berry_bush' ? 0.95 : 0.7, 0);
     });
-
-    // Trees, spaced out, never on the path or against the house.
-    const trees = [];
-    const kinds = ['orange', 'orange', 'red', 'yellow', 'yellow', 'amber', 'red', 'spruce'];
-    for (let attempt = 0; attempt < 900 && trees.length < 26; attempt++) {
-      const x = isle.x0 + Math.floor(r() * (isle.x1 - isle.x0));
-      const z = isle.z0 + Math.floor(r() * (isle.z1 - isle.z0));
-      if (!inland(x, z, 2)) continue;
-      let clear = true;
-      for (let dx = -2; dx <= 2 && clear; dx++) for (let dz = -2; dz <= 2; dz++) if (taken.has(key(x + dx, z + dz))) { clear = false; break; }
-      if (!clear || trees.some(t => Math.hypot(t.x - x, t.z - z) < 4)) continue;
-      const kind = kinds[Math.floor(r() * kinds.length)];
-      const t = tree(grid, x, z, kind, r);
-      trees.push({x, z, kind, ...t, tint: FOLIAGE[kind]});
-      take(x - 1, z - 1, x + 1, z + 1);
-    }
 
     // Fallen leaves under the trees and a scatter of them everywhere;
     // grass, ferns, mushrooms and the odd dead bush.

@@ -2329,6 +2329,60 @@ abstract class L {
   /// **'Close the door'**
   String get textLibraryMcCloseDoor;
 
+  /// No description provided for @textLibraryMcShapes.
+  ///
+  /// In en, this message translates to:
+  /// **'Shapes'**
+  String get textLibraryMcShapes;
+
+  /// No description provided for @textLibraryMcShapeCircle.
+  ///
+  /// In en, this message translates to:
+  /// **'Circle'**
+  String get textLibraryMcShapeCircle;
+
+  /// No description provided for @textLibraryMcShapeSquare.
+  ///
+  /// In en, this message translates to:
+  /// **'Square'**
+  String get textLibraryMcShapeSquare;
+
+  /// No description provided for @textLibraryMcShapeTriangle.
+  ///
+  /// In en, this message translates to:
+  /// **'Triangle'**
+  String get textLibraryMcShapeTriangle;
+
+  /// No description provided for @textLibraryMcShapeStar.
+  ///
+  /// In en, this message translates to:
+  /// **'Star'**
+  String get textLibraryMcShapeStar;
+
+  /// No description provided for @textLibraryMcShapeHeart.
+  ///
+  /// In en, this message translates to:
+  /// **'Heart'**
+  String get textLibraryMcShapeHeart;
+
+  /// No description provided for @textLibraryMcShapeLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Line'**
+  String get textLibraryMcShapeLine;
+
+  /// No description provided for @textLibraryMcShapeFill.
+  ///
+  /// In en, this message translates to:
+  /// **'Filled or outline'**
+  String get textLibraryMcShapeFill;
+
+  /// No description provided for @textLibraryMcDrawHint.
+  ///
+  /// In en, this message translates to:
+  /// **'drag on the page to draw it · right-click a drawing to remove it'**
+  String get textLibraryMcDrawHint;
+
   /// No description provided for @textLibraryMcSkinCurrent.
   ///
   /// In en, this message translates to:
@@ -2910,6 +2964,108 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Custom'**
   String get audioToolsPresetCustom;
+
+  /// No description provided for @audioToolsSystemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use it in Discord'**
+  String get audioToolsSystemTitle;
+
+  /// No description provided for @audioToolsSystemBody.
+  ///
+  /// In en, this message translates to:
+  /// **'luma can put the EQ on {mic} itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once, and sound drops out for a second while it switches over.'**
+  String audioToolsSystemBody(String mic);
+
+  /// No description provided for @audioToolsSystemEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on for this mic'**
+  String get audioToolsSystemEnable;
+
+  /// No description provided for @audioToolsSystemActive.
+  ///
+  /// In en, this message translates to:
+  /// **'On for {mic}'**
+  String audioToolsSystemActive(String mic);
+
+  /// No description provided for @audioToolsSystemPaused.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get audioToolsSystemPaused;
+
+  /// No description provided for @audioToolsSystemEveryApp.
+  ///
+  /// In en, this message translates to:
+  /// **'EQ in every app'**
+  String get audioToolsSystemEveryApp;
+
+  /// No description provided for @audioToolsSystemEveryAppBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pausing needs no admin permission and keeps everything set up.'**
+  String get audioToolsSystemEveryAppBody;
+
+  /// No description provided for @audioToolsSystemDiscordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'In Discord, keep {mic} as your input device. If the EQ sounds washed out, turn off Discord\'s noise suppression and automatic gain control.'**
+  String audioToolsSystemDiscordHint(String mic);
+
+  /// No description provided for @audioToolsSystemOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'luma updated its EQ engine. Apply the update to keep this mic in sync.'**
+  String get audioToolsSystemOutdated;
+
+  /// No description provided for @audioToolsSystemUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get audioToolsSystemUpdate;
+
+  /// No description provided for @audioToolsSystemRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off and restore'**
+  String get audioToolsSystemRemove;
+
+  /// No description provided for @audioToolsSystemCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows didn\'t get permission, so nothing changed.'**
+  String get audioToolsSystemCancelled;
+
+  /// No description provided for @audioToolsSystemFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work, and the mic was left as it was.'**
+  String get audioToolsSystemFailed;
+
+  /// No description provided for @audioToolsSystemRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost there: restart your PC so Windows picks up the change.'**
+  String get audioToolsSystemRestart;
+
+  /// No description provided for @audioToolsSystemNoDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'That microphone isn\'t connected right now.'**
+  String get audioToolsSystemNoDevice;
+
+  /// No description provided for @audioToolsSystemMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Parts of luma are missing. Reinstall luma and try again.'**
+  String get audioToolsSystemMissing;
+
+  /// No description provided for @audioToolsSystemNoMic.
+  ///
+  /// In en, this message translates to:
+  /// **'No microphone found. Plug one in and refresh the device list.'**
+  String get audioToolsSystemNoMic;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

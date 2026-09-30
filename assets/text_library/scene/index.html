@@ -89,12 +89,13 @@
     <div id="history">
       <button class="mc-icon" data-cmd="undo" type="button"><svg viewBox="0 0 9 7" aria-hidden="true"><path d="M3 0h1v1h4v1h1v3H8v1H4V5h4V2H4v1H3V2H2V1h1zM0 1h2v1H1v1H0z"/></svg></button>
       <button class="mc-icon" data-cmd="redo" type="button"><svg viewBox="0 0 9 7" aria-hidden="true"><path d="M6 0H5v1H1v1H0v3h1v1h4V5H1V2h4v1h1V2h1V1H6zM9 1H7v1h1v1h1z"/></svg></button>
-      <div id="shapes" class="shapes" role="group"></div>
+      <div id="shapes" class="shapes" role="radiogroup"></div>
     </div>
     <div id="book" class="mc-book">
       <p id="book-page" class="mc-ink"></p>
       <div id="book-viewport">
         <div id="book-flow" class="mc-ink" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true"></div>
+        <canvas id="book-art" aria-hidden="true"></canvas>
       </div>
       <button id="book-prev" class="mc-page back" type="button" aria-label="Previous page"></button>
       <button id="book-next" class="mc-page forward" type="button" aria-label="Next page"></button>

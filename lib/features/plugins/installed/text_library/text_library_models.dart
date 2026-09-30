@@ -169,7 +169,8 @@ class RichSpan {
   int get hashCode => Object.hash(text, style);
 }
 
-/// A text's body: styled runs, newlines included.
+/// A text's body: styled runs, newlines included, and any little pictures
+/// drawn on its pages.
 ///
 /// Stored as `{"v":1,"spans":[{"t":"…","b":true,"c":"gold"}]}` — the same
 /// shape the Minecraft view reads and writes, so neither side has to
@@ -177,8 +178,9 @@ class RichSpan {
 /// thrown away.
 @immutable
 class RichDoc {
-  RichDoc(Iterable<RichSpan> spans)
-    : spans = List.unmodifiable(_normalize(spans));
+  RichDoc(Iterable<RichSpan> spans, {List<Object?> drawings = const []})
+    : spans = List.unmodifiable(_normalize(spans)),
+      drawings = List.unmodifiable(drawings);
 
   RichDoc.plain(String text) : this([RichSpan(text)]);
 
@@ -186,9 +188,18 @@ class RichDoc {
 
   final List<RichSpan> spans;
 
+  /// Shapes drawn on the pages in the Minecraft view, kept exactly as that
+  /// page wrote them (`{"k":"star","p":0,"x0":…}`). Only the Minecraft view
+  /// draws them; everywhere else they are carried along untouched, so an
+  /// edit in the classic editor never wipes them.
+  final List<Object?> drawings;
+
   String get plainText => spans.map((s) => s.text).join();
 
-  bool get isBlank => plainText.trim().isEmpty;
+  bool get isBlank => plainText.trim().isEmpty && drawings.isEmpty;
+
+  RichDoc withDrawings(List<Object?> drawings) =>
+      RichDoc(spans, drawings: drawings);
 
   /// One style per UTF-16 code unit, which is what a [TextEditingController]
   /// indexes by.
@@ -215,6 +226,7 @@ class RichDoc {
     'spans': [
       for (final span in spans) {'t': span.text, ...span.style.toJson()},
     ],
+    if (drawings.isNotEmpty) 'drawings': drawings,
   });
 
   static RichDoc decode(String? raw) {
@@ -222,11 +234,18 @@ class RichDoc {
     try {
       final json = jsonDecode(raw);
       if (json is Map && json['spans'] is List) {
-        return RichDoc([
-          for (final span in json['spans'] as List)
-            if (span is Map && span['t'] is String)
-              RichSpan(span['t'] as String, RichStyle.fromJson(span)),
-        ]);
+        return RichDoc(
+          [
+            for (final span in json['spans'] as List)
+              if (span is Map && span['t'] is String)
+                RichSpan(span['t'] as String, RichStyle.fromJson(span)),
+          ],
+          drawings: [
+            if (json['drawings'] is List)
+              for (final d in json['drawings'] as List)
+                if (d is Map) d,
+          ],
+        );
       }
     } on FormatException {
       // Not JSON: fall through and keep it as plain text.
@@ -257,10 +276,13 @@ class RichDoc {
   bool operator ==(Object other) =>
       other is RichDoc &&
       other.spans.length == spans.length &&
-      Iterable.generate(spans.length).every((i) => other.spans[i] == spans[i]);
+      Iterable.generate(
+        spans.length,
+      ).every((i) => other.spans[i] == spans[i]) &&
+      jsonEncode(other.drawings) == jsonEncode(drawings);
 
   @override
-  int get hashCode => Object.hashAll(spans);
+  int get hashCode => Object.hash(Object.hashAll(spans), drawings.length);
 }
 
 /// A subject: one bookcase in the Minecraft view.

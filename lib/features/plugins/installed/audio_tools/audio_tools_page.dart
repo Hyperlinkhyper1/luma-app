@@ -11,6 +11,7 @@ import 'audio_tools_repository.dart';
 import 'audio_tools_scope.dart';
 import 'audio_types.dart';
 import 'eq.dart';
+import 'system_eq.dart';
 
 const _vbCableUrl = 'https://vb-audio.com/Cable/';
 const _micPrivacyUrl = 'ms-settings:privacy-microphone';
@@ -48,7 +49,9 @@ class AudioToolsPage extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             final routing = _RoutingCard(repo: repo);
-            final discord = _DiscordCard(repo: repo);
+            final Widget discord = repo.systemEqAvailable
+                ? _SystemEqCard(repo: repo)
+                : _DiscordCard(repo: repo);
             if (constraints.maxWidth < 860) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -613,6 +616,186 @@ class _DiscordCard extends StatelessWidget {
           _Step(number: 3, done: repo.running, text: t.audioToolsStepStart),
         ],
       ),
+    );
+  }
+}
+
+/// The no-extra-software route into Discord: luma's EQ installed on the
+/// microphone inside Windows, so every app recording from it hears the
+/// curve. Shown instead of [_DiscordCard] on builds that ship the APO.
+class _SystemEqCard extends StatelessWidget {
+  const _SystemEqCard({required this.repo});
+  final AudioToolsRepository repo;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final t = L.of(context);
+    final mic = repo.resolvedInput;
+    final micName = mic?.name ?? '';
+    final status = repo.systemEqStatus;
+    final on = repo.systemEqOnInput;
+    final bodyStyle = TextStyle(color: luma.textSecondary, fontSize: 13);
+
+    final children = <Widget>[];
+    if (mic == null) {
+      children.add(Text(t.audioToolsSystemNoMic, style: bodyStyle));
+    } else if (!on) {
+      children
+        ..add(Text(t.audioToolsSystemBody(micName), style: bodyStyle))
+        ..add(const SizedBox(height: 16))
+        ..add(
+          Align(
+            alignment: Alignment.centerLeft,
+            child: LumaPrimaryButton(
+              label: t.audioToolsSystemEnable,
+              icon: Icons.admin_panel_settings_outlined,
+              loading: repo.systemEqBusy,
+              onTap: repo.systemEqBusy ? null : repo.enableSystemEq,
+            ),
+          ),
+        );
+    } else {
+      children
+        ..add(
+          _ToggleRow(
+            title: t.audioToolsSystemEveryApp,
+            subtitle: t.audioToolsSystemEveryAppBody,
+            value: !repo.systemEqPaused,
+            onChanged: (v) => repo.setSystemEqPaused(!v),
+          ),
+        )
+        ..add(const SizedBox(height: 8))
+        ..add(Text(t.audioToolsSystemDiscordHint(micName), style: bodyStyle));
+      if (!status.current) {
+        children
+          ..add(const SizedBox(height: 12))
+          ..add(
+            _Notice(
+              icon: Icons.system_update_alt_rounded,
+              color: luma.warning,
+              text: t.audioToolsSystemOutdated,
+              action: TextButton(
+                onPressed: repo.systemEqBusy ? null : repo.updateSystemEq,
+                child: Text(t.audioToolsSystemUpdate),
+              ),
+            ),
+          );
+      }
+      children
+        ..add(const SizedBox(height: 16))
+        ..add(
+          Align(
+            alignment: Alignment.centerLeft,
+            child: LumaGhostButton(
+              label: t.audioToolsSystemRemove,
+              icon: Icons.settings_backup_restore_rounded,
+              onTap: repo.systemEqBusy ? null : repo.disableSystemEq,
+            ),
+          ),
+        );
+    }
+
+    final result = repo.systemEqResult;
+    if (result != null) {
+      children
+        ..add(const SizedBox(height: 12))
+        ..add(
+          _Notice(
+            icon: result.succeeded
+                ? Icons.restart_alt_rounded
+                : Icons.info_outline_rounded,
+            color: result.succeeded ? luma.warning : luma.danger,
+            text: switch (result) {
+              SystemEqResult.restartNeeded => t.audioToolsSystemRestart,
+              SystemEqResult.cancelled => t.audioToolsSystemCancelled,
+              SystemEqResult.noDevice => t.audioToolsSystemNoDevice,
+              SystemEqResult.missing => t.audioToolsSystemMissing,
+              SystemEqResult.failed ||
+              SystemEqResult.ok => t.audioToolsSystemFailed,
+            },
+          ),
+        );
+    }
+
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionTitle(
+            t.audioToolsSystemTitle,
+            trailing: on
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        repo.systemEqPaused
+                            ? Icons.pause_circle_outline_rounded
+                            : Icons.check_circle_rounded,
+                        color: repo.systemEqPaused
+                            ? luma.textMuted
+                            : luma.success,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          repo.systemEqPaused
+                              ? t.audioToolsSystemPaused
+                              : t.audioToolsSystemActive(micName),
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: repo.systemEqPaused
+                                ? luma.textMuted
+                                : luma.success,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : null,
+          ),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({
+    required this.icon,
+    required this.color,
+    required this.text,
+    this.action,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String text;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: luma.textSecondary, fontSize: 12.5),
+          ),
+        ),
+        ?action,
+      ],
     );
   }
 }

@@ -64,7 +64,7 @@
   function desk(K, o) {
     const top = sides('dark_oak_planks'), body = sides('spruce_planks');
     b(K, o, [-1, 14.5, -1], [33, 16, 17], top);
-    b(K, o, [3, 16, 2], [29, 16.05, 14], {up: {tex: 'green_wool', tint: [0.72, 0.8, 0.7]}});
+    b(K, o, [3, 16, 2], [29, 16.25, 14], {up: {tex: 'green_wool', tint: [0.72, 0.8, 0.7]}, north: {tex: 'green_wool', tint: [0.5, 0.56, 0.49]}, south: {tex: 'green_wool', tint: [0.5, 0.56, 0.49]}, east: {tex: 'green_wool', tint: [0.5, 0.56, 0.49]}, west: {tex: 'green_wool', tint: [0.5, 0.56, 0.49]}});
     b(K, o, [0, 0, 1], [9, 14.5, 15], body);
     b(K, o, [23, 0, 1], [32, 14.5, 15], body);
     b(K, o, [9, 11, 2], [23, 14.5, 15], body);
@@ -335,14 +335,15 @@
     }
   }
 
-  // A knitted throw over an armchair's back, falling down behind it.
+  // A knitted throw over the middle of an armchair's back, falling down
+  // behind it.
   function throwBlanket(K, o, yaw, style) {
     const knit = all(`carpet_${style}_center`, {uv: [0, 0, 16, 16]});
     const edge = all(`carpet_${style}_edge`, {uv: [0, 0, 16, 16]});
     const opts = {yaw};
-    b(K, o, [2, 21.5, 12.6], [10, 22.4, 16.4], knit, opts);
-    b(K, o, [2, 11, 16.4], [10, 22.4, 17], edge, opts);
-    b(K, o, [2, 16, 12.2], [10, 22.4, 12.6], knit, opts);
+    b(K, o, [3.5, 21.5, 12.6], [12.5, 22.4, 16.4], knit, opts);
+    b(K, o, [3.5, 11, 16.4], [12.5, 22.4, 17], edge, opts);
+    b(K, o, [3.5, 16, 12.2], [12.5, 22.4, 12.6], knit, opts);
   }
 
   // A ginger cat curled up asleep, tail round its paws.

@@ -1238,6 +1238,34 @@ class LFr extends L {
   String get textLibraryMcCloseDoor => 'Close the door';
 
   @override
+  String get textLibraryMcShapes => 'Shapes';
+
+  @override
+  String get textLibraryMcShapeCircle => 'Circle';
+
+  @override
+  String get textLibraryMcShapeSquare => 'Square';
+
+  @override
+  String get textLibraryMcShapeTriangle => 'Triangle';
+
+  @override
+  String get textLibraryMcShapeStar => 'Star';
+
+  @override
+  String get textLibraryMcShapeHeart => 'Heart';
+
+  @override
+  String get textLibraryMcShapeLine => 'Line';
+
+  @override
+  String get textLibraryMcShapeFill => 'Filled or outline';
+
+  @override
+  String get textLibraryMcDrawHint =>
+      'drag on the page to draw it · right-click a drawing to remove it';
+
+  @override
   String textLibraryMcSkinCurrent(String name) {
     return 'Skin: $name';
   }
@@ -1561,4 +1589,69 @@ class LFr extends L {
 
   @override
   String get audioToolsPresetCustom => 'Custom';
+
+  @override
+  String get audioToolsSystemTitle => 'Use it in Discord';
+
+  @override
+  String audioToolsSystemBody(String mic) {
+    return 'luma can put the EQ on $mic itself, so Discord, OBS and games hear it with no extra software. Windows asks for admin permission once, and sound drops out for a second while it switches over.';
+  }
+
+  @override
+  String get audioToolsSystemEnable => 'Turn on for this mic';
+
+  @override
+  String audioToolsSystemActive(String mic) {
+    return 'On for $mic';
+  }
+
+  @override
+  String get audioToolsSystemPaused => 'Paused';
+
+  @override
+  String get audioToolsSystemEveryApp => 'EQ in every app';
+
+  @override
+  String get audioToolsSystemEveryAppBody =>
+      'Pausing needs no admin permission and keeps everything set up.';
+
+  @override
+  String audioToolsSystemDiscordHint(String mic) {
+    return 'In Discord, keep $mic as your input device. If the EQ sounds washed out, turn off Discord\'s noise suppression and automatic gain control.';
+  }
+
+  @override
+  String get audioToolsSystemOutdated =>
+      'luma updated its EQ engine. Apply the update to keep this mic in sync.';
+
+  @override
+  String get audioToolsSystemUpdate => 'Update';
+
+  @override
+  String get audioToolsSystemRemove => 'Turn off and restore';
+
+  @override
+  String get audioToolsSystemCancelled =>
+      'Windows didn\'t get permission, so nothing changed.';
+
+  @override
+  String get audioToolsSystemFailed =>
+      'That didn\'t work, and the mic was left as it was.';
+
+  @override
+  String get audioToolsSystemRestart =>
+      'Almost there: restart your PC so Windows picks up the change.';
+
+  @override
+  String get audioToolsSystemNoDevice =>
+      'That microphone isn\'t connected right now.';
+
+  @override
+  String get audioToolsSystemMissing =>
+      'Parts of luma are missing. Reinstall luma and try again.';
+
+  @override
+  String get audioToolsSystemNoMic =>
+      'No microphone found. Plug one in and refresh the device list.';
 }
