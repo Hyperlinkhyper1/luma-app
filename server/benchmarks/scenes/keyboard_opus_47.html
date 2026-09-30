@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mechanical Keyboard Showcase — Aurora65</title>
+<style>
+  :root{
+    --bg-1:#0b0d14;
+    --bg-2:#151827;
+    --accent:#7cf5c4;
+    --accent-2:#ff7ab6;
+    --text:#e6eaf2;
+    --muted:#8b93a7;
+    --case:#2b3040;
+    --case-top:#3a4056;
+    --case-side:#1c2030;
+    --plate:#c9ccd6;
+    --pcb:#0f5132;
+    --pcb-trace:#1e7a4d;
+    --foam:#2a1f3d;
+    --key-body:#20242f;
+    --key-top:#2b3040;
+    --key-legend:#dfe4ee;
+    --accent-key:#ff7ab6;
+    --mod-key:#3a4056;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:radial-gradient(ellipse at 50% 0%, #1b2036 0%, #0b0d14 60%, #05060b 100%);color:var(--text);font-family:"Inter","SF Pro Text",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  body{display:flex;flex-direction:column;height:100vh}
+
+  /* Ambient background */
+  .bg-glow{
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(124,245,196,0.08), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255,122,182,0.08), transparent 40%);
+  }
+  .grid-floor{
+    position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+    background-image:
+      linear-gradient(rgba(124,245,196,0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,245,196,0.06) 1px, transparent 1px);
+    background-size:60px 60px;
+    mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.6) 20%, transparent 70%);
+  }
+
+  header{
+    position:relative;z-index:5;
+    padding:18px 26px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .logo{
+    width:36px;height:36px;border-radius:9px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    box-shadow:0 8px 24px rgba(124,245,196,0.25),inset 0 0 0 1px rgba(255,255,255,0.15);
+    display:grid;place-items:center;color:#0b0d14;font-weight:800;font-size:18px;
+  }
+  .brand h1{margin:0;font-size:16px;letter-spacing:.4px;font-weight:600}
+  .brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:1.4px;text-transform:uppercase}
+
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .btn{
+    background:rgba(255,255,255,0.04);color:var(--text);border:1px solid rgba(255,255,255,0.08);
+    padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;letter-spacing:.2px;
+    display:inline-flex;align-items:center;gap:8px;transition:all .2s ease;backdrop-filter:blur(8px);
+  }
+  .btn:hover{background:rgba(255,255,255,0.08);border-color:rgba(124,245,196,0.4);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn.primary{background:linear-gradient(135deg,rgba(124,245,196,0.2),rgba(255,122,182,0.15));border-color:rgba(124,245,196,0.4);color:var(--accent)}
+  .btn svg{width:14px;height:14px}
+  .btn .kbd{background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:4px;font-size:10px;color:var(--muted);font-family:ui-monospace,monospace}
+
+  .rgb-toggle{display:flex;align-items:center;gap:10px;padding:6px 12px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);font-size:12px;color:var(--muted)}
+  .switch{position:relative;width:34px;height:18px;border-radius:20px;background:rgba(255,255,255,0.1);cursor:pointer;transition:background .2s}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#e6eaf2;transition:.2s}
+  .switch.on{background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+  .switch.on::after{left:18px}
+
+  /* Stage */
+  .stage-wrap{flex:1;position:relative;z-index:1;overflow:hidden}
+  .stage{
+    position:absolute;inset:0;
+    display:grid;place-items:center;
+    perspective:1800px;
+    perspective-origin:50% 40%;
+  }
+  .scene{
+    transform-style:preserve-3d;
+    transform: rotateX(38deg) rotateZ(0deg) rotateY(0deg);
+    transition: transform .1s linear;
+    will-change: transform;
+  }
+  /* Floor reflection */
+  .floor{
+    position:absolute;left:50%;top:50%;
+    width:1400px;height:600px;
+    transform: translate(-50%,-50%) rotateX(90deg) translateZ(-90px);
+    background: radial-gradient(ellipse at center, rgba(124,245,196,0.12), transparent 60%);
+    transform-style:preserve-3d;
+    filter: blur(20px);
+    pointer-events:none;
+  }
+
+  .keyboard{
+    position:relative;
+    transform-style:preserve-3d;
+    width:900px;height:320px;
+  }
+
+  /* Layer base */
+  .layer{
+    position:absolute;left:0;top:0;
+    transform-style:preserve-3d;
+    transition: transform 1.1s cubic-bezier(.22,1,.36,1), opacity .5s ease;
+    will-change:transform,opacity;
+  }
+
+  /* ---- Case bottom ---- */
+  .case-bottom{
+    width:900px;height:320px;
+    transform: translateZ(0px);
+  }
+  .case-bottom .box{
+    position:absolute;inset:0;
+    transform-style:preserve-3d;
+  }
+  .face{position:absolute;transform-style:preserve-3d}
+  .cb-top{
+    width:900px;height:320px;
+    background:linear-gradient(160deg,#2b3040,#1a1e2c);
+    border-radius:22px;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,0.04);
+    transform:translateZ(30px);
+  }
+  .cb-bot{
+    width:900px;height:320px;
+    background:#0d1018;
+    border-radius:22px;
+    transform:translateZ(0);
+  }
+  .cb-front,.cb-back{
+    width:900px;height:30px;
+    background:linear-gradient(180deg,#242838,#121522);
+    left:0;
+    border-radius:4px;
+  }
+  .cb-front{top:320px;transform-origin:top;transform:rotateX(-90deg)}
+  .cb-back{top:0;transform-origin:bottom;transform:rotateX(90deg) translateY(0)}
+  .cb-left,.cb-right{
+    width:30px;height:320px;
+    background:linear-gradient(90deg,#121522,#242838);
+    top:0;border-radius:4px;
+  }
+  .cb-left{left:0;transform-origin:right;transform:rotateY(90deg) translateX(0)}
+  .cb-right{left:900px;transform-origin:left;transform:rotateY(-90deg)}
+
+  /* ---- PCB ---- */
+  .pcb{
+    width:840px;height:270px;
+    left:30px;top:25px;
+    transform: translateZ(34px);
+  }
+  .pcb-face{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.04), transparent 40%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 8px),
+      linear-gradient(180deg,#0f5132,#0a3d24);
+    border-radius:8px;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .pcb-side{
+    position:absolute;left:0;top:270px;width:840px;height:6px;
+    background:#083019;transform-origin:top;transform:rotateX(-90deg);
+  }
+  /* PCB traces & pads */
+  .pcb-traces{position:absolute;inset:8px;border-radius:4px;pointer-events:none;opacity:.5;
+    background-image:
+      linear-gradient(90deg, transparent 49%, rgba(200,255,220,0.15) 49% 51%, transparent 51%),
+      linear-gradient(0deg, transparent 49%, rgba(200,255,220,0.1) 49% 51%, transparent 51%);
+    background-size: 60px 60px, 60px 60px;
+  }
+  .pcb-chip{
+    position:absolute;width:36px;height:22px;background:#1a1a1a;border-radius:2px;
+    box-shadow:0 0 0 1px #333, inset 0 0 4px rgba(255,255,255,0.1);
+    top:18px;right:24px;
+  }
+  .pcb-chip::before{content:"USB-C";position:absolute;color:#888;font-size:6px;top:8px;left:4px;letter-spacing:.5px}
+  .pcb-usb{
+    position:absolute;width:22px;height:12px;background:#c0c4cc;border-radius:2px;
+    top:-6px;left:80px;box-shadow:inset 0 -2px 2px rgba(0,0,0,0.3);
+  }
+
+  /* ---- Foam ---- */
+  .foam{
+    width:836px;height:266px;
+    left:32px;top:27px;
+    transform: translateZ(40px);
+  }
+  .foam-face{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(255,255,255,0.05), transparent 50%),
+      repeating-radial-gradient(circle at 20% 30%, #3a2d54 0 3px, #2a1f3d 3px 8px),
+      #2a1f3d;
+    border-radius:6px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.3);
+  }
+  .foam-side{
+    position:absolute;left:0;top:266px;width:836px;height:5px;
+    background:#1a1329;transform-origin:top;transform:rotateX(-90deg);
+  }
+
+  /* ---- Plate ---- */
+  .plate{
+    width:836px;height:266px;
+    left:32px;top:27px;
+    transform: translateZ(46px);
+  }
+  .plate-face{
+    position:absolute;inset:0;
+    background:
+      linear-gradient(160deg, #d8dbe4, #a8adba);
+    border-radius:6px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.3),
+      inset 0 -2px 4px rgba(0,0,0,0.2);
+  }
+  .plate-side{
+    position:absolute;left:0;top:266px;width:836px;height:3px;
+    background:#8b8f9a;transform-origin:top;transform:rotateX(-90deg);
+  }
+  /* switch cutouts on plate */
+  .plate-cutouts{position:absolute;inset:0;pointer-events:none}
+
+  /* ---- Switch ---- */
+  .switches-layer{
+    left:0;top:0;width:900px;height:320px;
+    transform: translateZ(50px);
+  }
+  .sw{
+    position:absolute;
+    width:38px;height:38px;
+    transform-style:preserve-3d;
+    opacity:0;
+  }
+  .sw-housing{
+    position:absolute;left:3px;top:3px;width:32px;height:32px;
+    background:linear-gradient(160deg,#f5f5f5,#c8ccd4);
+    border-radius:3px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.3);
+    transform:translateZ(4px);
+  }
+  .sw-stem{
+    position:absolute;left:12px;top:12px;width:14px;height:14px;
+    background:linear-gradient(135deg,#ff9dc7,#d94a8a);
+    border-radius:2px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,0.3);
+    transform:translateZ(10px);
+  }
+  .sw-stem::before,.sw-stem::after{
+    content:"";position:absolute;background:rgba(0,0,0,0.4);
+  }
+  .sw-stem::before{left:6px;top:2px;width:2px;height:10px}
+  .sw-stem::after{left:2px;top:6px;width:10px;height:2px}
+
+  /* ---- Keycaps ---- */
+  .keys-layer{
+    left:0;top:0;width:900px;height:320px;
+    transform: translateZ(58px);
+  }
+  .key{
+    position:absolute;
+    transform-style:preserve-3d;
+    opacity:0;
+    cursor:pointer;
+    transition: transform .08s ease-out;
+  }
+  .key .cap{
+    position:absolute;inset:0;
+    transform-style:preserve-3d;
+  }
+  .key .top{
+    position:absolute;inset:2px;
+    background:linear-gradient(160deg,var(--key-top),var(--key-body));
+    border-radius:5px 5px 4px 4px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.08),
+      inset 0 -3px 6px rgba(0,0,0,0.4),
+      0 3px 6px rgba(0,0,0,0.4);
+    transform:translateZ(14px);
+    display:grid;place-items:center;
+    color:var(--key-legend);
+    font-size:11px;font-weight:600;
+    font-family:"Inter",system-ui,sans-serif;
+    letter-spacing:.3px;
+    user-select:none;
+  }
+  .key .side-f,.key .side-b,.key .side-l,.key .side-r{
+    position:absolute;
+    background:linear-gradient(180deg,#1a1e2c,#0d1018);
+  }
+  .key .side-f{left:0;right:0;bottom:0;height:14px;transform-origin:bottom;transform:rotateX(90deg) translateY(-100%)}
+  /* Simplified: use just a bottom "skirt" via box-shadow effect + 4 face divs generated in JS */
+
+  .key.accent .top{background:linear-gradient(160deg,#ff9dc7,#d94a8a);color:#3a0f28}
+  .key.mod .top{background:linear-gradient(160deg,#3a4056,#252938);color:#b8bfd0}
+  .key.space .top{background:linear-gradient(160deg,#2b3040,#1a1e2c)}
+
+  .key.pressed .cap{transform:translateZ(-8px)}
+
+  /* Knob */
+  .knob{
+    position:absolute;
+    width:44px;height:44px;
+    transform-style:preserve-3d;
+    opacity:0;
+  }
+  .knob-top{
+    position:absolute;inset:0;border-radius:50%;
+    background:
+      radial-gradient(circle at 35% 30%, #4a5068, #1a1e2c 70%);
+    box-shadow:
+      inset 0 0 0 2px rgba(255,255,255,0.1),
+      inset 0 -4px 8px rgba(0,0,0,0.5),
+      0 4px 10px rgba(0,0,0,0.4);
+    transform:translateZ(18px);
+  }
+  .knob-indicator{
+    position:absolute;top:4px;left:50%;width:3px;height:10px;
+    background:var(--accent);border-radius:2px;
+    transform:translateX(-50%) translateZ(19px);
+    box-shadow:0 0 6px var(--accent);
+  }
+  .knob-side{
+    position:absolute;inset:0;border-radius:50%;
+    background:repeating-conic-gradient(#2b3040 0 6deg,#1a1e2c 6deg 12deg);
+    transform:translateZ(8px);
+  }
+
+  /* RGB underglow */
+  .rgb-glow{
+    position:absolute;left:20px;top:20px;width:860px;height:290px;
+    border-radius:24px;
+    transform:translateZ(-4px);
+    filter:blur(18px);
+    opacity:0;transition:opacity .5s;
+    pointer-events:none;
+    background: linear-gradient(90deg,#ff3ea5,#ff9d3e,#f5ff3e,#3eff8a,#3eb0ff,#a53eff,#ff3ea5);
+    background-size:200% 100%;
+    animation: rgb-shift 8s linear infinite;
+  }
+  .rgb-on .rgb-glow{opacity:.55}
+  @keyframes rgb-shift{
+    0%{background-position:0% 0%}
+    100%{background-position:200% 0%}
+  }
+
+  /* Hint toast */
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgba(15,18,28,0.9);border:1px solid rgba(124,245,196,0.4);
+    color:var(--text);padding:10px 18px;border-radius:10px;font-size:13px;
+    backdrop-filter:blur(10px);z-index:20;opacity:0;pointer-events:none;
+    transition:all .4s ease;display:flex;align-items:center;gap:10px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 1.5s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* Info footer */
+  footer{
+    position:relative;z-index:5;padding:12px 26px;display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;color:var(--muted);gap:16px;flex-wrap:wrap;
+  }
+  footer .stage-info{display:flex;gap:14px;align-items:center}
+  footer .stage-info .dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:all .3s}
+  footer .stage-info .dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+
+  /* Responsive */
+  @media(max-width:960px){
+    .scene{transform: rotateX(38deg) scale(0.7)}
+  }
+  @media(max-width:680px){
+    .scene{transform: rotateX(38deg) scale(0.5)}
+    header{padding:12px 14px}
+    .brand h1{font-size:14px}
+    .btn{padding:7px 10px;font-size:12px}
+  }
+  @media(max-width:420px){
+    .scene{transform: rotateX(38deg) scale(0.36)}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .layer{transition-duration:.01ms !important}
+    .rgb-glow{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="grid-floor"></div>
+
+<header>
+  <div class="brand">
+    <div class="logo">A</div>
+    <div>
+      <h1>Aurora65</h1>
+      <small>Mechanical Keyboard · Exploded View</small>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="rgb-toggle">
+      RGB
+      <div class="switch on" id="rgbSwitch"></div>
+    </div>
+    <button class="btn" id="muteBtn" title="Mute">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+      <span id="muteLabel">Sound On</span>
+    </button>
+    <button class="btn primary" id="replayBtn" title="Replay assembly">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+      Replay Assembly
+    </button>
+  </div>
+</header>
+
+<div class="stage-wrap">
+  <div class="stage" id="stage">
+    <div class="scene" id="scene">
+      <div class="floor"></div>
+      <div class="keyboard" id="keyboard">
+        <!-- Case bottom -->
+        <div class="layer case-bottom" id="caseBottom">
+          <div class="box">
+            <div class="face cb-bot"></div>
+            <div class="face cb-top"></div>
+            <div class="face cb-front"></div>
+            <div class="face cb-back"></div>
+            <div class="face cb-left"></div>
+            <div class="face cb-right"></div>
+          </div>
+          <div class="rgb-glow"></div>
+        </div>
+        <!-- PCB -->
+        <div class="layer pcb" id="pcb">
+          <div class="pcb-face">
+            <div class="pcb-traces"></div>
+            <div class="pcb-usb"></div>
+            <div class="pcb-chip"></div>
+          </div>
+          <div class="pcb-side"></div>
+        </div>
+        <!-- Foam -->
+        <div class="layer foam" id="foam">
+          <div class="foam-face"></div>
+          <div class="foam-side"></div>
+        </div>
+        <!-- Plate -->
+        <div class="layer plate" id="plate">
+          <div class="plate-face"></div>
+          <div class="plate-side"></div>
+        </div>
+        <!-- Switches -->
+        <div class="layer switches-layer" id="switchesLayer"></div>
+        <!-- Keycaps -->
+        <div class="layer keys-layer" id="keysLayer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="stage-info" id="stageInfo">
+    <span class="dot" data-stage="0"></span><span>PCB</span>
+    <span class="dot" data-stage="1"></span><span>Foam</span>
+    <span class="dot" data-stage="2"></span><span>Plate</span>
+    <span class="dot" data-stage="3"></span><span>Switches</span>
+    <span class="dot" data-stage="4"></span><span>Keycaps</span>
+  </div>
+  <div>Drag to rotate · Click keys or type to play</div>
+</footer>
+
+<div class="toast" id="toast">
+  <div class="dot"></div>
+  <span id="toastMsg">Click anywhere to enable sound</span>
+</div>
+
+<script>
+/* ---------- Layout: 65% keyboard ---------- */
+const KEY_U = 42; // 1u pixel width
+const KEY_GAP = 2;
+const ROW_H = 42;
+const START_X = 40;
+const START_Y = 40;
+
+// row definitions; each key: [label, width in u, type, code]
+// type: normal | mod | accent | space
+const rows = [
+  // Row 0: numbers
+  [
+    ['`',1,'normal','Backquote'],['1',1,'normal','Digit1'],['2',1,'normal','Digit2'],['3',1,'normal','Digit3'],['4',1,'normal','Digit4'],['5',1,'normal','Digit5'],['6',1,'normal','Digit6'],['7',1,'normal','Digit7'],['8',1,'normal','Digit8'],['9',1,'normal','Digit9'],['0',1,'normal','Digit0'],['-',1,'normal','Minus'],['=',1,'normal','Equal'],['Bksp',2,'mod','Backspace'],['Del',1,'accent','Delete']
+  ],
+  // Row 1: qwerty
+  [
+    ['Tab',1.5,'mod','Tab'],['Q',1,'normal','KeyQ'],['W',1,'normal','KeyW'],['E',1,'normal','KeyE'],['R',1,'normal','KeyR'],['T',1,'normal','KeyT'],['Y',1,'normal','KeyY'],['U',1,'normal','KeyU'],['I',1,'normal','KeyI'],['O',1,'normal','KeyO'],['P',1,'normal','KeyP'],['[',1,'normal','BracketLeft'],[']',1,'normal','BracketRight'],['\\',1.5,'mod','Backslash'],['PgUp',1,'mod','PageUp']
+  ],
+  // Row 2: asdf
+  [
+    ['Caps',1.75,'mod','CapsLock'],['A',1,'normal','KeyA'],['S',1,'normal','KeyS'],['D',1,'normal','KeyD'],['F',1,'normal','KeyF'],['G',1,'normal','KeyG'],['H',1,'normal','KeyH'],['J',1,'normal','KeyJ'],['K',1,'normal','KeyK'],['L',1,'normal','KeyL'],[';',1,'normal','Semicolon'],["'",1,'normal','Quote'],['Enter',2.25,'accent','Enter'],['PgDn',1,'mod','PageDown']
+  ],
+  // Row 3: zxcv
+  [
+    ['Shift',2.25,'mod','ShiftLeft'],['Z',1,'normal','KeyZ'],['X',1,'normal','KeyX'],['C',1,'normal','KeyC'],['V',1,'normal','KeyV'],['B',1,'normal','KeyB'],['N',1,'normal','KeyN'],['M',1,'normal','KeyM'],[',',1,'normal','Comma'],['.',1,'normal','Period'],['/',1,'normal','Slash'],['Shift',1.75,'mod','ShiftRight'],['↑',1,'mod','ArrowUp'],['End',1,'mod','End']
+  ],
+  // Row 4: bottom
+  [
+    ['Ctrl',1.25,'mod','ControlLeft'],['Win',1.25,'mod','MetaLeft'],['Alt',1.25,'mod','AltLeft'],['',6.25,'space','Space'],['Alt',1,'mod','AltRight'],['Fn',1,'mod','Fn'],['←',1,'mod','ArrowLeft'],['↓',1,'mod','ArrowDown'],['→',1,'mod','ArrowRight']
+  ]
+];
+
+const keysLayer = document.getElementById('keysLayer');
+const switchesLayer = document.getElementById('switchesLayer');
+
+const allKeys = []; // {el, swEl, code, type, x, y, w}
+
+// Build keys and switches
+rows.forEach((row, ri) => {
+  let x = START_X;
+  const y = START_Y + ri * (ROW_H + KEY_GAP);
+  row.forEach(([label, w, type, code], ci) => {
+    const width = w * KEY_U + (w - 1) * 0; // keep simple
+    // Key element
+    const key = document.createElement('div');
+    key.className = 'key ' + type;
+    key.style.left = x + 'px';
+    key.style.top = y + 'px';
+    key.style.width = width + 'px';
+    key.style.height = '38px';
+    key.dataset.code = code;
+
+    const cap = document.createElement('div');
+    cap.className = 'cap';
+
+    // Top face
+    const top = document.createElement('div');
+    top.className = 'top';
+    top.textContent = label;
+    if (w >= 6) top.textContent = '';
+    cap.appendChild(top);
+
+    // Side faces for 3D depth
+    ['side-f','side-b','side-l','side-r'].forEach(cls => {
+      const s = document.createElement('div');
+      s.className = cls;
+      s.style.position = 'absolute';
+      s.style.background = 'linear-gradient(180deg,#1c2030,#0a0c14)';
+      if (cls==='side-f'){ s.style.left='2px';s.style.right='2px';s.style.bottom='2px';s.style.height='14px';s.style.transformOrigin='bottom';s.style.transform='rotateX(90deg) translateY(-100%)'; s.style.width='calc(100% - 4px)'; }
+      if (cls==='side-b'){ s.style.left='2px';s.style.right='2px';s.style.top='2px';s.style.height='14px';s.style.transformOrigin='top';s.style.transform='rotateX(-90deg) translateY(100%)'; s.style.width='calc(100% - 4px)'; }
+      if (cls==='side-l'){ s.style.left='2px';s.style.top='2px';s.style.bottom='2px';s.style.width='14px';s.style.transformOrigin='left';s.style.transform='rotateY(-90deg) translateX(-100%)'; s.style.height='calc(100% - 4px)'; }
+      if (cls==='side-r'){ s.style.right='2px';s.style.top='2px';s.style.bottom='2px';s.style.width='14px';s.style.transformOrigin='right';s.style.transform='rotateY(90deg) translateX(100%)'; s.style.height='calc(100% - 4px)'; }
+      cap.appendChild(s);
+    });
+
+    key.appendChild(cap);
+    keysLayer.appendChild(key);
+
+    // Switch element (one per key, centered)
+    const sw = document.createElement('div');
+    sw.className = 'sw';
+    sw.style.left = (x + width/2 - 19) + 'px';
+    sw.style.top = (y - 2) + 'px';
+    sw.innerHTML = '<div class="sw-housing"></div><div class="sw-stem"></div>';
+    switchesLayer.appendChild(sw);
+
+    allKeys.push({el:key, swEl:sw, code, type, label, x, y, w:width, row:ri, col:ci});
+
+    x += width + KEY_GAP;
+  });
+});
+
+// Sort switches/keys left-to-right for install animation
+const installOrder = [...allKeys].sort((a,b)=> a.x - b.x || a.y - b.y);
+
+// Add knob at top right (replacing last position in row 0? We'll add as decoration on the case above)
+const knob = document.createElement('div');
+knob.className = 'knob';
+knob.style.left = '850px';
+knob.style.top = '-8px';
+knob.style.transform = 'translateZ(52px)';
+knob.innerHTML = '<div class="knob-side"></div><div class="knob-top"></div><div class="knob-indicator"></div>';
+document.getElementById('keyboard').appendChild(knob);
+
+// Center the keyboard by translating (its natural origin is top-left)
+const kb = document.getElementById('keyboard');
+kb.style.transform = 'translate(-450px, -160px)';
+
+/* ---------- Assembly animation ---------- */
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const stageDots = document.querySelectorAll('#stageInfo .dot');
+function setStage(i){
+  stageDots.forEach((d,idx)=> d.classList.toggle('active', idx<=i));
+}
+
+function setInitialPositions(){
+  // Case bottom stays
+  document.getElementById('caseBottom').style.transform = 'translateZ(0)';
+  // Hide others far up/away
+  document.getElementById('pcb').style.transform = 'translateZ(400px) translateY(-200px)';
+  document.getElementById('pcb').style.opacity = '0';
+  document.getElementById('foam').style.transform = 'translateZ(500px) translateY(-260px) translateX(120px)';
+  document.getElementById('foam').style.opacity = '0';
+  document.getElementById('plate').style.transform = 'translateZ(600px) translateY(-320px) translateX(-120px)';
+  document.getElementById('plate').style.opacity = '0';
+
+  allKeys.forEach(k=>{
+    k.swEl.style.transition = 'none';
+    k.swEl.style.opacity = '0';
+    k.swEl.style.transform = 'translateY(-400px) translateZ(300px) rotateX(60deg)';
+    k.el.style.transition = 'none';
+    k.el.style.opacity = '0';
+    k.el.style.transform = 'translateY(-500px) translateZ(400px) rotateZ(20deg)';
+  });
+  knob.style.opacity = '0';
+  knob.style.transform = 'translateZ(52px) translateY(-300px) translateZ(400px)';
+  setStage(-1);
+}
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+let assemblyRunning = false;
+async function runAssembly(){
+  if (assemblyRunning) return;
+  assemblyRunning = true;
+  setInitialPositions();
+  await sleep(120);
+
+  // Stage 0: PCB
+  const pcb = document.getElementById('pcb');
+  pcb.style.transition = prefersReduced ? 'opacity .2s' : 'transform 1.1s cubic-bezier(.22,1,.36,1), opacity .5s';
+  pcb.style.opacity = '1';
+  pcb.style.transform = 'translateZ(34px)';
+  setStage(0);
+  await sleep(prefersReduced?150:1200);
+
+  // Stage 1: Foam
+  const foam = document.getElementById('foam');
+  foam.style.transition = prefersReduced ? 'opacity .2s' : 'transform 1.1s cubic-bezier(.22,1,.36,1), opacity .5s';
+  foam.style.opacity = '1';
+  foam.style.transform = 'translateZ(40px)';
+  setStage(1);
+  await sleep(prefersReduced?150:1100);
+
+  // Stage 2: Plate
+  const plate = document.getElementById('plate');
+  plate.style.transition = prefersReduced ? 'opacity .2s' : 'transform 1.1s cubic-bezier(.22,1,.36,1), opacity .5s';
+  plate.style.opacity = '1';
+  plate.style.transform = 'translateZ(46px)';
+  setStage(2);
+  await sleep(prefersReduced?150:1100);
+
+  // Stage 3: Switches L→R
+  setStage(3);
+  const swDelay = prefersReduced ? 4 : 32;
+  for (const k of installOrder){
+    k.swEl.style.transition = prefersReduced ? 'opacity .1s' : 'transform .5s cubic-bezier(.22,1,.36,1), opacity .3s';
+    k.swEl.style.opacity = '1';
+    k.swEl.style.transform = 'translateY(0) translateZ(0) rotateX(0)';
+    await sleep(swDelay);
+  }
+  await sleep(prefersReduced?100:400);
+
+  // Also drop the knob
+  knob.style.transition = prefersReduced ? 'opacity .2s' : 'transform .8s cubic-bezier(.22,1,.36,1), opacity .3s';
+  knob.style.opacity = '1';
+  knob.style.transform = 'translateZ(52px)';
+
+  // Stage 4: Keycaps L→R
+  setStage(4);
+  const kDelay = prefersReduced ? 4 : 34;
+  for (const k of installOrder){
+    k.el.style.transition = prefersReduced ? 'opacity .1s' : 'transform .55s cubic-bezier(.22,1,.36,1), opacity .3s';
+    k.el.style.opacity = '1';
+    k.el.style.transform = 'translateY(0) translateZ(0) rotateZ(0)';
+    await sleep(kDelay);
+  }
+
+  // Restore key transitions to fast press behavior
+  await sleep(300);
+  allKeys.forEach(k=>{
+    k.el.style.transition = 'transform .08s ease-out';
+  });
+  assemblyRunning = false;
+}
+
+/* ---------- Rotation via drag ---------- */
+const scene = document.getElementById('scene');
+let rotX = 38, rotY = 0;
+let dragging = false, lastX=0, lastY=0;
+const stageEl = document.getElementById('stage');
+function applyRot(){
+  const scale = window.innerWidth < 420 ? 0.36 : window.innerWidth < 680 ? 0.5 : window.innerWidth < 960 ? 0.7 : 1;
+  scene.style.transform = `scale(${scale}) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+}
+stageEl.addEventListener('pointerdown', e=>{
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  stageEl.setPointerCapture(e.pointerId);
+});
+stageEl.addEventListener('pointermove', e=>{
+  if (!dragging) return;
+  const dx = e.clientX - lastX, dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  rotY += dx * 0.4;
+  rotX = Math.max(10, Math.min(75, rotX + dy * 0.3));
+  applyRot();
+});
+stageEl.addEventListener('pointerup', e=>{ dragging=false });
+stageEl.addEventListener('pointercancel', e=>{ dragging=false });
+window.addEventListener('resize', applyRot);
+applyRot();
+
+/* ---------- Web Audio ---------- */
+let audioCtx = null;
+let muted = false;
+let masterGain = null;
+function ensureAudio(){
+  if (audioCtx) return;
+  try{
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.35;
+    masterGain.connect(audioCtx.destination);
+  }catch(e){ console.warn('No audio', e); }
+}
+
+function playKeySound(type, isSpace, code){
+  if (muted || !audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  // Sound design per type
+  let clickFreq, thockFreq, dur, gain, useNoise = true;
+  if (isSpace || code === 'Space'){
+    clickFreq = 220; thockFreq = 90; dur = 0.16; gain = 0.55;
+  } else if (code === 'Enter'){
+    clickFreq = 520; thockFreq = 150; dur = 0.12; gain = 0.48;
+  } else if (code === 'Backspace' || code === 'Delete'){
+    clickFreq = 620; thockFreq = 180; dur = 0.1; gain = 0.42;
+  } else if (type === 'mod'){
+    clickFreq = 480; thockFreq = 160; dur = 0.11; gain = 0.4;
+  } else {
+    // letters/numbers
+    clickFreq = 900 + Math.random()*200;
+    thockFreq = 220 + Math.random()*40;
+    dur = 0.085; gain = 0.38;
+  }
+
+  // 1) The "thock" body: low sine with quick decay
+  const osc = audioCtx.createOscillator();
+  const oscGain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(thockFreq*1.6, now);
+  osc.frequency.exponentialRampToValueAtTime(thockFreq, now+0.04);
+  oscGain.gain.setValueAtTime(0, now);
+  oscGain.gain.linearRampToValueAtTime(gain, now+0.005);
+  oscGain.gain.exponentialRampToValueAtTime(0.001, now+dur);
+  osc.connect(oscGain).connect(masterGain);
+  osc.start(now); osc.stop(now+dur+0.02);
+
+  // 2) The click: short filtered noise burst
+  if (useNoise){
+    const bufSize = Math.floor(audioCtx.sampleRate * 0.05);
+    const buffer = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i=0;i<bufSize;i++){ data[i] = (Math.random()*2-1) * (1 - i/bufSize); }
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    const bp = audioCtx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = clickFreq;
+    bp.Q.value = 6;
+    const nGain = audioCtx.createGain();
+    nGain.gain.setValueAtTime(gain*0.4, now);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now+0.05);
+    noise.connect(bp).connect(nGain).connect(masterGain);
+    noise.start(now); noise.stop(now+0.06);
+  }
+
+  // 3) subtle high harmonic for character
+  const osc2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  osc2.type = 'triangle';
+  osc2.frequency.value = clickFreq * 1.2;
+  g2.gain.setValueAtTime(0, now);
+  g2.gain.linearRampToValueAtTime(gain*0.12, now+0.003);
+  g2.gain.exponentialRampToValueAtTime(0.001, now+0.04);
+  osc2.connect(g2).connect(masterGain);
+  osc2.start(now); osc2.stop(now+0.05);
+}
+
+/* ---------- Interaction: press keys ---------- */
+const pressedCodes = new Set();
+function pressKey(code, fromMouse=false){
+  const k = allKeys.find(x=>x.code===code);
+  if (!k) return;
+  k.el.classList.add('pressed');
+  playKeySound(k.type, k.type==='space', code);
+  setTimeout(()=> k.el.classList.remove('pressed'), 110);
+}
+
+keysLayer.addEventListener('pointerdown', e=>{
+  const keyEl = e.target.closest('.key');
+  if (!keyEl) return;
+  e.stopPropagation();
+  ensureAudio();
+  hideToast();
+  pressKey(keyEl.dataset.code, true);
+});
+
+window.addEventListener('keydown', e=>{
+  ensureAudio();
+  hideToast();
+  let code = e.code;
+  // Map some
+  if (code === 'MetaRight') code = 'MetaLeft';
+  if (pressedCodes.has(code)) return;
+  pressedCodes.add(code);
+  const found = allKeys.find(k=>k.code===code);
+  if (found){
+    e.preventDefault();
+    pressKey(code);
+  }
+});
+window.addEventListener('keyup', e=>{
+  let code = e.code;
+  if (code === 'MetaRight') code = 'MetaLeft';
+  pressedCodes.delete(code);
+});
+
+/* ---------- Toast / audio hint ---------- */
+const toast = document.getElementById('toast');
+const toastMsg = document.getElementById('toastMsg');
+function showToast(msg){
+  toastMsg.textContent = msg;
+  toast.classList.add('show');
+}
+function hideToast(){ toast.classList.remove('show'); }
+
+// Show hint on load
+setTimeout(()=> showToast('Click anywhere or press a key to enable sound'), 800);
+
+// First interaction enables audio
+function firstInteract(){
+  ensureAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  setTimeout(hideToast, 400);
+  window.removeEventListener('pointerdown', firstInteract);
+  window.removeEventListener('keydown', firstInteract);
+}
+window.addEventListener('pointerdown', firstInteract);
+window.addEventListener('keydown', firstInteract);
+
+/* ---------- Controls ---------- */
+document.getElementById('replayBtn').addEventListener('click', ()=>{
+  ensureAudio(); hideToast();
+  runAssembly();
+});
+
+const muteBtn = document.getElementById('muteBtn');
+const muteLabel = document.getElementById('muteLabel');
+muteBtn.addEventListener('click', ()=>{
+  muted = !muted;
+  if (masterGain) masterGain.gain.value = muted ? 0 : 0.35;
+  muteLabel.textContent = muted ? 'Muted' : 'Sound On';
+  muteBtn.style.opacity = muted ? '0.6' : '1';
+});
+
+const rgbSwitch = document.getElementById('rgbSwitch');
+const kbEl = document.getElementById('keyboard');
+kbEl.classList.add('rgb-on');
+rgbSwitch.addEventListener('click', ()=>{
+  rgbSwitch.classList.toggle('on');
+  kbEl.classList.toggle('rgb-on', rgbSwitch.classList.contains('on'));
+});
+
+/* ---------- Kick off ---------- */
+setInitialPositions();
+setTimeout(runAssembly, 500);
+
+/* Gentle idle scene rotation until user drags */
+let userInteracted = false;
+stageEl.addEventListener('pointerdown', ()=> userInteracted = true);
+let idleT = 0;
+function idle(){
+  if (!userInteracted && !dragging){
+    idleT += 0.005;
+    rotY = Math.sin(idleT) * 8;
+    applyRot();
+  }
+  requestAnimationFrame(idle);
+}
+if (!prefersReduced) idle();
+
+</script>
+</body>
+</html>
