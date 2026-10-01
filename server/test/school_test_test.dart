@@ -47,6 +47,19 @@ void main() {
       expect(suite.language, 'nl');
       expect(suite.cases.map((c) => c.kind).toSet(),
           {'answer', 'grade', 'question'});
+      expect(suite.cases.length, greaterThanOrEqualTo(80));
+      for (var d = 1; d <= kSchoolTestMaxDifficulty; d++) {
+        expect(suite.cases.where((c) => c.difficulty == d).length,
+            greaterThanOrEqualTo(10),
+            reason: 'level $d');
+      }
+      // Format-only question cases are free points; they must not weigh
+      // more than the easiest level.
+      expect(
+          suite.cases
+              .where((c) => c.kind == 'question')
+              .every((c) => c.difficulty == 1),
+          isTrue);
     });
 
     test('names the case that is wrong', () {
@@ -105,6 +118,19 @@ void main() {
                 ]
               })),
           fails('twice'));
+      for (final bad in [0, 6, 2.5, 'hard']) {
+        expect(
+            () => SchoolTestSuite.parse(
+                one({'kind': 'question', 'difficulty': bad})),
+            fails('"difficulty"'),
+            reason: '$bad');
+      }
+      expect(
+          SchoolTestSuite.parse(one({'kind': 'question'}))
+              .cases
+              .single
+              .difficulty,
+          1);
     });
   });
 
@@ -120,6 +146,28 @@ void main() {
       expect(scoreSchoolTestCase(c, _answer('5.2')).score, 0);
       expect(scoreSchoolTestCase(c, _answer('vijf')).score, 0);
       expect(lastNumber('1 648'), 1648);
+    });
+
+    test('numbers in powers of ten and with thousands separators count', () {
+      final force = _case({
+        'kind': 'answer',
+        'question': 'Remkracht in N?',
+        'expect': {'number': 6000, 'tolerance': 1},
+      });
+      for (final said in [
+        '6,0 · 10³ N',
+        '6.000 N',
+        '6,0 × 10^3 N',
+        '6.0e3 N',
+        'F = 6000 N'
+      ]) {
+        expect(scoreSchoolTestCase(force, _answer(said)).score, 1,
+            reason: said);
+      }
+      expect(scoreSchoolTestCase(force, _answer('6,0 N')).score, 0);
+      expect(numberReadings('€ 2.318,55'), [2318.55]);
+      expect(numberReadings('Kz = 1,8 · 10⁻⁵').single, closeTo(1.8e-5, 1e-12));
+      expect(numberReadings('−1'), [-1]);
     });
 
     test('an option counts by its letter or its exact text', () {
@@ -238,6 +286,31 @@ void main() {
     expect(run.errors, 1);
     expect(run.tokens, 30);
     expect(run.byKind()['answer'], {'n': 1, 'score': 100.0});
+  });
+
+  test('a hard case weighs as much as its difficulty', () {
+    SchoolTestCaseResult r(int difficulty, double score) =>
+        SchoolTestCaseResult(
+            id: '$difficulty-$score',
+            kind: 'answer',
+            expected: '',
+            score: score,
+            got: '',
+            difficulty: difficulty);
+    final run = SchoolTestRun(
+      id: 'w',
+      route: const AiModeRoute(AiUpstream.openrouter, 'x/y'),
+      ownKey: false,
+      startedAtMs: 0,
+      total: 4,
+      results: [r(1, 1), r(1, 1), r(1, 1), r(5, 0)],
+    );
+    // Three easy right, one hard wrong: 3 of 8 points, not 3 of 4.
+    expect(run.score, closeTo(37.5, 0.001));
+    expect(run.byDifficulty(), {
+      '1': {'n': 3, 'score': 100.0},
+      '5': {'n': 1, 'score': 0.0},
+    });
   });
 
   test('a key the provider refuses ends the run with the reason', () async {

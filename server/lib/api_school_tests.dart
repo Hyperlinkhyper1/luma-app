@@ -262,6 +262,9 @@ extension SchoolTestsApi on Api {
         '.st-detail table td{font-size:12px;vertical-align:top;'
         'overflow-wrap:anywhere}'
         '.st-best{font-size:10.5px;margin-left:6px}'
+        '.st-lvl{font-family:ui-monospace,Consolas,monospace}'
+        '.st-lvl.good{color:#7ee08a}.st-lvl.mid{color:#e0c87e}.st-lvl.bad{color:#e07e7e}'
+        '.st-detail td.nowrap{white-space:nowrap}'
         '@media (max-width:900px){.st-form{grid-template-columns:1fr}}'
         '</style>'
         '<div class="card">'
@@ -271,7 +274,9 @@ extension SchoolTestsApi on Api {
         'Answers with a number or an option letter are checked by the '
         'server, not by the model; grading cases compare the model\'s '
         'verdict with yours (half a point when it is one step off), and '
-        '"harsh" counts right answers it marked wrong. Grading and question '
+        '"harsh" counts right answers it marked wrong. Every case has a '
+        'difficulty from 1 to 5 and counts that many times, so the hard cases '
+        'decide the score. Grading and question '
         'cases use the classroom tutor\'s live instructions from the '
         'Assistant tab. Paste an API key to run a model on a key the server '
         'doesn\'t have, or on your own account; the key is used for that run '
@@ -304,9 +309,9 @@ extension SchoolTestsApi on Api {
         '</div>'
         '<div style="overflow-x:auto;margin-top:14px">'
         '<table><thead><tr><th>When</th><th>Model</th><th>Score</th>'
-        '<th>By kind</th><th>Harsh</th><th>Errors</th><th>Tokens</th>'
+        '<th>By kind</th><th>By level</th><th>Harsh</th><th>Errors</th><th>Tokens</th>'
         '<th>Avg time</th><th></th></tr></thead>'
-        '<tbody id="stRuns"><tr><td colspan="9" class="muted">Loading…</td></tr>'
+        '<tbody id="stRuns"><tr><td colspan="10" class="muted">Loading…</td></tr>'
         '</tbody></table></div>'
         '</div>'
         '<div class="card st-suite">'
@@ -323,8 +328,10 @@ extension SchoolTestsApi on Api {
         '<code>question</code>, a <code>studentAnswer</code> and '
         '<code>expect.result</code>: correct, partly or wrong. '
         '<code>question</code> cases need only the lesson; the model writes '
-        'a question and its format is checked. Up to $kSchoolTestMaxCases '
-        'cases.</div>'
+        'a question and its format is checked. Every case may set a '
+        '<code>difficulty</code> from 1 (easy) to $kSchoolTestMaxDifficulty '
+        '(hardest), default 1; it is also the case\'s weight in the score. '
+        'Up to $kSchoolTestMaxCases cases.</div>'
         '<textarea id="stSuite" spellcheck="false" aria-label="Test prompts JSON"></textarea>'
         '<div class="maint-actions" style="margin-top:10px">'
         '<button id="stSuiteSave" type="button" class="btn btn-primary">Save prompts</button>'
@@ -399,11 +406,14 @@ const _schoolTestsScript = r'''
     const finished = runs.filter((r) => r.status === 'done');
     const best = finished.reduce((b, r) => (!b || r.score > b.score ? r : b), null);
     if (!runs.length) {
-      rows.innerHTML = '<tr><td colspan="9" class="muted">No runs yet. Pick a model and press Run test.</td></tr>';
+      rows.innerHTML = '<tr><td colspan="10" class="muted">No runs yet. Pick a model and press Run test.</td></tr>';
     } else {
       rows.innerHTML = runs.map((r) => {
         const kinds = Object.entries(r.byKind || {}).map(([k, v]) =>
           esc(kindNames[k] || k) + ' ' + Math.round(v.score) + '% <span class="muted">(' + v.n + ')</span>').join('<br>');
+        const levels = Object.entries(r.byDifficulty || {}).map(([d, v]) =>
+          'L' + esc(d) + ' <span class="st-lvl ' + scoreClass(v.score) + '">' + Math.round(v.score) + '%</span>'
+          + ' <span class="muted">(' + v.n + ')</span>').join('<br>');
         const state = r.status === 'running'
           ? '<span class="badge warn">running ' + r.done + '/' + r.total + '</span>'
           : r.status === 'done' ? ''
@@ -418,6 +428,7 @@ const _schoolTestsScript = r'''
           + (r.ownKey ? ' · own key' + (r.keyHint ? ' <code>' + esc(r.keyHint) + '</code>' : '') : '') + '</div>' + state + '</td>'
           + '<td><span class="st-score ' + scoreClass(r.score) + '">' + r.score.toFixed(1) + '%</span></td>'
           + '<td class="st-kinds">' + (kinds || '—') + '</td>'
+          + '<td class="st-kinds">' + (levels || '—') + '</td>'
           + '<td>' + (r.harsh ? '<span class="badge err">' + r.harsh + '</span>' : '0') + '</td>'
           + '<td>' + r.errors + '</td>'
           + '<td>' + r.tokens.toLocaleString() + '</td>'
@@ -428,7 +439,7 @@ const _schoolTestsScript = r'''
           + (r.status === 'running' ? '' : '<button type="button" class="btn btn-ghost btn-sm st-del-btn">Delete</button>')
           + '</td></tr>';
         return main + (open.has(r.id)
-          ? '<tr class="st-detail" data-detail="' + esc(r.id) + '"><td colspan="9" class="muted">Loading…</td></tr>'
+          ? '<tr class="st-detail" data-detail="' + esc(r.id) + '"><td colspan="10" class="muted">Loading…</td></tr>'
           : '');
       }).join('');
       open.forEach(loadDetail);
@@ -458,10 +469,13 @@ const _schoolTestsScript = r'''
       const cell = rows.querySelector('tr[data-detail="' + CSS.escape(id) + '"] td');
       if (!cell || !run.results) return;
       cell.classList.remove('muted');
-      cell.innerHTML = '<table><thead><tr><th>Case</th><th>Kind</th><th>Expected</th>'
+      const results = run.results.slice().sort((a, b) =>
+        (a.difficulty || 1) - (b.difficulty || 1) || a.id.localeCompare(b.id));
+      cell.innerHTML = '<table><thead><tr><th>Case</th><th>Level</th><th>Kind</th><th>Expected</th>'
         + '<th>Model said</th><th>Score</th><th>Time</th></tr></thead><tbody>'
-        + run.results.map((c) => '<tr><td class="nowrap">' + esc(c.id) + '</td>'
-          + '<td>' + esc(kindNames[c.kind] || c.kind) + '</td>'
+        + results.map((c) => '<tr><td class="nowrap">' + esc(c.id) + '</td>'
+          + '<td class="nowrap">L' + (c.difficulty || 1) + '</td>'
+          + '<td class="nowrap">' + esc(kindNames[c.kind] || c.kind) + '</td>'
           + '<td>' + esc(c.expected) + '</td>'
           + '<td>' + esc(c.got) + (c.error ? '<div class="badge err">' + esc(c.error) + '</div>' : '')
           + (c.harsh ? ' <span class="badge err">harsh</span>' : '') + '</td>'
