@@ -50,9 +50,16 @@ const kClassroomLanguages = {
 
 String _languageName(String? code) => kClassroomLanguages[code] ?? 'English';
 
+/// The lesson's country decides the language, since that is what the
+/// student's school teaches in; the app's language only breaks a tie in a
+/// country that teaches in several.
 String _languageRule(String? code) =>
-    'Write in ${_languageName(code)}, except where the subject is a language '
-    "the student is learning and the exercise belongs in that language.";
+    "Write in the language the student's school teaches in, in the country "
+    'given in the lesson. Where that country teaches in more than one '
+    'language, use the one the lesson itself is written in; if that is '
+    'unclear, ${_languageName(code)} when it is one of them, otherwise the '
+    "country's main one. The only exception is a subject that is a language "
+    'the student is learning, where the exercise belongs in that language.';
 
 /// Appended to the instructions when asking for a question.
 String classroomQuestionContract(String? language) => '''

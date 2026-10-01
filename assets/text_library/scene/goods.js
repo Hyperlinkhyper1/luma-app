@@ -354,13 +354,6 @@
     llamaLane: 6.3,
     post: [5.75, 2.55],
     wares: {x: 1.45, y: 1.12, z0: 1.3, z1: 3.7},
-    // The book review desk past the counter's south end: the computer faces
-    // the stall, and the reader sits with their back to the counter.
-    desk: {
-      box: [[0.15, 0, 4.42], [1.65, 1.35, 5.85]],
-      solids: [[0.15, 5.25, 1.65, 5.85], [0.68, 4.5, 1.12, 4.94]],
-      seat: [0.9, 0.5, 4.72],
-    },
     awning: {back: [3.62, 2.98], front: [0.32, 2.5], z0: 0.72, z1: 4.28},
     // His pet's corner at the counter's left end, between it and the way
     // in: where it settles, facing the path and the house a little, and the
@@ -369,6 +362,15 @@
     pet: {spot: [1.6, 0.4], yaw: -2.1, roam: [[0.35, 0.36], [2.25, 0.32], [1.0, 0.5]]},
   };
   const PETS = ['dog', 'cat', 'fish'];
+
+  // The book review desk in its own frame: the computer faces -z with its
+  // back to a wall at z 5.85, and the reader sits facing it. The hall
+  // places it in the house (LibraryWorld's `reviewDesk`).
+  const DESK = {
+    box: [[0.15, 0, 4.42], [1.65, 1.35, 5.85]],
+    solids: [[0.15, 5.25, 1.65, 5.85], [0.68, 4.5, 1.12, 4.94]],
+    seat: [0.9, 0.5, 4.72],
+  };
 
   // What of the stall stops the walker, and where its lantern hangs, for the
   // hall to know before it is lit.
@@ -439,9 +441,9 @@
     return {hinge: [bx, by]};
   }
 
-  // The review desk in the plot's frame: a dark oak writing desk with a
-  // beige tower, a CRT monitor showing its desktop, keyboard and mouse, and
-  // a swivel chair facing it. Comes and goes with the trader.
+  // The review desk in DESK's frame: a dark oak writing desk with a beige
+  // tower, a CRT monitor showing its desktop, keyboard and mouse, and a
+  // swivel chair facing it.
   function reviewDesk(K) {
     const B = (a, c, faces, opts) => window.LibraryWorld.box(K, a, c, faces, {light: [1, 0, 0], ...opts});
     const dark = sides('dark_oak_planks'), wood = sides('spruce_planks');
@@ -865,7 +867,7 @@
   }
 
   window.LibraryGoods = {
-    CATALOG, ITEMS, MODELS, STALL, PETS, SHEET, FISH_COLOURS,
+    CATALOG, ITEMS, MODELS, STALL, DESK, PETS, SHEET, FISH_COLOURS,
     build, turn, footprint, beam, stall, stallSolids, awning, reviewDesk, fishbowl, creature, fish, entitySheet, boxFaces,
   };
 })();

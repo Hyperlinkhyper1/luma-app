@@ -97,7 +97,17 @@ extension ClassroomApi on Api {
     required double temperature,
   }) async {
     final candidates = await _aiCandidates('classroom', route);
+    if (candidates.isEmpty) {
+      stderr.writeln('[luma] classroom tutor: no model to call '
+          '(every classroom model is paused by the price guard)');
+    }
+    String snippet(String s) {
+      final flat = s.replaceAll(RegExp(r'\s+'), ' ');
+      return flat.length > 300 ? '${flat.substring(0, 300)}…' : flat;
+    }
+
     for (final candidate in candidates) {
+      final model = candidate.route.model;
       try {
         final upstreamBody = Api._aiUpstreamBody({
           'messages': messages,
@@ -107,7 +117,11 @@ extension ClassroomApi on Api {
         _applyAiMaxPrice(candidate.key, candidate.route, upstreamBody);
         final (status, responseBody) =
             await _callAiUpstream(candidate.route, upstreamBody);
-        if (status != HttpStatus.ok) continue;
+        if (status != HttpStatus.ok) {
+          stderr.writeln('[luma] classroom tutor: $model answered $status: '
+              '${snippet(responseBody)}');
+          continue;
+        }
         await _recordAiPaid(candidate.key, candidate.route, responseBody);
         await _logAiCall(user, 'Classroom', candidate.route, responseBody);
         var tokens = 0;
@@ -123,8 +137,10 @@ extension ClassroomApi on Api {
             aiTokenBudget(user.planId, _meteredMode));
         final parsed = content == null ? null : parse(content);
         if (parsed != null) return parsed;
-      } catch (_) {
-        // The next candidate, if there is one.
+        stderr.writeln('[luma] classroom tutor: $model sent an unusable '
+            'reply: ${snippet(content ?? responseBody)}');
+      } catch (e) {
+        stderr.writeln('[luma] classroom tutor: $model failed: $e');
       }
     }
     return null;
@@ -165,8 +181,10 @@ extension ClassroomApi on Api {
       maxTokens: 1500,
       temperature: 0.8,
     );
+    // 503, not 502: Cloudflare swaps an origin 502/504 for its own page,
+    // and the app would lose this message.
     if (question == null) {
-      return errorResponse(502, 'upstream_error',
+      return errorResponse(503, 'upstream_error',
           'The teacher could not think of a question. Try again.');
     }
     return jsonResponse(200, question.toJson());
@@ -219,7 +237,7 @@ extension ClassroomApi on Api {
       ]);
     }
     if (results.every((r) => r == null)) {
-      return errorResponse(502, 'upstream_error',
+      return errorResponse(503, 'upstream_error',
           'The teacher could not check your answers. Try again.');
     }
     return jsonResponse(200, {

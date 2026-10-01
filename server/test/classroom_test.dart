@@ -64,7 +64,9 @@ void main() {
     expect(messages, hasLength(2));
     expect(messages.first['role'], 'system');
     expect(messages.first['content'], startsWith('Teach well.'));
-    expect(messages.first['content'], contains('Write in Dutch'));
+    expect(messages.first['content'],
+        contains("the language the student's school teaches in"));
+    expect(messages.first['content'], contains('Dutch when it is one of them'));
     final user = messages.last['content']!;
     expect(user, contains('Country: Nederland'));
     expect(user, contains('Level: havo'));

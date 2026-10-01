@@ -1127,6 +1127,16 @@
       light(0, b + 1, 3, 11);
     }
 
+    // The book review desk: its computer under the front window in the
+    // west corner, upstairs when there is an upstairs. The page builds it
+    // at `origin`, in LibraryGoods.DESK's frame.
+    const pcFloor = hasStairs ? 1 : 0;
+    const pcAt = [-3.9, L.bases[pcFloor], F - 6];
+    const DESK = window.LibraryGoods.DESK;
+    for (const [x0, z0, x1, z1] of DESK.solids) solidBox(pcAt[0] + x0, pcAt[2] + z0, pcAt[0] + x1, pcAt[2] + z1, pcFloor);
+    light(-3, pcAt[1] + 1, F - 1, 12);
+    const reviewDesk = {origin: pcAt, floor: pcFloor, clear: [pcAt[0] + DESK.box[0][0], pcAt[2] + DESK.box[0][2], pcAt[0] + DESK.box[1][0], pcAt[2] + DESK.box[1][2], pcFloor]};
+
     // The foyer: a clock, a coat stand, a bench, plants by the door.
     solidBox(-W, 1.1, -W + 0.65, 1.9);
     const clockAt = {face: null};
@@ -1296,6 +1306,7 @@
       door: {z: F, hinges: [[-1, 1], [1, -1]], height: 3},
       vault: vaultAt,
       mailbox: outside.mailbox,
+      reviewDesk,
       stairs: hasStairs ? {...STAIR, flights} : null,
       trees: outside.trees,
       campfire: outside.campfire,
@@ -1305,10 +1316,11 @@
       // draw round whatever furniture stands there.
       foliage: outside.foliage,
       // Floor that bought furniture may never be put on: the doorway, the
-      // stair well and the way onto it, the hearth, the cellar hatch and the
-      // trader's plot.
+      // stair well and the way onto it, the hearth, the cellar hatch, the
+      // review desk and the trader's plot.
       keepClear: [
         [-2, F - 2, 2, F + 2.5, 0],
+        reviewDesk.clear,
         [-1.6, fz + 1, 1.6, fz + 2.3, 0],
         [BASEMENT.hatch[0], BASEMENT.hatch[1] - 0.5, BASEMENT.hatch[0] + 1.8, BASEMENT.hatch[1] + 1.5, 0],
         ...(hasStairs ? L.bases.map((_, f) => [STAIR.x0 - 0.5, STAIR.z0 - 0.5, STAIR.x0 + 3.5, STAIR.z0 + 4.5, f]) : []),

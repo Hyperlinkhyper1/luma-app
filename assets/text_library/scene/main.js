@@ -968,7 +968,8 @@
     U.fireOrigin.value.set(...built.fire);
     const b = built.bounds;
     R.post.box = {min: [b.min[0] + 1, 0, b.min[2] + 0.5], max: [b.max[0] - 1, built.layout.top, b.max[2] - 0.5]};
-    U.clearMin.value.set(b.min[0], b.min[1], b.min[2]);
+    // The clear air reaches down through the cellar and the classroom too.
+    U.clearMin.value.set(b.min[0], Math.min(b.min[1], (built.basement?.base ?? 0) - 1), b.min[2]);
     U.clearMax.value.set(b.max[0], Math.max(b.max[1], built.layout.top), b.max[2]);
     if (S.floor >= built.layout.floors) S.floor = 0;
     shadowDirty = true;
@@ -987,6 +988,7 @@
     buildSitter();
     buildClock();
     buildMarket();
+    buildReviewDesk();
     rebuildPieces();
     rebuildDynamic();
     if (particles.dust.items.length === 0) seedDust();
@@ -1561,6 +1563,10 @@
       const t = turnedBoxHit(ray, seat.box, seat.turn);
       if (t != null && t < REACH) consider(t, {kind: 'seat', i, at: ray.at(t, new T.Vector3()).toArray()});
     });
+    if (review.seat && review.floor === S.floor && !(S.seat && S.seat.pc)) {
+      const hit = boxHit(ray, ...review.seat.box);
+      if (hit != null && hit < REACH) consider(hit, {kind: 'desk', box: review.seat.box});
+    }
     const t = S.floor === 0 ? boxHit(ray, ...doorBox()) : null;
     if (t != null && t < REACH) consider(t, {kind: 'door'});
     for (const hit of classroom.pick(ray, S.floor, boxHit, REACH)) consider(hit.t, hit);
@@ -1576,10 +1582,6 @@
       const petAt = petBox();
       const petHit = petAt ? boxHit(ray, ...petAt) : null;
       if (petHit != null && petHit < REACH) consider(petHit, {kind: 'pet', box: petAt});
-      if (trader.desk?.visible && !(S.seat && S.seat.pc)) {
-        const hit = boxHit(ray, ...trader.deskSeat.box);
-        if (hit != null && hit < REACH) consider(hit, {kind: 'desk', box: trader.deskSeat.box});
-      }
     }
     // Furniture that does something: a bed, the swing, the telescope, the
     // gramophone.
@@ -2565,7 +2567,7 @@
   // walks off the way he came.
   const STALL = Goods.STALL;
   const WALK = 1.35;
-  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, desk: null, deskSeat: null, pet: null, bowl: null, petKind: undefined, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
+  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, pet: null, bowl: null, petKind: undefined, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
   let entityTexture = null, traderIcon = null;
   // What each of them is busy with while the stall is open; see stepTraderLife.
   const life = {trader: null, llamas: [], pet: null, near: false, leftAt: -1e9, shadow: 0};
@@ -2598,9 +2600,8 @@
     disposeGroup(trader.awning);
     disposeGroup(trader.wares);
     disposeGroup(trader.leads);
-    disposeGroup(trader.desk);
     disposePet();
-    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, desk: null, deskSeat: null, petKind: undefined, walkers: [], colliders: []});
+    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, petKind: undefined, walkers: [], colliders: []});
     const m = S.built?.market;
     if (!m || !atlas) return;
     const [px, pz] = m.plot;
@@ -2643,19 +2644,30 @@
     trader.leads.userData.noShadow = true;
     trader.leads.frustumCulled = false;
     scene.add(trader.leads);
-    // The review desk past the counter, with its chair to sit at.
-    const deskMb = new W.MeshBuilder();
-    Goods.reviewDesk({mb: deskMb, grid: S.built.grid, atlas});
-    trader.desk = new T.Mesh(deskMb.geometry(T), dynMat);
-    trader.desk.position.set(px, 0, pz);
-    scene.add(trader.desk);
-    trader.desk.updateMatrixWorld(true);
-    bakeLight(trader.desk);
-    const D = STALL.desk;
-    const [sx, sy, sz] = D.seat;
-    trader.deskSeat = {pos: [px + sx, sy, pz + sz], yaw: Math.PI, eye: 1.08, pitch: -0.5, pc: true, box: D.box.map(([x, y, z]) => [px + x, y, pz + z])};
     for (const parts of [trader.parts, ...trader.llamas.map(l => l.parts)]) parts.head.rotation.order = 'YXZ';
     syncMarket();
+  }
+
+  // The book review desk, a fixture of the house wherever the hall put it,
+  // with its chair to sit at.
+  const review = {mesh: null, seat: null, floor: 0};
+  function buildReviewDesk() {
+    disposeGroup(review.mesh);
+    Object.assign(review, {mesh: null, seat: null, floor: 0});
+    const at = S.built?.reviewDesk;
+    if (!at || !atlas) return;
+    const [ox, oy, oz] = at.origin;
+    const mb = new W.MeshBuilder();
+    Goods.reviewDesk({mb, grid: S.built.grid, atlas});
+    review.mesh = new T.Mesh(mb.geometry(T), dynMat);
+    review.mesh.position.set(ox, oy, oz);
+    scene.add(review.mesh);
+    review.mesh.updateMatrixWorld(true);
+    bakeLight(review.mesh);
+    const D = Goods.DESK;
+    const [sx, sy, sz] = D.seat;
+    review.floor = at.floor;
+    review.seat = {pos: [ox + sx, oy + sy, oz + sz], yaw: Math.PI, eye: 1.08, pitch: -0.5, pc: true, box: D.box.map(([x, y, z]) => [ox + x, oy + y, oz + z])};
   }
 
   const LEAD_SEGMENTS = 8;
@@ -2695,7 +2707,6 @@
     trader.group.visible = here;
     for (const l of trader.llamas) l.group.visible = here;
     trader.wares.visible = here;
-    trader.desk.visible = here;
     trader.leads.visible = here;
     if (trader.pet) trader.pet.group.visible = here;
     if (trader.bowl) trader.bowl.group.visible = here;
@@ -2778,7 +2789,6 @@
     if (trader.bowl) trader.bowl.group.visible = false;
     for (const w of trader.walkers) w.obj.visible = false;
     trader.wares.visible = false;
-    trader.desk.visible = false;
     trader.leads.visible = false;
     poseAwning();
     refreshTraderColliders();
@@ -2850,7 +2860,6 @@
     trader.colliders = [];
     if (trader.phase !== 'open' || !S.built?.market) return;
     const [px, pz] = S.built.market.plot;
-    for (const [x0, z0, x1, z1] of STALL.desk.solids) trader.colliders.push([px + x0, pz + z0, px + x1, pz + z1, 0]);
     if (trader.bowl) {
       const [x0, z0, x1, z1] = trader.bowl.info.solid;
       trader.colliders.push([px + x0, pz + z0, px + x1, pz + z1, 0]);
@@ -2945,8 +2954,6 @@
     const show = trader.phase === 'open' && trader.open > 0.7;
     if (trader.wares.visible !== show) {
       trader.wares.visible = show;
-      trader.desk.visible = show;
-      poof([trader.deskSeat.pos[0], 1, trader.deskSeat.pos[2] + 0.8], 8, 0.4);
       warePoofs();
       if (trader.bowl) {
         trader.bowl.group.visible = show;
@@ -3476,8 +3483,8 @@
   // Sits down at the review desk and switches the computer on; logging off
   // gets up again.
   async function useDesk() {
-    if (reviewScreen.isOpen || !trader.desk?.visible) return;
-    await sit(trader.deskSeat);
+    if (reviewScreen.isOpen || !review.seat) return;
+    await sit(review.seat);
     if (S.mode !== 'seated') return;
     freeMouse();
     setHover(null);
@@ -4474,8 +4481,8 @@
         add(`${gui.t('mailbox')} — ${post.state.letters.length ? gui.t('mailWaiting', post.state.letters.length) : mailNext()}`, () => useMailbox());
         add(`${gui.t('vault')} — ${gui.t('coins', post.state.vault)}`, () => useVault());
         if (S.built.market) add(traderTooltip().map(l => l.text ?? l).join(' — '), () => (trader.phase === 'open' ? openShop() : null));
-        if (trader.desk?.visible) add(`${gui.t('pcTitle')} — ${gui.t('pcUse')}`, () => useDesk());
       }
+      if (review.seat && review.floor === S.floor) add(`${gui.t('pcTitle')} — ${gui.t('pcUse')}`, () => useDesk());
       for (const pc of pieces.list) {
         if (pc.data.floor !== S.floor || !pc.act) continue;
         const label = {lie: 'lieDown', sit: 'sit', scope: 'lookThrough', music: music.piece === pc ? 'stopMusic' : 'playMusic'}[pc.act];

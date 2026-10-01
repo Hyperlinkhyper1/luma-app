@@ -195,10 +195,11 @@ test('saved post state keeps review letters and drops nonsense', () => {
   assert.equal(saved.reviews[0].letter.title, 'Owl');
 });
 
-test('the review desk sits inside the stall plot and builds', () => {
+test('the review desk stands inside its own box and builds', () => {
   const atlas = {index: new Proxy({}, {get: () => ({cell: 0, frames: 1, frameTime: 1})})};
-  const [w, d] = Goods.STALL.size;
-  for (const [x0, z0, x1, z1] of Goods.STALL.desk.solids) assert.ok(x0 >= 0 && z0 >= 0 && x1 <= w && z1 <= d);
+  const [[bx0, , bz0], [bx1, , bz1]] = Goods.DESK.box;
+  for (const [x0, z0, x1, z1] of Goods.DESK.solids) assert.ok(x0 >= bx0 && z0 >= bz0 && x1 <= bx1 && z1 <= bz1);
+  assert.equal(Goods.STALL.desk, undefined, 'the desk is in the house, not at the stall');
   const mb = new context.window.LibraryWorld.MeshBuilder();
   Goods.reviewDesk({mb, grid: {sample: () => [1, 0, 0]}, atlas});
   assert.ok(mb.count > 0);

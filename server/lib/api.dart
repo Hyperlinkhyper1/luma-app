@@ -378,6 +378,8 @@ class Api {
             RateLimiter(maxRequests: 10, window: const Duration(hours: 1)),
         _aiChatLimiter =
             RateLimiter(maxRequests: 20, window: const Duration(minutes: 1)),
+        _aiImageLimiter =
+            RateLimiter(maxRequests: 5, window: const Duration(minutes: 1)),
         _searchLimiter =
             RateLimiter(maxRequests: 20, window: const Duration(minutes: 1)),
         _itadLimiter =
@@ -456,6 +458,7 @@ class Api {
   /// small JSON calls but far too generous for endpoints that burn upstream
   /// AI quota, accept multi-megabyte bodies, or hold a socket open.
   final RateLimiter _aiChatLimiter;
+  final RateLimiter _aiImageLimiter;
   final RateLimiter _searchLimiter;
   final RateLimiter _itadLimiter;
   final RateLimiter _syncWriteLimiter;
@@ -471,6 +474,36 @@ class Api {
   /// stop a distributed guesser). Only failures count — successful logins
   /// never lock anyone out.
   final RateLimiter _loginFailLimiter;
+
+  /// Budgets for the buckets whose requests spend an operator-held upstream
+  /// key (AI providers, SearXNG, IsThereAnyDeal), on top of the per-IP
+  /// limiter [_limiterFor] picks. Per-IP alone doesn't protect the key: a
+  /// bot rotating addresses, or one account spread over many devices, sails
+  /// past it. So every such request also counts against its account
+  /// (hourly) and against a server-wide cap per bucket, which bounds what a
+  /// swarm of approved accounts can burn however it is spread out.
+  final Map<String, ({RateLimiter perAccount, RateLimiter global})>
+      _keySpendLimits = {
+    'ai': (
+      perAccount:
+          RateLimiter(maxRequests: 300, window: const Duration(hours: 1)),
+      global: RateLimiter(maxRequests: 600, window: const Duration(minutes: 1)),
+    ),
+    'img': (
+      perAccount: RateLimiter(maxRequests: 30, window: const Duration(hours: 1)),
+      global: RateLimiter(maxRequests: 60, window: const Duration(minutes: 1)),
+    ),
+    'search': (
+      perAccount:
+          RateLimiter(maxRequests: 200, window: const Duration(hours: 1)),
+      global: RateLimiter(maxRequests: 300, window: const Duration(minutes: 1)),
+    ),
+    'itad': (
+      perAccount:
+          RateLimiter(maxRequests: 300, window: const Duration(hours: 1)),
+      global: RateLimiter(maxRequests: 600, window: const Duration(minutes: 1)),
+    ),
+  };
 
   /// Admin dashboard login sessions, keyed by SHA-256 of the session cookie
   /// token (mirrors [Store.sessionsByTokenHash] for regular users), so the
@@ -767,11 +800,48 @@ class Api {
         final key = _clientKey(request);
         final (tag, limiter) = _limiterFor(request.method, request.url.path);
         if (!limiter.allow('$tag:$key')) {
-          return errorResponse(
-              429, 'rate_limited', 'Too many requests. Slow down.');
+          return _tooManyRequests(limiter, '$tag:$key');
+        }
+        final spend = _keySpendLimits[tag];
+        if (spend != null) {
+          // Only a session _requireAuth would accept counts, so tokenless or
+          // unapproved bots get their 401/403 without eating into the
+          // server-wide cap that real accounts share.
+          final userId = _spendingUserId(request);
+          if (userId != null) {
+            if (!spend.perAccount.allow('$tag:$userId')) {
+              return _tooManyRequests(spend.perAccount, '$tag:$userId');
+            }
+            if (!spend.global.allow(tag)) {
+              return _tooManyRequests(spend.global, tag,
+                  message: 'This service is busy right now. Try again soon.');
+            }
+          }
         }
         return inner(request);
       };
+
+  Response _tooManyRequests(RateLimiter limiter, String key,
+          {String message = 'Too many requests. Slow down.'}) =>
+      errorResponse(429, 'rate_limited', message).change(
+          headers: {'Retry-After': '${limiter.retryAfterSeconds(key)}'});
+
+  /// The account behind [request]'s bearer token, if it is one that
+  /// [_requireAuth] would accept — live session, approved, not revoked.
+  String? _spendingUserId(Request request) {
+    final auth = request.headers['authorization'] ?? '';
+    if (!auth.startsWith('Bearer ') || auth.length < 20) return null;
+    final tokenHash =
+        c.sha256.convert(utf8.encode(auth.substring(7).trim())).toString();
+    final session = store.sessionsByTokenHash[tokenHash];
+    if (session == null ||
+        session.expiresAtMs <= DateTime.now().millisecondsSinceEpoch) {
+      return null;
+    }
+    final user = store.usersById[session.userId];
+    if (user == null || user.accessRevoked || user.isPending) return null;
+    return user.id;
+  }
 
   /// Buckets every request into the limiter matching how expensive it is.
   /// Each bucket keys separately (the tag), so e.g. hammering uploads can't
@@ -787,13 +857,16 @@ class Api {
     if (path.startsWith('api/v1/auth/') && !path.endsWith('/logout')) {
       return ('a', _authLimiter);
     }
-    if (path.startsWith('api/v1/ai/') &&
-        (path.endsWith('/chat') ||
-            path == 'api/v1/ai/detect' ||
-            path == 'api/v1/ai/book-review' ||
-            path == 'api/v1/classroom/question' ||
-            path == 'api/v1/classroom/review')) {
+    if ((path.startsWith('api/v1/ai/') &&
+            (path.endsWith('/chat') ||
+                path == 'api/v1/ai/detect' ||
+                path == 'api/v1/ai/book-review')) ||
+        path == 'api/v1/classroom/question' ||
+        path == 'api/v1/classroom/review') {
       return ('ai', _aiChatLimiter);
+    }
+    if (path == 'api/v1/ai/image') {
+      return ('img', _aiImageLimiter);
     }
     if (path == 'api/v1/ai/web-search') {
       return ('search', _searchLimiter);
