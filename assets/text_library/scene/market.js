@@ -19,9 +19,9 @@
   const whole = v => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : 0);
   const int = v => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);
 
-  // Whatever was saved, cleaned up against the catalogue: unknown pieces
-  // and nonsense counts are dropped.
-  function clean(saved, ids) {
+  // Whatever was saved, cleaned up against the catalogue: unknown pieces,
+  // unknown pets and nonsense counts are dropped.
+  function clean(saved, ids, pets) {
     const s = saved && typeof saved === 'object' ? saved : {};
     const crate = {};
     if (s.crate && typeof s.crate === 'object') {
@@ -34,20 +34,26 @@
       if (x == null || z == null || Math.abs(x) > 512 || Math.abs(z) > 512) continue;
       placed.push({id: p.id, x, z, floor: Math.max(0, Math.min(16, floor ?? 0)), rot: (((rot ?? 0) % 4) + 4) % 4});
     }
-    return {clock: Math.min(CYCLE - 1, whole(s.clock)), crate, placed, warned: !!s.warned};
+    return {clock: Math.min(CYCLE - 1, whole(s.clock)), crate, placed, warned: !!s.warned, pet: pets.includes(s.pet) ? s.pet : null};
   }
 
-  function create({send, catalog, reducedMotion}) {
+  function create({send, catalog, pets = [], reducedMotion}) {
     const items = Object.fromEntries(catalog.map(c => [c.id, c]));
     const ids = new Set(Object.keys(items));
-    const state = clean(null, ids);
+    const state = clean(null, ids, pets);
     let loaded = false, lastSave = 0;
     const listeners = new Set();
     const changed = (what, extra) => { for (const fn of listeners) fn(what, extra); };
 
     function save() {
       lastSave = performance.now();
-      send({type: 'market', state: {clock: Math.floor(state.clock), crate: {...state.crate}, placed: state.placed.map(p => ({...p})), warned: state.warned}});
+      send({type: 'market', state: {clock: Math.floor(state.clock), crate: {...state.crate}, placed: state.placed.map(p => ({...p})), warned: state.warned, pet: state.pet}});
+    }
+
+    // He brings one pet each visit, never the same one twice running.
+    function choosePet() {
+      const others = pets.filter(p => p !== state.pet);
+      state.pet = others.length ? others[Math.floor(Math.random() * others.length)] : state.pet;
     }
 
     const market = {
@@ -55,11 +61,13 @@
       CYCLE, STAY, ARRIVE, WARN,
       get loaded() { return loaded; },
       get present() { return state.clock >= ARRIVE; },
+      get pet() { return state.pet; },
       onChange(fn) { listeners.add(fn); },
 
       load(saved) {
-        Object.assign(state, clean(saved, ids));
+        Object.assign(state, clean(saved, ids, pets));
         loaded = true;
+        if (market.present && !state.pet) { choosePet(); save(); }
         changed('load');
       },
 
@@ -77,6 +85,7 @@
         } else if (!was && market.present) {
           event = 'arrive';
           state.warned = false;
+          choosePet();
         }
         if (market.present && !state.warned && market.leavesIn() <= WARN) {
           state.warned = true;

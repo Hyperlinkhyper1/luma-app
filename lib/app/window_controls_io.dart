@@ -107,6 +107,21 @@ Future<void> windowShow() async {
   await windowManager.focus();
 }
 
+/// Whether the window is really in front of the user: not closed to the
+/// tray, not minimised and not shrunk into the pet panel. Closing only hides
+/// the window and the tray brings it back natively, so this asks the window
+/// itself rather than following events.
+Future<bool> windowOnScreen() async {
+  if (!hasCustomTitleBar) return true;
+  if (inPetWindow) return false;
+  try {
+    return await windowManager.isVisible() &&
+        !await windowManager.isMinimized();
+  } on MissingPluginException {
+    return true;
+  }
+}
+
 const MethodChannel _trayChannel = MethodChannel('luma/tray');
 
 /// Hands the notification-area icon's menu its labels in the app's language.

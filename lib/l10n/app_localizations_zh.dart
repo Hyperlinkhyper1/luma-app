@@ -1787,6 +1787,15 @@ class LZh extends L {
   String get textLibraryMcTraderBusy => '商人正在摆摊';
 
   @override
+  String get textLibraryMcPetDog => '摸摸狗';
+
+  @override
+  String get textLibraryMcPetCat => '摸摸猫';
+
+  @override
+  String get textLibraryMcPetFish => '喂鱼';
+
+  @override
   String textLibraryMcShopLeaves(String minutes) {
     return '$minutes 分钟后离开';
   }

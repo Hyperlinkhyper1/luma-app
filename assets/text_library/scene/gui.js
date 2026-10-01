@@ -47,7 +47,7 @@
     traderArrivedBody: 'His stall is open in front of the house', traderLeaving: 'The trader is packing up',
     traderLeavingBody: 'He leaves in {0} min', traderGone: 'The wandering trader has moved on',
     traderTrade: 'Trade with the wandering trader', traderStall: 'Market stall', traderAway: 'The trader is back in {0} min',
-    traderBusy: 'The trader is setting up', shopLeaves: 'Leaves in {0} min', shopBuy: 'Buy for {0} coins',
+    traderBusy: 'The trader is setting up', petDog: 'Pet the dog', petCat: 'Pet the cat', petFish: 'Feed the fish', shopLeaves: 'Leaves in {0} min', shopBuy: 'Buy for {0} coins',
     shopTooPoor: 'Not enough coins', shopOwned: 'In your crate: {0}', shopPlaced: 'Placed: {0}',
     shopWallet: '{0} coins · in hand {1} · in the vault {2}', shopBought: 'Bought: {0}', shopBoughtBody: 'Press B to place it',
     shopBoughtTouch: 'Tap it in the hotbar to place it',

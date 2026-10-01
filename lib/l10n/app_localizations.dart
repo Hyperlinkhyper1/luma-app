@@ -3379,6 +3379,24 @@ abstract class L {
   /// **'The trader is setting up'**
   String get textLibraryMcTraderBusy;
 
+  /// No description provided for @textLibraryMcPetDog.
+  ///
+  /// In en, this message translates to:
+  /// **'Pet the dog'**
+  String get textLibraryMcPetDog;
+
+  /// No description provided for @textLibraryMcPetCat.
+  ///
+  /// In en, this message translates to:
+  /// **'Pet the cat'**
+  String get textLibraryMcPetCat;
+
+  /// No description provided for @textLibraryMcPetFish.
+  ///
+  /// In en, this message translates to:
+  /// **'Feed the fish'**
+  String get textLibraryMcPetFish;
+
   /// No description provided for @textLibraryMcShopLeaves.
   ///
   /// In en, this message translates to:

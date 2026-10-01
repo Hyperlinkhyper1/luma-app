@@ -1842,6 +1842,15 @@ class LFr extends L {
   String get textLibraryMcTraderBusy => 'Le marchand s’installe';
 
   @override
+  String get textLibraryMcPetDog => 'Caresser le chien';
+
+  @override
+  String get textLibraryMcPetCat => 'Caresser le chat';
+
+  @override
+  String get textLibraryMcPetFish => 'Nourrir le poisson';
+
+  @override
   String textLibraryMcShopLeaves(String minutes) {
     return 'Part dans $minutes min';
   }

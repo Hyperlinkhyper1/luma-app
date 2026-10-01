@@ -362,7 +362,13 @@
       seat: [0.9, 0.5, 4.72],
     },
     awning: {back: [3.62, 2.98], front: [0.32, 2.5], z0: 0.72, z1: 4.28},
+    // His pet's corner at the counter's left end, between it and the way
+    // in: where it settles, facing the path and the house a little, and the
+    // spots a dog or cat wanders over to and back. The fishbowl's stand
+    // goes on the same spot.
+    pet: {spot: [1.6, 0.4], yaw: -2.1, roam: [[0.35, 0.36], [2.25, 0.32], [1.0, 0.5]]},
   };
+  const PETS = ['dog', 'cat', 'fish'];
 
   // What of the stall stops the walker, and where its lantern hangs, for the
   // hall to know before it is lit.
@@ -472,11 +478,46 @@
     B([0.7, 0.58, 4.44], [1.1, 1.02, 4.5], cloth, {whole: true});
   }
 
+  // The fishbowl on its stand at the pet's spot, in the plot's frame: a
+  // little dark oak table on a spruce post, the bowl's iron rim and sand,
+  // a sprig of kelp. The water goes into `KW` to be drawn see-through; the
+  // page adds the glass and the fish in the boxes it returns.
+  function fishbowl(K, KW) {
+    const B = (a, c, faces, opts) => window.LibraryWorld.box(K, a, c, faces, {light: [1, 0, 0], ...opts});
+    const [cx, cz] = STALL.pet.spot;
+    const box = (x0, y0, z0, x1, y1, z1) => [[cx + x0, y0, cz + z0], [cx + x1, y1, cz + z1]];
+    const dark = sides('dark_oak_planks'), post = sides('spruce_log', 'spruce_log_top');
+    B(...box(-0.18, 0, -0.18, 0.18, 0.04, 0.18), dark, {whole: true});
+    B(...box(-0.07, 0.04, -0.07, 0.07, 0.56, 0.07), post, {whole: true});
+    B(...box(-0.26, 0.56, -0.26, 0.26, 0.62, 0.26), dark, {whole: true});
+    const rim = sides('iron_block', null, null, {tint: srgb([0.22, 0.23, 0.25])});
+    B(...box(-0.2, 0.62, -0.2, 0.2, 0.635, 0.2), rim, {whole: true});
+    for (const [x0, z0, x1, z1] of [[-0.2, -0.2, 0.2, -0.18], [-0.2, 0.18, 0.2, 0.2], [-0.2, -0.18, -0.18, 0.18], [0.18, -0.18, 0.2, 0.18]]) {
+      B(...box(x0, 0.93, z0, x1, 0.95, z1), rim, {whole: true});
+    }
+    B(...box(-0.18, 0.635, -0.18, 0.18, 0.67, 0.18), all('sand'), {whole: true});
+    cross(K.mb, K.grid, K.atlas, [cx + 0.08 - 0.5, 0.67, cz - 0.07 - 0.5], 'kelp_plant', 0.13, 0);
+    const wet = {tex: 'water', tint: [0.2, 0.5, 0.92], emit: 0.1};
+    window.LibraryWorld.box(KW, ...box(-0.18, 0.67, -0.18, 0.18, 0.88, 0.18), {up: wet, north: wet, south: wet, east: wet, west: wet}, {light: [1, 0, 0], whole: true});
+    return {
+      glass: box(-0.195, 0.635, -0.195, 0.195, 0.93, 0.195),
+      fish: box(-0.12, 0.71, -0.12, 0.12, 0.84, 0.12),
+      pick: box(-0.26, 0, -0.26, 0.26, 0.95, 0.26),
+      solid: [cx - 0.26, cz - 0.26, cx + 0.26, cz + 0.26],
+      surface: [cx, 0.88, cz],
+    };
+  }
+
   // ── Creatures ──────────────────────────────────────────────────────────
-  // The trader, his llamas and the bees come from one sheet: the creatures'
-  // own textures out of the reader's jar where it has them, luma's painted
-  // look-alikes where not.
-  const SHEET = {w: 256, h: 128, trader: [0, 0, 64, 64], bee: [64, 0, 64, 64], llama: [0, 64, 128, 64], decor: [128, 64, 128, 64]};
+  // The trader, his llamas, his pets and the bees come from one sheet: the
+  // creatures' own textures out of the reader's jar where it has them,
+  // luma's painted look-alikes where not. The collars are drawn over their
+  // animal, dyed red.
+  const SHEET = {
+    w: 256, h: 160, trader: [0, 0, 64, 64], bee: [64, 0, 64, 64], llama: [0, 64, 128, 64], decor: [128, 64, 128, 64],
+    wolf: [0, 128, 64, 32], cat: [64, 128, 64, 32], wolfCollar: [128, 128, 64, 32], catCollar: [192, 128, 64, 32],
+  };
+  const COLLAR = [176, 46, 38];
 
   // Where each face of a box lies on its sheet, as the game unfolds a box.
   function boxFaces(region, [u, v], [w, h, d]) {
@@ -539,7 +580,72 @@
     {name: 'rightWing', pivot: [-1.5, 4, 3], rot: [0, 0.2618, 0], boxes: [{from: [-9, 0, -6], size: [9, 0, 6], uv: [0, 18]}]},
     {name: 'leftWing', pivot: [1.5, 4, 3], rot: [0, -0.2618, 0], boxes: [{from: [0, 0, -6], size: [9, 0, 6], uv: [0, 18]}]},
   ];
-  const CREATURES = {trader: {parts: TRADER, region: 'trader', scale: 15 / 16}, llama: {parts: LLAMA, region: 'llama', scale: 1}, bee: {parts: BEE, region: 'bee', scale: 1}};
+  // The dog is the game's tamed wolf. Its sitting and lying poses, and the
+  // cat's, move and turn parts from where they stand: [x, y, z] pivot and
+  // turn about x, in pixels and radians.
+  const WOLF_LEG = [{from: [0, -8, -1], size: [2, 8, 2], uv: [0, 18]}];
+  const WOLF = [
+    {name: 'head', pivot: [-1, 10.5, 7], boxes: [
+      {from: [-2, -3, -2], size: [6, 6, 4], uv: [0, 0]},
+      {from: [-2, 3, -1], size: [2, 2, 1], uv: [16, 14]},
+      {from: [2, 3, -1], size: [2, 2, 1], uv: [16, 14]},
+      {from: [-0.5, -3, 1], size: [3, 3, 4], uv: [0, 10]},
+    ]},
+    {name: 'body', pivot: [0, 10, -2], rot: [Math.PI / 2, 0, 0], boxes: [{from: [-3, -7, -3], size: [6, 9, 6], uv: [18, 14]}]},
+    {name: 'mane', pivot: [-1, 10, 3], rot: [Math.PI / 2, 0, 0], collar: true, boxes: [{from: [-3, -3, -4], size: [8, 6, 7], uv: [21, 0]}]},
+    {name: 'rightHind', pivot: [-2.5, 8, -7], boxes: WOLF_LEG},
+    {name: 'leftHind', pivot: [0.5, 8, -7], boxes: WOLF_LEG},
+    {name: 'rightFront', pivot: [-2.5, 8, 4], boxes: WOLF_LEG},
+    {name: 'leftFront', pivot: [0.5, 8, 4], boxes: WOLF_LEG},
+    {name: 'tail', pivot: [-1, 12, -8], rot: [1.45, 0, 0], order: 'ZYX', boxes: [{from: [0, -8, -1], size: [2, 8, 2], uv: [9, 18]}]},
+  ];
+  const WOLF_POSES = {
+    sit: {
+      mane: {pos: [-1, 8, 3], rot: 1.2566}, body: {pos: [0, 6, 0], rot: Math.PI / 4}, tail: {pos: [-1, 3, -6]},
+      rightHind: {pos: [-2.5, 1.3, -2], rot: -Math.PI / 2}, leftHind: {pos: [0.5, 1.3, -2], rot: -Math.PI / 2},
+      rightFront: {pos: [-2.49, 7, 4], rot: -0.4712}, leftFront: {pos: [0.51, 7, 4], rot: -0.4712},
+    },
+    lie: {
+      head: {pos: [-1, 6.5, 7]}, mane: {pos: [-1, 5, 3]}, body: {pos: [0, 4, -2]}, tail: {pos: [-1, 4, -8], rot: 1.62},
+      rightHind: {pos: [-2.5, 1, -7], rot: -Math.PI / 2}, leftHind: {pos: [0.5, 1, -7], rot: -Math.PI / 2},
+      rightFront: {pos: [-2.5, 1, 4], rot: -Math.PI / 2}, leftFront: {pos: [0.5, 1, 4], rot: -Math.PI / 2},
+    },
+  };
+  const CAT_HIND = [{from: [-1, -6, -3], size: [2, 6, 2], uv: [8, 13]}];
+  const CAT_FRONT = [{from: [-1, -10, -2], size: [2, 10, 2], uv: [40, 0]}];
+  const CAT = [
+    {name: 'head', pivot: [0, 9, 9], boxes: [
+      {from: [-2.5, -2, -2], size: [5, 4, 5], uv: [0, 0]},
+      {from: [-1.5, -2, 2], size: [3, 2, 2], uv: [0, 24]},
+      {from: [-2, 2, -2], size: [1, 1, 2], uv: [0, 10]},
+      {from: [1, 2, -2], size: [1, 1, 2], uv: [6, 10]},
+    ]},
+    {name: 'body', pivot: [0, 12, 10], rot: [Math.PI / 2, 0, 0], collar: true, boxes: [{from: [-2, -19, 2], size: [4, 16, 6], uv: [20, 0]}]},
+    {name: 'tail1', pivot: [0, 9, -8], rot: [0.9, 0, 0], order: 'ZYX', boxes: [{from: [-0.5, -8, -1], size: [1, 8, 1], uv: [0, 15]}]},
+    {name: 'tail2', parent: 'tail1', pivot: [0, -8, 0], rot: [0.83, 0, 0], order: 'ZYX', boxes: [{from: [-0.5, -8, -1], size: [1, 8, 1], uv: [4, 15]}]},
+    {name: 'leftHind', pivot: [1.1, 6, -5], boxes: CAT_HIND},
+    {name: 'rightHind', pivot: [-1.1, 6, -5], boxes: CAT_HIND},
+    {name: 'leftFront', pivot: [1.2, 9.9, 5], boxes: CAT_FRONT},
+    {name: 'rightFront', pivot: [-1.2, 9.9, 5], boxes: CAT_FRONT},
+  ];
+  const CAT_POSES = {
+    sit: {
+      body: {pos: [0, 16, 5], rot: Math.PI / 4}, head: {pos: [0, 12.3, 8]},
+      tail1: {pos: [0, 1, -6], rot: 1.7279}, tail2: {rot: 0.94},
+      leftFront: {pos: [1.2, 9.9, 7], rot: -0.157}, rightFront: {pos: [-1.2, 9.9, 7], rot: -0.157},
+      leftHind: {pos: [1.1, 3, -1], rot: -Math.PI / 2}, rightHind: {pos: [-1.1, 3, -1], rot: -Math.PI / 2},
+    },
+    lie: {
+      body: {pos: [0, 8, 10]}, head: {pos: [0, 6.5, 9.5]}, tail1: {pos: [0, 2, -8], rot: 1.5}, tail2: {rot: 0.1},
+      leftFront: {pos: [1.2, 1, 5], rot: Math.PI / 2}, rightFront: {pos: [-1.2, 1, 5], rot: Math.PI / 2},
+      leftHind: {pos: [1.1, 1, -5], rot: -Math.PI / 2}, rightHind: {pos: [-1.1, 1, -5], rot: -Math.PI / 2},
+    },
+  };
+  const CREATURES = {
+    trader: {parts: TRADER, region: 'trader', scale: 15 / 16}, llama: {parts: LLAMA, region: 'llama', scale: 1}, bee: {parts: BEE, region: 'bee', scale: 1},
+    dog: {parts: WOLF, region: 'wolf', collar: 'wolfCollar', scale: 1, poses: WOLF_POSES},
+    cat: {parts: CAT, region: 'cat', collar: 'catCollar', scale: 0.8, poses: CAT_POSES},
+  };
 
   // A creature as a group of posable parts. Returns the group and its parts
   // by name.
@@ -551,6 +657,7 @@
       const mb = new MeshBuilder();
       const layers = [[SHEET[def.region], 0]];
       if (p.decor) layers.push([SHEET.decor, 0.5]);
+      if (p.collar && def.collar) layers.push([SHEET[def.collar], 0.06]);
       for (const [region, extra] of layers) {
         for (const bx of p.boxes) {
           const g = (bx.grow || 0) + extra;
@@ -560,17 +667,19 @@
       }
       const pivot = new T.Group();
       pivot.position.set(p.pivot[0] / 16, p.pivot[1] / 16, p.pivot[2] / 16);
+      if (p.order) pivot.rotation.order = p.order;
       if (p.rot) pivot.rotation.set(...p.rot);
       pivot.userData.rest = p.rot ? p.rot.slice() : [0, 0, 0];
+      pivot.userData.pos = pivot.position.toArray();
       const mesh = new T.Mesh(mb.geometry(T), material);
       pivot.add(mesh);
-      group.add(pivot);
+      (p.parent ? parts[p.parent] : group).add(pivot);
       parts[p.name] = pivot;
     }
     const scaled = new T.Group();
     group.scale.setScalar(def.scale);
     scaled.add(group);
-    return {group: scaled, parts};
+    return {group: scaled, parts, poses: def.poses || {}};
   }
 
   // A little tropical fish facing +z, in the colours given.
@@ -682,7 +791,56 @@
     paintBox(ctx, at, [0, 18], [9, 0, 6], () => [214, 232, 246]);
   }
 
-  const PAINTERS = {trader: paintTrader, bee: paintBee, llama: paintLlama, decor: paintDecor};
+  // A tame wolf: pale grey, its back and tail a shade darker.
+  function paintWolf(ctx, at) {
+    const r = LibraryTextures.rng('wolf');
+    const fur = (c = [214, 210, 204]) => { const f = 0.92 + r() * 0.12; return c.map(v => Math.round(Math.min(255, v * f))); };
+    const BACK = [166, 160, 152];
+    paintBox(ctx, at, [0, 0], [6, 6, 4], (face, x, y) => (face === 'front' && y === 2 && (x === 1 || x === 4) ? [36, 30, 28] : fur()));
+    paintBox(ctx, at, [16, 14], [2, 2, 1], () => fur(BACK));
+    paintBox(ctx, at, [0, 10], [3, 3, 4], (face, x, y) => (face === 'front' && y === 0 && x === 1 ? [30, 26, 24] : fur()));
+    paintBox(ctx, at, [18, 14], [6, 9, 6], face => fur(face === 'back' ? BACK : undefined));
+    paintBox(ctx, at, [21, 0], [8, 6, 7], face => fur(face === 'back' ? BACK : undefined));
+    paintBox(ctx, at, [0, 18], [2, 8, 2], () => fur());
+    paintBox(ctx, at, [9, 18], [2, 8, 2], (face, x, y, fw, fh) => fur(y >= fh - 2 ? [236, 234, 230] : BACK));
+  }
+
+  // A ginger cat: stripes down its back and tail, white paws and muzzle.
+  function paintCat(ctx, at) {
+    const r = LibraryTextures.rng('cat');
+    const GINGER = [218, 138, 58], STRIPE = [170, 92, 36], WHITE = [240, 232, 220];
+    const fur = (c = GINGER) => { const f = 0.94 + r() * 0.1; return c.map(v => Math.round(Math.min(255, v * f))); };
+    paintBox(ctx, at, [0, 0], [5, 4, 5], (face, x, y) => {
+      if (face === 'front' && y === 1 && (x === 1 || x === 3)) return [92, 168, 52];
+      if (face === 'up' && x % 2 === 0) return fur(STRIPE);
+      return fur();
+    });
+    paintBox(ctx, at, [0, 24], [3, 2, 2], (face, x, y) => (face === 'front' && y === 0 && x === 1 ? [222, 120, 130] : fur(WHITE)));
+    paintBox(ctx, at, [0, 10], [1, 1, 2], () => fur());
+    paintBox(ctx, at, [6, 10], [1, 1, 2], () => fur());
+    paintBox(ctx, at, [20, 0], [4, 16, 6], (face, x, y) => (face === 'front' ? fur(WHITE) : y % 3 === 0 ? fur(STRIPE) : fur()));
+    paintBox(ctx, at, [0, 15], [1, 8, 1], (face, x, y) => (y % 3 === 0 ? fur(STRIPE) : fur()));
+    paintBox(ctx, at, [4, 15], [1, 8, 1], (face, x, y, fw, fh) => (y >= fh - 2 ? fur(WHITE) : y % 3 === 0 ? fur(STRIPE) : fur()));
+    paintBox(ctx, at, [8, 13], [2, 6, 2], (face, x, y, fw, fh) => (y >= fh - 1 || face === 'down' ? fur(WHITE) : fur()));
+    paintBox(ctx, at, [40, 0], [2, 10, 2], (face, x, y, fw, fh) => (y >= fh - 2 || face === 'down' ? fur(WHITE) : fur()));
+  }
+
+  // A band round the neck: the first rows of the box's sides, which the
+  // turned body brings up to its front end.
+  const paintCollar = (u, size) => (ctx, at) => paintBox(ctx, at, u, size, (face, x, y) => (face !== 'up' && face !== 'down' && y < 2 ? COLLAR : null));
+
+  const PAINTERS = {
+    trader: paintTrader, bee: paintBee, llama: paintLlama, decor: paintDecor, wolf: paintWolf, cat: paintCat,
+    wolfCollar: paintCollar([21, 0], [8, 6, 7]), catCollar: paintCollar([20, 0], [4, 16, 6]),
+  };
+  const DYED = new Set(['wolfCollar', 'catCollar']);
+
+  // A grey layer coloured in, the way the game dyes a collar.
+  function dye(ctx, [x, y, w, h], colour) {
+    const img = ctx.getImageData(x, y, w, h);
+    for (let i = 0; i < img.data.length; i += 4) for (let k = 0; k < 3; k++) img.data[i + k] = Math.round(img.data[i + k] * colour[k] / 255);
+    ctx.putImageData(img, x, y);
+  }
 
   // The sheet as a canvas, from the reader's jar where it has the files.
   async function entitySheet(files = {}) {
@@ -697,6 +855,7 @@
       const image = path ? await loadImage(files[path]) : null;
       if (image && image.width >= w / 2) {
         ctx.drawImage(image, 0, 0, image.width, image.height, x, y, w, h);
+        if (DYED.has(kind)) dye(ctx, [x, y, w, h], COLLAR);
         vanilla++;
       } else {
         PAINTERS[kind](ctx, [x, y]);
@@ -706,7 +865,7 @@
   }
 
   window.LibraryGoods = {
-    CATALOG, ITEMS, MODELS, STALL, SHEET, FISH_COLOURS,
-    build, turn, footprint, beam, stall, stallSolids, awning, reviewDesk, creature, fish, entitySheet, boxFaces,
+    CATALOG, ITEMS, MODELS, STALL, PETS, SHEET, FISH_COLOURS,
+    build, turn, footprint, beam, stall, stallSolids, awning, reviewDesk, fishbowl, creature, fish, entitySheet, boxFaces,
   };
 })();

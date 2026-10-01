@@ -27,6 +27,8 @@ Future<void> windowClose() async {}
 
 Future<void> windowShow() async {}
 
+Future<bool> windowOnScreen() async => true;
+
 Future<void> setTrayLabels({
   required String open,
   required String quit,

@@ -128,6 +128,10 @@
     llama: ['textures/entity/llama/llama_creamy.png', 'textures/entity/llama/creamy.png'],
     decor: ['textures/entity/equipment/llama_body/trader_llama.png', 'textures/entity/llama/decor/trader_llama.png'],
     bee: ['textures/entity/bee/bee.png'],
+    wolf: ['textures/entity/wolf/wolf_tame.png'],
+    cat: ['textures/entity/cat/cat_red.png', 'textures/entity/cat/red.png'],
+    wolfCollar: ['textures/entity/wolf/wolf_collar.png'],
+    catCollar: ['textures/entity/cat/cat_collar.png'],
   };
 
   // Files the page asks the host for beyond the atlas textures.

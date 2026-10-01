@@ -3103,6 +3103,9 @@ class Api {
     }
     final started = DateTime.now();
     try {
+      // One overall deadline, well inside Cloudflare's 100 s origin timeout:
+      // a slow model plus the 429 retry could otherwise outlast it, and the
+      // dashboard would get Cloudflare's HTML error page instead of JSON.
       final (status, responseBody) = await _callAiUpstream(
           route,
           _aiUpstreamBody({
@@ -3110,7 +3113,7 @@ class Api {
               {'role': 'user', 'content': 'Reply with just the word OK.'}
             ],
             'max_tokens': 256,
-          }, route));
+          }, route)).timeout(_aiTestDeadline);
       final ms = DateTime.now().difference(started).inMilliseconds;
       String? reply;
       String? error;
@@ -3171,6 +3174,14 @@ class Api {
         'reply': reply,
         'error': error,
       });
+    } on TimeoutException {
+      return jsonResponse(200, {
+        'ok': false,
+        'upstream': route.upstream.label,
+        'model': route.model,
+        'error': 'No answer within ${_aiTestDeadline.inSeconds} s — the model '
+            'is too slow or the provider is queueing it.',
+      });
     } catch (e) {
       return jsonResponse(200, {
         'ok': false,
@@ -3180,6 +3191,8 @@ class Api {
       });
     }
   }
+
+  static const _aiTestDeadline = Duration(seconds: 45);
 
   /// Sends [text] to [route] under the detector [instructions]. Returns the
   /// upstream status, the parsed verdict (null when the reply was unusable),
@@ -10540,16 +10553,18 @@ syncToolbar();
         '.ai-routes select,.ai-routes input[type=text]{background:#1a1530;'
         'color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:7px 10px;'
         'font-size:13px;font-family:inherit;outline:none;max-width:100%}'
-        '.ai-routes input[type=text]{width:100%;min-width:220px;'
+        '.ai-routes input[type=text]{width:100%;min-width:150px;'
         'font-family:ui-monospace,Consolas,monospace;font-size:12.5px}'
         '.ai-routes select:focus,.ai-routes input:focus{border-color:#8a7ee0}'
         '.ai-test-out{font-size:11.5px;margin-top:4px;white-space:normal;'
-        'max-width:260px;text-align:right}'
+        'max-width:190px;margin-left:auto;text-align:right;overflow-wrap:anywhere}'
+        '.ai-routes td{padding-left:8px;padding-right:8px}'
+        '.ai-routes td.nowrap{white-space:normal}'
         '.ai-test-img{display:block;width:96px;height:96px;object-fit:cover;'
         'border-radius:8px;margin-top:6px;border:1px solid #2d2645}'
         '.ai-test-out.ok{color:#7ee08a}.ai-test-out.err{color:#e07e7e}'
         '.ai-browse{margin-top:6px;white-space:nowrap}'
-        '.ai-price-cell{min-width:170px}.ai-price{font:13px ui-monospace,Consolas,monospace}'
+        '.ai-price-cell{min-width:130px;max-width:190px}.ai-price{font:13px ui-monospace,Consolas,monospace}'
         '.ai-price.up{color:#e07e7e}.ai-price-note{font-size:11px;margin-top:2px;white-space:normal}'
         '.ai-price-actions{display:flex;flex-direction:column;gap:6px;margin-top:8px;align-items:flex-start}'
         '.ai-routes textarea{width:100%;min-height:260px;resize:vertical;'
@@ -11104,9 +11119,24 @@ syncToolbar();
           reasoningEffort: effortSelect ? effortSelect.value : undefined,
         }),
       })
-        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          return r.text().then(function (text) {
+            if (r.redirected && /\/admin\/login/.test(r.url)) {
+              return { error: 'Your admin session expired. Reload the page and sign in again.' };
+            }
+            try { return JSON.parse(text); } catch (_) {}
+            var title = /<title>([^<]*)<\/title>/i.exec(text);
+            return {
+              status: r.status,
+              error: (title ? title[1].trim() : 'The server answered with a page instead of a result') +
+                (r.status === 524 || r.status === 504
+                  ? ' — the model took too long to answer.' : '.'),
+            };
+          });
+        })
         .then(function (j) {
-          var who = (j.upstream || '') + ' · ' + (j.model || '');
+          var who = j.upstream || j.model
+            ? (j.upstream || '') + ' · ' + (j.model || '') : 'Test';
           if (j.ok && j.image) {
             out.className = 'ai-test-out ok';
             out.textContent = '✓ ' + who + ' — drew a picture in ' + j.ms + ' ms';

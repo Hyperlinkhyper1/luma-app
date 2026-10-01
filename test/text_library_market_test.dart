@@ -11,6 +11,7 @@ void main() {
         PlacedPiece(id: 'aquarium', x: -3, z: -12, floor: 1, rot: 3),
       ],
       warned: true,
+      pet: 'cat',
     );
     final back = MarketState.fromJson(state.toJson());
     expect(back.toJson(), state.toJson());
@@ -28,6 +29,7 @@ void main() {
         'nonsense',
       ],
       'warned': 'yes',
+      'pet': 'Big Dog',
     });
     expect(state.clock, MarketState.cycle - 1);
     expect(state.crate, {'bed': 4, 'swing': MarketState.maxStack});
@@ -40,6 +42,8 @@ void main() {
       'rot': 3,
     });
     expect(state.warned, isFalse);
+    expect(state.pet, isNull);
+    expect(state.toJson().containsKey('pet'), isFalse);
   });
 
   test('no more than the most pieces the page keeps', () {

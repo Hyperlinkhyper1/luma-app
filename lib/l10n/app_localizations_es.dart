@@ -1839,6 +1839,15 @@ class LEs extends L {
       'El comerciante está montando su puesto';
 
   @override
+  String get textLibraryMcPetDog => 'Acariciar al perro';
+
+  @override
+  String get textLibraryMcPetCat => 'Acariciar al gato';
+
+  @override
+  String get textLibraryMcPetFish => 'Dar de comer al pez';
+
+  @override
   String textLibraryMcShopLeaves(String minutes) {
     return 'Se va en $minutes min';
   }

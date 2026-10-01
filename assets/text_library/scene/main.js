@@ -173,7 +173,7 @@
   const post = LibraryMail.create({send, reducedMotion: () => S.reducedMotion});
   // The wandering trader, and the furniture bought from him.
   const Goods = window.LibraryGoods;
-  const market = LibraryMarket.create({send, catalog: Goods.CATALOG, reducedMotion: () => S.reducedMotion});
+  const market = LibraryMarket.create({send, catalog: Goods.CATALOG, pets: Goods.PETS, reducedMotion: () => S.reducedMotion});
   // The trader's review desk: send a book, get a letter about it the next
   // in-game day. The app talks to the reviewer; a review can take a while.
   const reviewScreen = LibraryDesk.create({
@@ -498,10 +498,14 @@
   const heldHandMat = R.blockMaterial({viewmodel: true});
   heldHandMat.uniforms.handProjection = handMat.uniforms.handProjection;
 
-  // Where the carried book sits: in the arm's hand. `asHand` gives the spot
-  // for drawing with the hand's projection; otherwise the spot that looks
-  // the same drawn with the view's.
-  function handTransform(asHand = false) {
+  // Where the book is gripped on the arm's model, in pixels: just past the
+  // fist, as the game shows an item in the hand.
+  const BOOK_GRIP = [-1, -15, -2];
+
+  // Where the carried book sits: in the arm's hand, its cover turned to the
+  // reader. `asHand` gives the spot for drawing with the hand's projection;
+  // otherwise the spot that looks the same drawn with the view's.
+  function handTransform(asHand = false, grip = BOOK_GRIP) {
     if (!hand.arm) {
       const q = camera.quaternion.clone();
       return {pos: new T.Vector3(0.3, -0.28, -0.75).applyQuaternion(q).add(camera.position), quat: q, scale: 0.5};
@@ -509,9 +513,7 @@
     hand.root.position.copy(camera.position);
     hand.root.quaternion.copy(camera.quaternion);
     hand.root.updateMatrixWorld(true);
-    // Gripped just past the fist, its cover turned to the reader, as the
-    // game shows an item in the hand.
-    const pos = new T.Vector3(-1 / 16, -15 / 16, -2 / 16).applyMatrix4(hand.arm.matrixWorld);
+    const pos = new T.Vector3(...grip).divideScalar(16).applyMatrix4(hand.arm.matrixWorld);
     const quat = camera.quaternion.clone().multiply(new T.Quaternion().setFromEuler(new T.Euler(0.25, -0.5, 0.1)));
     if (asHand) return {pos, quat, scale: 0.6};
     // The arm is drawn with the game's own field of view, the book with the
@@ -674,13 +676,15 @@
   glyphTexture.minFilter = T.NearestFilter;
   glyphTexture.generateMipmaps = false;
   // A music note for the gramophone, the shape the game's note particle
-  // has, alone in the first cell of a sheet of its own.
+  // has, in the first cell of a sheet of its own; the heart a fussed pet
+  // gives off in the second.
   const noteCanvas = document.createElement('canvas');
   noteCanvas.width = 128; noteCanvas.height = 128;
   {
     const ctx = noteCanvas.getContext('2d');
     ctx.fillStyle = '#fff';
     for (const [x, y, w, h] of [[3, 10, 4, 3], [2, 11, 6, 1], [6, 2, 2, 9], [8, 2, 3, 2], [10, 4, 2, 2]]) ctx.fillRect(x, y, w, h);
+    for (const [x, y, w, h] of [[3, 3, 4, 2], [9, 3, 4, 2], [1, 5, 14, 4], [3, 9, 10, 2], [5, 11, 6, 2], [7, 13, 2, 1]]) ctx.fillRect(16 + x, y, w, h);
   }
   const noteTexture = new T.CanvasTexture(noteCanvas);
   noteTexture.flipY = false;
@@ -1569,6 +1573,9 @@
         const hit = boxHit(ray, ...box);
         if (hit != null && hit < REACH) consider(hit, {kind: 'trader', box});
       }
+      const petAt = petBox();
+      const petHit = petAt ? boxHit(ray, ...petAt) : null;
+      if (petHit != null && petHit < REACH) consider(petHit, {kind: 'pet', box: petAt});
       if (trader.desk?.visible && !(S.seat && S.seat.pc)) {
         const hit = boxHit(ray, ...trader.deskSeat.box);
         if (hit != null && hit < REACH) consider(hit, {kind: 'desk', box: trader.deskSeat.box});
@@ -1649,6 +1656,9 @@
     } else if (h.kind === 'trader') {
       outlineBox(h.box);
       gui.tooltip(traderTooltip(), x, y);
+    } else if (h.kind === 'pet') {
+      outlineBox(h.box);
+      gui.tooltip([gui.t({dog: 'petDog', cat: 'petCat', fish: 'petFish'}[trader.petKind] || 'petDog')], x, y);
     } else if (h.kind === 'desk') {
       outlineBox(h.box);
       const waiting = post.pendingReview;
@@ -1718,6 +1728,8 @@
       await useVault();
     } else if (h.kind === 'desk') {
       await useDesk();
+    } else if (h.kind === 'pet') {
+      cuddle();
     } else if (h.kind === 'trader') {
       if (trader.phase === 'open') await openShop();
       else gui.toast(gui.t('traderStall'), traderTooltip()[1].text, traderIcon || post.coin);
@@ -2295,6 +2307,16 @@
   const vault = {door: null, pile: null, open: 0, target: 0, pileCount: -1, busy: false};
   const coins = {mesh: null, count: -1, flying: false};
   const COIN_TILT = new T.Quaternion().setFromEuler(new T.Euler(0.45, 0.35, 0));
+  // The coins are held against the side of the fist that faces the reader.
+  // Past the fist, where the book goes, the little stack floats free of the
+  // hand; on the fist's end it hides behind it.
+  const COIN_GRIP = [-3.25, -8.5, 0];
+  function coinsInHand(asHand) {
+    const tr = handTransform(asHand, COIN_GRIP);
+    tr.quat.multiply(COIN_TILT);
+    tr.scale *= 2 / 3;
+    return tr;
+  }
   const HELD_LIGHT = [0.55, 0.85, 0.2];
   const mailNext = () => gui.t('mailNext', Math.max(1, Math.ceil(post.nextIn() / 60)));
   const disposeMesh = m => { if (m) { scene.remove(m); m.geometry.dispose(); } };
@@ -2384,10 +2406,7 @@
     const shown = handShown() && !held.mesh;
     coins.mesh.visible = shown;
     if (!shown) return;
-    const tr = handTransform(true);
-    coins.mesh.position.copy(tr.pos);
-    coins.mesh.quaternion.copy(tr.quat).multiply(COIN_TILT);
-    coins.mesh.scale.setScalar(0.5);
+    applyTransform(coins.mesh, coinsInHand(true));
     coins.mesh.material = heldHandMat;
   }
 
@@ -2429,9 +2448,7 @@
           coins.flying = true;
           coins.mesh.visible = true;
           coins.mesh.material = heldMat;
-          const from = handTransform();
-          from.quat.multiply(COIN_TILT);
-          applyTransform(coins.mesh, from);
+          applyTransform(coins.mesh, coinsInHand(false));
           await new Promise(r => setTimeout(r, S.reducedMotion ? 0 : 300));
           const p = S.built.vault.pile;
           const into = new T.Vector3(p[0] + 0.38, p[1] + 0.1, p[2] - 0.3);
@@ -2548,8 +2565,10 @@
   // walks off the way he came.
   const STALL = Goods.STALL;
   const WALK = 1.35;
-  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, desk: null, deskSeat: null, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
+  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, desk: null, deskSeat: null, pet: null, bowl: null, petKind: undefined, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
   let entityTexture = null, traderIcon = null;
+  // What each of them is busy with while the stall is open; see stepTraderLife.
+  const life = {trader: null, llamas: [], pet: null, near: false, leftAt: -1e9, shadow: 0};
 
   async function applyEntitySheet(files) {
     const sheet = await Goods.entitySheet(files);
@@ -2580,7 +2599,8 @@
     disposeGroup(trader.wares);
     disposeGroup(trader.leads);
     disposeGroup(trader.desk);
-    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, desk: null, deskSeat: null, walkers: [], colliders: []});
+    disposePet();
+    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, desk: null, deskSeat: null, petKind: undefined, walkers: [], colliders: []});
     const m = S.built?.market;
     if (!m || !atlas) return;
     const [px, pz] = m.plot;
@@ -2616,21 +2636,12 @@
       trader.wares.add(a.group);
     });
     scene.add(trader.wares);
-    // The llamas' leads, sagging to their post.
-    const [hx, hz] = plotXZ(...STALL.post);
-    const points = [];
-    for (const [lx0, lz0, yaw] of STALL.llamas) {
-      const [lx, lz] = plotXZ(lx0, lz0);
-      const a = new T.Vector3(lx + Math.sin(yaw) * 0.42, 1.28, lz + Math.cos(yaw) * 0.42), b = new T.Vector3(hx, 1.1, hz);
-      for (let k = 0; k < 8; k++) {
-        const p0 = a.clone().lerp(b, k / 8), p1 = a.clone().lerp(b, (k + 1) / 8);
-        p0.y -= Math.sin(k / 8 * Math.PI) * 0.22;
-        p1.y -= Math.sin((k + 1) / 8 * Math.PI) * 0.22;
-        points.push(p0, p1);
-      }
-    }
-    trader.leads = new T.LineSegments(new T.BufferGeometry().setFromPoints(points), new T.LineBasicMaterial({color: 0x4a3018}));
+    // The llamas' leads, sagging to their post; they follow the necks.
+    const leadGeo = new T.BufferGeometry();
+    leadGeo.setAttribute('position', new T.BufferAttribute(new Float32Array(STALL.llamas.length * LEAD_SEGMENTS * 6), 3).setUsage(T.DynamicDrawUsage));
+    trader.leads = new T.LineSegments(leadGeo, new T.LineBasicMaterial({color: 0x4a3018}));
     trader.leads.userData.noShadow = true;
+    trader.leads.frustumCulled = false;
     scene.add(trader.leads);
     // The review desk past the counter, with its chair to sit at.
     const deskMb = new W.MeshBuilder();
@@ -2643,13 +2654,39 @@
     const D = STALL.desk;
     const [sx, sy, sz] = D.seat;
     trader.deskSeat = {pos: [px + sx, sy, pz + sz], yaw: Math.PI, eye: 1.08, pitch: -0.5, pc: true, box: D.box.map(([x, y, z]) => [px + x, y, pz + z])};
+    for (const parts of [trader.parts, ...trader.llamas.map(l => l.parts)]) parts.head.rotation.order = 'YXZ';
     syncMarket();
+  }
+
+  const LEAD_SEGMENTS = 8;
+  // Where a lead is knotted round a llama's neck, in its head's own frame.
+  const LEAD_KNOT = [0, 0.2175, 0.045];
+  const leadKnot = new T.Vector3();
+
+  function poseLeads() {
+    if (!trader.leads?.visible) return;
+    const attr = trader.leads.geometry.attributes.position, a = attr.array;
+    const [hx, hz] = plotXZ(...STALL.post);
+    let o = 0;
+    for (const l of trader.llamas) {
+      l.group.updateMatrixWorld(true);
+      const k0 = l.parts.head.localToWorld(leadKnot.set(...LEAD_KNOT));
+      const point = k => {
+        const f = k / LEAD_SEGMENTS;
+        a[o++] = k0.x + (hx - k0.x) * f;
+        a[o++] = k0.y + (1.1 - k0.y) * f - Math.sin(f * Math.PI) * 0.22;
+        a[o++] = k0.z + (hz - k0.z) * f;
+      };
+      for (let k = 0; k < LEAD_SEGMENTS; k++) { point(k); point(k + 1); }
+    }
+    attr.needsUpdate = true;
   }
 
   // Everyone where they belong for the trader being in or out, with no
   // walking: on loading, or after the hall is rebuilt.
   function syncMarket() {
     if (!trader.group) return;
+    ensurePet();
     trader.walkers = [];
     const here = market.loaded && market.present;
     trader.phase = here ? 'open' : 'away';
@@ -2660,7 +2697,10 @@
     trader.wares.visible = here;
     trader.desk.visible = here;
     trader.leads.visible = here;
+    if (trader.pet) trader.pet.group.visible = here;
+    if (trader.bowl) trader.bowl.group.visible = here;
     poseAwning();
+    poseLeads();
     refreshTraderColliders();
     shadowDirty = true;
   }
@@ -2674,7 +2714,10 @@
       trader.llamas[i].group.position.set(lx, 0, lz);
       trader.llamas[i].group.rotation.y = yaw;
     });
-    for (const parts of [trader.parts, ...trader.llamas.map(l => l.parts)]) restLegs(parts);
+    restPose(trader);
+    for (const l of trader.llamas) restPose(l);
+    placePet();
+    resetLife();
   }
 
   function poseAwning() {
@@ -2693,6 +2736,7 @@
     const [l0, l1] = STALL.llamas;
     return {
       trader: [...lead, plotXZ(...STALL.trader)],
+      pet: [lead[0], lead[1], plotXZ(STALL.pet.spot[0], STALL.gate[1]), plotXZ(...STALL.pet.spot)],
       llamas: [
         [...lead, plotXZ(l0[0], STALL.gate[1]), plotXZ(l0[0], l0[1])],
         [...lead, plotXZ(STALL.llamaLane, STALL.gate[1]), plotXZ(STALL.llamaLane, l1[1]), plotXZ(l1[0], l1[1])],
@@ -2722,6 +2766,7 @@
 
   function startComing() {
     if (!trader.group) return;
+    ensurePet();
     const r = routes();
     trader.phase = 'coming';
     trader.open = 0;
@@ -2729,6 +2774,8 @@
       walker(trader.group, trader.parts, 'trader', r.trader, 0, -Math.PI / 2),
       ...trader.llamas.map((l, i) => walker(l.group, l.parts, 'llama', r.llamas[i], 1.4 + i * 1.3, STALL.llamas[i][2])),
     ];
+    if (trader.pet) trader.walkers.push(walker(trader.pet.group, trader.pet.parts, trader.pet.kind, r.pet, 0.6, STALL.pet.yaw));
+    if (trader.bowl) trader.bowl.group.visible = false;
     for (const w of trader.walkers) w.obj.visible = false;
     trader.wares.visible = false;
     trader.desk.visible = false;
@@ -2743,31 +2790,59 @@
       placeAtRest();
       trader.group.visible = true;
       for (const l of trader.llamas) l.group.visible = true;
+      if (trader.pet) trader.pet.group.visible = true;
     }
     const r = routes();
     trader.phase = 'going';
     trader.leads.visible = false;
+    restPose(trader);
+    for (const l of trader.llamas) restPose(l);
     trader.walkers = [
       walker(trader.group, trader.parts, 'trader', r.trader.slice().reverse(), 1.3, null),
       ...trader.llamas.map((l, i) => walker(l.group, l.parts, 'llama', r.llamas[i].slice().reverse(), 0.4 + i * 0.7, null)),
     ];
+    // The pet sets off from wherever it had got to.
+    if (trader.pet) {
+      const g = trader.pet.group.position;
+      restPose(trader.pet);
+      trader.walkers.push(walker(trader.pet.group, trader.pet.parts, trader.pet.kind, [[g.x, g.z], ...r.pet.slice().reverse()], 1.0, null));
+      life.pet = null;
+    }
     refreshTraderColliders();
   }
 
-  // Legs swinging with the distance walked.
+  // Legs swinging with the distance walked, the body bobbing on each step.
+  // He looks about him as he goes; the llamas' heads nod with their gait;
+  // a pet trots on its short legs, tail going.
   function stride(w) {
-    const a = Math.sin(w.s * 4.2) * 0.6;
+    const pet = w.kind === 'dog' || w.kind === 'cat', f = pet ? 9 : 4.2;
+    const a = Math.sin(w.s * f) * (pet ? 0.8 : 0.6), m = S.reducedMotion ? 0 : 1;
+    const inner = w.obj.children[0], p = w.parts;
+    inner.position.y = Math.abs(Math.sin(w.s * f)) * (pet ? 0.02 : 0.035) * m;
+    if (p.tail) p.tail.rotation.y = Math.sin(w.s * 8) * 0.45 * m;
+    if (p.tail1) { p.tail1.rotation.y = Math.sin(w.s * 2) * 0.25 * m; p.tail2.rotation.y = Math.sin(w.s * 2 - 1) * 0.3 * m; }
     if (w.kind === 'trader') {
-      w.parts.rightLeg.rotation.x = a;
-      w.parts.leftLeg.rotation.x = -a;
-      w.parts.head.rotation.set(0, 0, 0);
+      p.rightLeg.rotation.x = a;
+      p.leftLeg.rotation.x = -a;
+      p.head.rotation.set(0, Math.sin(w.s * 0.8) * 0.45 * m, 0);
+      p.arms.rotation.x = p.arms.userData.rest[0] + Math.sin(w.s * 8.4) * 0.05 * m;
+      inner.rotation.z = Math.sin(w.s * 4.2) * 0.035 * m;
     } else {
-      w.parts.rightFront.rotation.x = a; w.parts.leftHind.rotation.x = a;
-      w.parts.leftFront.rotation.x = -a; w.parts.rightHind.rotation.x = -a;
+      p.rightFront.rotation.x = a; p.leftHind.rotation.x = a;
+      p.leftFront.rotation.x = -a; p.rightHind.rotation.x = -a;
+      p.head.rotation.set(Math.sin(w.s * 8.4 + 1) * 0.07 * m, Math.sin(w.s * 1.1) * 0.25 * m, 0);
+      p.body.rotation.z = Math.sin(w.s * f) * 0.04 * m;
     }
   }
-  function restLegs(parts) {
-    for (const name of ['rightLeg', 'leftLeg', 'rightFront', 'leftFront', 'rightHind', 'leftHind']) if (parts[name]) parts[name].rotation.x = 0;
+  // Every part of a creature back as it was modelled.
+  function restPose(c) {
+    if (!c?.parts) return;
+    for (const part of Object.values(c.parts)) {
+      part.rotation.set(...part.userData.rest);
+      part.position.fromArray(part.userData.pos);
+    }
+    c.group.children[0].position.y = 0;
+    c.group.children[0].rotation.z = 0;
   }
 
   // Where the trader and his llamas stand in the way while he is open.
@@ -2776,6 +2851,10 @@
     if (trader.phase !== 'open' || !S.built?.market) return;
     const [px, pz] = S.built.market.plot;
     for (const [x0, z0, x1, z1] of STALL.desk.solids) trader.colliders.push([px + x0, pz + z0, px + x1, pz + z1, 0]);
+    if (trader.bowl) {
+      const [x0, z0, x1, z1] = trader.bowl.info.solid;
+      trader.colliders.push([px + x0, pz + z0, px + x1, pz + z1, 0]);
+    }
     const [tx, tz] = plotXZ(...STALL.trader);
     trader.colliders.push([tx - 0.3, tz - 0.3, tx + 0.3, tz + 0.3, 0]);
     for (const [x, z, yaw] of STALL.llamas) {
@@ -2840,7 +2919,7 @@
       walking = true;
       if (w.s >= w.length) {
         w.done = true;
-        restLegs(w.parts);
+        restPose(w.obj === trader.group ? trader : w.obj === trader.pet?.group ? trader.pet : trader.llamas.find(l => l.group === w.obj));
         if (trader.phase === 'going') {
           w.obj.visible = false;
           poof([p.x, 1, p.z], 14, 0.5);
@@ -2869,24 +2948,529 @@
       trader.desk.visible = show;
       poof([trader.deskSeat.pos[0], 1, trader.deskSeat.pos[2] + 0.8], 8, 0.4);
       warePoofs();
+      if (trader.bowl) {
+        trader.bowl.group.visible = show;
+        const [sx, sz] = plotXZ(...STALL.pet.spot);
+        poof([sx, 0.7, sz], 8, 0.3);
+      }
       shadowDirty = true;
     }
-    // He keeps an eye on the reader when they come near; the llamas nod.
-    if (trader.phase === 'open' && trader.group.visible) {
-      const head = trader.parts.head, g = trader.group.position;
-      const dx = camera.position.x - g.x, dz = camera.position.z - g.z, d = Math.hypot(dx, dz);
-      const near = d < 7 && S.floor === 0;
-      const yaw = near ? Math.max(-1.1, Math.min(1.1, wrapAngle(Math.atan2(dx, dz) - trader.group.rotation.y))) : Math.sin(time * 0.31) * 0.35;
-      const pitch = near ? Math.max(-0.5, Math.min(0.4, -Math.atan2(camera.position.y - 1.55, d))) : 0;
-      const k = Math.min(1, dt * 4);
-      head.rotation.order = 'YXZ';
-      head.rotation.y += (yaw - head.rotation.y) * k;
-      head.rotation.x += (pitch - head.rotation.x) * k;
-    }
+    if (trader.phase === 'open' && trader.group.visible) stepTraderLife(dt, time);
+    if (trader.phase === 'open') { stepPetLife(dt, time); stepBowl(dt, time); }
     trader.llamas.forEach((l, i) => {
       if (!l.group.visible || trader.walkers.some(w => w.obj === l.group && !w.done)) return;
-      l.parts.head.rotation.x = S.reducedMotion ? 0 : Math.sin(time * 0.7 + i * 2.3) * 0.07;
+      stepLlamaLife(l, i, dt, time);
     });
+    poseLeads();
+    // The idle business moves heads about: the shadows follow now and then
+    // while the reader is close enough to see.
+    if (trader.group.visible && camera.position.distanceTo(trader.group.position) < 24) {
+      life.shadow += dt;
+      if (life.shadow > 0.12) { life.shadow = 0; shadowDirty = true; }
+    }
+  }
+
+  // ── Life at the stall ──────────────────────────────────────────────────
+  // While the stall is open the trader and his llamas are never quite still.
+  // They breathe, and every few seconds take up some business of their own:
+  // he glances about, studies his wares, looks back at the llamas, hums a
+  // tune or shifts his weight; they sniff the ground and chew, shake their
+  // heads, stamp a hoof, or watch whoever is about. He greets the reader
+  // with a nod when they walk up, and is glad of every sale. A llama stood
+  // in front of for too long spits.
+  const TRADER_ACTS = [['glance', 3], ['wares', 2], ['llamas', 1.2], ['hum', 1], ['shift', 1.5], ['idle', 2]];
+  const LLAMA_ACTS = [['look', 3], ['sniff', 2], ['shake', 1], ['stamp', 1.2], ['idle', 2.5]];
+  const LLAMA_LEGS = ['rightFront', 'leftFront', 'rightHind', 'leftHind'];
+  const mouth = new T.Vector3();
+
+  function idleLife() {
+    return {act: 'idle', t: 0, dur: rand(1, 4), yaw: 0, pitch: 0, side: 1, leg: null, landed: false, beat: 0, spat: false, cool: rand(12, 30)};
+  }
+  function resetLife() {
+    life.trader = idleLife();
+    life.llamas = trader.llamas.map(idleLife);
+  }
+  function setAct(L, act, dur) {
+    Object.assign(L, {act, t: 0, dur, yaw: rand(-0.9, 0.9), pitch: rand(-0.25, 0.2), side: Math.random() < 0.5 ? -1 : 1, landed: false, beat: 0, spat: false});
+    L.leg = LLAMA_LEGS[Math.floor(Math.random() * 4)];
+  }
+  function pickAct(acts) {
+    let r = Math.random() * acts.reduce((s, a) => s + a[1], 0);
+    for (const [act, w] of acts) if ((r -= w) <= 0) return act;
+    return 'idle';
+  }
+  // 0 → 1 → 0 over an act, easing in and out over its first and last part.
+  const envelope = (L, edge = 0.3) => Math.min(1, L.t / edge, (L.dur - L.t) / edge);
+  const ease = (part, target, k) => part + (target - part) * k;
+  // Where the reader is from a creature: the turn of its head to face
+  // them, and how far off they are.
+  function readerFrom(obj, eyeY) {
+    const g = obj.position, dx = camera.position.x - g.x, dz = camera.position.z - g.z, d = Math.hypot(dx, dz);
+    return {d, yaw: wrapAngle(Math.atan2(dx, dz) - obj.rotation.y), pitch: -Math.atan2(camera.position.y - eyeY, d)};
+  }
+
+  function stepTraderLife(dt, time) {
+    if (!life.trader) resetLife();
+    const L = life.trader, p = trader.parts, inner = trader.group.children[0], still = S.reducedMotion;
+    const r = readerFrom(trader.group, 1.55);
+    const near = r.d < 7 && S.floor === 0;
+    if (near && !life.near && time - life.leftAt > 8 && !still) setAct(L, 'greet', 1.2);
+    if (!near && life.near) life.leftAt = time;
+    life.near = near;
+    L.t += dt;
+    if (L.t >= L.dur && L.act !== 'idle' || L.t >= L.dur && !near) {
+      if (near || still) setAct(L, 'idle', rand(2, 5));
+      else { const act = pickAct(TRADER_ACTS); setAct(L, act, act === 'hum' ? rand(3, 5) : rand(1.6, 3.6)); }
+    }
+    // Watching the reader when they are close, otherwise looking about.
+    let hy = Math.sin(time * 0.31) * 0.35, hp = 0, hr = 0, by = 0, arms = 0, lean = 0, hop = 0, k = Math.min(1, dt * 4);
+    if (near || market.shopOpen) {
+      hy = Math.max(-1.1, Math.min(1.1, r.yaw));
+      hp = Math.max(-0.5, Math.min(0.4, r.pitch));
+    }
+    const e = envelope(L);
+    switch (L.act) {
+      case 'glance': hy = L.yaw * 1.2; hp = L.pitch; break;
+      case 'wares': hy = L.yaw * 0.4; hp = 0.55; arms = -0.12 * e; break;
+      case 'llamas': by = L.side * 0.45 * e; hy = L.side * 1.15; hp = 0.1; break;
+      case 'shift': lean = L.side * 0.05 * e; hy *= 0.5; break;
+      case 'hum':
+        hr = Math.sin(L.t * 3.4) * 0.16 * e;
+        hy = Math.sin(L.t * 1.7) * 0.3;
+        hp = -0.12;
+        if ((L.beat -= dt) <= 0) {
+          L.beat = rand(0.45, 0.8);
+          const h = trader.group.position, c = new T.Color().setHSL(Math.random(), 0.75, 0.6);
+          particles.notes.add({p: [h.x + rand(-0.15, 0.15), 2.15, h.z + rand(-0.15, 0.15)], v: [rand(-0.1, 0.1), rand(0.35, 0.5), rand(-0.1, 0.1)], c: [c.r, c.g, c.b, 1], s: 0.1, g: 0, life: rand(1.2, 1.7), age: 0});
+        }
+        break;
+      case 'greet': {
+        const f = L.t / L.dur;
+        hp += Math.sin(f * Math.PI * 3) * 0.32 * (1 - f);
+        arms = -0.22 * Math.sin(f * Math.PI);
+        k = Math.min(1, dt * 14);
+        break;
+      }
+      case 'happy': {
+        const f = L.t / L.dur;
+        hop = Math.abs(Math.sin(L.t * 9)) * 0.07 * (1 - f);
+        hp = -0.2 + Math.sin(L.t * 18) * 0.16 * (1 - f);
+        arms = -0.4 * Math.abs(Math.sin(L.t * 9)) * (1 - f);
+        k = Math.min(1, dt * 14);
+        if ((L.beat -= dt) <= 0 && f < 0.7) { L.beat = 0.12; sparkle(trader.group.position, 2.2); }
+        break;
+      }
+    }
+    const breath = still ? 0 : Math.sin(time * 1.9);
+    p.head.rotation.y = ease(p.head.rotation.y, hy, k);
+    p.head.rotation.x = ease(p.head.rotation.x, hp + breath * 0.02, k);
+    p.head.rotation.z = ease(p.head.rotation.z, hr, k);
+    p.body.rotation.y = ease(p.body.rotation.y, by, Math.min(1, dt * 4));
+    p.arms.rotation.x = ease(p.arms.rotation.x, p.arms.userData.rest[0] + arms + breath * 0.035, k);
+    p.arms.rotation.y = p.body.rotation.y;
+    inner.rotation.z = ease(inner.rotation.z, lean, Math.min(1, dt * 3));
+    inner.position.y = hop;
+  }
+
+  // The trader is pleased with a sale.
+  function cheer() {
+    if (trader.phase !== 'open' || S.reducedMotion) return;
+    if (!life.trader) resetLife();
+    setAct(life.trader, 'happy', 1.6);
+  }
+
+  // Green sparkles round a head, as when a villager is happy with a trade.
+  function sparkle(at, y) {
+    for (let i = 0; i < 2; i++) {
+      particles.embers.add({p: [at.x + rand(-0.4, 0.4), y + rand(-0.3, 0.3), at.z + rand(-0.4, 0.4)], v: [rand(-0.05, 0.05), rand(0.25, 0.5), rand(-0.05, 0.05)], c: [0.35, 2.2, 0.5, 1], s: rand(0.03, 0.05), life: rand(0.6, 1), age: 0});
+    }
+  }
+
+  function stepLlamaLife(l, i, dt, time) {
+    if (!life.llamas[i]) life.llamas[i] = idleLife();
+    const L = life.llamas[i], p = l.parts, still = S.reducedMotion;
+    const r = readerFrom(l.group, 1.7);
+    const near = r.d < 5 && S.floor === 0;
+    L.t += dt;
+    L.cool -= dt;
+    // Stand in front of a llama for long enough and it lets you know.
+    if (near && r.d < 2.8 && Math.abs(r.yaw) < 0.7 && L.cool <= 0 && L.act !== 'spit' && !still && Math.random() < dt * 0.35) {
+      setAct(L, 'spit', 1.1);
+      L.cool = rand(30, 55);
+    }
+    if (L.t >= L.dur) {
+      if (still) setAct(L, 'idle', 4);
+      else if (L.act === 'sniff') setAct(L, 'chew', rand(2, 4));
+      else {
+        const act = near && Math.random() < 0.5 ? 'look' : pickAct(LLAMA_ACTS);
+        setAct(L, act, {shake: 0.9, stamp: 0.9, sniff: rand(1.5, 2.5)}[act] ?? rand(2, 5));
+      }
+    }
+    let hy = Math.sin(time * 0.23 + i * 4) * 0.2, hp = Math.sin(time * 0.7 + i * 2.3) * 0.07, hr = 0, k = Math.min(1, dt * 3);
+    const e = envelope(L);
+    switch (L.act) {
+      case 'look':
+        if (near) { hy = Math.max(-0.9, Math.min(0.9, r.yaw)); hp = Math.max(-0.4, Math.min(0.3, r.pitch)); }
+        else { hy = L.yaw; hp = L.pitch; }
+        break;
+      case 'sniff': hy = L.yaw * 0.3; hp = 0.95 * e + Math.sin(L.t * 9) * 0.03; break;
+      case 'chew': hp = 0.08 + Math.sin(L.t * 10) * 0.035; hr = Math.sin(L.t * 5) * 0.06; break;
+      case 'shake': {
+        const f = L.t / L.dur;
+        hy = Math.sin(L.t * 26) * 0.32 * (1 - f);
+        hr = Math.sin(L.t * 26 + 1) * 0.2 * (1 - f);
+        k = Math.min(1, dt * 20);
+        break;
+      }
+      case 'stamp': {
+        const f = Math.min(1, L.t / 0.55);
+        p[L.leg].rotation.x = -0.65 * Math.sin(f * Math.PI);
+        if (f >= 1 && !L.landed) {
+          L.landed = true;
+          l.group.updateMatrixWorld(true);
+          const hoof = p[L.leg].localToWorld(mouth.set(0, -0.85, 0));
+          poof([hoof.x, 0.05, hoof.z], 5, 0.1);
+        }
+        hp = -0.1;
+        break;
+      }
+      case 'spit': {
+        hy = Math.max(-0.9, Math.min(0.9, r.yaw));
+        hp = L.t < 0.4 ? -0.35 : 0.25 * Math.max(0, 1 - (L.t - 0.4) * 2);
+        k = Math.min(1, dt * (L.t < 0.4 ? 6 : 22));
+        if (L.t >= 0.42 && !L.spat) { L.spat = true; spit(l); }
+        break;
+      }
+    }
+    if (still) { hy = 0; hp = 0; hr = 0; }
+    p.head.rotation.y = ease(p.head.rotation.y, hy, k);
+    p.head.rotation.x = ease(p.head.rotation.x, hp, k);
+    p.head.rotation.z = ease(p.head.rotation.z, hr, k);
+    p.body.rotation.x = p.body.userData.rest[0] + (still ? 0 : Math.sin(time * 1.6 + i * 1.7) * 0.018);
+    if (L.act !== 'stamp') for (const leg of LLAMA_LEGS) p[leg].rotation.x = ease(p[leg].rotation.x, 0, Math.min(1, dt * 8));
+  }
+
+  // A gob of llama spit, arcing at the reader.
+  function spit(l) {
+    l.group.updateMatrixWorld(true);
+    const from = l.parts.head.localToWorld(mouth.set(0, 0.72, 0.66));
+    const to = camera.position, flight = 0.4;
+    const v = [(to.x - from.x) / flight, (to.y - 0.15 - from.y) / flight + 3.5 * flight, (to.z - from.z) / flight];
+    for (let i = 0; i < 7; i++) {
+      particles.splash.add({p: [from.x, from.y, from.z], v: v.map(c => c * rand(0.92, 1.02) + rand(-0.15, 0.15)), c: [0.92, 0.95, 0.9, 0.85], s: rand(0.03, 0.05), life: flight * rand(0.75, 0.95), age: 0});
+    }
+  }
+
+  // ── The trader's pet ───────────────────────────────────────────────────
+  // He brings one each visit (the market picks which): a dog or a cat that
+  // walks in at his heels and keeps to the counter's left end, or a fish in
+  // a bowl he sets out with his wares. The dog sits, lies down, scratches,
+  // shakes itself, noses about and begs when the reader comes over; the cat
+  // sits, loafs, washes, stretches and wanders off for a look round.
+  // Clicking either fusses it; clicking the bowl feeds the fish.
+  const PET_ACTS = {
+    dog: [['sit', 3], ['lie', 2], ['stand', 1.5], ['scratch', 1], ['shake', 0.8], ['stroll', 1.6]],
+    cat: [['sit', 3], ['lie', 3], ['groom', 1.6], ['stretch', 1], ['stroll', 1.2]],
+  };
+  const PET_DURATION = {scratch: [1.2, 2], shake: [1.1, 1.1], stretch: [1.8, 1.8], groom: [3, 5], lie: [8, 16], stroll: [60, 60]};
+  const petHead = new T.Vector3();
+
+  function disposePet() {
+    disposeGroup(trader.pet?.group);
+    disposeGroup(trader.bowl?.group);
+    trader.pet = null;
+    trader.bowl = null;
+  }
+
+  // The pet the market says he has with him this visit, built if it isn't.
+  function ensurePet() {
+    const kind = market.pet;
+    if (trader.petKind === kind) return;
+    disposePet();
+    trader.petKind = kind;
+    life.pet = null;
+    if (!kind || !S.built?.market || !atlas) return;
+    const [px, pz] = S.built.market.plot;
+    const [sx, sz] = plotXZ(...STALL.pet.spot);
+    const light = S.built.grid.sample([sx, 0.8, sz], [0, 1, 0]);
+    if (kind === 'fish') {
+      const K = {mb: new W.MeshBuilder(), grid: S.built.grid, atlas}, KW = {mb: new W.MeshBuilder(), grid: S.built.grid, atlas};
+      const info = Goods.fishbowl(K, KW);
+      const group = new T.Group();
+      group.position.set(px, 0, pz);
+      const stand = new T.Mesh(K.mb.geometry(T), dynMat);
+      const water = new T.Mesh(KW.mb.geometry(T), waterMat);
+      water.renderOrder = 2;
+      water.userData.noShadow = true;
+      const [lo, hi] = info.glass;
+      const glass = new T.Mesh(new T.BoxGeometry(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]), R.glassMaterial);
+      glass.position.set((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2);
+      glass.renderOrder = 3;
+      glass.userData.noShadow = true;
+      group.add(stand, water, glass);
+      scene.add(group);
+      group.updateMatrixWorld(true);
+      bakeLight(stand);
+      bakeLight(water);
+      const colours = Goods.FISH_COLOURS[Math.floor(Math.random() * Goods.FISH_COLOURS.length)];
+      const mesh = Goods.fish(T, atlas, dynMat, colours, light);
+      mesh.scale.setScalar(0.6);
+      mesh.userData.noShadow = true;
+      group.add(mesh);
+      const [flo, fhi] = info.fish;
+      const spot = () => flo.map((v, k) => v + Math.random() * (fhi[k] - v));
+      trader.bowl = {group, info, fish: {mesh, p: spot(), to: spot(), spot, yaw: Math.random() * 6.28, fed: 0, nibble: 0}, bubble: 1};
+      mesh.position.set(...trader.bowl.fish.p);
+    } else {
+      const c = Goods.creature(T, kind, atlas, dynMat, light);
+      c.parts.head.rotation.order = 'YXZ';
+      trader.pet = {kind, ...c};
+      scene.add(c.group);
+    }
+    shadowDirty = true;
+  }
+
+  function placePet() {
+    const pet = trader.pet;
+    if (!pet) return;
+    const [sx, sz] = plotXZ(...STALL.pet.spot);
+    pet.group.position.set(sx, 0, sz);
+    pet.group.rotation.y = STALL.pet.yaw;
+    restPose(pet);
+  }
+
+  // What of the pet can be clicked, while he is open.
+  function petBox() {
+    if (trader.phase !== 'open' || !S.built?.market) return null;
+    if (trader.bowl?.group.visible) {
+      const [px, pz] = S.built.market.plot, [a, c] = trader.bowl.info.pick;
+      return [[px + a[0], a[1], pz + a[2]], [px + c[0], c[1], pz + c[2]]];
+    }
+    const pet = trader.pet;
+    if (!pet?.group.visible) return null;
+    const g = pet.group.position, r = pet.kind === 'dog' ? 0.45 : 0.35, h = pet.kind === 'dog' ? 0.95 : 0.7;
+    return [[g.x - r, 0, g.z - r], [g.x + r, h, g.z + r]];
+  }
+
+  // Hearts over its head.
+  function hearts(at, count = 1) {
+    for (let i = 0; i < count; i++) {
+      particles.notes.add({p: [at.x + rand(-0.15, 0.15), at.y + rand(0.1, 0.25), at.z + rand(-0.15, 0.15)], v: [rand(-0.05, 0.05), rand(0.3, 0.45), rand(-0.05, 0.05)], c: [1, 0.22, 0.28, 1], s: 0.11, g: 1, life: rand(1, 1.4), age: 0});
+    }
+  }
+
+  // The reader fusses the pet: it is delighted. The fish gets fed instead.
+  function cuddle() {
+    if (trader.phase !== 'open') return;
+    swingArm();
+    if (trader.bowl) { feedFish(); return; }
+    const pet = trader.pet;
+    if (!pet) return;
+    if (!life.pet) life.pet = petLife();
+    setPetAct(life.pet, 'happy', 2.2);
+    hearts(pet.parts.head.getWorldPosition(petHead), 2);
+  }
+
+  function petLife() {
+    return {act: 'sit', t: 0, dur: rand(2, 5), stage: 0, path: null, s: 0, pause: 0, wag: 0, beat: 0, side: 1, yaw: 0, pitch: 0};
+  }
+  function setPetAct(L, act, dur) {
+    Object.assign(L, {act, t: 0, dur, stage: 0, path: null, s: 0, pause: rand(1.6, 3), beat: 0, side: Math.random() < 0.5 ? -1 : 1, yaw: rand(-0.8, 0.8), pitch: rand(-0.2, 0.15)});
+  }
+
+  // Every part eased toward a pose: where it sits and how it is turned
+  // about x. The head turns on its own.
+  function posePet(pet, pose, k) {
+    const def = pet.poses[pose] || {};
+    for (const [name, part] of Object.entries(pet.parts)) {
+      const o = def[name], pos = o?.pos ? o.pos.map(v => v / 16) : part.userData.pos;
+      part.position.set(ease(part.position.x, pos[0], k), ease(part.position.y, pos[1], k), ease(part.position.z, pos[2], k));
+      if (name !== 'head') part.rotation.x = ease(part.rotation.x, o?.rot ?? part.userData.rest[0], k);
+    }
+  }
+
+  // A step along the pet's own little walk; true once it is there.
+  function petWalk(pet, L, dt) {
+    const g = pet.group, [[ax, az], [bx, bz]] = L.path, len = Math.hypot(bx - ax, bz - az);
+    L.s = Math.min(len, L.s + dt * 1.1);
+    const p = alongPath(L.path, L.s);
+    g.position.set(p.x, 0, p.z);
+    if (len > 0.01) g.rotation.y = turnToward(g.rotation.y, Math.atan2(p.dx, p.dz), dt * 8);
+    posePet(pet, 'stand', Math.min(1, dt * 8));
+    stride({s: L.s, kind: pet.kind, parts: pet.parts, obj: g});
+    return L.s >= len;
+  }
+
+  function stepPetLife(dt, time) {
+    const pet = trader.pet;
+    if (!pet?.group.visible || trader.walkers.some(w => w.obj === pet.group && !w.done)) return;
+    if (!life.pet) life.pet = petLife();
+    const L = life.pet, p = pet.parts, g = pet.group, inner = g.children[0], dog = pet.kind === 'dog', still = S.reducedMotion;
+    const [sx, sz] = plotXZ(...STALL.pet.spot);
+    const r = readerFrom(g, dog ? 0.75 : 0.55);
+    const near = r.d < 4 && S.floor === 0;
+    L.t += dt;
+    if (L.t >= L.dur) {
+      if (Math.hypot(g.position.x - sx, g.position.z - sz) > 0.05) {
+        setPetAct(L, 'stroll', 60);
+        L.stage = 3;
+      } else if (still) setPetAct(L, 'sit', 6);
+      else if (near && Math.random() < (dog ? 0.7 : 0.4)) setPetAct(L, dog ? 'beg' : 'watch', rand(3, 6));
+      else {
+        const act = pickAct(PET_ACTS[pet.kind]);
+        const [a, b] = PET_DURATION[act] || [4, 8];
+        setPetAct(L, act, rand(a, b));
+      }
+    }
+    // Sitting and looking about by default; the reader is watched when close.
+    let pose = 'sit', hy = Math.sin(time * 0.4) * 0.3, hp = 0, hr = 0, wag = dog ? 0.12 : 0, hop = 0, k = Math.min(1, dt * 5);
+    let face = STALL.pet.yaw, after = null;
+    if (near) {
+      hy = Math.max(-1, Math.min(1, r.yaw));
+      hp = Math.max(-0.6, Math.min(0.4, r.pitch));
+    }
+    const f = L.t / L.dur;
+    switch (L.act) {
+      case 'sit':
+        if (dog) hp += Math.sin(time * 9) * 0.025;
+        break;
+      case 'stand':
+        pose = 'stand';
+        if (!near) { hy = L.yaw; hp = L.pitch; }
+        wag = dog ? 0.35 : 0;
+        break;
+      case 'lie':
+        pose = 'lie';
+        hy *= 0.3;
+        // Dozing off after a while, breathing slow.
+        if (L.t > 2.5 && !near) { hy = L.side * 0.25; hp = (dog ? 0.28 : 0.2) + Math.sin(time * 0.9) * 0.03; }
+        wag = 0;
+        break;
+      case 'scratch':
+        hy = L.side * 0.35;
+        hr = 0.35;
+        hp = 0.1;
+        after = () => { p.rightHind.rotation.x = -2.1 + Math.sin(L.t * 32) * 0.3; };
+        break;
+      case 'shake':
+        pose = 'stand';
+        if (L.t < dt * 1.5) poof([g.position.x, 0.5, g.position.z], 6, 0.3);
+        after = () => { inner.rotation.z = Math.sin(L.t * 30) * 0.28 * (1 - f); };
+        hr = Math.sin(L.t * 30 + 0.6) * 0.4 * (1 - f);
+        k = Math.min(1, dt * 20);
+        break;
+      case 'groom':
+        hy = 0.35;
+        hp = 0.4 + Math.sin(L.t * 8) * 0.08;
+        after = () => { p.leftFront.rotation.x = -1.35 + Math.sin(L.t * 8) * 0.15; };
+        break;
+      case 'stretch': {
+        pose = 'stand';
+        const e = envelope(L, 0.5);
+        hp = -0.25 * e;
+        after = () => {
+          p.leftFront.rotation.x = p.rightFront.rotation.x = -0.9 * e;
+          p.body.rotation.x = p.body.userData.rest[0] + 0.15 * e;
+        };
+        break;
+      }
+      case 'beg':
+        face = g.rotation.y + r.yaw;
+        hr = (Math.floor(L.t / 1.3) % 2 ? 1 : -1) * 0.32;
+        wag = 0.6;
+        break;
+      case 'watch':
+        face = g.rotation.y + r.yaw;
+        break;
+      case 'happy':
+        pose = dog ? 'stand' : 'sit';
+        face = g.rotation.y + r.yaw;
+        wag = 0.85;
+        hp = -0.25;
+        if (dog) hop = Math.abs(Math.sin(L.t * 9)) * 0.09 * (1 - f);
+        else hr = Math.sin(L.t * 3.2) * 0.3;
+        if ((L.beat -= dt) <= 0 && f < 0.75) { L.beat = 0.35; hearts(p.head.getWorldPosition(petHead)); }
+        if (!dog) after = () => { p.tail1.rotation.x = ease(p.tail1.rotation.x, 2.7, Math.min(1, dt * 6)); p.tail2.rotation.x = ease(p.tail2.rotation.x, 0.35, Math.min(1, dt * 6)); };
+        break;
+      case 'stroll': {
+        // Off to one of the corners, a sniff or a look round there, then back.
+        if (L.stage === 0) {
+          const spots = STALL.pet.roam.map(q => plotXZ(...q)).filter(([x, z]) => Math.hypot(x - g.position.x, z - g.position.z) > 0.3);
+          L.path = [[g.position.x, g.position.z], spots[Math.floor(Math.random() * spots.length)]];
+          L.s = 0;
+          L.stage = 1;
+        }
+        if (L.stage === 1 || L.stage === 3) {
+          if (L.stage === 3 && !L.path) { L.path = [[g.position.x, g.position.z], [sx, sz]]; L.s = 0; }
+          if (petWalk(pet, L, dt)) { L.stage++; L.t = 0; L.path = null; }
+          return;
+        }
+        if (L.stage === 2) {
+          if (dog) { pose = 'stand'; hp = 0.6; hy = Math.sin(L.t * 7) * 0.15; wag = 0.4; }
+          if (L.t > L.pause) L.stage = 3;
+          face = g.rotation.y;
+        }
+        if (L.stage === 4) {
+          pose = 'stand';
+          if (Math.abs(wrapAngle(STALL.pet.yaw - g.rotation.y)) < 0.03) setPetAct(L, 'sit', rand(4, 8));
+        }
+        break;
+      }
+    }
+    if (still) { hy = 0; hp = 0; hr = 0; wag = 0; hop = 0; }
+    g.rotation.y = turnToward(g.rotation.y, face, dt * (L.act === 'stroll' ? 4 : 1.6));
+    posePet(pet, pose, Math.min(1, dt * 5));
+    p.head.rotation.y = ease(p.head.rotation.y, hy, k);
+    p.head.rotation.x = ease(p.head.rotation.x, hp, k);
+    p.head.rotation.z = ease(p.head.rotation.z, hr, k);
+    L.wag = ease(L.wag, wag, Math.min(1, dt * 3));
+    if (p.tail) p.tail.rotation.y = Math.sin(time * 15) * L.wag;
+    if (p.tail1) {
+      p.tail1.rotation.y = still ? 0 : Math.sin(time * 1.2) * 0.3;
+      p.tail2.rotation.y = still ? 0 : Math.sin(time * 1.2 - 1) * 0.4;
+    }
+    inner.position.y = hop;
+    if (L.act !== 'shake') inner.rotation.z = ease(inner.rotation.z, 0, Math.min(1, dt * 6));
+    after?.();
+  }
+
+  // The fish potters about its bowl, letting a bubble go now and then; fed,
+  // it comes up for the flakes.
+  function stepBowl(dt, time) {
+    const b = trader.bowl;
+    if (!b?.group.visible) return;
+    const f = b.fish, [px, pz] = S.built.market.plot, [cx, cy, cz] = b.info.surface;
+    f.fed = Math.max(0, f.fed - dt);
+    if (f.fed > 0 && (f.nibble -= dt) <= 0) {
+      f.nibble = rand(0.3, 0.6);
+      f.to = [cx + rand(-0.08, 0.08), cy - 0.045, cz + rand(-0.08, 0.08)];
+    }
+    const d = f.to.map((v, k) => v - f.p[k]), len = Math.hypot(...d);
+    if (len < 0.015) {
+      if (f.fed <= 0) f.to = f.spot();
+    } else {
+      const step = Math.min(len, (f.fed > 0 ? 0.22 : 0.06) * dt);
+      for (let k = 0; k < 3; k++) f.p[k] += d[k] / len * step;
+      if (Math.hypot(d[0], d[2]) > 0.005) f.yaw = turnToward(f.yaw, Math.atan2(d[0], d[2]), dt * 4);
+    }
+    f.mesh.position.set(...f.p);
+    f.mesh.rotation.y = f.yaw + (S.reducedMotion ? 0 : Math.sin(time * (f.fed > 0 ? 16 : 8)) * 0.2);
+    if (!S.reducedMotion && (b.bubble -= dt) <= 0) {
+      b.bubble = rand(1.5, 4);
+      particles.embers.add({p: [px + f.p[0], f.p[1] + 0.03, pz + f.p[2]], v: [0, rand(0.12, 0.18), 0], c: [0.55, 0.75, 1, 0.7], s: rand(0.012, 0.02), life: rand(0.4, 0.6), age: 0});
+    }
+  }
+
+  // A pinch of flakes on the water, and the fish up after them.
+  function feedFish() {
+    const b = trader.bowl;
+    if (!b) return;
+    const [px, pz] = S.built.market.plot, [cx, cy, cz] = b.info.surface;
+    for (let i = 0; i < 9; i++) {
+      particles.splash.add({p: [px + cx + rand(-0.08, 0.08), cy + 0.28, pz + cz + rand(-0.08, 0.08)], v: [rand(-0.1, 0.1), rand(0, 0.3), rand(-0.1, 0.1)], c: [0.85, 0.55, 0.25, 1], s: rand(0.015, 0.025), life: rand(0.28, 0.34), age: 0});
+    }
+    b.fish.fed = 3.5;
+    b.fish.nibble = 0;
   }
 
   // Sits down at the review desk and switches the computer on; logging off
@@ -2910,6 +3494,7 @@
     market.onBought(id => {
       gui.toast(gui.t('shopBought', gui.t('item_' + id)), gui.t(S.touch ? 'shopBoughtTouch' : 'shopBoughtBody'), trader.pictures[id]);
       swingArm();
+      cheer();
     });
     await shown;
     relock();
@@ -4194,6 +4779,8 @@
             try { stock = JSON.parse(localStorage.getItem('library.market') || 'null'); } catch { /* storage blocked */ }
             // `?trader` has the wandering trader at his stall from the start.
             if (params.has('trader')) stock = {...(stock || {}), clock: LibraryMarket.ARRIVE};
+            // `?pet=dog|cat|fish` picks the pet he has with him.
+            if (params.has('pet')) stock = {...(stock || {}), pet: params.get('pet')};
             emit({type: 'market', state: stock});
             LibraryClassroom.demo(m, emit);
             break;
@@ -4300,7 +4887,7 @@
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
     S, R, W, V, view, hand, sitter, door, weather, climb, blocked, post, mailbox, vault, coins,
-    market, trader, pieces, building, music, pointer, reviewScreen, useDesk, openShop, startBuilding, stopBuilding, buildClick, canPlace, buildTarget, pickPiece, rayAt,
+    market, trader, life, cheer, cuddle, pieces, building, music, pointer, reviewScreen, useDesk, openShop, startBuilding, stopBuilding, buildClick, canPlace, buildTarget, pickPiece, rayAt,
     get hover() { return hover; },
     get flight() { return flight; },
     // Steps the simulation without waiting on the display.

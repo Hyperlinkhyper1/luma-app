@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../../../../app/window_controls.dart';
 import '../../../../../l10n/app_localizations.dart';
 import '../../../../../settings/settings_scope.dart';
 import '../../../../../sync/sync_scope.dart';
@@ -48,20 +49,38 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
   late TextLibraryRepository _repository;
   late final ClassroomBridge _classroom = ClassroomBridge(send: _send);
   Timer? _timeout;
+  Timer? _windowCheck;
   bool _ready = false;
   bool _tickerEnabled = true;
   bool _foreground = true;
+  bool _onScreen = true;
   bool _downloading = false;
   String? _error;
   int _generation = 0;
 
-  bool get _showing => _tickerEnabled && _foreground;
+  bool get _showing => _tickerEnabled && _foreground && _onScreen;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _armTimeout();
+    // Closing luma on the desktop only hides it to the tray, which the
+    // lifecycle never reports, and the hall's post and trader must not keep
+    // counting time nobody spends in it.
+    if (Platform.isWindows || Platform.isLinux) {
+      _windowCheck = Timer.periodic(
+        const Duration(seconds: 2),
+        (_) => unawaited(_checkWindow()),
+      );
+    }
+  }
+
+  Future<void> _checkWindow() async {
+    final onScreen = await windowOnScreen();
+    if (!mounted || onScreen == _onScreen) return;
+    _onScreen = onScreen;
+    _sendVisibility();
   }
 
   @override
@@ -460,6 +479,7 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timeout?.cancel();
+    _windowCheck?.cancel();
     unawaited(_library?.cancel());
     _classroom.dispose();
     super.dispose();

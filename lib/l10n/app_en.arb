@@ -848,6 +848,9 @@
     }
   },
   "textLibraryMcTraderBusy": "The trader is setting up",
+  "textLibraryMcPetDog": "Pet the dog",
+  "textLibraryMcPetCat": "Pet the cat",
+  "textLibraryMcPetFish": "Feed the fish",
   "textLibraryMcShopLeaves": "Leaves in {minutes} min",
   "@textLibraryMcShopLeaves": {
     "placeholders": {

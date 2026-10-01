@@ -1830,6 +1830,15 @@ class LEn extends L {
   String get textLibraryMcTraderBusy => 'The trader is setting up';
 
   @override
+  String get textLibraryMcPetDog => 'Pet the dog';
+
+  @override
+  String get textLibraryMcPetCat => 'Pet the cat';
+
+  @override
+  String get textLibraryMcPetFish => 'Feed the fish';
+
+  @override
   String textLibraryMcShopLeaves(String minutes) {
     return 'Leaves in $minutes min';
   }

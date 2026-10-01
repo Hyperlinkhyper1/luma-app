@@ -1843,6 +1843,15 @@ class LNl extends L {
   String get textLibraryMcTraderBusy => 'De handelaar zet zijn kraam op';
 
   @override
+  String get textLibraryMcPetDog => 'Aai de hond';
+
+  @override
+  String get textLibraryMcPetCat => 'Aai de kat';
+
+  @override
+  String get textLibraryMcPetFish => 'Geef de vis te eten';
+
+  @override
   String textLibraryMcShopLeaves(String minutes) {
     return 'Vertrekt over $minutes min';
   }

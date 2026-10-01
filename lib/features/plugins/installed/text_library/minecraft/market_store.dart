@@ -42,6 +42,7 @@ class MarketState {
     this.crate = const {},
     this.placed = const [],
     this.warned = false,
+    this.pet,
   });
 
   /// Seconds the hall is open between one visit and the next.
@@ -58,6 +59,10 @@ class MarketState {
 
   /// Whether the reader has been told he is packing up this visit.
   final bool warned;
+
+  /// The pet he has with him this visit ('dog', 'cat', 'fish', …); the
+  /// page picks a new one each time he comes and checks the id on load.
+  final String? pet;
 
   static final _id = RegExp(r'^[a-z_]{1,24}$');
 
@@ -110,6 +115,10 @@ class MarketState {
       crate: crate,
       placed: placed,
       warned: json['warned'] == true,
+      pet: switch (json['pet']) {
+        final String id when _id.hasMatch(id) => id,
+        _ => null,
+      },
     );
   }
 
@@ -118,6 +127,7 @@ class MarketState {
     'crate': crate,
     'placed': [for (final p in placed) p.toJson()],
     'warned': warned,
+    if (pet != null) 'pet': pet,
   };
 }
 
