@@ -6,8 +6,6 @@ part of 'api.dart';
 extension SchoolTestsApi on Api {
   static const _maxTokens = 4096;
 
-  static final _keyPattern = RegExp(r'^[\x21-\x7e]{8,400}$');
-
   /// The suite, whether it is the operator's own, and every run.
   Future<Response> _adminSchoolTestsState(Request request) async {
     String? suiteError;
@@ -64,9 +62,10 @@ extension SchoolTestsApi on Api {
     final rawKey =
         body['apiKey'] is String ? (body['apiKey'] as String).trim() : '';
     final apiKey = rawKey.isEmpty ? null : rawKey;
-    if (apiKey != null && !_keyPattern.hasMatch(apiKey)) {
-      return errorResponse(400, 'bad_request',
-          'That API key does not look right — paste it without spaces.');
+    if (apiKey != null) {
+      if (schoolTestKeyProblem(upstream, apiKey) case final problem?) {
+        return errorResponse(400, 'bad_key', problem);
+      }
     }
     if (apiKey == null && !config.configuredAiUpstreams.contains(upstream)) {
       return errorResponse(409, 'no_key',
@@ -90,6 +89,7 @@ extension SchoolTestsApi on Api {
       id: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
       route: route,
       ownKey: apiKey != null,
+      keyHint: apiKey == null ? null : schoolTestKeyHint(apiKey),
       startedAtMs: now,
       total: suite.cases.length,
     );
@@ -132,9 +132,14 @@ extension SchoolTestsApi on Api {
         }
       } catch (_) {}
       if (status != HttpStatus.ok) {
+        final refused =
+            status == HttpStatus.unauthorized || status == HttpStatus.forbidden;
         return SchoolTestReply(
             tokens: tokens,
-            error: scrub('HTTP $status${error == null ? '' : ': $error'}'));
+            fatal: refused,
+            error: scrub('HTTP $status${error == null ? '' : ': $error'}'
+                '${refused ? ' — ${run.route.upstream.label} refused the '
+                    '${apiKey == null ? 'server\'s' : 'pasted'} key' : ''}'));
       }
       return SchoolTestReply(
           content: content,
@@ -155,7 +160,9 @@ extension SchoolTestsApi on Api {
           await schoolTests.persist();
         },
       );
-      run.status = run.stopRequested ? 'stopped' : 'done';
+      run.status = run.note != null
+          ? 'failed'
+          : (run.stopRequested ? 'stopped' : 'done');
     } catch (e) {
       stderr.writeln('[luma] school test ${run.id} failed: ${scrub('$e')}');
       run.status = 'stopped';
@@ -167,7 +174,7 @@ extension SchoolTestsApi on Api {
         '${run.route.upstream.label} · ${run.route.model}: '
             '${run.score.toStringAsFixed(1)}% over ${run.results.length}/'
             '${run.total} cases${run.ownKey ? ' (own key)' : ''}'
-            '${run.status == 'stopped' ? ', stopped' : ''}');
+            '${run.status == 'done' ? '' : ', ${run.status}'}');
   }
 
   Future<Response> _adminSchoolTestsStop(Request request) async {
@@ -279,7 +286,9 @@ extension SchoolTestsApi on Api {
         '<div><label for="stEffort">Reasoning</label>'
         '<select id="stEffort">$effortOptions</select></div>'
         '<div><label for="stKey">API key (optional)</label>'
-        '<input id="stKey" type="password" autocomplete="off" '
+        '<input id="stKey" name="st-provider-key" type="password" '
+        'autocomplete="new-password" data-1p-ignore data-lpignore="true" '
+        'data-bwignore data-form-type="other" '
         'spellcheck="false" placeholder="Use the server\'s key"></div>'
         '<div style="display:flex;gap:6px">'
         '<button id="stRunBtn" type="button" class="btn btn-primary">Run test</button>'
@@ -350,6 +359,11 @@ const _schoolTestsScript = r'''
   const open = new Set();
   let timer = null;
   let suiteLoaded = false;
+  // Only a key the operator typed or pasted counts: a browser filling in
+  // the admin password fires neither event.
+  let keyTouched = false;
+  key.addEventListener('keydown', () => { keyTouched = true; });
+  key.addEventListener('paste', () => { keyTouched = true; });
 
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
@@ -393,14 +407,15 @@ const _schoolTestsScript = r'''
         const state = r.status === 'running'
           ? '<span class="badge warn">running ' + r.done + '/' + r.total + '</span>'
           : r.status === 'done' ? ''
-          : '<span class="badge err">' + esc(r.status) + ' at ' + r.done + '/' + r.total + '</span>';
+          : '<span class="badge err">' + esc(r.status) + ' at ' + r.done + '/' + r.total + '</span>'
+            + (r.note ? '<div class="muted" style="font-size:11px;color:#e07e7e;max-width:340px">' + esc(r.note) + '</div>' : '');
         const main = '<tr data-run="' + esc(r.id) + '">'
           + '<td class="nowrap">' + esc(new Date(r.startedAtMs).toLocaleString()) + '</td>'
           + '<td><strong>' + esc(r.model) + '</strong>'
           + (best && best.id === r.id && finished.length > 1 ? '<span class="badge ok st-best">best</span>' : '')
           + '<div class="muted" style="font-size:11px">' + esc(r.upstreamLabel)
           + (r.reasoningEffort ? ' · ' + esc(r.reasoningEffort) : '')
-          + (r.ownKey ? ' · own key' : '') + '</div>' + state + '</td>'
+          + (r.ownKey ? ' · own key' + (r.keyHint ? ' <code>' + esc(r.keyHint) + '</code>' : '') : '') + '</div>' + state + '</td>'
           + '<td><span class="st-score ' + scoreClass(r.score) + '">' + r.score.toFixed(1) + '%</span></td>'
           + '<td class="st-kinds">' + (kinds || '—') + '</td>'
           + '<td>' + (r.harsh ? '<span class="badge err">' + r.harsh + '</span>' : '0') + '</td>'
@@ -484,11 +499,12 @@ const _schoolTestsScript = r'''
     if (!model.value.trim()) { status.textContent = 'Enter a model first.'; model.focus(); return; }
     runBtn.disabled = true;
     status.textContent = 'Starting…';
+    if (!keyTouched) key.value = '';
     post('/admin/school-tests/run', {
       upstream: upstream.value,
       model: model.value.trim(),
       reasoningEffort: effort.value,
-      apiKey: key.value.trim(),
+      apiKey: keyTouched ? key.value.trim() : '',
     }).then((j) => {
       if (!j.id) {
         status.textContent = j.message || 'Could not start the test.';
@@ -496,7 +512,9 @@ const _schoolTestsScript = r'''
         return;
       }
       key.value = '';
-      status.textContent = 'Running ' + j.model + ' through ' + j.total + ' cases…';
+      keyTouched = false;
+      status.textContent = 'Running ' + j.model + ' through ' + j.total + ' cases'
+        + (j.keyHint ? ' with key ' + j.keyHint : ' with the server\'s key') + '…';
       load();
     }).catch(() => { status.textContent = 'Could not start the test.'; runBtn.disabled = false; });
   });

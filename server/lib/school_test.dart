@@ -445,15 +445,44 @@ SchoolTestCaseResult scoreSchoolTestCase(SchoolTestCase c, String? content,
 
 /// What one model call returned: the reply text, or an error.
 class SchoolTestReply {
-  const SchoolTestReply({this.content, this.tokens = 0, this.error});
+  const SchoolTestReply(
+      {this.content, this.tokens = 0, this.error, this.fatal = false});
 
   final String? content;
   final int tokens;
   final String? error;
+
+  /// The provider refused the key or the account: every other case would
+  /// fail the same way, so the run ends here.
+  final bool fatal;
 }
 
 typedef SchoolTestCall = Future<SchoolTestReply>
     Function(List<Map<String, String>> messages, {required double temperature});
+
+final _pastedKeyPattern = RegExp(r'^[\x21-\x7e]{8,400}$');
+
+/// Why [key] can't be a key for [upstream], or null when it may be. Catches
+/// the commonest slip, a browser filling in a saved password or a key for
+/// another provider: OpenRouter answers anything without its `sk-or-`
+/// prefix with a bare "Missing Authentication header".
+String? schoolTestKeyProblem(AiUpstream upstream, String key) {
+  if (!_pastedKeyPattern.hasMatch(key)) {
+    return 'That API key does not look right — paste it without spaces.';
+  }
+  if (upstream == AiUpstream.openrouter && !key.startsWith('sk-or-')) {
+    return 'That is not an OpenRouter key — they start with "sk-or-". '
+        'Did the browser fill in a saved password?';
+  }
+  return null;
+}
+
+/// Enough of [key] to recognise it, never enough to use it.
+String schoolTestKeyHint(String key) {
+  final dash = key.lastIndexOf('-', math.min(key.length - 1, 12));
+  final head = dash > 0 ? key.substring(0, dash + 1) : key.substring(0, 3);
+  return '$head…${key.substring(key.length - 4)}';
+}
 
 /// One run of the suite against one model.
 class SchoolTestRun {
@@ -463,8 +492,10 @@ class SchoolTestRun {
     required this.ownKey,
     required this.startedAtMs,
     required this.total,
+    this.keyHint,
     this.status = 'running',
     this.finishedAtMs,
+    this.note,
     List<SchoolTestCaseResult>? results,
   }) : results = results ?? [];
 
@@ -474,12 +505,19 @@ class SchoolTestRun {
   /// Whether the operator pasted a key for this run instead of using the
   /// server's. The key itself is never stored.
   final bool ownKey;
+
+  /// The pasted key's ends, `sk-or-…a1b2`, so the operator can tell which
+  /// key a run used. See [schoolTestKeyHint].
+  final String? keyHint;
   final int startedAtMs;
   final int total;
 
-  /// `running`, `done`, `stopped` or `interrupted`.
+  /// `running`, `done`, `stopped`, `failed` or `interrupted`.
   String status;
   int? finishedAtMs;
+
+  /// Why a run ended early, such as the provider refusing the key.
+  String? note;
   final List<SchoolTestCaseResult> results;
 
   /// Set from the dashboard's Stop button; never stored.
@@ -514,9 +552,11 @@ class SchoolTestRun {
         if (route.reasoningEffort != null)
           'reasoningEffort': route.reasoningEffort,
         'ownKey': ownKey,
+        if (keyHint != null) 'keyHint': keyHint,
         'startedAtMs': startedAtMs,
         if (finishedAtMs != null) 'finishedAtMs': finishedAtMs,
         'status': status,
+        if (note != null) 'note': note,
         'total': total,
         'done': results.length,
         'score': double.parse(score.toStringAsFixed(1)),
@@ -545,10 +585,12 @@ class SchoolTestRun {
       id: id,
       route: route,
       ownKey: raw['ownKey'] == true,
+      keyHint: raw['keyHint'] is String ? raw['keyHint'] as String : null,
       startedAtMs: (raw['startedAtMs'] as num?)?.toInt() ?? 0,
       total: (raw['total'] as num?)?.toInt() ?? 0,
       status: status == 'running' ? 'interrupted' : status,
       finishedAtMs: (raw['finishedAtMs'] as num?)?.toInt(),
+      note: raw['note'] is String ? raw['note'] as String : null,
       results: [
         if (raw['results'] case final List list)
           for (final r in list)
@@ -585,6 +627,10 @@ Future<void> runSchoolTestSuite(
           error: reply.error,
           ms: watch.elapsedMilliseconds,
           tokens: reply.tokens));
+      if (reply.fatal && !run.stopRequested) {
+        run.stopRequested = true;
+        run.note = reply.error;
+      }
       await onProgress?.call();
     }
   }

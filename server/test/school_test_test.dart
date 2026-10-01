@@ -240,6 +240,45 @@ void main() {
     expect(run.byKind()['answer'], {'n': 1, 'score': 100.0});
   });
 
+  test('a key the provider refuses ends the run with the reason', () async {
+    final suite = SchoolTestSuite.parse(jsonEncode({
+      'cases': [
+        for (var i = 0; i < 5; i++)
+          {'id': 'q$i', 'kind': 'question', 'lesson': _lesson},
+      ]
+    }));
+    final run = SchoolTestRun(
+      id: 'r',
+      route: const AiModeRoute(AiUpstream.openrouter, 'x/y'),
+      ownKey: true,
+      startedAtMs: 0,
+      total: 5,
+    );
+    await runSchoolTestSuite(
+        run,
+        suite,
+        'Teach.',
+        (messages, {required temperature}) async =>
+            const SchoolTestReply(error: 'HTTP 401: nope', fatal: true),
+        parallel: 1);
+    expect(run.results, hasLength(1));
+    expect(run.note, 'HTTP 401: nope');
+  });
+
+  test(
+      'a pasted key is checked against its provider and shown only by its ends',
+      () {
+    expect(schoolTestKeyProblem(AiUpstream.openrouter, 'hunter2hunter2'),
+        contains('sk-or-'));
+    expect(schoolTestKeyProblem(AiUpstream.openrouter, 'sk-or-v1-abcdef123'),
+        isNull);
+    expect(schoolTestKeyProblem(AiUpstream.mistral, 'abc def ghi'),
+        contains('spaces'));
+    expect(schoolTestKeyProblem(AiUpstream.mistral, 'AbCdEfGh1234'), isNull);
+    expect(schoolTestKeyHint('sk-or-v1-0123456789abcdef'), 'sk-or-v1-…cdef');
+    expect(schoolTestKeyHint('AbCdEfGh1234'), 'AbC…1234');
+  });
+
   test('a stop request ends the run before the next case', () async {
     final suite = SchoolTestSuite.parse(jsonEncode({
       'cases': [
@@ -385,6 +424,13 @@ void main() {
       (status, body) = await send('POST', '/admin/school-tests/run',
           json: {'upstream': 'nope', 'model': 'x/y', 'apiKey': 'sk-12345678'});
       expect(status, 400);
+      (status, body) = await send('POST', '/admin/school-tests/run', json: {
+        'upstream': 'openrouter',
+        'model': 'x/y',
+        'apiKey': 'MyAdminPassword!',
+      });
+      expect(status, 400);
+      expect(jsonDecode(body)['message'], contains('sk-or-'));
     });
 
     test('prompts are validated on save and can be reset', () async {

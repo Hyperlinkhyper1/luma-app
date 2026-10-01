@@ -11632,7 +11632,9 @@ button.hbar{cursor:pointer}
 .maint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:18px}
 .maint-grid .card{margin-bottom:0;display:flex;flex-direction:column;min-width:0}
 .maint-grid .card h2{margin-bottom:8px}
-.maint-desc{color:#8d86a8;font-size:12.5px;line-height:1.55;margin:0 0 16px;max-width:62ch}
+/* Collapsed to one line by default; click to read the rest. */
+.maint-desc{color:#8d86a8;font-size:12px;line-height:1.4;margin:0 0 10px;max-width:62ch;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.maint-desc.open{white-space:normal;overflow:visible;line-height:1.55}
 .maint-desc strong{color:#b4addc;font-weight:600}
 .maint-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 /* Reserves its line so an arriving status message doesn't shift the card. */
@@ -11727,6 +11729,10 @@ window.lumaAskReason = function (form, message) {
   });
 
   document.addEventListener('click', close);
+  document.addEventListener('click', function (e) {
+    var d = e.target.closest && e.target.closest('.maint-desc');
+    if (d) d.classList.toggle('open');
+  });
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape' || !open) return;
     var btn = open.btn;
