@@ -38,9 +38,15 @@ class ModInstaller {
     required ModrinthVersion version,
     required String kind,
   }) async {
-    final destDir = await McPaths.instanceSubDir(instance.id, contentFolderFor(kind));
     final file = version.primaryFile;
-    // The filename comes from Modrinth's API response — treat it as
+    if (file.url.isEmpty) {
+      throw ModrinthApiException(
+        '${project.title} can only be downloaded from its CurseForge page — '
+        'the author has turned off downloads in other launchers.',
+      );
+    }
+    final destDir = await McPaths.instanceSubDir(instance.id, contentFolderFor(kind));
+    // The filename comes from the catalogue's API response — treat it as
     // untrusted and refuse separators/traversal rather than trusting the
     // service (or a spoofed response) to be well-behaved.
     final destPath = safeJoin(destDir.path, file.filename);

@@ -549,9 +549,15 @@ body:has(#vault:not([hidden])) #actionbar, body:has(#letter:not([hidden])) #acti
 .vault-total .dim { align-self: flex-end; color: #555; text-shadow: none; }
 #vault-note { color: #2f6b12; text-shadow: none; text-align: center; max-width: calc(var(--g) * 170px); }
 
+/* The bar along the bottom: coins in hand, then the crate's furniture. */
+#bar {
+  position: absolute; left: 50%; bottom: calc(var(--g) * 8px); transform: translateX(-50%);
+  display: flex; align-items: flex-end; gap: calc(var(--g) * 4px);
+  pointer-events: none !important;
+}
 /* Coins in hand: a hotbar slot with the stack's count in its corner. */
 #purse {
-  position: absolute; left: 50%; bottom: calc(var(--g) * 8px); transform: translateX(-50%);
+  position: relative; flex: none;
   width: calc(var(--g) * 22px); height: calc(var(--g) * 22px);
   background: #8b8b8bcc; border: var(--px) solid #000;
   box-shadow: inset var(--px) var(--px) 0 #373737, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #fff;
@@ -559,6 +565,97 @@ body:has(#vault:not([hidden])) #actionbar, body:has(#letter:not([hidden])) #acti
 }
 #purse img { position: absolute; inset: calc(var(--g) * 3px); width: calc(var(--g) * 16px); height: calc(var(--g) * 16px); image-rendering: pixelated; }
 #purse span { position: absolute; right: var(--px); bottom: 0; white-space: nowrap; }
+
+/* Bought furniture, one slot per piece the trader sells, as the game's
+   hotbar: the picked slot framed in white, its count in the corner. */
+#hotbar {
+  display: flex; padding: var(--px);
+  background: #000a; border: var(--px) solid #000;
+  box-shadow: inset 0 0 0 var(--px) #8b8b8b70;
+  pointer-events: auto !important;
+}
+.slot {
+  position: relative; flex: none;
+  width: calc(var(--g) * 20px); height: calc(var(--g) * 20px);
+  padding: 0; margin: 0; font: inherit; cursor: pointer;
+  background: transparent; border: none;
+  box-shadow: inset 0 0 0 var(--px) #ffffff26;
+}
+.slot img { position: absolute; inset: calc(var(--g) * 2px); width: calc(var(--g) * 16px); height: calc(var(--g) * 16px); pointer-events: none; }
+.slot .count { position: absolute; right: var(--px); bottom: 0; font-size: calc(var(--g) * 8px); line-height: calc(var(--g) * 9px); color: #fff; text-shadow: var(--shadow-text); pointer-events: none; }
+.slot.empty img { opacity: 0.22; filter: grayscale(1); }
+.slot:hover, .slot:focus-visible { background: #ffffff1c; outline: none; }
+.slot.on { z-index: 1; box-shadow: 0 0 0 var(--px) #000, 0 0 0 calc(var(--g) * 2px) #fff, inset 0 0 0 var(--px) #000; }
+#build-tools {
+  position: absolute; right: calc(var(--g) * 8px); top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: stretch; gap: calc(var(--g) * 2px);
+}
+#build-tools .mc-button.on { color: #ffff55; }
+
+/* Looking through the telescope: a dark round eyepiece. */
+#scope {
+  position: absolute; inset: 0; pointer-events: none !important;
+  background: radial-gradient(circle at 50% 50%, transparent 0, transparent 33vmin, #2a1e0e 33.6vmin, #000 35vmin);
+  animation: fade-in 0.4s ease-out;
+}
+body:has(#scope:not([hidden])) #crosshair { opacity: 0.5; }
+
+/* ── The wandering trader's shop ──────────────────────────────────────── */
+.shop-panel {
+  display: flex; flex-direction: column; gap: calc(var(--g) * 6px);
+  width: min(calc(var(--g) * 276px), 96vw); max-height: 94vh;
+  padding: calc(var(--g) * 7px);
+  background: #c6c6c6; border: var(--px) solid #000;
+  box-shadow: inset var(--px) var(--px) 0 #fff, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #555;
+  animation: paper-in 0.3s cubic-bezier(.2, 1.2, .4, 1);
+}
+.shop-panel .mc-text { color: #404040; text-shadow: none; }
+.shop-head { display: flex; justify-content: space-between; align-items: baseline; gap: calc(var(--g) * 6px); }
+#shop-timer { color: #6b4f2a; }
+.shop-body { display: flex; gap: calc(var(--g) * 6px); min-height: 0; }
+#shop-list {
+  display: flex; flex-direction: column; gap: var(--px); flex: none;
+  width: calc(var(--g) * 132px); max-height: 66vh; overflow-y: auto;
+}
+.trade {
+  display: grid; grid-template-columns: calc(var(--g) * 16px) 1fr auto; align-items: center; gap: calc(var(--g) * 4px);
+  flex: none; height: calc(var(--g) * 20px); padding: 0 calc(var(--g) * 3px);
+  font: inherit; font-size: calc(var(--g) * 8px); text-align: left; color: #fff; text-shadow: var(--shadow-text);
+  background: #8b8b8b; border: var(--px) solid #000;
+  box-shadow: inset var(--px) var(--px) 0 #b0b0b0, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #555;
+  cursor: pointer; outline: none; white-space: nowrap;
+}
+.trade img { width: calc(var(--g) * 16px); height: calc(var(--g) * 16px); }
+.trade .name { overflow: hidden; text-overflow: ellipsis; }
+.trade .price { display: flex; align-items: center; gap: var(--px); color: #ffff55; }
+.trade .price img { width: calc(var(--g) * 8px); height: calc(var(--g) * 8px); image-rendering: pixelated; }
+.trade:hover, .trade:focus-visible { background: #9aa2d0; }
+.trade.on { background: #7e88bf; box-shadow: inset 0 0 0 var(--px) #fff; }
+.trade.dear .price { color: #ff6b5b; }
+.trade.sold { animation: sold 0.6s ease-out; }
+@keyframes sold { from { background: #6fbf4f; } }
+.shop-detail { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: calc(var(--g) * 4px); text-align: center; }
+#shop-picture {
+  width: calc(var(--g) * 56px); height: calc(var(--g) * 56px);
+  background: #8b8b8b; border: var(--px) solid #373737;
+  box-shadow: inset var(--px) var(--px) 0 #555, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #fff;
+}
+#shop-where { color: #2b50c8; }
+#shop-desc { max-width: 100%; }
+.shop-price { margin: 0; display: flex; align-items: center; gap: calc(var(--g) * 4px); }
+.shop-price img { width: calc(var(--g) * 12px); height: calc(var(--g) * 12px); image-rendering: pixelated; }
+.shop-price .mc-title { color: #ffd84a; }
+#shop-owned { color: #2f6b12; }
+#shop-buy { width: 100%; margin-top: auto; }
+.shop-foot { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--g) * 6px); }
+.shop-wallet { margin: 0; display: flex; align-items: center; gap: calc(var(--g) * 3px); min-width: 0; }
+.shop-wallet img { width: calc(var(--g) * 10px); height: calc(var(--g) * 10px); image-rendering: pixelated; flex: none; }
+body:has(#shop:not([hidden])) #actionbar { opacity: 0; }
+@media (max-aspect-ratio: 1/1) {
+  .shop-body { flex-direction: column; }
+  #shop-list { width: 100%; max-height: 32vh; }
+  #shop-picture { width: calc(var(--g) * 40px); height: calc(var(--g) * 40px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

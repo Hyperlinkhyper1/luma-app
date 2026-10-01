@@ -6,6 +6,7 @@ import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_install_flow.dart';
+import '../logic/content_api.dart';
 import '../logic/modrinth_api_client.dart';
 import '../minecraft_launcher_repository.dart';
 import 'hover_sync_scroll.dart';
@@ -56,13 +57,13 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
 
   Future<void> _load() async {
     try {
-      final project = await ModrinthApiClient.instance.getProject(widget.projectId);
+      final project = await ContentApi.getProject(widget.projectId);
       if (!mounted) return;
       setState(() => _project = project);
 
       // The team lookup is decoration — a failure there shouldn't cost the
       // user the page.
-      ModrinthApiClient.instance.getProjectMembers(widget.projectId).then(
+      ContentApi.getProjectMembers(widget.projectId).then(
         (members) {
           if (mounted) setState(() => _members = members);
         },
@@ -193,10 +194,10 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
         actions: [
           if (project != null)
             IconButton(
-              tooltip: 'Open on Modrinth',
+              tooltip: 'Open on ${ContentSource.ofId(project.id).label}',
               icon: const Icon(Icons.open_in_new_rounded),
               onPressed: () => _open(
-                ModrinthApiClient.projectUrl(project.projectType, project.slug),
+                ContentApi.projectPageUrl(project),
               ),
             ),
         ],

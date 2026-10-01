@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
+import '../logic/curseforge_api_client.dart';
 import '../logic/mc_paths.dart';
 
+import 'curseforge_key_dialog.dart';
 import 'hover_sync_scroll.dart';
 
 class SettingsTab extends StatefulWidget {
@@ -18,6 +20,7 @@ class SettingsTab extends StatefulWidget {
 class _SettingsTabState extends State<SettingsTab> {
   bool _loaded = false;
   List<String> _runtimeVersions = const [];
+  bool _hasCurseForgeKey = false;
 
   @override
   void initState() {
@@ -35,8 +38,10 @@ class _SettingsTabState extends State<SettingsTab> {
         }
       }
     }
+    final hasKey = await CurseForgeApiClient.instance.hasKey();
     if (!mounted) return;
     setState(() {
+      _hasCurseForgeKey = hasKey;
       _runtimeVersions = versions..sort();
       _loaded = true;
     });
@@ -112,6 +117,62 @@ class _SettingsTabState extends State<SettingsTab> {
                   ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          _curseForgeCard(luma),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editCurseForgeKey() async {
+    if (await showCurseForgeKeyDialog(context)) {
+      setState(() => _hasCurseForgeKey = true);
+    }
+  }
+
+  Future<void> _removeCurseForgeKey() async {
+    await CurseForgeApiClient.instance.saveKey('');
+    if (mounted) setState(() => _hasCurseForgeKey = false);
+  }
+
+  Widget _curseForgeCard(LumaPalette luma) {
+    return LumaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CurseForge',
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _hasCurseForgeKey
+                ? 'API key saved. Browse pages can search and install from CurseForge.'
+                : 'Add your own API key to browse and install CurseForge content.',
+            style: TextStyle(color: luma.textMuted, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              LumaPrimaryButton(
+                label: _hasCurseForgeKey ? 'Change API key' : 'Add API key',
+                icon: Icons.key_rounded,
+                onTap: _editCurseForgeKey,
+              ),
+              if (_hasCurseForgeKey)
+                LumaGhostButton(
+                  label: 'Remove key',
+                  icon: Icons.delete_outline_rounded,
+                  onTap: _removeCurseForgeKey,
+                ),
+            ],
           ),
         ],
       ),

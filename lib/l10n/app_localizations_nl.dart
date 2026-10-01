@@ -1803,4 +1803,202 @@ class LNl extends L {
   @override
   String get textLibraryMcVaultEmpty =>
       'Hier ligt nog niets. De post brengt elk half uur munten.';
+
+  @override
+  String get textLibraryMcTraderName => 'Rondreizende handelaar';
+
+  @override
+  String get textLibraryMcTraderArrived =>
+      'Er is een rondreizende handelaar aangekomen';
+
+  @override
+  String get textLibraryMcTraderArrivedBody =>
+      'Zijn kraam voor het huis is open';
+
+  @override
+  String get textLibraryMcTraderLeaving => 'De handelaar pakt in';
+
+  @override
+  String textLibraryMcTraderLeavingBody(String minutes) {
+    return 'Hij vertrekt over $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTraderGone =>
+      'De rondreizende handelaar is verder getrokken';
+
+  @override
+  String get textLibraryMcTraderTrade =>
+      'Handelen met de rondreizende handelaar';
+
+  @override
+  String get textLibraryMcTraderStall => 'Marktkraam';
+
+  @override
+  String textLibraryMcTraderAway(String minutes) {
+    return 'De handelaar is terug over $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTraderBusy => 'De handelaar zet zijn kraam op';
+
+  @override
+  String textLibraryMcShopLeaves(String minutes) {
+    return 'Vertrekt over $minutes min';
+  }
+
+  @override
+  String textLibraryMcShopBuy(String count) {
+    return 'Kopen voor $count munten';
+  }
+
+  @override
+  String get textLibraryMcShopTooPoor => 'Niet genoeg munten';
+
+  @override
+  String textLibraryMcShopOwned(String count) {
+    return 'In je kist: $count';
+  }
+
+  @override
+  String textLibraryMcShopPlaced(String count) {
+    return 'Geplaatst: $count';
+  }
+
+  @override
+  String textLibraryMcShopWallet(String total, String hand, String vault) {
+    return '$total munten · in de hand $hand · in de kluis $vault';
+  }
+
+  @override
+  String textLibraryMcShopBought(String item) {
+    return 'Gekocht: $item';
+  }
+
+  @override
+  String get textLibraryMcShopBoughtBody => 'Druk op B om het te plaatsen';
+
+  @override
+  String get textLibraryMcShopBoughtTouch =>
+      'Tik erop in de hotbar om het te plaatsen';
+
+  @override
+  String get textLibraryMcWhereInside => 'Voor binnen';
+
+  @override
+  String get textLibraryMcWhereOutside => 'Voor buiten';
+
+  @override
+  String get textLibraryMcWhereBoth => 'Voor binnen of buiten';
+
+  @override
+  String get textLibraryMcItemBed => 'Gezellig bed';
+
+  @override
+  String get textLibraryMcItemAquarium => 'Aquarium';
+
+  @override
+  String get textLibraryMcItemGramophone => 'Grammofoon';
+
+  @override
+  String get textLibraryMcItemCandelabra => 'Kandelaar';
+
+  @override
+  String get textLibraryMcItemSwing => 'Tuinschommel';
+
+  @override
+  String get textLibraryMcItemBirdbath => 'Vogelbad';
+
+  @override
+  String get textLibraryMcItemBeehive => 'Bijenkorfpaal';
+
+  @override
+  String get textLibraryMcItemTelescope => 'Telescoop';
+
+  @override
+  String get textLibraryMcDescBed =>
+      'Een sparrenhouten bed met een lappendeken. Je kunt erop gaan liggen.';
+
+  @override
+  String get textLibraryMcDescAquarium =>
+      'Een verlicht aquarium met zand, kelp en drie tropische vissen.';
+
+  @override
+  String get textLibraryMcDescGramophone =>
+      'Speelt een speeldoosdeuntje als je erop klikt.';
+
+  @override
+  String get textLibraryMcDescCandelabra =>
+      'Smeedijzer, met drie flakkerende kaarsen.';
+
+  @override
+  String get textLibraryMcDescSwing =>
+      'Een latjesbank aan kettingen die zacht in de wind schommelt. Ga erop zitten.';
+
+  @override
+  String get textLibraryMcDescBirdbath =>
+      'Een stenen voet met een ondiepe schaal water.';
+
+  @override
+  String get textLibraryMcDescBeehive =>
+      'Een bijennest op een paal, met zoemende bijen eromheen.';
+
+  @override
+  String get textLibraryMcDescTelescope =>
+      'Kijk erdoor naar de lucht en de wolkenzee.';
+
+  @override
+  String get textLibraryMcBuildHint =>
+      'Klik om te plaatsen · R om te draaien · rechtsklik op een stuk om het op te pakken · B als je klaar bent';
+
+  @override
+  String get textLibraryMcBuildHintTouch =>
+      'Tik op de grond om het te plaatsen · loop met de pijlen';
+
+  @override
+  String get textLibraryMcPickHint =>
+      'Klik op een stuk om het terug in je kist te leggen · B als je klaar bent';
+
+  @override
+  String get textLibraryMcCrateHint =>
+      'Druk op B om je nieuwe meubels te plaatsen';
+
+  @override
+  String get textLibraryMcBuildRotate => 'Draaien (R)';
+
+  @override
+  String get textLibraryMcBuildPick => 'Oppakken (X)';
+
+  @override
+  String get textLibraryMcBuildDone => 'Klaar (B)';
+
+  @override
+  String get textLibraryMcCantPlace => 'Dat past daar niet';
+
+  @override
+  String get textLibraryMcPutBack => 'Terug in je kist';
+
+  @override
+  String textLibraryMcPutBackBody(String item) {
+    return '$item paste niet meer';
+  }
+
+  @override
+  String get textLibraryMcLieDown => 'Gaan liggen';
+
+  @override
+  String get textLibraryMcPlayMusic => 'Speel een deuntje';
+
+  @override
+  String get textLibraryMcStopMusic => 'Stop de muziek';
+
+  @override
+  String get textLibraryMcLookThrough => 'Door de telescoop kijken';
+
+  @override
+  String get textLibraryMcStepBack => 'Stap terug';
+
+  @override
+  String get textLibraryMcScopeHint =>
+      'Beweeg de muis om rond te kijken · Shift of spatie om terug te stappen';
 }

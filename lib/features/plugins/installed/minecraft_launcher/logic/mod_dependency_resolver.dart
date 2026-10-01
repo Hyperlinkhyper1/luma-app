@@ -1,3 +1,4 @@
+import 'content_api.dart';
 import 'modrinth_api_client.dart';
 
 class ResolvedDependency {
@@ -32,7 +33,7 @@ class ModDependencyResolver {
 
         if (dep.versionId != null) {
           try {
-            depVersion = await ModrinthApiClient.instance.getVersion(dep.versionId!);
+            depVersion = await ContentApi.getVersion(dep.versionId!);
             projectId ??= depVersion.projectId;
           } catch (_) {
             // Fall through to resolving by project id below.
@@ -46,7 +47,7 @@ class ModDependencyResolver {
         depVersion ??= await _bestVersion(projectId, gameVersion, loader);
         if (depVersion == null) continue;
 
-        final project = await ModrinthApiClient.instance.getProject(projectId);
+        final project = await ContentApi.getProject(projectId);
         resolved[projectId] = ResolvedDependency(project: project, version: depVersion);
         await visit(depVersion, depth + 1);
       }
@@ -61,7 +62,7 @@ class ModDependencyResolver {
     String gameVersion,
     String loader,
   ) async {
-    final versions = await ModrinthApiClient.instance.getProjectVersions(
+    final versions = await ContentApi.getProjectVersions(
       projectId,
       gameVersion: gameVersion,
       loader: loader,

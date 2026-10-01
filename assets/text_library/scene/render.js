@@ -73,6 +73,7 @@
     uniform float atlasCols;
     uniform sampler2D labels;
     uniform sampler2D skin;
+    uniform sampler2D entity;
     vec4 atlasSample(vec2 p, vec3 t) {
       float cell = t.x;
       if (t.y > 1.5) cell += mod(floor(time * 20.0 / max(t.z, 1.0)), t.y);
@@ -132,7 +133,12 @@
     void main() {
       vec4 tex;
       vec3 albedo;
-      if (vLabel.z > 1.5) {
+      if (vLabel.z > 2.5) {
+        // The trader, his llamas and the bees, from their own sheet.
+        tex = texture2D(entity, vLabel.xy);
+        if (tex.a < 0.5) discard;
+        albedo = tex.rgb * vTint;
+      } else if (vLabel.z > 1.5) {
         // The reader's skin; its outer layer has see-through pixels.
         tex = texture2D(skin, vLabel.xy);
         if (tex.a < 0.5) discard;
@@ -203,7 +209,8 @@
     varying vec4 vLabel;
     void main() {
       if (vLabel.z < 0.5 && atlasSample(vUvp, vTile).a < 0.5) discard;
-      if (vLabel.z > 1.5 && texture2D(skin, vLabel.xy).a < 0.5) discard;
+      if (vLabel.z > 2.5) { if (texture2D(entity, vLabel.xy).a < 0.5) discard; }
+      else if (vLabel.z > 1.5 && texture2D(skin, vLabel.xy).a < 0.5) discard;
       gl_FragColor = vec4(1.0);
     }
   `;
@@ -528,6 +535,7 @@
       atlasCols: {value: 1},
       labels: {value: null},
       skin: {value: null},
+      entity: {value: null},
       shadowMap: {value: null},
       shadowMatrix: {value: new T.Matrix4()},
       shadowTexel: {value: 1 / 2048}, shadowOffset: {value: 0.035},

@@ -7,16 +7,19 @@ import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_install_flow.dart';
 import '../logic/mod_installer.dart';
+import '../logic/content_api.dart';
+import '../logic/curseforge_api_client.dart';
 import '../logic/modrinth_api_client.dart';
 import '../minecraft_launcher_repository.dart';
+import 'curseforge_key_dialog.dart';
 import 'hover_sync_scroll.dart';
 import 'modrinth_ui.dart';
 import 'project_detail_page.dart';
 
-/// Full-screen Modrinth search for one instance: pick a content kind (mods,
-/// resource packs, shader packs), search, and either install straight from a
-/// result tile or open the project for its description, screenshots and
-/// version list.
+/// Full-screen Modrinth or CurseForge search for one instance: pick a
+/// source and a content kind (mods, resource packs, shader packs), search,
+/// and either install straight from a result tile or open the project for
+/// its description, screenshots and version list.
 class BrowseContentPage extends StatefulWidget {
   const BrowseContentPage({super.key, required this.instance, required this.repository});
   final McInstance instance;
@@ -29,6 +32,7 @@ class BrowseContentPage extends StatefulWidget {
 class _BrowseContentPageState extends State<BrowseContentPage> {
   static const _pageSize = 20;
 
+  ContentSource _source = ContentSource.modrinth;
   String _kind = 'mod';
   String _sort = 'relevance';
   final _searchController = TextEditingController();
@@ -40,6 +44,9 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   bool _loading = true;
   bool _loadingMore = false;
   String? _error;
+
+  /// CurseForge was picked but no API key is stored yet.
+  bool _needsKey = false;
 
   Set<String> _installedProjectIds = {};
   final _installing = <String>{};
@@ -88,6 +95,7 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
     setState(() {
       _loading = true;
       _error = null;
+      _needsKey = false;
     });
     try {
       final result = await _fetch(offset: 0);
@@ -97,6 +105,14 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
         _totalHits = result.totalHits;
         _loading = false;
       });
+    } on CurseForgeKeyMissingException {
+      if (!mounted || token != _searchToken) return;
+      setState(() {
+        _needsKey = true;
+        _hits = const [];
+        _totalHits = 0;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted || token != _searchToken) return;
       setState(() {
@@ -104,6 +120,16 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
         _loading = false;
       });
     }
+  }
+
+  void _setSource(ContentSource source) {
+    if (source == _source) return;
+    setState(() => _source = source);
+    _search();
+  }
+
+  Future<void> _addCurseForgeKey() async {
+    if (await showCurseForgeKeyDialog(context)) _search();
   }
 
   Future<void> _loadMore() async {
@@ -127,7 +153,8 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
   Future<ModrinthSearchResult> _fetch({required int offset}) {
     final loaderFilter =
         widget.instance.loader != 'vanilla' ? widget.instance.loader : null;
-    return ModrinthApiClient.instance.search(
+    return ContentApi.search(
+      source: _source,
       query: _searchController.text.trim(),
       projectType: _kind,
       gameVersion: widget.instance.versionId,
@@ -196,12 +223,15 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            for (final entry in modrinthProjectTypes.entries) ...[
+            _sourceToggle(luma),
+            const SizedBox(width: 4),
+            for (final entry in modrinthProjectTypes.entries)
               _kindChip(luma, entry.key, entry.value),
-              const SizedBox(width: 8),
-            ],
           ],
         ),
         const SizedBox(height: 12),
@@ -246,6 +276,46 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
         const SizedBox(height: 10),
         _contextLine(luma),
       ],
+    );
+  }
+
+  /// Modrinth / CurseForge switch, drawn as one segmented pill so it reads
+  /// as "where from" rather than as another content kind.
+  Widget _sourceToggle(LumaPalette luma) {
+    final radius = BorderRadius.circular(context.lumaDecor.pillRadius);
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: luma.surface,
+        borderRadius: radius,
+        border: Border.all(color: luma.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final source in ContentSource.values)
+            InkWell(
+              onTap: () => _setSource(source),
+              borderRadius: radius,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: source == _source ? luma.accent : Colors.transparent,
+                  borderRadius: radius,
+                ),
+                child: Text(
+                  source.label,
+                  style: TextStyle(
+                    color: source == _source ? luma.onAccent : luma.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -360,9 +430,33 @@ class _BrowseContentPageState extends State<BrowseContentPage> {
 
   Widget _buildResults(LumaPalette luma) {
     if (_loading) return const Center(child: CircularProgressIndicator(strokeWidth: 2.4));
+    if (_needsKey) {
+      return LumaEmptyState(
+        icon: Icons.key_rounded,
+        title: 'CurseForge needs an API key',
+        subtitle: 'Add your own free key once and CurseForge mods, '
+            'resource packs and shaders show up here.',
+        action: LumaPrimaryButton(
+          label: 'Add API key',
+          icon: Icons.key_rounded,
+          onTap: _addCurseForgeKey,
+        ),
+      );
+    }
     if (_error != null) {
       return Center(
-        child: LumaEmptyState(icon: Icons.cloud_off_rounded, title: 'Search failed', subtitle: _error),
+        child: LumaEmptyState(
+          icon: Icons.cloud_off_rounded,
+          title: 'Search failed',
+          subtitle: _error,
+          action: _source == ContentSource.curseforge
+              ? LumaGhostButton(
+                  label: 'Change API key',
+                  icon: Icons.key_rounded,
+                  onTap: _addCurseForgeKey,
+                )
+              : null,
+        ),
       );
     }
     if (_hits.isEmpty) {

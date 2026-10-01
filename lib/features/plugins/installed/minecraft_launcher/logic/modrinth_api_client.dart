@@ -144,6 +144,7 @@ class ModrinthProject {
     required this.published,
     required this.updated,
     required this.color,
+    this.pageUrl,
   });
 
   final String id;
@@ -151,6 +152,10 @@ class ModrinthProject {
   final String title;
   final String description;
   final String body;
+
+  /// The project's public page when it lives somewhere other than Modrinth;
+  /// null means [ModrinthApiClient.projectUrl] builds it.
+  final String? pageUrl;
   final String? iconUrl;
   final int downloads;
   final int followers;

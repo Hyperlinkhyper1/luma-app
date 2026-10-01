@@ -5,7 +5,7 @@ import '../../../../../theme/luma_theme.dart';
 import '../data/minecraft_launcher_database.dart';
 import '../logic/mod_installer.dart';
 import '../logic/mod_update_checker.dart';
-import '../logic/modrinth_api_client.dart';
+import '../logic/content_api.dart';
 import '../minecraft_launcher_repository.dart';
 
 /// Runs [ModUpdateChecker] against an instance's installed content and shows
@@ -65,7 +65,7 @@ class _ModUpdatesDialogState extends State<_ModUpdatesDialog> {
   Future<void> _applyUpdate(ModUpdateInfo info) async {
     setState(() => _updating.add(info.installed.id));
     try {
-      final project = await ModrinthApiClient.instance.getProject(info.installed.projectId!);
+      final project = await ContentApi.getProject(info.installed.projectId!);
       await ModInstaller.updateToVersion(
         repository: widget.repository,
         instance: widget.instance,

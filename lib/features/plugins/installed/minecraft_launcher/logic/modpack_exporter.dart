@@ -5,6 +5,7 @@ import 'package:archive/archive_io.dart';
 
 import '../data/minecraft_launcher_database.dart';
 import '../minecraft_launcher_repository.dart';
+import 'curseforge_api_client.dart';
 import 'mc_paths.dart';
 import 'mod_installer.dart';
 import 'modrinth_api_client.dart';
@@ -36,7 +37,11 @@ class ModpackExporter {
     final overrideFileEntries = <McInstalledMod>[];
 
     for (final item in content) {
-      if (item.projectId != null && item.versionId != null) {
+      // The mrpack format only lets a pack download from Modrinth-approved
+      // hosts, so CurseForge files are bundled like manual ones.
+      if (item.projectId != null &&
+          item.versionId != null &&
+          !CurseForgeApiClient.isCurseForgeId(item.projectId!)) {
         try {
           final version = await ModrinthApiClient.instance.getVersion(item.versionId!);
           final file = version.files.firstWhere(

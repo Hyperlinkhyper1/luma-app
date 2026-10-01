@@ -111,8 +111,24 @@
     // The vault in the reading room and the coins the post brings.
     iron_block: 'textures/block/iron_block.png',
     gold_block: 'textures/block/gold_block.png',
+    // The wandering trader's goods.
+    sand: 'textures/block/sand.png',
+    kelp_plant: 'textures/block/kelp_plant.png',
+    moss_block: 'textures/block/moss_block.png',
+    bee_nest_front: 'textures/block/bee_nest_front.png',
+    bee_nest_side: 'textures/block/bee_nest_side.png',
+    bee_nest_top: 'textures/block/bee_nest_top.png',
   };
   const pathOf = entry => (typeof entry === 'string' ? entry : entry?.path);
+
+  // Creature sheets, each under every path it has had; the first one the
+  // jar has wins.
+  const ENTITY_FILES = {
+    trader: ['textures/entity/wandering_trader/wandering_trader.png', 'textures/entity/wandering_trader.png'],
+    llama: ['textures/entity/llama/llama_creamy.png', 'textures/entity/llama/creamy.png'],
+    decor: ['textures/entity/equipment/llama_body/trader_llama.png', 'textures/entity/llama/decor/trader_llama.png'],
+    bee: ['textures/entity/bee/bee.png'],
+  };
 
   // Files the page asks the host for beyond the atlas textures.
   const EXTRA = [
@@ -135,9 +151,13 @@
     'textures/block/campfire_fire.png.mcmeta',
     'textures/block/lantern.png.mcmeta',
     'textures/block/water_still.png.mcmeta',
+    'textures/block/kelp_plant.png.mcmeta',
     'textures/environment/clouds.png',
     // The default look for the reader's own hand, until they import a skin.
     'textures/entity/player/wide/steve.png',
+    // The wandering trader, his llamas and the bees round the hive. Newer
+    // jars keep them in folders of their own; older ones loose.
+    ...Object.values(ENTITY_FILES).flat(),
   ];
   for (let i = 0; i < 26; i++) EXTRA.push(`textures/particle/sga_${String.fromCharCode(97 + i)}.png`);
 
@@ -704,6 +724,51 @@
     });
   }
 
+  // ── The trader's goods ─────────────────────────────────────────────────
+  function kelp() {
+    const r = rng('kelp');
+    return paint(16, 16, (x, y) => {
+      const sway = Math.round(Math.sin(y * 0.55) * 1.5);
+      const stem = Math.abs(x - 7.5 - sway) < 1.2;
+      const leaf = (y % 5 === 1 && x > 7.5 + sway && x < 13 + sway) || (y % 5 === 3 && x < 7.5 + sway && x > 2 + sway);
+      return stem || leaf ? shade([70, 124, 40], 0.8 + r() * 0.35) : null;
+    });
+  }
+
+  function beeNest(face) {
+    const r = rng('bee_nest_' + face);
+    const straw = [200, 152, 64], rim = [150, 100, 40];
+    return paint(16, 16, (x, y) => {
+      if (face === 'top') {
+        const d = Math.max(Math.abs(x - 7.5), Math.abs(y - 7.5));
+        return shade(Math.floor(d) % 3 === 0 ? rim : straw, 0.9 + r() * 0.15);
+      }
+      if (face === 'front' && y >= 8 && y <= 11 && x >= 5 && x <= 10) return shade([40, 28, 16], 0.9 + r() * 0.2);
+      return shade(y % 4 === 0 ? rim : straw, 0.88 + r() * 0.18);
+    });
+  }
+
+  // A patchwork quilt: squares of red, cream and rust, stitched round.
+  function quilt() {
+    const r = rng('quilt');
+    const patches = [[164, 40, 34], [226, 206, 160], [176, 84, 40], [120, 30, 30]];
+    return paint(16, 16, (x, y) => {
+      const k = ((x >> 2) + (y >> 2) * 3 + ((x >> 2) * (y >> 2))) % patches.length;
+      const seam = (x & 3) === 3 || (y & 3) === 3;
+      return shade(patches[k], seam ? 0.74 : 0.92 + r() * 0.12);
+    });
+  }
+
+  // The market stall's canvas, blue and white in broad stripes.
+  function awning() {
+    const r = rng('awning');
+    return paint(16, 16, (x, y) => {
+      const blue = (x >> 2) % 2 === 0;
+      const c = blue ? [44, 74, 156] : [232, 230, 220];
+      return shade(c, (y % 8 === 7 ? 0.86 : 1) * (0.93 + r() * 0.1));
+    });
+  }
+
   function mossyCobble() {
     const base = pixels(cobble('mossy_cobblestone', [124, 124, 120]));
     const r = rng('mossy_cobble');
@@ -859,6 +924,8 @@
     clock_face: clockFace,
     lampshade,
     teacup,
+    quilt,
+    awning,
   };
 
   const PAINTERS = {
@@ -964,6 +1031,12 @@
     sweet_berry_bush: berryBush,
     iron_block: () => metal('iron_block', [214, 214, 214]),
     gold_block: () => metal('gold_block', [246, 204, 58]),
+    sand: () => speckled('sand', [219, 207, 163], [[0.1, [196, 182, 134]], [0.16, [236, 228, 192]]]),
+    kelp_plant: kelp,
+    moss_block: () => speckled('moss_block', [89, 109, 45], [[0.14, [70, 90, 34]], [0.22, [110, 132, 56]]]),
+    bee_nest_front: () => beeNest('front'),
+    bee_nest_side: () => beeNest('side'),
+    bee_nest_top: () => beeNest('top'),
   };
 
   // The season. Grass and ferns are grey in the jar and coloured by the
@@ -1082,6 +1155,7 @@
     }
     if (index.campfire_fire) index.campfire_fire.frameTime = frameTime(files, LIST.campfire_fire, 2);
     if (index.water) index.water.frameTime = frameTime(files, LIST.water, 2);
+    if (index.kelp_plant) index.kelp_plant.frameTime = frameTime(files, LIST.kelp_plant, 2);
     if (index.lantern && index.lantern.frames > 1) index.lantern.frameTime = frameTime(files, LIST.lantern, 8);
     return {canvas: atlas, index, cols, rows, cell: CELL, pad: PAD};
   }
@@ -1092,5 +1166,8 @@
     buildAtlas,
     paint,
     rng,
+    ENTITY_FILES,
+    // Whether the atlas will have a texture by this name.
+    has: name => name in PAINTERS || name in DERIVED,
   };
 })();

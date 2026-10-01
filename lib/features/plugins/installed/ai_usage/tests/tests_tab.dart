@@ -16,9 +16,8 @@ import 'pc_test_page.dart';
 /// The plugin's **Tests** section: a board of hero tiles, one per experiment,
 /// each opening its own screen.
 ///
-/// A [Wrap] rather than a grid so the tiles keep their size and simply flow
-/// onto the next row — a hero tile that stretches to fill a column loses the
-/// framing the artwork was cropped for.
+/// Five square tiles to a row, sized to share the width. They stay square, so
+/// the artwork keeps the framing it was cropped for.
 ///
 /// Tile artwork downloads from the luma server with the benchmark roster (see
 /// [AiBenchmarkScope]); until it arrives the tiles show their gradient
@@ -38,6 +37,13 @@ class _TestsTabState extends State<TestsTab> {
   /// frozen picture forever. Held in state — re-rolling it on every build
   /// would reshuffle the board on hover.
   final int _seed = Random().nextInt(1 << 32);
+
+  /// Tiles per row on a wide window. Narrower windows drop columns rather
+  /// than shrinking a tile below [_minTileWidth], where its label stops
+  /// fitting the purple band.
+  static const int _columns = 5;
+  static const double _minTileWidth = 200;
+  static const double _gap = 18;
 
   @override
   void didChangeDependencies() {
@@ -89,70 +95,85 @@ class _TestsTabState extends State<TestsTab> {
               style: TextStyle(color: luma.textMuted, fontSize: 12.5),
             ),
             const SizedBox(height: 18),
-            Wrap(
-              spacing: 18,
-              runSpacing: 18,
-              children: [
-                LumaHeroTile(
-                  title: 'Pagoda Test',
-                  subtitle: 'Open the test screen',
-                  imageFile: _tileArt(repo, 'pagoda'),
-                  fallbackIcon: Icons.temple_buddhist_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const PagodaTestPage(),
-                    ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = min(
+                  _columns,
+                  max(
+                    1,
+                    (constraints.maxWidth + _gap) ~/ (_minTileWidth + _gap),
                   ),
-                ),
-                LumaHeroTile(
-                  title: 'Engine Test',
-                  subtitle: 'Open the test screen',
-                  imageFile: _tileArt(repo, 'engine'),
-                  fallbackIcon: Icons.precision_manufacturing_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const EngineTestPage(),
-                    ),
-                  ),
-                ),
-                LumaHeroTile(
-                  title: 'PC Test',
-                  subtitle: 'Open the test screen',
-                  imageFile: _tileArt(repo, 'pc'),
-                  fallbackIcon: Icons.computer_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const PcTestPage(),
-                    ),
-                  ),
-                ),
-                LumaHeroTile(
-                  title: 'Cathedral Test',
-                  subtitle: 'New · Open the test screen',
-                  imageFile: _tileArt(repo, 'cathedral'),
-                  fallbackIcon: Icons.church_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const CathedralTestPage(),
-                    ),
-                  ),
-                ),
-                LumaHeroTile(
-                  title: 'Keyboard Test',
-                  subtitle: 'New · Open the test screen',
-                  imageFile: _tileArt(repo, 'keyboard'),
-                  fallbackIcon: Icons.keyboard_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const KeyboardTestPage(),
-                    ),
-                  ),
-                ),
-              ],
+                );
+                final width =
+                    (constraints.maxWidth - _gap * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: _gap,
+                  runSpacing: _gap,
+                  children: _tiles(context, repo, width.floorToDouble()),
+                );
+              },
             ),
           ],
         ),
       ),
     );
   }
+
+  List<Widget> _tiles(
+    BuildContext context,
+    AiBenchmarkRepository repo,
+    double width,
+  ) =>
+      [
+        LumaHeroTile(
+          title: 'Pagoda Test',
+          subtitle: 'Open the test screen',
+          imageFile: _tileArt(repo, 'pagoda'),
+          fallbackIcon: Icons.temple_buddhist_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PagodaTestPage()),
+          ),
+        ),
+        LumaHeroTile(
+          title: 'Engine Test',
+          subtitle: 'Open the test screen',
+          imageFile: _tileArt(repo, 'engine'),
+          fallbackIcon: Icons.precision_manufacturing_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const EngineTestPage()),
+          ),
+        ),
+        LumaHeroTile(
+          title: 'PC Test',
+          subtitle: 'Open the test screen',
+          imageFile: _tileArt(repo, 'pc'),
+          fallbackIcon: Icons.computer_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const PcTestPage()),
+          ),
+        ),
+        LumaHeroTile(
+          title: 'Cathedral Test',
+          subtitle: 'New · Open the test screen',
+          imageFile: _tileArt(repo, 'cathedral'),
+          fallbackIcon: Icons.church_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const CathedralTestPage()),
+          ),
+        ),
+        LumaHeroTile(
+          title: 'Keyboard Test',
+          subtitle: 'New · Open the test screen',
+          imageFile: _tileArt(repo, 'keyboard'),
+          fallbackIcon: Icons.keyboard_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const KeyboardTestPage()),
+          ),
+        ),
+      ];
 }

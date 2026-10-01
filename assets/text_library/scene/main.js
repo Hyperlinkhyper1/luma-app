@@ -84,11 +84,14 @@
         case 'view':
           S.visible = m.visible !== false;
           if (!S.visible && post.loaded) post.save();
+          if (!S.visible && market.loaded) market.save();
           if (S.visible) { loop.wake(); weather.audio.resume(); } else weather.audio.pause();
           break;
         case 'library': onLibrary(m.subjects || []); break;
         // The post and the vault as the app kept them.
         case 'mail': post.load(m.state); break;
+        // The trader's clock, the crate and the placed furniture.
+        case 'market': market.load(m.state); break;
         case 'assets':
           onAssets(m).catch(error => {
             console.error('Library assets failed', error);
@@ -163,6 +166,9 @@
   };
   // The coins: letters in the mailbox, what is in hand, what is in the vault.
   const post = LibraryMail.create({send, reducedMotion: () => S.reducedMotion});
+  // The wandering trader, and the furniture bought from him.
+  const Goods = window.LibraryGoods;
+  const market = LibraryMarket.create({send, catalog: Goods.CATALOG, reducedMotion: () => S.reducedMotion});
 
   try { S.quality = localStorage.getItem('library.quality') || (/Android/.test(navigator.userAgent) ? 'fast' : 'fancy'); } catch { /* storage blocked */ }
   try { S.timeMode = localStorage.getItem('library.time') || 'cycle'; } catch { /* storage blocked */ }
@@ -184,6 +190,15 @@
   ghostMat.uniforms.opacity.value = 0.45;
   // A faint cyan like a structure preview, so it reads as "build here".
   ghostMat.uniforms.highlight.value.setRGB(0.25, 0.55, 0.7);
+  // Water in a fish tank or a bird bath, see-through so the fish show.
+  const waterMat = R.blockMaterial({transparent: true, depthWrite: false});
+  waterMat.uniforms.opacity.value = 0.38;
+  // A piece of furniture about to be placed: green where it fits, red
+  // where it doesn't.
+  const fitMat = R.blockMaterial({transparent: true, depthWrite: false});
+  fitMat.uniforms.highlight.value.setRGB(0.15, 0.7, 0.2);
+  const misfitMat = R.blockMaterial({transparent: true, depthWrite: false});
+  misfitMat.uniforms.highlight.value.setRGB(0.95, 0.12, 0.08);
   let labels = null;
   let atlas = null, canvases = null;
 
@@ -634,12 +649,27 @@
   glyphTexture.magFilter = T.NearestFilter;
   glyphTexture.minFilter = T.NearestFilter;
   glyphTexture.generateMipmaps = false;
+  // A music note for the gramophone, the shape the game's note particle
+  // has, alone in the first cell of a sheet of its own.
+  const noteCanvas = document.createElement('canvas');
+  noteCanvas.width = 128; noteCanvas.height = 128;
+  {
+    const ctx = noteCanvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    for (const [x, y, w, h] of [[3, 10, 4, 3], [2, 11, 6, 1], [6, 2, 2, 9], [8, 2, 3, 2], [10, 4, 2, 2]]) ctx.fillRect(x, y, w, h);
+  }
+  const noteTexture = new T.CanvasTexture(noteCanvas);
+  noteTexture.flipY = false;
+  noteTexture.magFilter = T.NearestFilter;
+  noteTexture.minFilter = T.NearestFilter;
+  noteTexture.generateMipmaps = false;
 
   const particles = {
     dust: new Particles(420, {sunLit: true}),
     embers: new Particles(90),
-    flames: new Particles(24, {shape: 1}),
+    flames: new Particles(64, {shape: 1}),
     glyphs: new Particles(60, {shape: 2, additive: false, glyphs: glyphTexture}),
+    notes: new Particles(40, {shape: 2, additive: false, glyphs: noteTexture}),
     poof: new Particles(160, {additive: false}),
     leaves: new Particles(220, {shape: 3, additive: false}),
     smoke: new Particles(110, {additive: false}),
@@ -705,13 +735,23 @@
       p.c[3] = k;
       return true;
     });
-    // Candle flames: one per wick, flickering.
+    // Candle flames: one per wick, flickering, the bought candelabras' too.
     particles.flames.clear();
-    for (const [i, c] of built.candles.entries()) {
+    const wicks = [...built.candles, ...pieces.list.flatMap(pc => pc.flames)];
+    for (const [i, c] of wicks.entries()) {
       const f = 0.85 + 0.15 * Math.sin(time * 11 + i * 2.1) + 0.05 * Math.sin(time * 27 + i);
       particles.flames.add({p: [c[0], c[1] + 0.02, c[2]], c: [3.4 * f, 2.2 * f, 0.9 * f, 1], s: 0.075 * f});
     }
     particles.flames.step(dt, () => true);
+    // Notes rising out of a playing gramophone's horn.
+    particles.notes.step(dt, p => {
+      p.age += dt;
+      if (p.age > p.life) return false;
+      for (let k = 0; k < 3; k++) p.p[k] += p.v[k] * dt;
+      p.v[1] *= 0.985;
+      p.c[3] = Math.min(1, p.age * 6) * (1 - (p.age / p.life) ** 2);
+      return true;
+    });
     // Enchanting glyphs float from the shelves to the open book.
     if (S.mode === 'desk' && Math.random() < dt * 14 && S.glyphCount > 0) {
       const from = [rand(-4.5, 3.5), rand(0.4, 3.4), built.layout.endWall + 1.3];
@@ -839,7 +879,10 @@
     $('download-note').hidden = S.vanilla;
     $('download').disabled = false;
     skin.vanilla = files['textures/entity/player/wide/steve.png'] || null;
+    await applyEntitySheet(files);
     rebuildWorld();
+    trader.pictures = makePictures();
+    refreshHotbar();
     await applySkin();
     finishLoading();
   }
@@ -914,6 +957,8 @@
     buildHand();
     buildSitter();
     buildClock();
+    buildMarket();
+    rebuildPieces();
     rebuildDynamic();
     if (particles.dust.items.length === 0) seedDust();
     rebuildA11y();
@@ -1101,11 +1146,14 @@
   }
 
   // Sitting: eyes a head above the seat, looking wherever the reader turns.
+  // A bed lays you lower, a telescope narrows the view, and a swing carries
+  // you with it.
   function seatedPose() {
     const seat = S.seat;
     const dir = new T.Vector3(-Math.sin(S.yaw) * Math.cos(S.pitch), Math.sin(S.pitch), -Math.cos(S.yaw) * Math.cos(S.pitch));
-    const pos = new T.Vector3(seat.pos[0], seat.pos[1] + 1.1, seat.pos[2]);
-    return {pos, target: pos.clone().addScaledVector(dir, 6), fov: walkFov()};
+    const at = seatPos(seat);
+    const pos = new T.Vector3(at[0], at[1] + (seat.eye ?? 1.1), at[2]);
+    return {pos, target: pos.clone().addScaledVector(dir, 6), fov: seat.fov || walkFov()};
   }
 
   function flyTo(pose, {duration} = {}) {
@@ -1215,6 +1263,11 @@
     // it was captured before.
     if (look.locked && !looking(mode)) { look.resume = true; document.exitPointerLock(); }
     if (looking(mode) && look.resume) { look.resume = false; lockPointer(); }
+    // Building is something done on your feet in the hall.
+    if (mode !== 'overview' && building.on) {
+      building.on = false;
+      if (building.ghost) building.ghost.visible = false;
+    }
     S.mode = mode;
     refreshHud();
     rebuildA11y();
@@ -1252,7 +1305,7 @@
     S.stand = [S.px, S.pz];
     S.seat = {...seat, pos};
     S.yaw = seat.yaw;
-    S.pitch = seat.desk ? -0.35 : -0.05;
+    S.pitch = seat.pitch ?? (seat.desk ? -0.35 : -0.05);
     S.vel = [0, 0];
     S.goal = null;
     setMode('seated');
@@ -1264,9 +1317,12 @@
     const seat = S.seat;
     if (!seat) return setMode('overview');
     const fx = -Math.sin(seat.yaw), fz = -Math.cos(seat.yaw);
-    const front = [seat.pos[0] + fx * 0.75, seat.pos[2] + fz * 0.75];
+    // From a telescope you straighten up where you stood; from a seat you
+    // step out in front of it.
+    const front = seat.stand ? [seat.pos[0], seat.pos[2]] : [seat.pos[0] + fx * 0.75, seat.pos[2] + fz * 0.75];
     if (!blocked(...front)) { S.px = front[0]; S.pz = front[1]; }
     else if (S.stand) { S.px = S.stand[0]; S.pz = S.stand[1]; }
+    if (seat.fov) S.pitch = Math.max(-0.4, Math.min(0.4, S.pitch));
     S.seat = null;
     setMode('overview');
     return flyTo(overviewPose(), {duration: S.reducedMotion ? 0.2 : 0.45});
@@ -1320,15 +1376,19 @@
     }
     const seated = S.mode === 'seated';
     $('back').hidden = !(inCase || seated);
-    $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : seated ? 'standUp' : 'back');
+    const scope = seated && !!S.seat?.telescope;
+    $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : scope ? 'stepBack' : seated ? 'standUp' : 'back');
+    $('scope').hidden = !scope;
     const others = S.built ? S.built.cases.filter(cs => cs.subject).length : 0;
     // The arrows step between bookcases, so they only show at one.
     $('case-prev').hidden = $('case-next').hidden = !(inCase && others > 1);
     const empty = S.subjects.length === 0 && S.mode === 'overview';
     let hint = '';
     if (S.mode === 'placing') hint = gui.t('moveHint');
-    else if (seated) hint = S.touch ? '' : gui.t('standHint');
+    else if (S.mode === 'overview' && building.on) hint = building.flash > performance.now() ? gui.t('cantPlace') : gui.t(building.id ? (S.touch ? 'buildHintTouch' : 'buildHint') : 'pickHint');
+    else if (seated) hint = S.touch ? '' : gui.t(scope ? 'scopeHint' : 'standHint');
     else if (post.state.hand > 0 && S.mode === 'overview') hint = gui.t('handHint');
+    else if (market.crateTotal() > 0 && S.mode === 'overview' && !S.touch) hint = gui.t('crateHint');
     else if (empty) hint = gui.t('emptyHall');
     else if (S.mode === 'overview' && !S.walked) hint = gui.t('walkHint');
     else if (S.mode === 'overview' && !look.locked && !S.touch) hint = gui.t('lookHint');
@@ -1337,6 +1397,7 @@
     $('move-pad').hidden = !(S.mode === 'overview' && S.touch);
     $('crosshair').hidden = !(look.locked && looking(S.mode));
     post.refreshPurse(looking(S.mode));
+    refreshHotbar();
   }
 
   // ── Picking ────────────────────────────────────────────────────────────
@@ -1478,6 +1539,18 @@
         const hit = spot ? boxHit(ray, ...spot.box) : null;
         if (hit != null && hit < REACH) consider(hit, {kind});
       }
+      for (const box of stallBoxes()) {
+        const hit = boxHit(ray, ...box);
+        if (hit != null && hit < REACH) consider(hit, {kind: 'trader', box});
+      }
+    }
+    // Furniture that does something: a bed, the swing, the telescope, the
+    // gramophone.
+    for (const pc of pieces.list) {
+      if (pc.data.floor !== S.floor || !pc.act || (S.seat && S.seat.piece === pc)) continue;
+      const box = pc.seat ? pc.seat.box : pc.box;
+      const hit = boxHit(ray, ...box);
+      if (hit != null && hit < REACH) consider(hit, {kind: 'piece', piece: pc, box, at: ray.at(hit, new T.Vector3()).toArray()});
     }
     return best;
   }
@@ -1488,6 +1561,8 @@
     const [x, y] = look.locked ? [innerWidth / 2, innerHeight / 2] : [pointer.x, pointer.y];
     const ray = rayAt(x, y);
     if (looking(S.mode)) {
+      // Building has its own preview and outline.
+      if (building.on && S.mode === 'overview') { setHover(null); return; }
       setHover(pickWorld(ray), x, y);
     } else if (S.mode === 'shelf' || S.mode === 'placing') {
       const c = currentCase();
@@ -1538,6 +1613,14 @@
     } else if (h.kind === 'stairs') {
       outlineBox(h.box);
       gui.tooltip([gui.t(h.dir > 0 ? 'upstairs' : 'downstairs')], x, y);
+    } else if (h.kind === 'trader') {
+      outlineBox(h.box);
+      gui.tooltip(traderTooltip(), x, y);
+    } else if (h.kind === 'piece') {
+      outlineBox(h.box);
+      const pc = h.piece;
+      const label = {lie: 'lieDown', sit: 'sit', scope: 'lookThrough', music: music.piece === pc ? 'stopMusic' : 'playMusic'}[pc.act];
+      gui.tooltip([gui.t(label), {text: gui.t('item_' + pc.data.id), cls: 'sub'}], x, y);
     } else {
       const g = h.g;
       // The game's thin dark outline: round the book under the pointer, or
@@ -1573,6 +1656,11 @@
   async function click() {
     if (S.mode === 'climbing') return;
     if (look.locked || S.mode === 'overview') swingArm();
+    // Building: a click places what is in hand, or picks a piece back up.
+    if (building.on && S.mode === 'overview') {
+      if (!flight) buildClick();
+      return;
+    }
     if (!hover) {
       if (S.mode === 'overview' && S.built && !flight && !look.locked) walkToward(pointer.x, pointer.y);
       return;
@@ -1591,6 +1679,13 @@
       await useMailbox();
     } else if (h.kind === 'vault') {
       await useVault();
+    } else if (h.kind === 'trader') {
+      if (trader.phase === 'open') await openShop();
+      else gui.toast(gui.t('traderStall'), traderTooltip()[1].text, traderIcon || post.coin);
+    } else if (h.kind === 'piece') {
+      const pc = h.piece;
+      if (pc.act === 'music') toggleMusic(pc);
+      else if (pc.seat) await sit(pc.seat, h.at);
     } else if (h.kind === 'drawer') {
       if (S.mode === 'shelf' || S.mode === 'placing') toggleDrawer(h.c, h.d);
       else {
@@ -1883,7 +1978,7 @@
       if (!b.grid.solid(cx, y - 1, cz)) return true;
       if (b.grid.solid(cx, y, cz) || b.grid.solid(cx, y + 1, cz)) return true;
     }
-    for (const list of [b.colliders, floor === 0 ? door.colliders : []]) {
+    for (const list of [b.colliders, floor === 0 ? door.colliders : [], pieces.colliders, floor === 0 ? trader.colliders : []]) {
       for (const [x0, z0, x1, z1, f] of list) {
         if ((f || 0) !== floor) continue;
         if (x > x0 - BODY && x < x1 + BODY && z > z0 - BODY && z < z1 + BODY) return true;
@@ -2268,17 +2363,1008 @@
       gui.toast(gui.t('newMail'), gui.t('newMailBody'), post.coin);
       if (S.built?.mailbox) poof(S.built.mailbox.flag, 6, 0.2);
     }
+    if (market.shopOpen) market.refreshShop();
   });
 
-  // The post counts the time the hall is open and on screen.
+  // The post and the trader count the time the hall is open and on screen.
   let postClock = performance.now();
   setInterval(() => {
     const now = performance.now();
     const dt = Math.min(5, (now - postClock) / 1000);
     postClock = now;
-    if (S.visible && !document.hidden) post.tick(dt);
+    if (S.visible && !document.hidden) {
+      post.tick(dt);
+      market.tick(dt);
+      if (market.shopOpen) market.refreshShop();
+    }
   }, 1000);
-  addEventListener('pagehide', () => { if (post.loaded) post.save(); });
+  addEventListener('pagehide', () => {
+    if (post.loaded) post.save();
+    if (market.loaded) market.save();
+  });
+
+  // Small helpers for the trader, the furniture and building.
+  const wrapAngle = a => (((a + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  const turnToward = (a, b, step) => a + Math.max(-step, Math.min(step, wrapAngle(b - a)));
+  const minutes = s => Math.max(1, Math.ceil(s / 60));
+  function disposeGroup(g) {
+    if (!g) return;
+    scene.remove(g);
+    g.traverse(o => o.geometry?.dispose());
+  }
+  // Every vertex of a mesh at one light level.
+  function fillLight(mesh, l) {
+    const attr = mesh.geometry.attributes.light;
+    for (let i = 0; i < attr.count; i++) attr.setXYZ(i, l[0], l[1], l[2]);
+    attr.needsUpdate = true;
+  }
+  // Each vertex of a mesh lit by the hall's light where it now stands, as
+  // the hall's own blocks are.
+  function bakeLight(mesh) {
+    const g = mesh.geometry, pos = g.attributes.position, nrm = g.attributes.normal, attr = g.attributes.light;
+    const m = mesh.matrixWorld, nm = new T.Matrix3().getNormalMatrix(m);
+    const v = new T.Vector3(), n = new T.Vector3(), grid = S.built.grid;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      n.fromBufferAttribute(nrm, i).applyMatrix3(nm).normalize();
+      const l = grid.sample([v.x + n.x * 0.3, v.y + n.y * 0.3, v.z + n.z * 0.3], [n.x, n.y, n.z]);
+      attr.setXYZ(i, l[0], l[1], l[2]);
+    }
+    attr.needsUpdate = true;
+  }
+
+  // One of the trader's goods as a group: its fixed part, and each moving
+  // part on its own pivot. `live` gives the water its see-through look.
+  function assemble(id, {material, light = null, live = false}) {
+    const info = Goods.build(id, atlas);
+    const group = new T.Group();
+    const main = new T.Mesh(info.main.geometry(T), material);
+    group.add(main);
+    const meshes = [main];
+    const parts = {};
+    for (const [name, mb] of Object.entries(info.parts)) {
+      const water = name === 'water' && live;
+      const mesh = new T.Mesh(mb.geometry(T), water ? waterMat : material);
+      if (water) { mesh.renderOrder = 2; mesh.userData.noShadow = true; }
+      const pivot = new T.Group();
+      pivot.rotation.order = 'YXZ';
+      if (info.pivots?.[name]) pivot.position.set(...info.pivots[name]);
+      pivot.add(mesh);
+      group.add(pivot);
+      parts[name] = pivot;
+      meshes.push(mesh);
+    }
+    if (parts.tube) parts.tube.rotation.x = -(info.aim || 0);
+    if (light) for (const m of meshes) fillLight(m, light);
+    return {group, info, parts, meshes};
+  }
+
+  // ── The wandering trader ───────────────────────────────────────────────
+  // When his hour comes round he appears at the lookout and walks up the
+  // path to his stall, his llamas behind him; he unrolls the canvas and sets
+  // his wares out on the counter. Half an hour later he rolls it up again and
+  // walks off the way he came.
+  const STALL = Goods.STALL;
+  const WALK = 1.35;
+  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
+  let entityTexture = null, traderIcon = null;
+
+  async function applyEntitySheet(files) {
+    const sheet = await Goods.entitySheet(files);
+    entityTexture?.dispose();
+    entityTexture = new T.CanvasTexture(sheet.canvas);
+    entityTexture.flipY = false;
+    entityTexture.magFilter = T.NearestFilter;
+    entityTexture.minFilter = T.NearestFilter;
+    entityTexture.generateMipmaps = false;
+    entityTexture.colorSpace = T.SRGBColorSpace;
+    U.entity.value = entityTexture;
+    // His face under his hood, for the toasts.
+    const icon = document.createElement('canvas');
+    icon.width = 16; icon.height = 16;
+    const ctx = icon.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sheet.canvas, 8, 8, 8, 8, 0, 0, 16, 16);
+    ctx.drawImage(sheet.canvas, 40, 8, 8, 8, 0, 0, 16, 16);
+    traderIcon = icon.toDataURL();
+  }
+
+  const plotXZ = (x, z) => { const [px, pz] = S.built.market.plot; return [px + x, pz + z]; };
+
+  function buildMarket() {
+    disposeGroup(trader.group);
+    for (const l of trader.llamas) disposeGroup(l.group);
+    disposeGroup(trader.awning);
+    disposeGroup(trader.wares);
+    disposeGroup(trader.leads);
+    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, walkers: [], colliders: []});
+    const m = S.built?.market;
+    if (!m || !atlas) return;
+    const [px, pz] = m.plot;
+    const [tx, tz] = plotXZ(...STALL.trader);
+    const light = S.built.grid.sample([tx, 1.2, tz], [0, 1, 0]);
+    const t = Goods.creature(T, 'trader', atlas, dynMat, light);
+    trader.group = t.group;
+    trader.parts = t.parts;
+    scene.add(t.group);
+    trader.llamas = STALL.llamas.map(() => {
+      const l = Goods.creature(T, 'llama', atlas, dynMat, light);
+      scene.add(l.group);
+      return l;
+    });
+    // The canvas over the counter, hinged at the back so it can roll up.
+    const mb = new W.MeshBuilder();
+    Goods.awning({mb, grid: S.built.grid, atlas});
+    trader.awning = new T.Mesh(mb.geometry(T), dynMat);
+    trader.awning.position.set(px + STALL.awning.back[0], STALL.awning.back[1], pz);
+    scene.add(trader.awning);
+    trader.awning.updateMatrixWorld(true);
+    bakeLight(trader.awning);
+    // A little model of each of his goods along the counter.
+    trader.wares = new T.Group();
+    const wares = STALL.wares;
+    const wareLight = S.built.grid.sample([px + wares.x, wares.y + 0.3, pz + 2.5], [0, 1, 0]);
+    Goods.CATALOG.forEach((item, i) => {
+      const a = assemble(item.id, {material: dynMat, light: wareLight});
+      const size = new T.Box3().setFromObject(a.group).getSize(new T.Vector3());
+      a.group.scale.setScalar(0.27 / Math.max(size.x, size.y * 0.8, size.z));
+      a.group.rotation.y = -Math.PI / 2;
+      a.group.position.set(px + wares.x, wares.y + 0.001, pz + wares.z0 + (wares.z1 - wares.z0) * (i + 0.5) / Goods.CATALOG.length);
+      trader.wares.add(a.group);
+    });
+    scene.add(trader.wares);
+    // The llamas' leads, sagging to their post.
+    const [hx, hz] = plotXZ(...STALL.post);
+    const points = [];
+    for (const [lx0, lz0, yaw] of STALL.llamas) {
+      const [lx, lz] = plotXZ(lx0, lz0);
+      const a = new T.Vector3(lx + Math.sin(yaw) * 0.42, 1.28, lz + Math.cos(yaw) * 0.42), b = new T.Vector3(hx, 1.1, hz);
+      for (let k = 0; k < 8; k++) {
+        const p0 = a.clone().lerp(b, k / 8), p1 = a.clone().lerp(b, (k + 1) / 8);
+        p0.y -= Math.sin(k / 8 * Math.PI) * 0.22;
+        p1.y -= Math.sin((k + 1) / 8 * Math.PI) * 0.22;
+        points.push(p0, p1);
+      }
+    }
+    trader.leads = new T.LineSegments(new T.BufferGeometry().setFromPoints(points), new T.LineBasicMaterial({color: 0x4a3018}));
+    trader.leads.userData.noShadow = true;
+    scene.add(trader.leads);
+    syncMarket();
+  }
+
+  // Everyone where they belong for the trader being in or out, with no
+  // walking: on loading, or after the hall is rebuilt.
+  function syncMarket() {
+    if (!trader.group) return;
+    trader.walkers = [];
+    const here = market.loaded && market.present;
+    trader.phase = here ? 'open' : 'away';
+    trader.open = here ? 1 : 0;
+    if (here) placeAtRest();
+    trader.group.visible = here;
+    for (const l of trader.llamas) l.group.visible = here;
+    trader.wares.visible = here;
+    trader.leads.visible = here;
+    poseAwning();
+    refreshTraderColliders();
+    shadowDirty = true;
+  }
+
+  function placeAtRest() {
+    const [tx, tz] = plotXZ(...STALL.trader);
+    trader.group.position.set(tx, 0, tz);
+    trader.group.rotation.y = -Math.PI / 2;
+    STALL.llamas.forEach(([x, z, yaw], i) => {
+      const [lx, lz] = plotXZ(x, z);
+      trader.llamas[i].group.position.set(lx, 0, lz);
+      trader.llamas[i].group.rotation.y = yaw;
+    });
+    for (const parts of [trader.parts, ...trader.llamas.map(l => l.parts)]) restLegs(parts);
+  }
+
+  function poseAwning() {
+    if (!trader.awning) return;
+    const k = 0.04 + 0.96 * easeInOut(trader.open);
+    trader.awning.scale.set(k, k, 1);
+  }
+
+  // The way in from the lookout: down the path to level with the stall,
+  // across to its near side, then round behind the counter. The llamas peel
+  // off to either side of their post.
+  function routes() {
+    const [ax, az] = S.built.market.arrive;
+    const gate = plotXZ(...STALL.gate);
+    const lead = [[ax, az], [ax, gate[1]], gate];
+    const [l0, l1] = STALL.llamas;
+    return {
+      trader: [...lead, plotXZ(...STALL.trader)],
+      llamas: [
+        [...lead, plotXZ(l0[0], STALL.gate[1]), plotXZ(l0[0], l0[1])],
+        [...lead, plotXZ(STALL.llamaLane, STALL.gate[1]), plotXZ(STALL.llamaLane, l1[1]), plotXZ(l1[0], l1[1])],
+      ],
+    };
+  }
+
+  function walker(obj, parts, kind, path, delay, restYaw) {
+    let length = 0;
+    for (let i = 1; i < path.length; i++) length += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+    return {obj, parts, kind, path, delay, restYaw, length, s: 0, t: 0, started: false, done: false, settle: null, yaw: obj.rotation.y};
+  }
+
+  function alongPath(path, s) {
+    for (let i = 1; i < path.length; i++) {
+      const [ax, az] = path[i - 1], [bx, bz] = path[i];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (s <= len || i === path.length - 1) {
+        const k = len ? Math.min(1, s / len) : 1;
+        return {x: ax + (bx - ax) * k, z: az + (bz - az) * k, dx: bx - ax, dz: bz - az};
+      }
+      s -= len;
+    }
+    const [x, z] = path[path.length - 1];
+    return {x, z, dx: 0, dz: 1};
+  }
+
+  function startComing() {
+    if (!trader.group) return;
+    const r = routes();
+    trader.phase = 'coming';
+    trader.open = 0;
+    trader.walkers = [
+      walker(trader.group, trader.parts, 'trader', r.trader, 0, -Math.PI / 2),
+      ...trader.llamas.map((l, i) => walker(l.group, l.parts, 'llama', r.llamas[i], 1.4 + i * 1.3, STALL.llamas[i][2])),
+    ];
+    for (const w of trader.walkers) w.obj.visible = false;
+    trader.wares.visible = false;
+    trader.leads.visible = false;
+    poseAwning();
+    refreshTraderColliders();
+  }
+
+  function startGoing() {
+    if (!trader.group || trader.phase === 'away') return;
+    if (trader.phase === 'coming') {
+      placeAtRest();
+      trader.group.visible = true;
+      for (const l of trader.llamas) l.group.visible = true;
+    }
+    const r = routes();
+    trader.phase = 'going';
+    trader.leads.visible = false;
+    trader.walkers = [
+      walker(trader.group, trader.parts, 'trader', r.trader.slice().reverse(), 1.3, null),
+      ...trader.llamas.map((l, i) => walker(l.group, l.parts, 'llama', r.llamas[i].slice().reverse(), 0.4 + i * 0.7, null)),
+    ];
+    refreshTraderColliders();
+  }
+
+  // Legs swinging with the distance walked.
+  function stride(w) {
+    const a = Math.sin(w.s * 4.2) * 0.6;
+    if (w.kind === 'trader') {
+      w.parts.rightLeg.rotation.x = a;
+      w.parts.leftLeg.rotation.x = -a;
+      w.parts.head.rotation.set(0, 0, 0);
+    } else {
+      w.parts.rightFront.rotation.x = a; w.parts.leftHind.rotation.x = a;
+      w.parts.leftFront.rotation.x = -a; w.parts.rightHind.rotation.x = -a;
+    }
+  }
+  function restLegs(parts) {
+    for (const name of ['rightLeg', 'leftLeg', 'rightFront', 'leftFront', 'rightHind', 'leftHind']) if (parts[name]) parts[name].rotation.x = 0;
+  }
+
+  // Where the trader and his llamas stand in the way while he is open.
+  function refreshTraderColliders() {
+    trader.colliders = [];
+    if (trader.phase !== 'open' || !S.built?.market) return;
+    const [tx, tz] = plotXZ(...STALL.trader);
+    trader.colliders.push([tx - 0.3, tz - 0.3, tx + 0.3, tz + 0.3, 0]);
+    for (const [x, z, yaw] of STALL.llamas) {
+      const [lx, lz] = plotXZ(x, z);
+      const corners = [[-0.4, -0.62], [0.4, -0.62], [-0.4, 1.3], [0.4, 1.3]].map(([a, b]) => [lx + a * Math.cos(yaw) + b * Math.sin(yaw), lz - a * Math.sin(yaw) + b * Math.cos(yaw)]);
+      const xs = corners.map(c => c[0]), zs = corners.map(c => c[1]);
+      trader.colliders.push([Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs), 0]);
+    }
+  }
+
+  // What of the stall can be clicked: the counter, and the trader behind it.
+  function stallBoxes() {
+    if (!S.built?.market) return [];
+    const [px, pz] = S.built.market.plot;
+    const [x0, z0, x1, z1] = STALL.counter;
+    const out = [[[px + x0, 0, pz + z0], [px + x1, 1.4, pz + z1]]];
+    if (trader.phase === 'open') {
+      const [tx, tz] = plotXZ(...STALL.trader);
+      out.push([[tx - 0.35, 0, tz - 0.35], [tx + 0.35, 1.95, tz + 0.35]]);
+    }
+    return out;
+  }
+
+  function traderTooltip() {
+    if (trader.phase === 'open') return [gui.t('traderTrade'), {text: gui.t('shopLeaves', minutes(market.leavesIn())), cls: 'sub'}];
+    if (trader.phase === 'coming' || trader.phase === 'going') return [gui.t('traderStall'), {text: gui.t('traderBusy'), cls: 'sub'}];
+    return [gui.t('traderStall'), {text: gui.t('traderAway', minutes(market.nextIn())), cls: 'sub'}];
+  }
+
+  function warePoofs() {
+    if (!trader.wares) return;
+    for (const g of trader.wares.children) poof([g.position.x, g.position.y + 0.12, g.position.z], 3, 0.08);
+  }
+
+  function stepMarket(dt, time) {
+    if (!trader.group) return;
+    let walking = false;
+    for (const w of trader.walkers) {
+      if (w.done) {
+        if (w.settle != null) {
+          w.yaw = turnToward(w.yaw, w.settle, dt * 4);
+          w.obj.rotation.y = w.yaw;
+          if (Math.abs(wrapAngle(w.settle - w.yaw)) < 0.01) w.settle = null;
+        }
+        continue;
+      }
+      w.t += dt;
+      if (w.t < w.delay) continue;
+      if (!w.started) {
+        w.started = true;
+        if (trader.phase === 'coming') {
+          w.obj.visible = true;
+          poof([w.path[0][0], 1, w.path[0][1]], 14, 0.5);
+        }
+      }
+      w.s = Math.min(w.length, w.s + dt * WALK);
+      const p = alongPath(w.path, w.s);
+      w.obj.position.set(p.x, 0, p.z);
+      w.yaw = turnToward(w.yaw, Math.atan2(p.dx, p.dz), dt * 7);
+      w.obj.rotation.y = w.yaw;
+      stride(w);
+      walking = true;
+      if (w.s >= w.length) {
+        w.done = true;
+        restLegs(w.parts);
+        if (trader.phase === 'going') {
+          w.obj.visible = false;
+          poof([p.x, 1, p.z], 14, 0.5);
+        } else w.settle = w.restYaw;
+      }
+    }
+    if (walking) shadowDirty = true;
+    if (trader.walkers.length && trader.walkers.every(w => w.done && w.settle == null)) {
+      trader.walkers = [];
+      trader.phase = trader.phase === 'coming' ? 'open' : 'away';
+      if (trader.phase === 'open') trader.leads.visible = true;
+      refreshTraderColliders();
+      refreshHud();
+      rebuildA11y();
+    }
+    // The canvas rolls out once he is in, and up before he goes.
+    const want = trader.phase === 'open' ? 1 : 0;
+    if (trader.open !== want) {
+      trader.open = approach(trader.open, want, dt * (S.reducedMotion ? 10 : 0.9));
+      poseAwning();
+      shadowDirty = true;
+    }
+    const show = trader.phase === 'open' && trader.open > 0.7;
+    if (trader.wares.visible !== show) {
+      trader.wares.visible = show;
+      warePoofs();
+      shadowDirty = true;
+    }
+    // He keeps an eye on the reader when they come near; the llamas nod.
+    if (trader.phase === 'open' && trader.group.visible) {
+      const head = trader.parts.head, g = trader.group.position;
+      const dx = camera.position.x - g.x, dz = camera.position.z - g.z, d = Math.hypot(dx, dz);
+      const near = d < 7 && S.floor === 0;
+      const yaw = near ? Math.max(-1.1, Math.min(1.1, wrapAngle(Math.atan2(dx, dz) - trader.group.rotation.y))) : Math.sin(time * 0.31) * 0.35;
+      const pitch = near ? Math.max(-0.5, Math.min(0.4, -Math.atan2(camera.position.y - 1.55, d))) : 0;
+      const k = Math.min(1, dt * 4);
+      head.rotation.order = 'YXZ';
+      head.rotation.y += (yaw - head.rotation.y) * k;
+      head.rotation.x += (pitch - head.rotation.x) * k;
+    }
+    trader.llamas.forEach((l, i) => {
+      if (!l.group.visible || trader.walkers.some(w => w.obj === l.group && !w.done)) return;
+      l.parts.head.rotation.x = S.reducedMotion ? 0 : Math.sin(time * 0.7 + i * 2.3) * 0.07;
+    });
+  }
+
+  async function openShop(select) {
+    if (market.shopOpen || trader.phase !== 'open') return;
+    freeMouse();
+    setHover(null);
+    const shown = market.showShop({gui, post, pictures: trader.pictures, coin: post.coin, select});
+    market.onBought(id => {
+      gui.toast(gui.t('shopBought', gui.t('item_' + id)), gui.t(S.touch ? 'shopBoughtTouch' : 'shopBoughtBody'), trader.pictures[id]);
+      swingArm();
+    });
+    await shown;
+    relock();
+    refreshHud();
+    rebuildA11y();
+  }
+
+  market.onChange(what => {
+    if (what === 'load') {
+      syncMarket();
+      rebuildPieces();
+    } else if (what === 'arrive') {
+      startComing();
+      gui.toast(gui.t('traderArrived'), gui.t('traderArrivedBody'), traderIcon || post.coin);
+    } else if (what === 'leave') {
+      market.closeShop();
+      startGoing();
+      gui.toast(gui.t('traderGone'), '', traderIcon || post.coin);
+    } else if (what === 'warn') {
+      gui.toast(gui.t('traderLeaving'), gui.t('traderLeavingBody', minutes(market.leavesIn())), traderIcon || post.coin);
+    }
+    refreshHud();
+    rebuildA11y();
+  });
+
+  // ── Bought furniture ───────────────────────────────────────────────────
+  // Each placed piece is its own group, moved and turned to where it
+  // stands, with the hall's light baked into it there. A piece knows what
+  // can be clicked on it, what it does, and what stops the walker.
+  const pieces = {list: [], colliders: []};
+
+  function pieceFrame(p) {
+    const [w, d] = Goods.footprint(p.id, p.rot);
+    return {center: [p.x + w / 2, S.built.layout.bases[p.floor] ?? 0, p.z + d / 2], angle: p.rot * Math.PI / 2, rot: p.rot, w, d};
+  }
+  // A point of a piece's own frame, in the world.
+  function pieceWorld(f, [x, y, z]) {
+    const [tx, tz] = Goods.turn([x, z], f.rot);
+    return [f.center[0] + tx, f.center[1] + y, f.center[2] + tz];
+  }
+  // A box in a piece's own frame, as a box in the world.
+  function pieceBox(f, [a, c]) {
+    const p = pieceWorld(f, a), q = pieceWorld(f, c);
+    return [[0, 1, 2].map(k => Math.min(p[k], q[k])), [0, 1, 2].map(k => Math.max(p[k], q[k]))];
+  }
+
+  function buildPiece(p) {
+    const f = pieceFrame(p);
+    const a = assemble(p.id, {material: blockMat, live: true});
+    const {group, info, parts} = a;
+    group.position.set(...f.center);
+    group.rotation.y = f.angle;
+    scene.add(group);
+    group.updateMatrixWorld(true);
+    for (const m of a.meshes) bakeLight(m);
+    const pc = {data: p, group, info, parts, frame: f, rect: [p.x, p.z, p.x + f.w, p.z + f.d], box: pieceBox(f, info.pick), flames: info.flames.map(c => pieceWorld(f, c)), phase: Math.random() * 6.28};
+    const around = S.built.grid.sample(pieceWorld(f, [0, 1, 0]), [0, 1, 0]);
+    if (info.glass) {
+      const [lo, hi] = info.glass;
+      const glass = new T.Mesh(new T.BoxGeometry(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]), R.glassMaterial);
+      glass.position.set((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2);
+      glass.renderOrder = 3;
+      glass.userData.noShadow = true;
+      group.add(glass);
+    }
+    if (info.fish) {
+      const [lo, hi] = info.fish;
+      const spot = () => lo.map((v, k) => v + Math.random() * (hi[k] - v));
+      pc.fish = Goods.FISH_COLOURS.map((colours, i) => {
+        const mesh = Goods.fish(T, atlas, dynMat, colours, around);
+        mesh.userData.noShadow = true;
+        group.add(mesh);
+        const fish = {mesh, p: spot(), to: spot(), spot, yaw: Math.random() * 6.28, speed: 0.11 + i * 0.035};
+        mesh.position.set(...fish.p);
+        return fish;
+      });
+    }
+    if (info.bees) {
+      pc.hive = info.bees.center;
+      pc.bees = [0, 1, 2].map(i => {
+        const b = Goods.creature(T, 'bee', atlas, dynMat, around);
+        b.group.scale.setScalar(0.36);
+        b.group.userData.noShadow = true;
+        group.add(b.group);
+        return {...b, a: i * 2.1, speed: 0.75 + i * 0.25, r: info.bees.radius * (0.8 + i * 0.15)};
+      });
+    }
+    if (info.seat) pc.seat = seatOf(pc, info.seat);
+    if (info.music) pc.horn = pieceWorld(f, info.notes);
+    pc.act = info.music ? 'music' : info.seat ? (info.seat.telescope ? 'scope' : p.id === 'bed' ? 'lie' : 'sit') : null;
+    const [w0, d0] = Goods.ITEMS[p.id].size;
+    pc.solids = info.solid.map(([x0, z0, x1, z1]) => {
+      const [[ax, , az], [bx, , bz]] = pieceBox(f, [[x0 - w0 / 2, 0, z0 - d0 / 2], [x1 - w0 / 2, 0, z1 - d0 / 2]]);
+      return [ax, az, bx, bz, p.floor];
+    });
+    pieces.list.push(pc);
+    return pc;
+  }
+
+  // A piece's seat in the world. A swing's along-the-bench range follows
+  // the bench round with the piece.
+  function seatOf(pc, s) {
+    const f = pc.frame;
+    const seat = {
+      piece: pc, pos: pieceWorld(f, s.pos), yaw: f.angle + Math.PI, eye: s.eye, pitch: s.pitch, fov: s.fov,
+      telescope: !!s.telescope, stand: !!s.stand, swing: !!s.swing, box: pieceBox(f, s.box || pc.info.pick),
+    };
+    if (s.along) {
+      const ends = s.along.map(a => pieceWorld(f, [s.pos[0] + a, 0, s.pos[2]]));
+      seat.alongX = f.rot % 2 === 0;
+      const k = seat.alongX ? 0 : 2;
+      seat.along = [Math.min(ends[0][k], ends[1][k]), Math.max(ends[0][k], ends[1][k])];
+    }
+    if (s.swing) seat.drop = pc.info.pivots.seat[1] - s.pos[1];
+    return seat;
+  }
+
+  // Where a seat is now: a swing's bench moves as it sways.
+  function seatPos(seat) {
+    const bench = seat.swing && seat.piece?.parts.seat;
+    if (!bench) return seat.pos;
+    const a = bench.rotation.x, L = seat.drop;
+    const [dx, dz] = Goods.turn([0, -L * Math.sin(a)], seat.piece.frame.rot);
+    return [seat.pos[0] + dx, seat.pos[1] + L * (1 - Math.cos(a)), seat.pos[2] + dz];
+  }
+
+  function removePiece(pc) {
+    if (music.piece === pc) stopMusic();
+    disposeGroup(pc.group);
+    pieces.list.splice(pieces.list.indexOf(pc), 1);
+    refreshPieceColliders();
+  }
+
+  function refreshPieceColliders() {
+    pieces.colliders = pieces.list.flatMap(pc => pc.solids);
+    rebuildFoliage();
+    shadowDirty = true;
+  }
+
+  // The plants loose on the grass, drawn round whatever furniture stands
+  // on it, so no grass grows up through a bird bath.
+  let foliageMesh = null;
+  function rebuildFoliage() {
+    disposeGroup(foliageMesh);
+    foliageMesh = null;
+    if (!S.built?.foliage || !atlas) return;
+    const covered = new Set();
+    for (const pc of pieces.list) {
+      if (pc.data.floor !== 0) continue;
+      for (let x = pc.rect[0]; x < pc.rect[2]; x++) for (let z = pc.rect[1]; z < pc.rect[3]; z++) covered.add(x + ',' + z);
+    }
+    const mb = new W.MeshBuilder();
+    for (const [x, z, tex, size] of S.built.foliage) if (!covered.has(x + ',' + z)) W.cross(mb, S.built.grid, atlas, [x, 0, z], tex, size, 0);
+    foliageMesh = new T.Mesh(mb.geometry(T), blockMat);
+    scene.add(foliageMesh);
+  }
+
+  // Rebuilds every placed piece, for a new hall or a new look. One that no
+  // longer fits where it stood (the hall grew over it) goes back in the
+  // crate.
+  function rebuildPieces() {
+    for (const pc of pieces.list) disposeGroup(pc.group);
+    pieces.list = [];
+    if (music.piece) stopMusic();
+    if (S.seat?.piece) { S.seat = null; if (S.mode === 'seated') setMode('overview'); }
+    if (S.built && atlas && market.loaded) {
+      const misfits = [];
+      for (const p of market.state.placed.slice()) {
+        if (canPlace(p.id, p.x, p.z, p.rot, p.floor, {ignore: p, player: false})) buildPiece(p);
+        else misfits.push(p);
+      }
+      for (const p of misfits) {
+        market.pickUp(p);
+        gui.toast(gui.t('putBack'), gui.t('putBackBody', gui.t('item_' + p.id)), trader.pictures[p.id]);
+      }
+    }
+    refreshPieceColliders();
+  }
+
+  // Whether piece `id` turned `rot` fits with its corner at (x, z) on
+  // `floor`: floor under every cell (not the path), air above it as high as
+  // it stands, and clear of walls, furniture, other pieces, the places kept
+  // free, and the reader.
+  function canPlace(id, x, z, rot, floor, {ignore = null, player = true} = {}) {
+    const b = S.built;
+    const base = b?.layout.bases[floor];
+    if (base == null) return false;
+    const [w, d] = Goods.footprint(id, rot), h = Goods.ITEMS[id].height;
+    for (let cx = x; cx < x + w; cx++) for (let cz = z; cz < z + d; cz++) {
+      if (!b.grid.solid(cx, base - 1, cz) || b.grid.get(cx, base - 1, cz) === W.B.path) return false;
+      for (let y = 0; y < h; y++) if (b.grid.get(cx, base + y, cz)) return false;
+    }
+    const r = [x + 0.03, z + 0.03, x + w - 0.03, z + d - 0.03];
+    const hit = ([x0, z0, x1, z1, f]) => (f || 0) === floor && r[0] < x1 && r[2] > x0 && r[1] < z1 && r[3] > z0;
+    if (b.colliders.some(hit) || b.keepClear.some(hit)) return false;
+    if (pieces.list.some(pc => pc.data !== ignore && hit([...pc.rect, pc.data.floor]))) return false;
+    if (player && floor === S.floor && hit([S.px - BODY, S.pz - BODY, S.px + BODY, S.pz + BODY, floor])) return false;
+    // A telescope needs room behind it to stand and look through it.
+    const spot = standSpot(id);
+    if (spot) {
+      const [tx, tz] = Goods.turn([spot[0], spot[2]], rot);
+      if (blocked(x + w / 2 + tx, z + d / 2 + tz, floor)) return false;
+    }
+    return true;
+  }
+  const standSpots = {};
+  function standSpot(id) {
+    if (!(id in standSpots)) {
+      const seat = Goods.build(id, atlas).seat;
+      standSpots[id] = seat?.stand ? seat.pos : null;
+    }
+    return standSpots[id];
+  }
+
+  function stepPieces(dt, time) {
+    for (const pc of pieces.list) {
+      const {parts} = pc;
+      // The swing sways, more with someone in it.
+      if (parts.seat) {
+        const sat = S.seat && S.seat.piece === pc;
+        const amp = S.reducedMotion ? 0 : sat ? 0.17 : 0.06;
+        pc.amp = (pc.amp ?? amp) + (amp - (pc.amp ?? amp)) * Math.min(1, dt * 0.8);
+        parts.seat.rotation.x = Math.sin(time * 1.75 + pc.phase) * pc.amp;
+      }
+      // Looked through, the telescope's tube follows the view.
+      if (parts.tube) {
+        const using = S.seat && S.seat.piece === pc && S.mode === 'seated';
+        const yaw = using ? wrapAngle(S.yaw - pc.seat.yaw) : 0, pitch = using ? S.pitch : pc.info.aim;
+        parts.tube.rotation.y += (yaw - parts.tube.rotation.y) * Math.min(1, dt * 10);
+        parts.tube.rotation.x += (-pitch - parts.tube.rotation.x) * Math.min(1, dt * 10);
+      }
+      if (pc.fish) {
+        for (const [i, f] of pc.fish.entries()) {
+          const d = f.to.map((v, k) => v - f.p[k]);
+          const len = Math.hypot(...d);
+          if (len < 0.03) { f.to = f.spot(); continue; }
+          const step = Math.min(len, f.speed * dt);
+          for (let k = 0; k < 3; k++) f.p[k] += d[k] / len * step;
+          f.yaw = turnToward(f.yaw, Math.atan2(d[0], d[2]), dt * 3);
+          f.mesh.position.set(...f.p);
+          f.mesh.rotation.y = f.yaw + (S.reducedMotion ? 0 : Math.sin(time * 9 + i * 2) * 0.18);
+        }
+      }
+      if (pc.bees) {
+        for (const [i, b] of pc.bees.entries()) {
+          b.a += dt * b.speed;
+          const [cx, cy, cz] = pc.hive;
+          b.group.position.set(cx + Math.cos(b.a) * b.r, cy + Math.sin(time * 2.3 + i * 2) * 0.16, cz + Math.sin(b.a) * b.r);
+          b.group.rotation.y = Math.atan2(-Math.sin(b.a), Math.cos(b.a));
+          const flap = S.reducedMotion ? 0 : Math.sin(time * 55 + i) * 0.55;
+          b.parts.rightWing.rotation.z = flap;
+          b.parts.leftWing.rotation.z = -flap;
+        }
+      }
+    }
+  }
+
+  // ── The gramophone ─────────────────────────────────────────────────────
+  // A little waltz on a music box, luma's own, played through the hall's
+  // sound and quieter the further off it is.
+  const TUNE = [
+    [76, 1, 48], [79, 1], [84, 1], [83, 2, 43], [79, 1], [81, 1, 45], [79, 1], [76, 1], [79, 3, 48],
+    [77, 1, 41], [81, 1], [86, 1], [84, 2, 41], [81, 1], [83, 1, 43], [81, 1], [77, 1], [79, 3, 43],
+    [76, 1, 48], [79, 1], [84, 1], [88, 2, 48], [86, 1], [84, 1, 41], [83, 1], [81, 1], [79, 2, 48], [76, 1],
+    [77, 1, 50], [76, 1], [74, 1], [79, 2, 43], [71, 1], [74, 1.5, 43], [76, 0.5], [74, 1], [72, 3, 48], [null, 1],
+  ];
+  const BEAT = 0.42;
+  const music = {piece: null, gain: null, next: 0, i: 0, hue: 0};
+
+  function toggleMusic(pc) {
+    if (music.piece === pc) stopMusic();
+    else startMusic(pc);
+    swingArm();
+    rebuildA11y();
+  }
+  function startMusic(pc) {
+    stopMusic();
+    music.piece = pc;
+    music.i = 0;
+    music.next = 0;
+  }
+  function stopMusic() {
+    const g = music.gain, ctx = weather.audio.ctx;
+    if (g && ctx) {
+      g.gain.setTargetAtTime(0, ctx.currentTime, 0.06);
+      setTimeout(() => g.disconnect(), 700);
+    }
+    music.piece = null;
+    music.gain = null;
+  }
+  // One plucked tine: the note and two faint overtones, dying away.
+  function pluck(ctx, out, time, midi, level, long) {
+    const f = 440 * 2 ** ((midi - 69) / 12);
+    for (const [mult, amp, decay] of [[1, 1, long ? 1.6 : 1.1], [2, 0.22, 0.5], [4.2, 0.07, 0.22]]) {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f * mult;
+      g.gain.setValueAtTime(0.0001, time);
+      g.gain.linearRampToValueAtTime(level * amp, time + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + decay);
+      o.connect(g);
+      g.connect(out);
+      o.start(time);
+      o.stop(time + decay + 0.05);
+    }
+  }
+  function stepMusic(dt) {
+    const pc = music.piece;
+    if (!pc) return;
+    // Notes drift up out of the horn, each its own colour as the game's are.
+    if (Math.random() < dt * 2.4 * weather.particleScale) {
+      music.hue = (music.hue + 0.13 + Math.random() * 0.1) % 1;
+      const c = new T.Color().setHSL(music.hue, 0.9, 0.42);
+      particles.notes.add({p: [pc.horn[0] + rand(-0.1, 0.1), pc.horn[1] + 0.05, pc.horn[2] + rand(-0.1, 0.1)], v: [rand(-0.12, 0.12), rand(0.4, 0.6), rand(-0.12, 0.12)], c: [c.r, c.g, c.b, 1], s: 0.11, g: 0, life: rand(1.4, 2), age: 0});
+    }
+    const A = weather.audio, ctx = A.ctx;
+    if (!ctx || ctx.state !== 'running' || !A.master) return;
+    if (!music.gain) {
+      music.gain = ctx.createGain();
+      music.gain.gain.value = 0;
+      music.gain.connect(A.master);
+      music.next = ctx.currentTime + 0.08;
+    }
+    const d = camera.position.distanceTo(new T.Vector3(...pc.horn));
+    const inside = h => h && camera.position.x > h.x0 - 1 && camera.position.x < h.x1 + 1 && camera.position.z > h.z0 - 1 && camera.position.z < h.z1 + 1;
+    const hall = S.built?.hall;
+    const hornInside = hall && pc.horn[0] > hall.x0 - 1 && pc.horn[0] < hall.x1 + 1 && pc.horn[2] > hall.z0 - 1 && pc.horn[2] < hall.z1 + 1;
+    const walls = inside(hall) !== !!hornInside ? 0.35 : 1;
+    const level = 0.5 * Math.pow(Math.max(0, 1 - d / 18), 1.6) * walls;
+    music.gain.gain.setTargetAtTime(level, ctx.currentTime, 0.12);
+    while (music.next < ctx.currentTime + 0.5) {
+      const [midi, beats, bass] = TUNE[music.i];
+      if (midi != null) pluck(ctx, music.gain, music.next, midi, 0.16, beats >= 2);
+      if (bass != null) pluck(ctx, music.gain, music.next, bass, 0.1, true);
+      music.next += beats * BEAT;
+      music.i = (music.i + 1) % TUNE.length;
+    }
+  }
+
+  // ── Building ───────────────────────────────────────────────────────────
+  // B (or a slot in the hotbar) takes what is in the crate in hand. A see-
+  // through copy follows the crosshair across the floor, snapped to the
+  // block grid: green where it fits, red where not. A click places it, R
+  // turns it; right-click (or the pick-up tool) puts a placed piece back in
+  // the crate.
+  const BUILD_REACH = 7;
+  const building = {on: false, id: null, rot: 0, ghost: null, ghostId: null, ghostMeshes: [], aim: null, target: null, flash: 0};
+  // The quarter turn that has a piece's front facing the reader.
+  const facingRot = () => (((Math.round(S.yaw / (Math.PI / 2)) % 4) + 4) % 4);
+  const firstInCrate = () => Goods.CATALOG.find(c => market.count(c.id))?.id || null;
+
+  function startBuilding(id = null) {
+    if (S.mode !== 'overview' || !S.built) return;
+    if (id && !market.count(id)) id = null;
+    if (!id && !building.on) id = firstInCrate();
+    if (!id && !pieces.list.length) return;
+    if (!building.on || id !== building.id) building.rot = facingRot();
+    building.on = true;
+    building.id = id;
+    setHover(null);
+    refreshHud();
+  }
+  function stopBuilding() {
+    building.on = false;
+    building.target = building.aim = null;
+    if (building.ghost) building.ghost.visible = false;
+    outline.visible = false;
+    refreshHud();
+  }
+  function toggleBuilding() {
+    if (building.on) stopBuilding();
+    else startBuilding();
+  }
+  function rotateBuilding() {
+    building.rot = (building.rot + 1) % 4;
+  }
+  function togglePickTool() {
+    building.id = building.id ? null : firstInCrate();
+    refreshHud();
+  }
+
+  const buildRay = () => (look.locked ? rayAt(innerWidth / 2, innerHeight / 2) : rayAt(pointer.x, pointer.y));
+
+  // The placed piece the ray meets first, near enough and before any wall.
+  function pickPiece(ray) {
+    const wall = wallDistance(ray) + 0.05;
+    let best = null;
+    for (const pc of pieces.list) {
+      if (pc.data.floor !== S.floor) continue;
+      const t = boxHit(ray, ...pc.box);
+      if (t != null && t < Math.min(wall, REACH + 1) && (!best || t < best.t)) best = {pc, t};
+    }
+    return best;
+  }
+
+  // Where the piece in hand would go: the floor cell under the ray, the
+  // footprint centred on it.
+  function buildTarget(ray, id = building.id, rot = building.rot) {
+    if (!id || ray.direction.y > -0.03) return null;
+    const t = (floorY() - ray.origin.y) / ray.direction.y;
+    if (t < 0 || t > BUILD_REACH || t > wallDistance(ray) + 0.3) return null;
+    const p = ray.origin.clone().addScaledVector(ray.direction, t);
+    const [w, d] = Goods.footprint(id, rot);
+    const x = Math.round(p.x - w / 2), z = Math.round(p.z - d / 2);
+    return {id, x, z, rot, floor: S.floor, ok: canPlace(id, x, z, rot, S.floor)};
+  }
+
+  function showGhost(t) {
+    if (building.ghostId !== t.id) {
+      disposeGroup(building.ghost);
+      const a = assemble(t.id, {material: fitMat, light: [1, 0.6, 0]});
+      a.group.userData.noShadow = true;
+      for (const m of a.meshes) m.renderOrder = 4;
+      scene.add(a.group);
+      Object.assign(building, {ghost: a.group, ghostMeshes: a.meshes, ghostId: t.id});
+    }
+    const f = pieceFrame(t);
+    building.ghost.position.set(f.center[0], f.center[1] + 0.003, f.center[2]);
+    building.ghost.rotation.y = f.angle;
+    for (const m of building.ghostMeshes) m.material = t.ok ? fitMat : misfitMat;
+    building.ghost.visible = true;
+  }
+
+  function stepBuild(time) {
+    fitMat.uniforms.opacity.value = 0.5 + 0.1 * Math.sin(time * 3);
+    misfitMat.uniforms.opacity.value = 0.42 + 0.08 * Math.sin(time * 3);
+    if (building.ghost) building.ghost.visible = false;
+    building.aim = building.target = null;
+    if (!building.on || S.mode !== 'overview' || flight || gui.isModalOpen() || !S.built) return;
+    // Touch screens have nothing to follow until a tap.
+    if (S.touch && !look.locked) return;
+    const ray = buildRay();
+    building.aim = pickPiece(ray);
+    if (!building.id) {
+      if (building.aim) outlineBox(building.aim.pc.box);
+      return;
+    }
+    if (!market.count(building.id)) { building.id = firstInCrate(); return; }
+    building.target = buildTarget(ray);
+    if (building.target) showGhost(building.target);
+  }
+
+  function buildClick() {
+    const ray = buildRay();
+    if (!building.id) {
+      const hit = pickPiece(ray);
+      if (hit) pickUpPiece(hit.pc);
+      return;
+    }
+    const t = buildTarget(ray);
+    if (!t) return;
+    if (!t.ok) {
+      building.flash = performance.now() + 1500;
+      refreshHud();
+      setTimeout(refreshHud, 1550);
+      return;
+    }
+    const p = market.place(t);
+    if (!p) return;
+    const pc = buildPiece(p);
+    refreshPieceColliders();
+    poof(pieceWorld(pc.frame, [0, 0.4, 0]), 14, 0.45);
+    if (!market.count(building.id)) {
+      const next = firstInCrate();
+      if (next) building.id = next;
+      else stopBuilding();
+    }
+    refreshHud();
+    rebuildA11y();
+  }
+
+  function pickUpPiece(pc) {
+    const p = pc.data;
+    if (!market.pickUp(p)) return;
+    poof(pieceWorld(pc.frame, [0, 0.4, 0]), 12, 0.45);
+    removePiece(pc);
+    // In hand again, turned as it was, ready to go somewhere else.
+    building.id = p.id;
+    building.rot = p.rot;
+    refreshHud();
+    rebuildA11y();
+  }
+
+  // The hotbar: one slot per piece the trader sells, in his order, so the
+  // number keys always mean the same piece.
+  function buildHotbar() {
+    $('hotbar').replaceChildren(...Goods.CATALOG.map(item => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'slot';
+      b.dataset.id = item.id;
+      const img = document.createElement('img');
+      img.alt = '';
+      const count = document.createElement('span');
+      count.className = 'count';
+      b.append(img, count);
+      b.onclick = () => { if (market.count(item.id)) startBuilding(item.id); };
+      return b;
+    }));
+  }
+  function refreshHotbar() {
+    const shown = (S.mode === 'overview' || S.mode === 'seated') && (building.on || market.crateTotal() > 0);
+    $('hotbar').hidden = !shown;
+    for (const b of $('hotbar').children) {
+      const id = b.dataset.id, n = market.count(id);
+      const img = b.firstElementChild;
+      if (trader.pictures[id] && img.getAttribute('src') !== trader.pictures[id]) img.src = trader.pictures[id];
+      b.lastElementChild.textContent = n > 1 ? String(n) : '';
+      b.classList.toggle('empty', !n);
+      b.classList.toggle('on', building.on && building.id === id);
+      b.title = gui.t('item_' + id);
+      b.setAttribute('aria-label', `${gui.t('item_' + id)}: ${n}`);
+    }
+    $('build-tools').hidden = !(building.on && S.mode === 'overview');
+    $('build-rotate').textContent = gui.t('buildRotate');
+    $('build-pick').textContent = gui.t('buildPick');
+    $('build-pick').classList.toggle('on', building.on && !building.id);
+    $('build-done').textContent = gui.t('buildDone');
+  }
+  buildHotbar();
+  $('build-rotate').onclick = rotateBuilding;
+  $('build-pick').onclick = togglePickTool;
+  $('build-done').onclick = stopBuilding;
+
+  // ── Pictures ───────────────────────────────────────────────────────────
+  // Each of the trader's goods photographed for the shop and the hotbar:
+  // rendered off screen in a steady light, twice the size and scaled down
+  // so the edges are smooth.
+  function makePictures() {
+    const out = {};
+    const size = 96, big = size * 2;
+    const renderer = R.renderer;
+    const rt = new T.WebGLRenderTarget(big, big);
+    const stage = new T.Scene();
+    const cam = new T.PerspectiveCamera(26, 1, 0.05, 80);
+    const mat = R.blockMaterial();
+    Object.assign(mat.uniforms, {
+      sunDir: {value: new T.Vector3(0.5, 0.82, 0.55).normalize()}, sunColor: {value: new T.Color(1.35, 1.2, 1.0)},
+      skyColor: {value: new T.Color(0.55, 0.56, 0.62)}, skyLevel: {value: 1}, lampLevel: {value: 0}, fireLevel: {value: 0},
+      fogDensity: {value: 0}, shadowOn: {value: 0}, flash: {value: 0}, overcast: {value: 0},
+    });
+    const before = {target: renderer.getRenderTarget(), color: renderer.getClearColor(new T.Color()), alpha: renderer.getClearAlpha()};
+    const pixels = new Uint8Array(big * big * 4);
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const toSrgb = v => Math.round(255 * Math.min(1, Math.pow(Math.max(0, v) * 1.12, 1 / 2.2)));
+    try {
+      for (const item of Goods.CATALOG) {
+        const a = assemble(item.id, {material: mat, light: [1, 0, 0]});
+        stage.add(a.group);
+        const box = new T.Box3().setFromObject(a.group);
+        const c = box.getCenter(new T.Vector3()), r = box.getSize(new T.Vector3()).length() / 2;
+        cam.position.copy(c).addScaledVector(new T.Vector3(0.66, 0.52, 1).normalize(), r / Math.sin(cam.fov * DEG / 2) * 1.02);
+        cam.lookAt(c);
+        cam.updateMatrixWorld();
+        renderer.setRenderTarget(rt);
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear();
+        renderer.render(stage, cam);
+        renderer.readRenderTargetPixels(rt, 0, 0, big, big, pixels);
+        const img = ctx.createImageData(size, size);
+        for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+          let r0 = 0, g0 = 0, b0 = 0, a0 = 0;
+          for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+            const s = ((big - 1 - (y * 2 + dy)) * big + x * 2 + dx) * 4;
+            const al = pixels[s + 3] / 255;
+            r0 += pixels[s] / 255 * al; g0 += pixels[s + 1] / 255 * al; b0 += pixels[s + 2] / 255 * al; a0 += al;
+          }
+          const d = (y * size + x) * 4;
+          if (a0 > 0) {
+            img.data[d] = toSrgb(r0 / a0); img.data[d + 1] = toSrgb(g0 / a0); img.data[d + 2] = toSrgb(b0 / a0);
+          }
+          img.data[d + 3] = Math.round(a0 / 4 * 255);
+        }
+        ctx.putImageData(img, 0, 0);
+        out[item.id] = canvas.toDataURL();
+        stage.remove(a.group);
+        a.group.traverse(o => o.geometry?.dispose());
+      }
+    } finally {
+      renderer.setRenderTarget(before.target);
+      renderer.setClearColor(before.color, before.alpha);
+      rt.dispose();
+      mat.dispose();
+    }
+    return out;
+  }
 
   const keys = new Set();
   const pad = {fwd: 0, turn: 0};
@@ -2344,8 +3430,9 @@
   });
   canvas.addEventListener('pointermove', e => {
     if (look.locked) {
-      // Captured: the mouse turns the head, no button needed.
-      const sens = 0.0026;
+      // Captured: the mouse turns the head, no button needed; slower through
+      // a telescope, so the view doesn't race.
+      const sens = 0.0026 * (S.mode === 'seated' && S.seat?.fov ? Math.max(0.25, S.seat.fov / 70) : 1);
       S.yaw -= (e.movementX || 0) * sens;
       S.pitch = Math.max(-1.45, Math.min(1.45, S.pitch - (e.movementY || 0) * sens));
       if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) noteWalked();
@@ -2437,6 +3524,7 @@
       if (S.mode === 'placing') cancelPlacing();
       else if (S.mode === 'shelf') toOverview();
       else if (S.mode === 'seated') standUp();
+      else if (building.on) stopBuilding();
     } else if (S.mode === 'seated') {
       // Sneak, jump or walk to get up, as when dismounting in the game.
       if (/^(Key[WASD]|Arrow(Up|Down)|Shift(Left|Right)|Space)$/.test(e.code) && !flight) {
@@ -2452,8 +3540,26 @@
       if (/^(Key[WASDQE]|Arrow(Up|Down|Left|Right)|Shift(Left|Right))$/.test(e.code)) {
         keys.add(e.code);
         e.preventDefault();
+      } else if (e.code === 'KeyB' && !e.repeat) {
+        toggleBuilding();
+      } else if (/^Digit[1-8]$/.test(e.code)) {
+        // The number keys pick a hotbar slot, as in the game.
+        const item = Goods.CATALOG[Number(e.code.slice(5)) - 1];
+        if (item && market.count(item.id)) startBuilding(item.id);
+      } else if (building.on && e.code === 'KeyR' && !e.repeat) {
+        rotateBuilding();
+      } else if (building.on && e.code === 'KeyX' && !e.repeat) {
+        togglePickTool();
       }
     }
+  });
+  // Right-click picks a placed piece back up while building.
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('pointerdown', e => {
+    if (e.button !== 2 || !building.on || S.mode !== 'overview' || flight) return;
+    if (!look.locked) { pointer.x = e.clientX; pointer.y = e.clientY; }
+    const hit = pickPiece(buildRay());
+    if (hit) { swingArm(); pickUpPiece(hit.pc); }
   });
   addEventListener('keyup', e => keys.delete(e.code));
   addEventListener('blur', () => keys.clear());
@@ -2642,7 +3748,14 @@
       if (S.floor === 0) {
         add(`${gui.t('mailbox')} — ${post.state.letters.length ? gui.t('mailWaiting', post.state.letters.length) : mailNext()}`, () => useMailbox());
         add(`${gui.t('vault')} — ${gui.t('coins', post.state.vault)}`, () => useVault());
+        if (S.built.market) add(traderTooltip().map(l => l.text ?? l).join(' — '), () => (trader.phase === 'open' ? openShop() : null));
       }
+      for (const pc of pieces.list) {
+        if (pc.data.floor !== S.floor || !pc.act) continue;
+        const label = {lie: 'lieDown', sit: 'sit', scope: 'lookThrough', music: music.piece === pc ? 'stopMusic' : 'playMusic'}[pc.act];
+        add(`${gui.t('item_' + pc.data.id)} — ${gui.t(label)}`, () => (pc.act === 'music' ? toggleMusic(pc) : sit(pc.seat)));
+      }
+      if (market.crateTotal() || pieces.list.length) add(gui.t(building.on ? 'buildDone' : 'crateHint'), () => toggleBuilding());
     } else if (S.mode === 'shelf') {
       const c = currentCase();
       add(gui.t('back'), () => toOverview());
@@ -2840,9 +3953,13 @@
     stepTweens(dt);
     stepHand(dt, time);
     stepPost(dt);
+    stepMarket(dt, time);
+    stepPieces(dt, time);
+    stepMusic(dt);
     stepSitter(time);
     stepParticles(dt, time);
     if (look.locked || S.mode === 'seated') updateHover();
+    stepBuild(time);
     ghostMat.uniforms.opacity.value = 0.42 + 0.14 * Math.sin(time * 2.4);
     if (floatingItem) {
       floatingItem.rotation.y = time * 1.2;
@@ -2928,10 +4045,18 @@
             snapshot();
             let mail = null;
             try { mail = JSON.parse(localStorage.getItem('library.mail') || 'null'); } catch { /* storage blocked */ }
+            // `?coins=200` puts that much in the vault, for trying the shop.
+            if (params.has('coins')) mail = {...(mail || {}), vault: Number(params.get('coins')) || 0};
             emit({type: 'mail', state: mail});
+            let stock = null;
+            try { stock = JSON.parse(localStorage.getItem('library.market') || 'null'); } catch { /* storage blocked */ }
+            // `?trader` has the wandering trader at his stall from the start.
+            if (params.has('trader')) stock = {...(stock || {}), clock: LibraryMarket.ARRIVE};
+            emit({type: 'market', state: stock});
             break;
           }
           case 'mail': try { localStorage.setItem('library.mail', JSON.stringify(m.state)); } catch { /* storage blocked */ } break;
+          case 'market': try { localStorage.setItem('library.market', JSON.stringify(m.state)); } catch { /* storage blocked */ } break;
           case 'assetsWanted': {
             const files = {};
             if (mcBase) {
@@ -3018,7 +4143,9 @@
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
     S, R, W, V, view, hand, sitter, door, weather, climb, blocked, post, mailbox, vault, coins,
+    market, trader, pieces, building, music, pointer, openShop, startBuilding, stopBuilding, buildClick, canPlace, buildTarget, pickPiece, rayAt,
     get hover() { return hover; },
+    get flight() { return flight; },
     // Steps the simulation without waiting on the display.
     advance(seconds) {
       const steps = Math.round(seconds * 30);

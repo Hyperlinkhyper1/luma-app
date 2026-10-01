@@ -3318,6 +3318,330 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Nothing in here yet. The post brings coins every half hour.'**
   String get textLibraryMcVaultEmpty;
+
+  /// No description provided for @textLibraryMcTraderName.
+  ///
+  /// In en, this message translates to:
+  /// **'Wandering Trader'**
+  String get textLibraryMcTraderName;
+
+  /// No description provided for @textLibraryMcTraderArrived.
+  ///
+  /// In en, this message translates to:
+  /// **'A wandering trader has arrived'**
+  String get textLibraryMcTraderArrived;
+
+  /// No description provided for @textLibraryMcTraderArrivedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'His stall is open in front of the house'**
+  String get textLibraryMcTraderArrivedBody;
+
+  /// No description provided for @textLibraryMcTraderLeaving.
+  ///
+  /// In en, this message translates to:
+  /// **'The trader is packing up'**
+  String get textLibraryMcTraderLeaving;
+
+  /// No description provided for @textLibraryMcTraderLeavingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'He leaves in {minutes} min'**
+  String textLibraryMcTraderLeavingBody(String minutes);
+
+  /// No description provided for @textLibraryMcTraderGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The wandering trader has moved on'**
+  String get textLibraryMcTraderGone;
+
+  /// No description provided for @textLibraryMcTraderTrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Trade with the wandering trader'**
+  String get textLibraryMcTraderTrade;
+
+  /// No description provided for @textLibraryMcTraderStall.
+  ///
+  /// In en, this message translates to:
+  /// **'Market stall'**
+  String get textLibraryMcTraderStall;
+
+  /// No description provided for @textLibraryMcTraderAway.
+  ///
+  /// In en, this message translates to:
+  /// **'The trader is back in {minutes} min'**
+  String textLibraryMcTraderAway(String minutes);
+
+  /// No description provided for @textLibraryMcTraderBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The trader is setting up'**
+  String get textLibraryMcTraderBusy;
+
+  /// No description provided for @textLibraryMcShopLeaves.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaves in {minutes} min'**
+  String textLibraryMcShopLeaves(String minutes);
+
+  /// No description provided for @textLibraryMcShopBuy.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy for {count} coins'**
+  String textLibraryMcShopBuy(String count);
+
+  /// No description provided for @textLibraryMcShopTooPoor.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough coins'**
+  String get textLibraryMcShopTooPoor;
+
+  /// No description provided for @textLibraryMcShopOwned.
+  ///
+  /// In en, this message translates to:
+  /// **'In your crate: {count}'**
+  String textLibraryMcShopOwned(String count);
+
+  /// No description provided for @textLibraryMcShopPlaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Placed: {count}'**
+  String textLibraryMcShopPlaced(String count);
+
+  /// No description provided for @textLibraryMcShopWallet.
+  ///
+  /// In en, this message translates to:
+  /// **'{total} coins · in hand {hand} · in the vault {vault}'**
+  String textLibraryMcShopWallet(String total, String hand, String vault);
+
+  /// No description provided for @textLibraryMcShopBought.
+  ///
+  /// In en, this message translates to:
+  /// **'Bought: {item}'**
+  String textLibraryMcShopBought(String item);
+
+  /// No description provided for @textLibraryMcShopBoughtBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Press B to place it'**
+  String get textLibraryMcShopBoughtBody;
+
+  /// No description provided for @textLibraryMcShopBoughtTouch.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap it in the hotbar to place it'**
+  String get textLibraryMcShopBoughtTouch;
+
+  /// No description provided for @textLibraryMcWhereInside.
+  ///
+  /// In en, this message translates to:
+  /// **'For inside'**
+  String get textLibraryMcWhereInside;
+
+  /// No description provided for @textLibraryMcWhereOutside.
+  ///
+  /// In en, this message translates to:
+  /// **'For outside'**
+  String get textLibraryMcWhereOutside;
+
+  /// No description provided for @textLibraryMcWhereBoth.
+  ///
+  /// In en, this message translates to:
+  /// **'For inside or outside'**
+  String get textLibraryMcWhereBoth;
+
+  /// No description provided for @textLibraryMcItemBed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cosy bed'**
+  String get textLibraryMcItemBed;
+
+  /// No description provided for @textLibraryMcItemAquarium.
+  ///
+  /// In en, this message translates to:
+  /// **'Aquarium'**
+  String get textLibraryMcItemAquarium;
+
+  /// No description provided for @textLibraryMcItemGramophone.
+  ///
+  /// In en, this message translates to:
+  /// **'Gramophone'**
+  String get textLibraryMcItemGramophone;
+
+  /// No description provided for @textLibraryMcItemCandelabra.
+  ///
+  /// In en, this message translates to:
+  /// **'Candelabra'**
+  String get textLibraryMcItemCandelabra;
+
+  /// No description provided for @textLibraryMcItemSwing.
+  ///
+  /// In en, this message translates to:
+  /// **'Garden swing'**
+  String get textLibraryMcItemSwing;
+
+  /// No description provided for @textLibraryMcItemBirdbath.
+  ///
+  /// In en, this message translates to:
+  /// **'Bird bath'**
+  String get textLibraryMcItemBirdbath;
+
+  /// No description provided for @textLibraryMcItemBeehive.
+  ///
+  /// In en, this message translates to:
+  /// **'Beehive post'**
+  String get textLibraryMcItemBeehive;
+
+  /// No description provided for @textLibraryMcItemTelescope.
+  ///
+  /// In en, this message translates to:
+  /// **'Telescope'**
+  String get textLibraryMcItemTelescope;
+
+  /// No description provided for @textLibraryMcDescBed.
+  ///
+  /// In en, this message translates to:
+  /// **'A spruce bed with a patchwork quilt. You can lie down on it.'**
+  String get textLibraryMcDescBed;
+
+  /// No description provided for @textLibraryMcDescAquarium.
+  ///
+  /// In en, this message translates to:
+  /// **'A lit fish tank with sand, kelp and three tropical fish.'**
+  String get textLibraryMcDescAquarium;
+
+  /// No description provided for @textLibraryMcDescGramophone.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays a little music-box tune when you click it.'**
+  String get textLibraryMcDescGramophone;
+
+  /// No description provided for @textLibraryMcDescCandelabra.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrought iron, with three flickering candles.'**
+  String get textLibraryMcDescCandelabra;
+
+  /// No description provided for @textLibraryMcDescSwing.
+  ///
+  /// In en, this message translates to:
+  /// **'A slatted bench on chains that sways in the breeze. Sit on it.'**
+  String get textLibraryMcDescSwing;
+
+  /// No description provided for @textLibraryMcDescBirdbath.
+  ///
+  /// In en, this message translates to:
+  /// **'A stone pedestal with a shallow basin of water.'**
+  String get textLibraryMcDescBirdbath;
+
+  /// No description provided for @textLibraryMcDescBeehive.
+  ///
+  /// In en, this message translates to:
+  /// **'A bee nest on a post, with bees buzzing round it.'**
+  String get textLibraryMcDescBeehive;
+
+  /// No description provided for @textLibraryMcDescTelescope.
+  ///
+  /// In en, this message translates to:
+  /// **'Look through it at the sky and the sea of clouds.'**
+  String get textLibraryMcDescTelescope;
+
+  /// No description provided for @textLibraryMcBuildHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click to place · R to rotate · right-click a piece to pick it up · B when done'**
+  String get textLibraryMcBuildHint;
+
+  /// No description provided for @textLibraryMcBuildHintTouch.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the ground to place it · walk with the arrows'**
+  String get textLibraryMcBuildHintTouch;
+
+  /// No description provided for @textLibraryMcPickHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Click a piece to put it back in your crate · B when done'**
+  String get textLibraryMcPickHint;
+
+  /// No description provided for @textLibraryMcCrateHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Press B to place your new furniture'**
+  String get textLibraryMcCrateHint;
+
+  /// No description provided for @textLibraryMcBuildRotate.
+  ///
+  /// In en, this message translates to:
+  /// **'Rotate (R)'**
+  String get textLibraryMcBuildRotate;
+
+  /// No description provided for @textLibraryMcBuildPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick up (X)'**
+  String get textLibraryMcBuildPick;
+
+  /// No description provided for @textLibraryMcBuildDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done (B)'**
+  String get textLibraryMcBuildDone;
+
+  /// No description provided for @textLibraryMcCantPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'That doesn\'t fit there'**
+  String get textLibraryMcCantPlace;
+
+  /// No description provided for @textLibraryMcPutBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back in your crate'**
+  String get textLibraryMcPutBack;
+
+  /// No description provided for @textLibraryMcPutBackBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{item} didn\'t fit any more'**
+  String textLibraryMcPutBackBody(String item);
+
+  /// No description provided for @textLibraryMcLieDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Lie down'**
+  String get textLibraryMcLieDown;
+
+  /// No description provided for @textLibraryMcPlayMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Play a tune'**
+  String get textLibraryMcPlayMusic;
+
+  /// No description provided for @textLibraryMcStopMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the music'**
+  String get textLibraryMcStopMusic;
+
+  /// No description provided for @textLibraryMcLookThrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Look through the telescope'**
+  String get textLibraryMcLookThrough;
+
+  /// No description provided for @textLibraryMcStepBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Step back'**
+  String get textLibraryMcStepBack;
+
+  /// No description provided for @textLibraryMcScopeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Move the mouse to look around · Shift or Space to step back'**
+  String get textLibraryMcScopeHint;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

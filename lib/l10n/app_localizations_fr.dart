@@ -1805,4 +1805,199 @@ class LFr extends L {
   @override
   String get textLibraryMcVaultEmpty =>
       'Rien ici pour l’instant. La poste apporte des pièces toutes les demi-heures.';
+
+  @override
+  String get textLibraryMcTraderName => 'Marchand ambulant';
+
+  @override
+  String get textLibraryMcTraderArrived => 'Un marchand ambulant est arrivé';
+
+  @override
+  String get textLibraryMcTraderArrivedBody =>
+      'Son étal est ouvert devant la maison';
+
+  @override
+  String get textLibraryMcTraderLeaving => 'Le marchand remballe';
+
+  @override
+  String textLibraryMcTraderLeavingBody(String minutes) {
+    return 'Il part dans $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTraderGone => 'Le marchand ambulant est reparti';
+
+  @override
+  String get textLibraryMcTraderTrade => 'Commercer avec le marchand ambulant';
+
+  @override
+  String get textLibraryMcTraderStall => 'Étal de marché';
+
+  @override
+  String textLibraryMcTraderAway(String minutes) {
+    return 'Le marchand revient dans $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTraderBusy => 'Le marchand s’installe';
+
+  @override
+  String textLibraryMcShopLeaves(String minutes) {
+    return 'Part dans $minutes min';
+  }
+
+  @override
+  String textLibraryMcShopBuy(String count) {
+    return 'Acheter pour $count pièces';
+  }
+
+  @override
+  String get textLibraryMcShopTooPoor => 'Pas assez de pièces';
+
+  @override
+  String textLibraryMcShopOwned(String count) {
+    return 'Dans votre caisse : $count';
+  }
+
+  @override
+  String textLibraryMcShopPlaced(String count) {
+    return 'Placés : $count';
+  }
+
+  @override
+  String textLibraryMcShopWallet(String total, String hand, String vault) {
+    return '$total pièces · en main $hand · au coffre $vault';
+  }
+
+  @override
+  String textLibraryMcShopBought(String item) {
+    return 'Acheté : $item';
+  }
+
+  @override
+  String get textLibraryMcShopBoughtBody => 'Appuyez sur B pour le placer';
+
+  @override
+  String get textLibraryMcShopBoughtTouch =>
+      'Touchez-le dans la barre pour le placer';
+
+  @override
+  String get textLibraryMcWhereInside => 'Pour l’intérieur';
+
+  @override
+  String get textLibraryMcWhereOutside => 'Pour l’extérieur';
+
+  @override
+  String get textLibraryMcWhereBoth => 'Pour l’intérieur ou l’extérieur';
+
+  @override
+  String get textLibraryMcItemBed => 'Lit douillet';
+
+  @override
+  String get textLibraryMcItemAquarium => 'Aquarium';
+
+  @override
+  String get textLibraryMcItemGramophone => 'Gramophone';
+
+  @override
+  String get textLibraryMcItemCandelabra => 'Candélabre';
+
+  @override
+  String get textLibraryMcItemSwing => 'Balancelle';
+
+  @override
+  String get textLibraryMcItemBirdbath => 'Bain pour oiseaux';
+
+  @override
+  String get textLibraryMcItemBeehive => 'Ruche sur poteau';
+
+  @override
+  String get textLibraryMcItemTelescope => 'Télescope';
+
+  @override
+  String get textLibraryMcDescBed =>
+      'Un lit en épicéa avec un édredon en patchwork. Vous pouvez vous y allonger.';
+
+  @override
+  String get textLibraryMcDescAquarium =>
+      'Un aquarium éclairé avec du sable, du varech et trois poissons tropicaux.';
+
+  @override
+  String get textLibraryMcDescGramophone =>
+      'Joue un petit air de boîte à musique quand vous cliquez dessus.';
+
+  @override
+  String get textLibraryMcDescCandelabra =>
+      'En fer forgé, avec trois bougies vacillantes.';
+
+  @override
+  String get textLibraryMcDescSwing =>
+      'Un banc à lattes suspendu à des chaînes qui se balance au vent. Asseyez-vous dessus.';
+
+  @override
+  String get textLibraryMcDescBirdbath =>
+      'Un socle en pierre avec une vasque d’eau peu profonde.';
+
+  @override
+  String get textLibraryMcDescBeehive =>
+      'Un nid d’abeilles sur un poteau, avec des abeilles qui bourdonnent autour.';
+
+  @override
+  String get textLibraryMcDescTelescope =>
+      'Regardez à travers le ciel et la mer de nuages.';
+
+  @override
+  String get textLibraryMcBuildHint =>
+      'Cliquez pour placer · R pour tourner · clic droit sur un objet pour le ramasser · B pour terminer';
+
+  @override
+  String get textLibraryMcBuildHintTouch =>
+      'Touchez le sol pour le placer · marchez avec les flèches';
+
+  @override
+  String get textLibraryMcPickHint =>
+      'Cliquez sur un objet pour le remettre dans votre caisse · B pour terminer';
+
+  @override
+  String get textLibraryMcCrateHint =>
+      'Appuyez sur B pour placer vos nouveaux meubles';
+
+  @override
+  String get textLibraryMcBuildRotate => 'Tourner (R)';
+
+  @override
+  String get textLibraryMcBuildPick => 'Ramasser (X)';
+
+  @override
+  String get textLibraryMcBuildDone => 'Terminé (B)';
+
+  @override
+  String get textLibraryMcCantPlace => 'Ça ne rentre pas ici';
+
+  @override
+  String get textLibraryMcPutBack => 'De retour dans votre caisse';
+
+  @override
+  String textLibraryMcPutBackBody(String item) {
+    return '$item ne rentrait plus';
+  }
+
+  @override
+  String get textLibraryMcLieDown => 'S’allonger';
+
+  @override
+  String get textLibraryMcPlayMusic => 'Jouer un air';
+
+  @override
+  String get textLibraryMcStopMusic => 'Arrêter la musique';
+
+  @override
+  String get textLibraryMcLookThrough => 'Regarder dans le télescope';
+
+  @override
+  String get textLibraryMcStepBack => 'Reculer';
+
+  @override
+  String get textLibraryMcScopeHint =>
+      'Bougez la souris pour regarder autour · Maj ou Espace pour reculer';
 }

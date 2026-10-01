@@ -247,8 +247,22 @@ class AiBenchmarkStore {
         throw ArgumentError(
             'The $kind test takes a self-contained .html page.');
       }
+      if (_canvasKinds.contains(kind) &&
+          !_drawsOnCanvas.hasMatch(utf8.decode(bytes, allowMalformed: true))) {
+        throw ArgumentError('The $kind test is a 3D scene, but this page '
+            'never draws to a canvas. Is it meant for another test?');
+      }
     }
   }
+
+  /// Tests whose scenes are always WebGL. The banner renderer waits for
+  /// their canvas, so a page without one (a CSS keyboard filed under the
+  /// wrong test) can only ever fail there.
+  static const _canvasKinds = {'pagoda', 'engine', 'pc'};
+
+  static final RegExp _drawsOnCanvas = RegExp(
+      r'''<canvas|getcontext\(|webgl|three(\.module)?(\.min)?\.js|["']three["']''',
+      caseSensitive: false);
 
   Future<List<Map<String, dynamic>>> _readUploads() async {
     try {

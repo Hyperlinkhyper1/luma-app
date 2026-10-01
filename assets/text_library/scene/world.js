@@ -1288,6 +1288,18 @@
       stairs: hasStairs ? {...STAIR, flights} : null,
       trees: outside.trees,
       campfire: outside.campfire,
+      market: outside.market,
+      // Plants loose on the grass, [x, z, texture, size], for the page to
+      // draw round whatever furniture stands there.
+      foliage: outside.foliage,
+      // Floor that bought furniture may never be put on: the doorway, the
+      // stair well and the way onto it, the hearth, and the trader's plot.
+      keepClear: [
+        [-2, F - 2, 2, F + 2.5, 0],
+        [-1.6, fz + 1, 1.6, fz + 2.3, 0],
+        ...(hasStairs ? L.bases.map((_, f) => [STAIR.x0 - 0.5, STAIR.z0 - 0.5, STAIR.x0 + 3.5, STAIR.z0 + 4.5, f]) : []),
+        ...(outside.market ? [[...outside.market.clear, 0]] : []),
+      ],
       heightmap: heightmap(grid),
       smoke: [(chimney.x0 + chimney.x1 + 1) / 2, chimney.top + 0.1, (chimney.z0 + chimney.z1 + 1) / 2],
       // The hall itself, for the dust and the light shafts; the shadows
@@ -1692,6 +1704,28 @@
     solidBox(mailCell[0] + 0.25, mailCell[2] + 0.3, mailCell[0] + 0.9, mailCell[2] + 0.7);
     later.push(() => Fu.mailbox(K, mailCell));
 
+    // The wandering trader's stall, on the lawn right of the path past the
+    // mailbox. It stands there whether he is in or not; he and his llamas
+    // come and go.
+    let market = null;
+    const Goods = window.LibraryGoods;
+    if (Goods) {
+      const plot = [3, F + 3];
+      const [pw, pd] = Goods.STALL.size;
+      let room = true;
+      // Inside the house's own margin, where nothing grows; it only needs
+      // land with nothing on it.
+      for (let x = plot[0]; x <= plot[0] + pw && room; x++) for (let z = plot[1] - 1; z < plot[1] + pd; z++) if (!inland(x, z, 0) || grid.get(x, 0, z) || grid.get(x, -1, z) === B.path) { room = false; break; }
+      if (room) {
+        take(plot[0], plot[1] - 1, plot[0] + pw, plot[1] + pd - 1);
+        const st = Goods.stallSolids(plot);
+        for (const [x0, z0, x1, z1] of st.colliders) solidBox(x0, z0, x1, z1);
+        light(...st.lamp, 14);
+        later.push(() => Goods.stall(K, plot));
+        market = {plot, clear: [plot[0], plot[1] - 1, plot[0] + pw + 1, plot[1] + pd]};
+      }
+    }
+
     // A pumpkin patch in the front yard with hay bales beside it.
     const patch = {x0: -W - 8, x1: -W - 3, z0: F + 3, z1: F + 8};
     for (let x = patch.x0; x <= patch.x1; x++) for (let z = patch.z0; z <= patch.z1; z++) {
@@ -1864,9 +1898,9 @@
       }
     }
     for (const [x, z] of flowers) taken.add(key(x, z));
-    later.push(() => {
-      for (const [x, z, kind] of flowers) cross(K.mb, grid, K.atlas, [x, 0, z], kind, kind === 'sweet_berry_bush' ? 0.95 : 0.7, 0);
-    });
+    // Flowers and the plants below stand loose on the grass: the page draws
+    // them itself, so it can leave out any a piece of furniture stands on.
+    const foliage = flowers.map(([x, z, kind]) => [x, z, kind, kind === 'sweet_berry_bush' ? 0.95 : 0.7]);
 
     // Fallen leaves under the trees and a scatter of them everywhere;
     // grass, ferns, mushrooms and the odd dead bush.
@@ -1888,14 +1922,11 @@
       else if (p < 0.092) plants.push([x, z, 'dead_bush']);
       else if (p < 0.1 && near) plants.push([x, z, p < 0.096 ? 'red_mushroom' : 'brown_mushroom']);
     }
+    for (const [x, z, tex] of plants) foliage.push([x, z, tex, tex.endsWith('mushroom') ? 0.55 : 0.85 + cellHash(x, 15, z) * 0.2]);
 
     later.push(() => {
       for (const [x, z, tint, rot] of litter) {
         addBox(K.mb, grid, K.atlas, [x, 0, z], [0, 0, 0], [16, 0.35, 16], {up: {tex: 'leaf_litter', tint, uv: [0, 0, 16, 16], rot}}, {ao: 1});
-      }
-      for (const [x, z, tex] of plants) {
-        const small = tex.endsWith('mushroom');
-        cross(K.mb, grid, K.atlas, [x, 0, z], tex, small ? 0.55 : 0.85 + cellHash(x, 15, z) * 0.2, 0);
       }
       // Roots hang from the island's underside, and red creeper trails
       // down its sides.
@@ -1915,7 +1946,8 @@
         }
       }
     });
-    return {trees, deck, campfire: campfireAt, mailbox};
+    if (market) market.arrive = [-0.5, deck.z0 + 1.5];
+    return {trees, deck, campfire: campfireAt, mailbox, market, foliage};
   }
 
   // Small islands drifting in the distance, each with a tree or two: only

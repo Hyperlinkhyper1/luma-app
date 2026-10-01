@@ -71,10 +71,10 @@ void main() {
         model: 'Demo 2.0',
         vendor: '',
         description: 'Uploaded',
-        bytes: utf8.encode('<html>upload</html>'),
+        bytes: utf8.encode('<canvas>upload</canvas>'),
       );
       expect(utf8.decode((await store.readScene('pagoda_demo'))!.bytes),
-          '<html>upload</html>');
+          '<canvas>upload</canvas>');
       expect((await store.list()).single.model, 'Demo 2.0');
 
       // A deploy lands the committed files: the seed is newer now and wins.
@@ -132,7 +132,7 @@ void main() {
             model: model,
             vendor: vendor,
             description: '',
-            bytes: bytes ?? utf8.encode('<html></html>'),
+            bytes: bytes ?? utf8.encode('<canvas></canvas>'),
           );
       final glb = [...ascii.encode('glTF'), 2, 0, 0, 0, 12, 0, 0, 0];
 
@@ -149,6 +149,20 @@ void main() {
       expect(() => check(bytes: glb), throwsArgumentError);
       expect(() => check(kind: 'cathedral', id: 'cathedral_x'),
           throwsArgumentError);
+      // A CSS-only keyboard filed under a WebGL test can never get a banner.
+      final cssKeyboard =
+          utf8.encode('<html><div class="keycap"></div></html>');
+      expect(() => check(bytes: cssKeyboard), throwsArgumentError);
+      expect(() => check(kind: 'pc', id: 'pc_x', bytes: cssKeyboard),
+          throwsArgumentError);
+      expect(
+          check(kind: 'keyboard', id: 'keyboard_x', bytes: cssKeyboard)['id'],
+          'keyboard_x');
+      expect(
+          check(
+              bytes: utf8
+                  .encode("<script>import * as T from 'three'</script>"))['id'],
+          'pagoda_x');
     });
   });
 

@@ -43,6 +43,32 @@
     handHint: 'Put the coins in your vault, in the bookcase by the fire', vault: 'Vault', vaultOpen: 'Open the vault',
     vaultPut: 'Put {0} coins in the vault', vaultDeposited: '+{0} coins put away',
     vaultEmpty: 'Nothing in here yet. The post brings coins every half hour.',
+    traderName: 'Wandering Trader', traderArrived: 'A wandering trader has arrived',
+    traderArrivedBody: 'His stall is open in front of the house', traderLeaving: 'The trader is packing up',
+    traderLeavingBody: 'He leaves in {0} min', traderGone: 'The wandering trader has moved on',
+    traderTrade: 'Trade with the wandering trader', traderStall: 'Market stall', traderAway: 'The trader is back in {0} min',
+    traderBusy: 'The trader is setting up', shopLeaves: 'Leaves in {0} min', shopBuy: 'Buy for {0} coins',
+    shopTooPoor: 'Not enough coins', shopOwned: 'In your crate: {0}', shopPlaced: 'Placed: {0}',
+    shopWallet: '{0} coins · in hand {1} · in the vault {2}', shopBought: 'Bought: {0}', shopBoughtBody: 'Press B to place it',
+    shopBoughtTouch: 'Tap it in the hotbar to place it',
+    whereInside: 'For inside', whereOutside: 'For outside', whereBoth: 'For inside or outside',
+    item_bed: 'Cosy bed', item_aquarium: 'Aquarium', item_gramophone: 'Gramophone', item_candelabra: 'Candelabra',
+    item_swing: 'Garden swing', item_birdbath: 'Bird bath', item_beehive: 'Beehive post', item_telescope: 'Telescope',
+    desc_bed: 'A spruce bed with a patchwork quilt. You can lie down on it.',
+    desc_aquarium: 'A lit fish tank with sand, kelp and three tropical fish.',
+    desc_gramophone: 'Plays a little music-box tune when you click it.',
+    desc_candelabra: 'Wrought iron, with three flickering candles.',
+    desc_swing: 'A slatted bench on chains that sways in the breeze. Sit on it.',
+    desc_birdbath: 'A stone pedestal with a shallow basin of water.',
+    desc_beehive: 'A bee nest on a post, with bees buzzing round it.',
+    desc_telescope: 'Look through it at the sky and the sea of clouds.',
+    buildHint: 'Click to place · R to rotate · right-click a piece to pick it up · B when done',
+    buildHintTouch: 'Tap the ground to place it · walk with the arrows',
+    pickHint: 'Click a piece to put it back in your crate · B when done', crateHint: 'Press B to place your new furniture',
+    buildRotate: 'Rotate (R)', buildPick: 'Pick up (X)', buildDone: 'Done (B)', cantPlace: "That doesn't fit there",
+    putBack: 'Back in your crate', putBackBody: "{0} didn't fit any more",
+    lieDown: 'Lie down', playMusic: 'Play a tune', stopMusic: 'Stop the music', lookThrough: 'Look through the telescope',
+    stepBack: 'Step back', scopeHint: 'Move the mouse to look around · Shift or Space to step back',
   };
 
   const MC_COLORS = [
@@ -242,7 +268,7 @@
     },
 
     isModalOpen() {
-      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden || !$('letter').hidden || !$('vault').hidden;
+      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden || !$('letter').hidden || !$('vault').hidden || !$('shop').hidden;
     },
   };
 

@@ -280,7 +280,7 @@ class _ContentSection extends StatelessWidget {
                 child: LumaEmptyState(
                   icon: Icons.extension_off_rounded,
                   title: 'Nothing installed yet',
-                  subtitle: 'Browse Modrinth for mods, resource packs and shader packs.',
+                  subtitle: 'Browse Modrinth or CurseForge for mods, resource packs and shader packs.',
                 ),
               );
             }

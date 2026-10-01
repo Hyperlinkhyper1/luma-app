@@ -1,4 +1,5 @@
 import '../data/minecraft_launcher_database.dart';
+import 'content_api.dart';
 import 'modrinth_api_client.dart';
 
 class ModUpdateInfo {
@@ -32,7 +33,7 @@ class ModUpdateChecker {
       final projectId = item.projectId;
       if (projectId == null) continue;
       try {
-        final versions = await ModrinthApiClient.instance.getProjectVersions(
+        final versions = await ContentApi.getProjectVersions(
           projectId,
           gameVersion: gameVersion,
           loader: item.kind == 'mod' ? loader : null,
@@ -64,7 +65,7 @@ class ModUpdateChecker {
       final versionId = item.versionId;
       if (projectId == null || versionId == null) continue;
       try {
-        final version = await ModrinthApiClient.instance.getVersion(versionId);
+        final version = await ContentApi.getVersion(versionId);
         for (final dep in version.dependencies.where((d) => d.dependencyType == 'incompatible')) {
           final otherId = dep.projectId;
           final other = otherId == null ? null : byProject[otherId];

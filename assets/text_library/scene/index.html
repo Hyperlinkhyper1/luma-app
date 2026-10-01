@@ -15,6 +15,7 @@
 </div>
 
 <div id="hud">
+  <div id="scope" aria-hidden="true" hidden></div>
   <header id="heading">
     <h1 id="title" class="mc-title"></h1>
     <p id="subtitle" class="mc-text"></p>
@@ -39,7 +40,15 @@
     <button class="pad right" data-move="turn:-1" type="button" aria-label="Turn right"></button>
     <button class="pad down" data-move="fwd:-1" type="button" aria-label="Back"></button>
   </div>
-  <div id="purse" role="status" hidden><img id="purse-coin" alt=""><span id="purse-count" class="mc-text"></span></div>
+  <div id="build-tools" role="toolbar" hidden>
+    <button id="build-rotate" class="mc-button" type="button"></button>
+    <button id="build-pick" class="mc-button" type="button"></button>
+    <button id="build-done" class="mc-button" type="button"></button>
+  </div>
+  <div id="bar">
+    <div id="purse" role="status" hidden><img id="purse-coin" alt=""><span id="purse-count" class="mc-text"></span></div>
+    <div id="hotbar" role="toolbar" hidden></div>
+  </div>
   <div id="toasts" aria-live="polite"></div>
 </div>
 
@@ -157,6 +166,31 @@
   </div>
 </div>
 
+<div id="shop" class="mc-screen" hidden>
+  <div class="shop-panel" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+    <div class="shop-head">
+      <h2 id="shop-title" class="mc-text"></h2>
+      <p id="shop-timer" class="mc-text small"></p>
+    </div>
+    <div class="shop-body">
+      <div id="shop-list" role="listbox"></div>
+      <div class="shop-detail">
+        <img id="shop-picture" alt="">
+        <p id="shop-name" class="mc-text"></p>
+        <p id="shop-where" class="mc-text small"></p>
+        <p id="shop-desc" class="mc-text small"></p>
+        <p class="shop-price"><img id="shop-coin" alt=""><span id="shop-cost" class="mc-title"></span></p>
+        <p id="shop-owned" class="mc-text small" hidden></p>
+        <button id="shop-buy" class="mc-button" type="button"></button>
+      </div>
+    </div>
+    <div class="shop-foot">
+      <p class="shop-wallet"><img id="shop-wallet-coin" alt=""><span id="shop-wallet" class="mc-text small"></span></p>
+      <button id="shop-done" class="mc-button" type="button"></button>
+    </div>
+  </div>
+</div>
+
 <nav id="a11y" class="sr-only" aria-label="Library"></nav>
 <div id="error" role="alert" hidden></div>
 
@@ -167,6 +201,7 @@
 <script src="stairs.js"></script>
 <script src="world.js"></script>
 <script src="furniture.js"></script>
+<script src="goods.js"></script>
 <script src="skin.js"></script>
 <script src="render.js"></script>
 <script src="rain_audio.js"></script>
@@ -174,6 +209,7 @@
 <script src="gui.js"></script>
 <script src="book.js"></script>
 <script src="mail.js"></script>
+<script src="market.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

@@ -1751,4 +1751,184 @@ class LZh extends L {
 
   @override
   String get textLibraryMcVaultEmpty => '这里还是空的。邮局每半小时送来金币。';
+
+  @override
+  String get textLibraryMcTraderName => '流浪商人';
+
+  @override
+  String get textLibraryMcTraderArrived => '一位流浪商人来了';
+
+  @override
+  String get textLibraryMcTraderArrivedBody => '他的摊位在房子前面开张了';
+
+  @override
+  String get textLibraryMcTraderLeaving => '商人正在收摊';
+
+  @override
+  String textLibraryMcTraderLeavingBody(String minutes) {
+    return '他将在 $minutes 分钟后离开';
+  }
+
+  @override
+  String get textLibraryMcTraderGone => '流浪商人已经离开了';
+
+  @override
+  String get textLibraryMcTraderTrade => '与流浪商人交易';
+
+  @override
+  String get textLibraryMcTraderStall => '集市摊位';
+
+  @override
+  String textLibraryMcTraderAway(String minutes) {
+    return '商人将在 $minutes 分钟后回来';
+  }
+
+  @override
+  String get textLibraryMcTraderBusy => '商人正在摆摊';
+
+  @override
+  String textLibraryMcShopLeaves(String minutes) {
+    return '$minutes 分钟后离开';
+  }
+
+  @override
+  String textLibraryMcShopBuy(String count) {
+    return '花 $count 枚金币购买';
+  }
+
+  @override
+  String get textLibraryMcShopTooPoor => '金币不足';
+
+  @override
+  String textLibraryMcShopOwned(String count) {
+    return '箱子里：$count';
+  }
+
+  @override
+  String textLibraryMcShopPlaced(String count) {
+    return '已摆放：$count';
+  }
+
+  @override
+  String textLibraryMcShopWallet(String total, String hand, String vault) {
+    return '$total 枚金币 · 手上 $hand · 金库 $vault';
+  }
+
+  @override
+  String textLibraryMcShopBought(String item) {
+    return '已购买：$item';
+  }
+
+  @override
+  String get textLibraryMcShopBoughtBody => '按 B 键摆放';
+
+  @override
+  String get textLibraryMcShopBoughtTouch => '在快捷栏中点按它来摆放';
+
+  @override
+  String get textLibraryMcWhereInside => '适合室内';
+
+  @override
+  String get textLibraryMcWhereOutside => '适合室外';
+
+  @override
+  String get textLibraryMcWhereBoth => '室内室外皆宜';
+
+  @override
+  String get textLibraryMcItemBed => '舒适的床';
+
+  @override
+  String get textLibraryMcItemAquarium => '水族箱';
+
+  @override
+  String get textLibraryMcItemGramophone => '留声机';
+
+  @override
+  String get textLibraryMcItemCandelabra => '烛台';
+
+  @override
+  String get textLibraryMcItemSwing => '花园秋千';
+
+  @override
+  String get textLibraryMcItemBirdbath => '鸟浴盆';
+
+  @override
+  String get textLibraryMcItemBeehive => '蜂巢柱';
+
+  @override
+  String get textLibraryMcItemTelescope => '望远镜';
+
+  @override
+  String get textLibraryMcDescBed => '一张云杉木床，铺着拼布被子。你可以躺在上面。';
+
+  @override
+  String get textLibraryMcDescAquarium => '一个亮着灯的鱼缸，里面有沙子、海带和三条热带鱼。';
+
+  @override
+  String get textLibraryMcDescGramophone => '点击时会播放一段八音盒小曲。';
+
+  @override
+  String get textLibraryMcDescCandelabra => '锻铁打造，插着三支摇曳的蜡烛。';
+
+  @override
+  String get textLibraryMcDescSwing => '一张挂在铁链上的板条长椅，随风轻轻摇晃。可以坐上去。';
+
+  @override
+  String get textLibraryMcDescBirdbath => '一个石头底座，上面有一盆浅浅的水。';
+
+  @override
+  String get textLibraryMcDescBeehive => '柱子上的一个蜂巢，蜜蜂在周围嗡嗡飞舞。';
+
+  @override
+  String get textLibraryMcDescTelescope => '透过它眺望天空和云海。';
+
+  @override
+  String get textLibraryMcBuildHint => '点击摆放 · 按 R 旋转 · 右键点击物品将其收起 · 完成后按 B';
+
+  @override
+  String get textLibraryMcBuildHintTouch => '点按地面来摆放 · 用方向键行走';
+
+  @override
+  String get textLibraryMcPickHint => '点击物品将其放回箱子 · 完成后按 B';
+
+  @override
+  String get textLibraryMcCrateHint => '按 B 键摆放你的新家具';
+
+  @override
+  String get textLibraryMcBuildRotate => '旋转 (R)';
+
+  @override
+  String get textLibraryMcBuildPick => '收起 (X)';
+
+  @override
+  String get textLibraryMcBuildDone => '完成 (B)';
+
+  @override
+  String get textLibraryMcCantPlace => '那里放不下';
+
+  @override
+  String get textLibraryMcPutBack => '已放回箱子';
+
+  @override
+  String textLibraryMcPutBackBody(String item) {
+    return '$item 已经放不下了';
+  }
+
+  @override
+  String get textLibraryMcLieDown => '躺下';
+
+  @override
+  String get textLibraryMcPlayMusic => '播放一首曲子';
+
+  @override
+  String get textLibraryMcStopMusic => '停止音乐';
+
+  @override
+  String get textLibraryMcLookThrough => '用望远镜看';
+
+  @override
+  String get textLibraryMcStepBack => '退后';
+
+  @override
+  String get textLibraryMcScopeHint => '移动鼠标环顾四周 · 按 Shift 或空格键退后';
 }

@@ -104,6 +104,19 @@
         return amount;
       },
 
+      // Pays `amount`: from the coins in hand first, the rest out of the
+      // vault. Spends nothing and returns false when there isn't enough.
+      spend(amount) {
+        const n = whole(amount);
+        if (!n || state.hand + state.vault < n) return false;
+        const fromHand = Math.min(state.hand, n);
+        state.hand -= fromHand;
+        state.vault -= n - fromHand;
+        save();
+        changed('spend');
+        return true;
+      },
+
       save,
     };
 

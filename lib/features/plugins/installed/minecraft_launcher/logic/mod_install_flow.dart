@@ -5,6 +5,7 @@ import '../data/minecraft_launcher_database.dart';
 import '../minecraft_launcher_repository.dart';
 import 'mod_dependency_resolver.dart';
 import 'mod_installer.dart';
+import 'content_api.dart';
 import 'modrinth_api_client.dart';
 
 /// The one install path shared by every Modrinth surface in the launcher:
@@ -37,7 +38,7 @@ class ModInstallFlow {
   }) {
     final loaderFilter =
         kind == 'mod' && instance.loader != 'vanilla' ? instance.loader : null;
-    return ModrinthApiClient.instance.getProjectVersions(
+    return ContentApi.getProjectVersions(
       projectId,
       gameVersion: instance.versionId,
       loader: loaderFilter,
@@ -124,7 +125,7 @@ class ModInstallFlow {
     final ModrinthProject project;
     final ModrinthVersion? version;
     try {
-      project = await ModrinthApiClient.instance.getProject(projectId);
+      project = await ContentApi.getProject(projectId);
       version = bestVersion(await compatibleVersions(
         projectId: projectId,
         instance: instance,

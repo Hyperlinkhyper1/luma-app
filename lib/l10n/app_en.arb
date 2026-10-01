@@ -823,5 +823,128 @@
       }
     }
   },
-  "textLibraryMcVaultEmpty": "Nothing in here yet. The post brings coins every half hour."
+  "textLibraryMcVaultEmpty": "Nothing in here yet. The post brings coins every half hour.",
+  "textLibraryMcTraderName": "Wandering Trader",
+  "textLibraryMcTraderArrived": "A wandering trader has arrived",
+  "textLibraryMcTraderArrivedBody": "His stall is open in front of the house",
+  "textLibraryMcTraderLeaving": "The trader is packing up",
+  "textLibraryMcTraderLeavingBody": "He leaves in {minutes} min",
+  "@textLibraryMcTraderLeavingBody": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcTraderGone": "The wandering trader has moved on",
+  "textLibraryMcTraderTrade": "Trade with the wandering trader",
+  "textLibraryMcTraderStall": "Market stall",
+  "textLibraryMcTraderAway": "The trader is back in {minutes} min",
+  "@textLibraryMcTraderAway": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcTraderBusy": "The trader is setting up",
+  "textLibraryMcShopLeaves": "Leaves in {minutes} min",
+  "@textLibraryMcShopLeaves": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcShopBuy": "Buy for {count} coins",
+  "@textLibraryMcShopBuy": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcShopTooPoor": "Not enough coins",
+  "textLibraryMcShopOwned": "In your crate: {count}",
+  "@textLibraryMcShopOwned": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcShopPlaced": "Placed: {count}",
+  "@textLibraryMcShopPlaced": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcShopWallet": "{total} coins · in hand {hand} · in the vault {vault}",
+  "@textLibraryMcShopWallet": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "hand": {
+        "type": "String"
+      },
+      "vault": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcShopBought": "Bought: {item}",
+  "@textLibraryMcShopBought": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcShopBoughtBody": "Press B to place it",
+  "textLibraryMcShopBoughtTouch": "Tap it in the hotbar to place it",
+  "textLibraryMcWhereInside": "For inside",
+  "textLibraryMcWhereOutside": "For outside",
+  "textLibraryMcWhereBoth": "For inside or outside",
+  "textLibraryMcItemBed": "Cosy bed",
+  "textLibraryMcItemAquarium": "Aquarium",
+  "textLibraryMcItemGramophone": "Gramophone",
+  "textLibraryMcItemCandelabra": "Candelabra",
+  "textLibraryMcItemSwing": "Garden swing",
+  "textLibraryMcItemBirdbath": "Bird bath",
+  "textLibraryMcItemBeehive": "Beehive post",
+  "textLibraryMcItemTelescope": "Telescope",
+  "textLibraryMcDescBed": "A spruce bed with a patchwork quilt. You can lie down on it.",
+  "textLibraryMcDescAquarium": "A lit fish tank with sand, kelp and three tropical fish.",
+  "textLibraryMcDescGramophone": "Plays a little music-box tune when you click it.",
+  "textLibraryMcDescCandelabra": "Wrought iron, with three flickering candles.",
+  "textLibraryMcDescSwing": "A slatted bench on chains that sways in the breeze. Sit on it.",
+  "textLibraryMcDescBirdbath": "A stone pedestal with a shallow basin of water.",
+  "textLibraryMcDescBeehive": "A bee nest on a post, with bees buzzing round it.",
+  "textLibraryMcDescTelescope": "Look through it at the sky and the sea of clouds.",
+  "textLibraryMcBuildHint": "Click to place · R to rotate · right-click a piece to pick it up · B when done",
+  "textLibraryMcBuildHintTouch": "Tap the ground to place it · walk with the arrows",
+  "textLibraryMcPickHint": "Click a piece to put it back in your crate · B when done",
+  "textLibraryMcCrateHint": "Press B to place your new furniture",
+  "textLibraryMcBuildRotate": "Rotate (R)",
+  "textLibraryMcBuildPick": "Pick up (X)",
+  "textLibraryMcBuildDone": "Done (B)",
+  "textLibraryMcCantPlace": "That doesn't fit there",
+  "textLibraryMcPutBack": "Back in your crate",
+  "textLibraryMcPutBackBody": "{item} didn't fit any more",
+  "@textLibraryMcPutBackBody": {
+    "placeholders": {
+      "item": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcLieDown": "Lie down",
+  "textLibraryMcPlayMusic": "Play a tune",
+  "textLibraryMcStopMusic": "Stop the music",
+  "textLibraryMcLookThrough": "Look through the telescope",
+  "textLibraryMcStepBack": "Step back",
+  "textLibraryMcScopeHint": "Move the mouse to look around · Shift or Space to step back"
 }
