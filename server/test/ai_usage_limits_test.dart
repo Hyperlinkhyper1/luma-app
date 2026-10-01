@@ -151,7 +151,14 @@ void main() {
     expect(aurora['outputTokens'], 60);
     expect(aurora['costUsd'], closeTo(0.004, 1e-9));
     expect(summary['recent'], hasLength(3));
+    final daily = summary['daily'] as List;
+    expect(daily, hasLength(1));
+    expect(daily.single['calls'], 3);
+    expect(daily.single['tokens'], 1600);
+    expect(daily.single['features'],
+        {'Assistant · Aurora': 300, 'Picture': 1300});
     expect(reopened.callSummary('nobody')['models'], isEmpty);
+    expect(reopened.callSummary('nobody')['daily'], isEmpty);
 
     await reopened.deleteUser('user');
     expect(reopened.callSummary('user')['models'], isEmpty);

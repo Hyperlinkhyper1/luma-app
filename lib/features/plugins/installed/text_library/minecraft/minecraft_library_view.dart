@@ -186,6 +186,7 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         _send({
           'type': 'init',
           'strings': sceneStrings(L.of(context)),
+          'classStrings': classroomStringsByLanguage(),
           'reducedMotion': MediaQuery.of(context).disableAnimations,
         });
         _sendVisibility();

@@ -74,6 +74,7 @@
       switch (m.type) {
         case 'init':
           gui.setStrings(m.strings);
+          classroom.setLanguages(m.classStrings);
           $('time').textContent = timeLabel();
           $('weather').textContent = weatherLabel();
           $('sound-label').textContent = soundLabel();

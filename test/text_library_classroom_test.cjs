@@ -9,7 +9,7 @@ const scene = path.join(__dirname, '../assets/text_library/scene');
 const context = {window: {}, console, setTimeout, document: {getElementById: () => null}};
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(scene, 'classroom.js'), 'utf8'), context, {filename: 'classroom.js'});
-const {COUNTRIES, yearsFor} = context.window.LibraryClassroom;
+const {COUNTRIES, yearsFor, languageOf} = context.window.LibraryClassroom;
 
 const school = (country, name) => COUNTRIES.find(c => c.name === country).schools.find(s => s.name === name);
 
@@ -41,4 +41,19 @@ test('every school has years, and every level a last year inside them', () => {
       }
     }
   }
+});
+
+test("the classroom speaks the language of the reader's school country", () => {
+  assert.equal(languageOf('Nederland'), 'nl');
+  assert.equal(languageOf('België (Vlaanderen)'), 'nl');
+  assert.equal(languageOf('France'), 'fr');
+  assert.equal(languageOf('España'), 'es');
+  assert.equal(languageOf('United States'), 'en');
+  assert.equal(languageOf('Deutschland'), 'de', 'not an app language, so the app language is used');
+  assert.equal(languageOf('  Netherlands'), 'nl', 'typed under somewhere else');
+  assert.equal(languageOf('中国'), 'zh');
+  assert.equal(languageOf('México'), 'es');
+  assert.equal(languageOf('Japan'), null);
+  assert.equal(languageOf(null), null);
+  for (const c of COUNTRIES) assert.ok(c.lang, `${c.name} has no language`);
 });

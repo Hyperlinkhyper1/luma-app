@@ -114,6 +114,17 @@ void main() {
       expect(strings['page'], contains('{0}'));
       expect(strings['page'], contains('{1}'));
     });
+
+    test('the classroom gets its strings in every app language', () {
+      final byLanguage = classroomStringsByLanguage();
+      expect(byLanguage.keys, containsAll(['en', 'nl', 'fr', 'es', 'zh']));
+      expect(byLanguage['nl']!['classLeave'], isNot(byLanguage['en']!['classLeave']));
+      expect(byLanguage['nl']!['classQuestion'], contains('{0}'));
+      for (final strings in byLanguage.values) {
+        expect(strings.keys.every((k) => k.startsWith('class')), isTrue);
+        expect(strings, contains('classroom'));
+      }
+    });
   });
 
   group('classic view', () {

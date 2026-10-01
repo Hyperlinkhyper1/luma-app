@@ -102,6 +102,9 @@ class AiUsageStore {
   static const _callRetention = Duration(days: 180);
   static const _maxCallsPerUser = 5000;
 
+  /// How many days back [callSummary]'s `daily` series reaches.
+  static const dailyDays = 30;
+
   /// userId -> {'tokens': [[ms, tokens, mode], ...], 'support': [ms, ...],
   ///             'webSearches': [ms, ...]}
   final Map<String, dynamic> _data;
@@ -392,8 +395,40 @@ class AiUsageStore {
     final models = groups.values.toList()
       ..sort((a, b) =>
           (b['totalTokens'] as int).compareTo(a['totalTokens'] as int));
+    // Per UTC day for the dashboard's charts: only days that saw a call,
+    // with each day's tokens split by feature.
+    final now = DateTime.now().toUtc();
+    final dailyCutoff = DateTime.utc(now.year, now.month, now.day)
+        .subtract(const Duration(days: dailyDays - 1))
+        .millisecondsSinceEpoch;
+    final days = <int, Map<String, dynamic>>{};
+    for (final row in rows) {
+      final at = row[0] as int;
+      if (at < dailyCutoff) continue;
+      final d = DateTime.fromMillisecondsSinceEpoch(at, isUtc: true);
+      final dayMs = DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch;
+      final day = days.putIfAbsent(
+          dayMs,
+          () => {
+                'dayMs': dayMs,
+                'calls': 0,
+                'tokens': 0,
+                'costUsd': null,
+                'features': <String, int>{},
+              });
+      final total = _count(row[6]);
+      day['calls'] = (day['calls'] as int) + 1;
+      day['tokens'] = (day['tokens'] as int) + total;
+      if (row[7] case final num cost) {
+        day['costUsd'] = ((day['costUsd'] as num?) ?? 0) + cost;
+      }
+      final features = day['features'] as Map<String, int>;
+      features['${row[1]}'] = (features['${row[1]}'] ?? 0) + total;
+    }
     return {
       'models': models,
+      'daily': days.values.toList()
+        ..sort((a, b) => (a['dayMs'] as int).compareTo(b['dayMs'] as int)),
       'recent': [
         for (final row in rows.reversed.take(recent))
           {

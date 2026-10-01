@@ -31,6 +31,7 @@ import 'metrics.dart';
 import 'oauth.dart';
 import 'rate_limit.dart';
 import 'recipe_store.dart';
+import 'school_test.dart';
 import 'store.dart';
 import 'subway_relay.dart';
 import 'subway_store.dart';
@@ -38,6 +39,7 @@ import 'util.dart';
 import 'web_search.dart';
 
 part 'api_classroom.dart';
+part 'api_school_tests.dart';
 
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
@@ -670,6 +672,15 @@ class Api {
       ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
       ..post('/admin/ai-book-review', _requireAdmin(_adminAiBookReviewSave))
       ..post('/admin/ai-classroom', _requireAdmin(_adminAiClassroomSave))
+      ..get('/admin/school-tests', _requireAdmin(_adminSchoolTestsState))
+      ..get('/admin/school-tests/runs/<id>',
+          _requireAdmin(_adminSchoolTestsRunDetail))
+      ..post('/admin/school-tests/run', _requireAdmin(_adminSchoolTestsStart))
+      ..post('/admin/school-tests/stop', _requireAdmin(_adminSchoolTestsStop))
+      ..post(
+          '/admin/school-tests/suite', _requireAdmin(_adminSchoolTestsSuite))
+      ..post('/admin/school-tests/runs/<id>/delete',
+          _requireAdmin(_adminSchoolTestsDelete))
       ..post('/admin/classroom/country/reset',
           _requireAdmin(_adminClassroomCountryReset))
       ..post('/admin/ai-image', _requireAdmin(_adminAiImageSave))
@@ -2701,6 +2712,10 @@ class Api {
   late final ClassroomCountryStore classroomCountries =
       ClassroomCountryStore(config.dataDir);
 
+  /// The Tests tab's school test: the operator's cases and every run (see
+  /// `api_school_tests.dart`).
+  late final SchoolTestStore schoolTests = SchoolTestStore(config.dataDir);
+
   late final BookReviewConfigStore aiBookReviewConfig =
       BookReviewConfigStore(config.dataDir);
 
@@ -2848,14 +2863,16 @@ class Api {
 
   /// Sends one chat-completion body to [route]'s upstream with the
   /// operator's key for it. Returns the status and the raw response body.
-  /// Retries once on a 429 — see [_postJsonWithRetry].
+  /// Retries once on a 429 — see [_postJsonWithRetry]. [apiKey] replaces
+  /// the operator's key for this one call (the Tests tab's own-key runs).
   Future<(int, String)> _callAiUpstream(
-      AiModeRoute route, Map<String, dynamic> upstreamBody) {
+      AiModeRoute route, Map<String, dynamic> upstreamBody,
+      {String? apiKey}) {
     return _postJsonWithRetry(
       Uri.parse(route.upstream.endpoint),
       {
         HttpHeaders.authorizationHeader:
-            'Bearer ${config.aiUpstreamKey(route.upstream)}',
+            'Bearer ${apiKey ?? config.aiUpstreamKey(route.upstream)}',
         if (route.upstream == AiUpstream.openrouter) ...{
           'HTTP-Referer': config.publicUrl,
           'X-Title': 'luma',
@@ -10123,6 +10140,7 @@ syncToolbar();
       'plan_granted': 'Plan granted',
       'credits_granted': 'AI credits granted',
       'classroom_country_reset': 'Classroom country reset',
+      'school_test_run': 'School test',
       'ai_routes_changed': 'Assistant models',
       'admin_password_reset': 'Password reset',
       'admin_password_reset_cancelled': 'Password reset cancelled',
@@ -10273,6 +10291,7 @@ syncToolbar();
         '<button class="tab-btn" data-tab="plugins">Plugins</button>'
         '<button class="tab-btn" data-tab="metrics">Metrics</button>'
         '<button class="tab-btn" data-tab="assistant">Assistant</button>'
+        '<button class="tab-btn" data-tab="tests">Tests</button>'
         '<button class="tab-btn" data-tab="control">Maintenance</button>'
         '</div>'
         '${_adminAssistantPanel(googleModels, mistralModels)}'
@@ -10442,6 +10461,50 @@ syncToolbar();
         '</div>'
         '</div>'
         '<div class="card">'
+        '<h2>Server update</h2>'
+        '<div class="maint-desc">Pulls the latest code, rebuilds the image '
+        'and recreates the container. <strong>The server restarts and is '
+        'briefly unavailable.</strong></div>'
+        '<div class="maint-actions">'
+        '<button id="deployBtn" type="button" class="btn btn-primary">'
+        'Update &amp; restart server</button>'
+        '</div>'
+        '<div id="deployStatus" class="maint-status"></div>'
+        '<pre id="deployLog" class="log maint-out" style="display:none"></pre>'
+        '</div>'
+        '<div class="card">'
+        '<h2>System updates</h2>'
+        '<div class="maint-desc">Installs apt package upgrades and graphics '
+        'driver updates on the host (Ubuntu Desktop), then immediately '
+        'restarts the server and wiki. <strong>The server is briefly '
+        'unavailable during the restart.</strong></div>'
+        '<div class="maint-actions">'
+        '<button id="updateCheckBtn" type="button" class="btn btn-primary">'
+        'Install updates &amp; restart</button>'
+        '</div>'
+        '<div id="updateCheckStatus" class="maint-status"></div>'
+        '<pre id="updateCheckLog" class="log maint-out" style="display:none"></pre>'
+        '</div>'
+        '<div class="card">'
+        '<h2>Reboot server</h2>'
+        '<div class="maint-desc">Reboots the whole host machine — needed '
+        'for kernel and driver updates to take effect. Docker, the server, '
+        'the wiki and the deploy watcher all start again on their own. '
+        '<strong>Everything is offline until it has booted, usually a '
+        'minute or two.</strong></div>'
+        '<div class="maint-actions">'
+        '<button id="rebootBtn" type="button" class="btn btn-primary">'
+        'Reboot server</button>'
+        '</div>'
+        '<div id="rebootStatus" class="maint-status"></div>'
+        '<pre id="rebootLog" class="log maint-out" style="display:none"></pre>'
+        '</div>'
+        '</div>'
+        '</div>'
+        '<div class="tab-panel" id="panel-tests">'
+        '${_adminSchoolTestsCard()}'
+        '<div class="maint-grid">'
+        '<div class="card">'
         '<h2>AI benchmark scenes</h2>'
         '<div class="maint-desc">Adds a model\'s run of one of the AI Usage '
         'plugin\'s tests. The scene is live in the app right away and is '
@@ -10492,45 +10555,6 @@ syncToolbar();
         '</div>'
         '$_bnDialogsHtml'
         '</div>'
-        '<div class="card">'
-        '<h2>Server update</h2>'
-        '<div class="maint-desc">Pulls the latest code, rebuilds the image '
-        'and recreates the container. <strong>The server restarts and is '
-        'briefly unavailable.</strong></div>'
-        '<div class="maint-actions">'
-        '<button id="deployBtn" type="button" class="btn btn-primary">'
-        'Update &amp; restart server</button>'
-        '</div>'
-        '<div id="deployStatus" class="maint-status"></div>'
-        '<pre id="deployLog" class="log maint-out" style="display:none"></pre>'
-        '</div>'
-        '<div class="card">'
-        '<h2>System updates</h2>'
-        '<div class="maint-desc">Installs apt package upgrades and graphics '
-        'driver updates on the host (Ubuntu Desktop), then immediately '
-        'restarts the server and wiki. <strong>The server is briefly '
-        'unavailable during the restart.</strong></div>'
-        '<div class="maint-actions">'
-        '<button id="updateCheckBtn" type="button" class="btn btn-primary">'
-        'Install updates &amp; restart</button>'
-        '</div>'
-        '<div id="updateCheckStatus" class="maint-status"></div>'
-        '<pre id="updateCheckLog" class="log maint-out" style="display:none"></pre>'
-        '</div>'
-        '<div class="card">'
-        '<h2>Reboot server</h2>'
-        '<div class="maint-desc">Reboots the whole host machine — needed '
-        'for kernel and driver updates to take effect. Docker, the server, '
-        'the wiki and the deploy watcher all start again on their own. '
-        '<strong>Everything is offline until it has booted, usually a '
-        'minute or two.</strong></div>'
-        '<div class="maint-actions">'
-        '<button id="rebootBtn" type="button" class="btn btn-primary">'
-        'Reboot server</button>'
-        '</div>'
-        '<div id="rebootStatus" class="maint-status"></div>'
-        '<pre id="rebootLog" class="log maint-out" style="display:none"></pre>'
-        '</div>'
         '</div>'
         '</div>'
         '<script>$_adminMenuScript</script>'
@@ -10542,6 +10566,7 @@ syncToolbar();
         '<script>$_adminAssistantScript</script>'
         '<script>$_adminBannersScript</script>'
         '<script>$_adminBenchmarkUploadScript</script>'
+        '<script>$_adminSchoolTestsScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
         '<script>${UpdateCheckConsole.rebootScript}</script>'
@@ -11519,11 +11544,67 @@ tbody tr:hover td{background:#181330}
 .usage-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
 .usage-heading h2{margin:0;overflow-wrap:anywhere}
 .usage-note{color:#9b94b3;font-size:12px;line-height:1.6;margin:10px 0 0}
-#usageCards{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media(max-width:800px){#usageCards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:420px){#usageCards{grid-template-columns:1fr}}
-.usage-bar{height:5px;max-width:220px;background:#241f38;border-radius:4px;margin-top:5px;overflow:hidden}
-.usage-bar>span{display:block;height:100%;background:#8a7ee0}
+.ukpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+@media(max-width:900px){.ukpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:460px){.ukpis{grid-template-columns:1fr}}
+.ukpi{background:linear-gradient(180deg,#1a1628,#151122);border:1px solid #262038;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.ukpi-l{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#8d86a8}
+.ukpi-n{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#ece8f7}
+.ukpi-sub{font-size:12px;color:#c5bed9;font-variant-numeric:tabular-nums}
+.ukpi-foot{font-size:11.5px;color:#8d86a8;font-variant-numeric:tabular-nums;margin-top:2px}
+.umeter{display:flex;gap:2px;height:8px;background:#241f38;border-radius:4px;overflow:hidden;margin-top:8px}
+.umeter>span{display:block;height:100%}
+.uspark{display:flex;align-items:flex-end;gap:2px;height:34px;margin-top:8px}
+.uspark>span{flex:1;border-radius:2px 2px 0 0;min-width:2px}
+.ucharts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-bottom:18px}
+.ucharts .card{margin-bottom:0}
+.uchart--wide{grid-column:1/-1}
+.uchart[hidden]{display:none}
+@media(max-width:860px){.ucharts{grid-template-columns:1fr}}
+.uchart{min-width:0}
+.uchart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.uchart-head h2{margin:0}
+.useg{display:inline-flex;gap:2px;background:#12101e;border:1px solid #262038;border-radius:9px;padding:3px}
+.useg button{background:transparent;border:0;color:#9b94b3;font:inherit;font-size:12px;font-weight:500;padding:5px 11px;border-radius:6px;cursor:pointer}
+.useg button:hover{color:#ece8f7}
+.useg button[aria-pressed=true]{background:#2b2444;color:#ece8f7}
+.useg button:focus-visible{outline:2px solid #8a7ee0;outline-offset:1px}
+.ucols{display:flex;gap:8px;height:200px}
+.ucols-y{display:flex;flex-direction:column;justify-content:space-between;font-size:11px;color:#8d86a8;text-align:right;min-width:44px;font-variant-numeric:tabular-nums;margin:-7px 0}
+.ucols-plot{position:relative;flex:1;display:flex;align-items:flex-end;gap:3px;min-width:0}
+.ucols-grid{position:absolute;left:0;right:0;height:1px;background:#241e36;pointer-events:none}
+.ucol{flex:1;height:100%;display:flex;align-items:flex-end;border-radius:4px;position:relative;outline:none;min-width:0}
+.ucol:hover,.ucol:focus-visible{background:rgba(138,126,224,.08)}
+.ucol:focus-visible{box-shadow:0 0 0 2px #8a7ee0}
+.ucol-stack{width:100%;display:flex;flex-direction:column-reverse;gap:2px;border-radius:4px 4px 0 0;overflow:hidden}
+.ucol-stack>span{display:block;min-height:2px}
+.ucols-x{display:flex;justify-content:space-between;font-size:11px;color:#8d86a8;margin:6px 0 0 52px}
+.ucols-empty{color:#8d86a8;font-size:12.5px;text-align:center;margin-top:-120px;margin-bottom:100px;pointer-events:none}
+.ulegend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font-size:12px;color:#c5bed9}
+.ulegend:empty{display:none}
+.ukey{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:7px;vertical-align:0;flex:none}
+.hbars{display:flex;flex-direction:column;gap:6px}
+.hbar{display:block;text-align:left;background:transparent;border:0;border-radius:8px;padding:6px 8px;margin:0 -8px;width:calc(100% + 16px);font:inherit;color:inherit;cursor:default;outline:none}
+button.hbar{cursor:pointer}
+.hbar:hover,.hbar:focus-visible{background:rgba(138,126,224,.08)}
+.hbar:focus-visible{box-shadow:0 0 0 2px #8a7ee0}
+.hbar-head{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;margin-bottom:5px}
+.hbar-label{color:#ece8f7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;display:flex;align-items:center}
+.hbar-value{color:#c5bed9;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hbar-track{height:8px;background:#1f1a31;border-radius:4px}
+.hbar-track>span{display:block;height:100%;border-radius:0 4px 4px 0}
+.card.udetails{padding:0}
+.udetails>summary{cursor:pointer;padding:14px 18px;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:10px}
+.udetails>summary::-webkit-details-marker{display:none}
+.udetails>summary::before{content:'\25B8';color:#8d86a8;font-size:12px;transition:transform .15s}
+.udetails[open]>summary::before{transform:rotate(90deg)}
+.udetails>summary .usage-note{margin:0;font-weight:400}
+.card.udetails[open]{padding-bottom:12px}
+.udetails>p,.udetails>table{margin-left:16px;margin-right:16px}
+.udetails>table{width:calc(100% - 32px)}
+.udetails>p{margin-top:0;margin-bottom:10px}
+.utip{position:fixed;z-index:200;pointer-events:none;background:#0f0c19;border:1px solid #352d55;border-radius:9px;padding:8px 11px;font-size:12px;line-height:1.55;color:#ece8f7;white-space:pre-line;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-variant-numeric:tabular-nums}
+.utip[hidden]{display:none}
 .btn{display:inline-flex;align-items:center;justify-content:center;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid transparent;transition:background .15s,border-color .15s,color .15s}
 .btn-primary{background:#8a7ee0;color:#14111f}
 .btn-primary:hover{background:#9c91ec}
@@ -11674,33 +11755,67 @@ window.lumaAskReason = function (form, message) {
       <button id="usageRefresh" type="button" class="btn btn-ghost btn-sm">Refresh</button>
     </div>
     <p id="usageStatus" class="usage-note" role="status">Loading usage…</p>
-    <div id="usageCards" class="stats" style="margin-top:16px;margin-bottom:0"></div>
+    <div id="usageKpis" class="ukpis"></div>
     <p id="usageAccount" class="usage-note"></p>
     <p id="usageTracking" class="usage-note"></p>
   </div>
-  <div class="card table-card">
-    <h2>AI usage on your API keys</h2>
+  <div class="ucharts">
+    <div class="card uchart uchart--wide">
+      <div class="uchart-head">
+        <div><h2 id="usageDailyTitle">AI tokens per day</h2>
+        <div class="usage-note" style="margin:2px 0 0">Last 30 days · UTC</div></div>
+        <div class="useg" id="usageDailyMetric" role="group" aria-label="Daily chart metric">
+          <button type="button" data-metric="tokens" aria-pressed="true">Tokens</button>
+          <button type="button" data-metric="calls" aria-pressed="false">Requests</button>
+          <button type="button" data-metric="cost" aria-pressed="false">Cost</button>
+        </div>
+      </div>
+      <div id="usageDaily"></div>
+      <div id="usageDailyLegend" class="ulegend"></div>
+    </div>
+    <div class="card uchart">
+      <div class="uchart-head"><h2>AI tokens by model</h2></div>
+      <div id="usageByModel" class="hbars"></div>
+    </div>
+    <div class="card uchart">
+      <div class="uchart-head"><h2>Storage by collection</h2></div>
+      <div id="usageByCollection" class="hbars"></div>
+    </div>
+    <div class="card uchart" data-all-users>
+      <div class="uchart-head"><h2>Top accounts by storage</h2>
+      <span class="usage-note" style="margin:0">Click to open</span></div>
+      <div id="usageTopStorage" class="hbars"></div>
+    </div>
+    <div class="card uchart" data-all-users>
+      <div class="uchart-head"><h2>Top accounts by AI tokens</h2>
+      <span class="usage-note" style="margin:0">Click to open</span></div>
+      <div id="usageTopAi" class="hbars"></div>
+    </div>
+  </div>
+  <details class="card table-card udetails">
+    <summary>AI usage on your API keys <span class="usage-note">full table</span></summary>
     <p class="usage-note">Every Assistant, Picture, AI Detector and Luma Support request the server answered with your keys. On-device models are not included.</p>
     <table>
       <thead><tr><th>Feature</th><th>Provider</th><th>Model</th><th>Requests</th><th>Input tokens</th><th>Output tokens</th><th>Total tokens</th><th>Last 7 days</th><th>Cost</th><th>Last used</th></tr></thead>
       <tbody id="usageAiModels"></tbody>
     </table>
-  </div>
-  <div class="card table-card">
-    <h2>Recent AI requests</h2>
+  </details>
+  <details class="card table-card udetails">
+    <summary>Recent AI requests <span class="usage-note">last 50</span></summary>
     <table>
       <thead><tr><th>When</th><th>Account</th><th>Feature</th><th>Model</th><th>Input tokens</th><th>Output tokens</th><th>Total tokens</th><th>Cost</th></tr></thead>
       <tbody id="usageAiRecent"></tbody>
     </table>
-  </div>
-  <div class="card table-card">
-    <h2>Storage by collection</h2>
+  </details>
+  <details class="card table-card udetails">
+    <summary>Storage by collection <span class="usage-note">full table</span></summary>
     <table>
       <thead><tr><th>Collection</th><th>Storage used</th><th>Share</th><th>Accounts</th><th>Last updated</th></tr></thead>
       <tbody id="usageCollections"></tbody>
     </table>
-  </div>
+  </details>
   <p class="usage-note">AI usage is logged per request from when this tracking was added, kept for 180 days. Storage covers encrypted sync collections and their plan quota. App transfer estimates authenticated API payloads before compression. Streamed bodies, headers, TLS, WebSockets and other device traffic are excluded.</p>
+  <div id="usageTip" class="utip" role="tooltip" hidden></div>
   <noscript><p class="empty">Enable JavaScript to search users and view usage.</p></noscript>
 </div>
 ''';
@@ -11709,18 +11824,33 @@ window.lumaAskReason = function (form, message) {
 (function () {
   const panel = document.getElementById('panel-usage');
   if (!panel) return;
-  const search = document.getElementById('usageSearch');
-  const picker = document.getElementById('usagePicker');
-  const empty = document.getElementById('usageSearchEmpty');
-  const scope = document.getElementById('usageScope');
-  const status = document.getElementById('usageStatus');
-  const cards = document.getElementById('usageCards');
-  const account = document.getElementById('usageAccount');
-  const tracking = document.getElementById('usageTracking');
-  const collectionsBody = document.getElementById('usageCollections');
-  const aiModelsBody = document.getElementById('usageAiModels');
-  const aiRecentBody = document.getElementById('usageAiRecent');
-  const refresh = document.getElementById('usageRefresh');
+  const $ = id => document.getElementById(id);
+  const search = $('usageSearch');
+  const picker = $('usagePicker');
+  const empty = $('usageSearchEmpty');
+  const scope = $('usageScope');
+  const status = $('usageStatus');
+  const kpis = $('usageKpis');
+  const account = $('usageAccount');
+  const tracking = $('usageTracking');
+  const collectionsBody = $('usageCollections');
+  const aiModelsBody = $('usageAiModels');
+  const aiRecentBody = $('usageAiRecent');
+  const refresh = $('usageRefresh');
+  const tip = $('usageTip');
+  const DAYS = 30;
+  const DAY_MS = 86400000;
+  // Fixed categorical order (validated for CVD on the dashboard's dark
+  // surface). A feature keeps its colour whichever user is shown.
+  const PALETTE = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'];
+  const OTHER = '#6f688a';
+  const knownFeatures = ['Assistant · Aurora', 'Assistant · Nebula', 'Assistant · Pulsar', 'Picture',
+    'AI Detector', 'Book reviewer', 'Classroom', 'Luma Support'];
+  const featureColors = new Map(knownFeatures.map((f, i) => [f, PALETTE[i]]));
+  function featureColor(feature) {
+    if (featureColors.has(feature)) return featureColors.get(feature);
+    return OTHER;
+  }
   // Server object names are the app's sync ids. Some carry a random id per
   // device or file (aiu_<device>, cf_<file>_<chunk>), which means nothing to
   // a person, so those are grouped under one readable name.
@@ -11753,19 +11883,16 @@ window.lumaAskReason = function (form, message) {
   function count(value) {
     return Math.round(value || 0).toLocaleString();
   }
+  function compact(value) {
+    value = value || 0;
+    if (value >= 1e9) return (value / 1e9).toFixed(value >= 1e10 ? 0 : 1) + 'B';
+    if (value >= 1e6) return (value / 1e6).toFixed(value >= 1e7 ? 0 : 1) + 'M';
+    if (value >= 1e3) return (value / 1e3).toFixed(value >= 1e4 ? 0 : 1) + 'K';
+    return String(Math.round(value));
+  }
   function money(value) {
     if (value == null) return '—';
     return '$' + (value < 0.01 && value > 0 ? value.toFixed(4) : value.toFixed(2));
-  }
-  let users = [];
-  let selectedEmail = null;
-  let loading = false;
-
-  function node(tag, text, className) {
-    const element = document.createElement(tag);
-    if (text !== undefined) element.textContent = text;
-    if (className) element.className = className;
-    return element;
   }
   function bytes(value) {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -11779,6 +11906,56 @@ window.lumaAskReason = function (form, message) {
   function date(ms) {
     return ms == null ? '—' : new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
   }
+  function day(ms) {
+    return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  }
+  function pct(part, whole) {
+    return whole > 0 ? Math.min(100, part / whole * 100) : 0;
+  }
+  function node(tag, text, className) {
+    const element = document.createElement(tag);
+    if (text !== undefined) element.textContent = text;
+    if (className) element.className = className;
+    return element;
+  }
+
+  let users = [];
+  let selectedEmail = null;
+  let loading = false;
+  let dailyMetric = 'tokens';
+  let lastDaily = null;
+
+  // ---- Tooltip: any element with data-tip shows it on hover or focus.
+  function showTip(target, x, y) {
+    tip.textContent = target.dataset.tip;
+    tip.hidden = false;
+    const box = tip.getBoundingClientRect();
+    let left = x + 14, top = y + 14;
+    if (left + box.width > window.innerWidth - 8) left = x - box.width - 14;
+    if (top + box.height > window.innerHeight - 8) top = y - box.height - 14;
+    tip.style.left = Math.max(8, left) + 'px';
+    tip.style.top = Math.max(8, top) + 'px';
+  }
+  panel.addEventListener('mousemove', event => {
+    const target = event.target.closest('[data-tip]');
+    if (target) showTip(target, event.clientX, event.clientY); else tip.hidden = true;
+  });
+  panel.addEventListener('mouseleave', () => { tip.hidden = true; });
+  panel.addEventListener('focusin', event => {
+    const target = event.target.closest('[data-tip]');
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    showTip(target, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  });
+  panel.addEventListener('focusout', () => { tip.hidden = true; });
+
+  function select(email) {
+    selectedEmail = email;
+    picker.querySelectorAll('button').forEach(button => {
+      button.setAttribute('aria-pressed', String((button.dataset.email || null) === selectedEmail));
+    });
+    renderStats();
+  }
   function renderPicker() {
     picker.replaceChildren();
     function button(label, email) {
@@ -11786,13 +11963,7 @@ window.lumaAskReason = function (form, message) {
       element.type = 'button';
       element.dataset.email = email || '';
       element.setAttribute('aria-pressed', String(selectedEmail === email));
-      element.addEventListener('click', function () {
-        selectedEmail = selectedEmail === email ? null : email;
-        picker.querySelectorAll('button').forEach(button => {
-          button.setAttribute('aria-pressed', String((button.dataset.email || null) === selectedEmail));
-        });
-        renderStats();
-      });
+      element.addEventListener('click', () => select(selectedEmail === email ? null : email));
       picker.append(element);
     }
     button('All users', null);
@@ -11801,20 +11972,194 @@ window.lumaAskReason = function (form, message) {
     matching.forEach(user => button(user.email, user.email));
     empty.hidden = matching.length > 0 || !query;
   }
+
+  // ---- Chart pieces ------------------------------------------------------
+  function meter(segments, title) {
+    const bar = node('div', undefined, 'umeter');
+    segments.forEach(([value, color, label]) => {
+      if (value <= 0) return;
+      const fill = node('span');
+      fill.style.width = value + '%';
+      fill.style.background = color;
+      if (label) fill.dataset.tip = label;
+      bar.append(fill);
+    });
+    if (title) bar.setAttribute('aria-label', title);
+    return bar;
+  }
+  function kpi(label, value, sub, extra, foot) {
+    const card = node('div', undefined, 'ukpi');
+    card.append(node('div', label, 'ukpi-l'), node('div', value, 'ukpi-n'));
+    if (sub) card.append(node('div', sub, 'ukpi-sub'));
+    if (extra) card.append(extra);
+    if (foot) card.append(node('div', foot, 'ukpi-foot'));
+    return card;
+  }
+  function sparkline(values, color, format) {
+    const max = Math.max(1, ...values.map(v => v.value));
+    const box = node('div', undefined, 'uspark');
+    values.forEach(v => {
+      const bar = node('span');
+      bar.style.height = Math.max(v.value > 0 ? 6 : 2, v.value / max * 100) + '%';
+      bar.style.background = v.value > 0 ? color : '#2b2444';
+      bar.dataset.tip = day(v.dayMs) + '\n' + format(v.value);
+      box.append(bar);
+    });
+    return box;
+  }
+  /// Horizontal bars: label above a track, value on the right. Rows past
+  /// [limit] fold into one "Other" bar so the chart stays readable.
+  function hbars(container, rows, opts) {
+    container.replaceChildren();
+    if (!rows.length) {
+      container.append(node('div', opts.empty, 'empty'));
+      return;
+    }
+    let shown = rows.slice(0, opts.limit || 8);
+    const rest = rows.slice(opts.limit || 8);
+    if (rest.length) {
+      shown = shown.concat([{
+        label: 'Other (' + rest.length + ')', value: rest.reduce((s, r) => s + r.value, 0),
+        tip: rest.length + ' more', other: true
+      }]);
+    }
+    const max = Math.max(...shown.map(r => r.value), 1);
+    shown.forEach(row => {
+      const element = node(row.onClick ? 'button' : 'div', undefined, 'hbar');
+      if (row.onClick) {
+        element.type = 'button';
+        element.addEventListener('click', row.onClick);
+      } else {
+        element.tabIndex = 0;
+      }
+      const head = node('div', undefined, 'hbar-head');
+      const label = node('span', row.label, 'hbar-label');
+      if (row.color) {
+        const key = node('i', undefined, 'ukey');
+        key.style.background = row.color;
+        label.prepend(key);
+      }
+      head.append(label, node('span', opts.format(row.value), 'hbar-value'));
+      const track = node('div', undefined, 'hbar-track');
+      const fill = node('span');
+      fill.style.width = Math.max(row.value > 0 ? 1.5 : 0, row.value / max * 100) + '%';
+      fill.style.background = row.other ? OTHER : (row.color || '#8a7ee0');
+      track.append(fill);
+      element.append(head, track);
+      element.dataset.tip = row.label + '\n' + opts.format(row.value) + (row.tip ? '\n' + row.tip : '');
+      container.append(element);
+    });
+  }
+  function niceMax(value) {
+    if (value <= 0) return 1;
+    const power = Math.pow(10, Math.floor(Math.log10(value)));
+    for (const step of [1, 2, 2.5, 5, 10]) if (step * power >= value) return step * power;
+    return 10 * power;
+  }
+  /// The 30-day column chart. Tokens stack by feature; requests and cost are
+  /// a single series (the server doesn't split those by feature per day).
+  function renderDaily(daily) {
+    lastDaily = daily;
+    const container = $('usageDaily');
+    const legend = $('usageDailyLegend');
+    const metricLabel = { tokens: 'AI tokens', calls: 'AI requests', cost: 'AI cost' }[dailyMetric];
+    $('usageDailyTitle').textContent = metricLabel + ' per day';
+    const format = dailyMetric === 'cost' ? money : dailyMetric === 'calls' ? count : compact;
+    const valueOf = d => dailyMetric === 'cost' ? (d.costUsd || 0) : dailyMetric === 'calls' ? d.calls : d.tokens;
+    const featureTotals = new Map();
+    daily.forEach(d => Object.entries(d.features).forEach(([f, t]) =>
+      featureTotals.set(f, (featureTotals.get(f) || 0) + t)));
+    const features = Array.from(featureTotals.keys()).sort((a, b) => {
+      const ia = knownFeatures.indexOf(a), ib = knownFeatures.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+    });
+    const max = niceMax(Math.max(0, ...daily.map(valueOf)));
+    container.replaceChildren();
+    const chart = node('div', undefined, 'ucols');
+    const yAxis = node('div', undefined, 'ucols-y');
+    [max, max / 2, 0].forEach(v => yAxis.append(node('span', format(v))));
+    const plot = node('div', undefined, 'ucols-plot');
+    [0, 50, 100].forEach(p => {
+      const line = node('i', undefined, 'ucols-grid');
+      line.style.bottom = p + '%';
+      plot.append(line);
+    });
+    daily.forEach(d => {
+      const column = node('div', undefined, 'ucol');
+      column.tabIndex = 0;
+      const total = valueOf(d);
+      const stack = node('div', undefined, 'ucol-stack');
+      stack.style.height = (total / max * 100) + '%';
+      let lines = [day(d.dayMs), metricLabel + ': ' + format(total)];
+      if (dailyMetric === 'tokens' && total > 0) {
+        features.forEach(f => {
+          const t = d.features[f] || 0;
+          if (!t) return;
+          const seg = node('span');
+          seg.style.flexGrow = String(t);
+          seg.style.background = featureColor(f);
+          stack.append(seg);
+        });
+        lines = lines.concat(features.filter(f => d.features[f])
+          .sort((a, b) => d.features[b] - d.features[a])
+          .map(f => '  ' + f + ': ' + compact(d.features[f])));
+      } else if (total > 0) {
+        const seg = node('span');
+        seg.style.flexGrow = '1';
+        seg.style.background = '#8a7ee0';
+        stack.append(seg);
+      }
+      if (dailyMetric !== 'calls') lines.push(count(d.calls) + ' requests');
+      column.dataset.tip = lines.join('\n');
+      column.append(stack);
+      plot.append(column);
+    });
+    chart.append(yAxis, plot);
+    const xAxis = node('div', undefined, 'ucols-x');
+    [0, Math.floor(DAYS / 2), DAYS - 1].forEach(i => xAxis.append(node('span', day(daily[i].dayMs))));
+    container.append(chart, xAxis);
+    if (!daily.some(d => d.calls > 0)) {
+      container.append(node('div', 'No AI requests in the last 30 days.', 'ucols-empty'));
+    }
+    legend.replaceChildren();
+    if (dailyMetric === 'tokens' && features.length > 1) {
+      features.forEach(f => {
+        const item = node('span', f);
+        const key = node('i', undefined, 'ukey');
+        key.style.background = featureColor(f);
+        item.prepend(key);
+        legend.append(item);
+      });
+    }
+  }
+  $('usageDailyMetric').addEventListener('click', event => {
+    const button = event.target.closest('button[data-metric]');
+    if (!button) return;
+    dailyMetric = button.dataset.metric;
+    $('usageDailyMetric').querySelectorAll('button').forEach(b =>
+      b.setAttribute('aria-pressed', String(b === button)));
+    if (lastDaily) renderDaily(lastDaily);
+  });
+
   function renderStats() {
     const selected = users.find(user => user.email === selectedEmail);
     const shown = selected ? [selected] : users;
     scope.textContent = selected ? selected.email : 'All users';
-    let used = 0, quota = 0, remaining = 0, uploaded = 0, downloaded = 0, requests = 0;
+    let used = 0, quota = 0, uploaded = 0, downloaded = 0, requests = 0;
     let tracked = 0, since = null, collectionCount = 0;
     const collections = new Map();
     const aiModels = new Map();
     const aiRecent = [];
     let aiCalls = 0, aiTokens = 0, aiTokens7d = 0, aiCost = null;
+    const today = Math.floor(Date.now() / DAY_MS) * DAY_MS;
+    const daily = [];
+    for (let i = DAYS - 1; i >= 0; i--) {
+      daily.push({ dayMs: today - i * DAY_MS, calls: 0, tokens: 0, costUsd: 0, features: {} });
+    }
+    const dailyByMs = new Map(daily.map(d => [d.dayMs, d]));
     shown.forEach(user => {
       used += user.usedBytes;
       quota += user.quotaBytes;
-      remaining += Math.max(0, user.quotaBytes - user.usedBytes);
       if (user.traffic) {
         tracked++;
         uploaded += user.traffic.uploadBytes;
@@ -11835,7 +12180,7 @@ window.lumaAskReason = function (form, message) {
         item.updatedAtMs = Math.max(item.updatedAtMs, collection.updatedAtMs);
         collections.set(item.name, item);
       });
-      const ai = user.ai || { models: [], recent: [] };
+      const ai = user.ai || { models: [], recent: [], daily: [] };
       ai.models.forEach(model => {
         const key = model.feature + '\u0000' + model.upstream + '\u0000' + model.model;
         const item = aiModels.get(key) || {
@@ -11855,21 +12200,39 @@ window.lumaAskReason = function (form, message) {
         aiTokens7d += model.tokens7d;
         if (model.costUsd != null) aiCost = (aiCost || 0) + model.costUsd;
       });
+      (ai.daily || []).forEach(d => {
+        const target = dailyByMs.get(d.dayMs);
+        if (!target) return;
+        target.calls += d.calls;
+        target.tokens += d.tokens;
+        target.costUsd += d.costUsd || 0;
+        Object.entries(d.features || {}).forEach(([f, t]) => {
+          target.features[f] = (target.features[f] || 0) + t;
+        });
+      });
       ai.recent.forEach(call => aiRecent.push(Object.assign({ email: user.email }, call)));
     });
-    cards.replaceChildren();
-    [
-      ['Storage used', bytes(used)], ['Storage capacity', bytes(quota)],
-      ['Storage remaining', bytes(remaining)], ['Collections', collectionCount.toLocaleString()],
-      ['Uploaded', bytes(uploaded)], ['Downloaded', bytes(downloaded)],
-      ['Total transfer', bytes(uploaded + downloaded)], ['API requests', requests.toLocaleString()],
-      ['AI requests', count(aiCalls)], ['AI tokens', count(aiTokens)],
-      ['AI tokens, last 7 days', count(aiTokens7d)], ['AI cost (reported)', money(aiCost)]
-    ].forEach(([label, value]) => {
-      const card = node('div', undefined, 'stat');
-      card.append(node('div', value, 'n'), node('div', label, 'l'));
-      cards.append(card);
-    });
+
+    // ---- Headline tiles
+    kpis.replaceChildren();
+    const usedPct = pct(used, quota);
+    kpis.append(kpi('Storage', bytes(used), 'of ' + bytes(quota) + ' · ' + usedPct.toFixed(0) + '% used',
+      meter([[usedPct, usedPct > 90 ? '#e66767' : '#8a7ee0', bytes(used) + ' used']], 'Storage used'),
+      bytes(Math.max(0, quota - used)) + ' free · ' + collectionCount.toLocaleString() + ' collections'));
+    const transfer = uploaded + downloaded;
+    kpis.append(kpi('App transfer', bytes(transfer),
+      requests.toLocaleString() + ' API requests',
+      meter([[pct(downloaded, transfer), '#8a7ee0', '↓ ' + bytes(downloaded) + ' downloaded'],
+        [pct(uploaded, transfer), '#7ee08a', '↑ ' + bytes(uploaded) + ' uploaded']], 'Download vs upload'),
+      '↓ ' + bytes(downloaded) + ' down · ↑ ' + bytes(uploaded) + ' up'));
+    const last7 = daily.slice(-7).reduce((s, d) => s + d.tokens, 0);
+    kpis.append(kpi('AI tokens', compact(aiTokens), count(aiTokens7d) + ' in the last 7 days',
+      sparkline(daily.map(d => ({ dayMs: d.dayMs, value: d.tokens })), '#3987e5', v => compact(v) + ' tokens'),
+      'Last 30 days, per day'));
+    kpis.append(kpi('AI requests & cost', count(aiCalls), money(aiCost) + ' reported cost',
+      sparkline(daily.map(d => ({ dayMs: d.dayMs, value: d.calls })), '#199e70', v => count(v) + ' requests'),
+      last7 > 0 ? 'Last 30 days, per day' : 'Nothing in the last 7 days'));
+
     account.textContent = selected
       ? 'Plan: ' + selected.planId + ' · Status: ' + selected.status +
         ' · Created: ' + date(selected.createdAtMs) + ' · Last login: ' + date(selected.lastLoginAtMs)
@@ -11878,26 +12241,45 @@ window.lumaAskReason = function (form, message) {
       ? 'Transfer tracking starts with the next authenticated request.'
       : 'Transfer recorded since ' + date(since) +
         (selected ? '.' : ' · ' + tracked + ' of ' + shown.length + ' accounts have recorded traffic.');
-    collectionsBody.replaceChildren();
-    const sorted = Array.from(collections.values()).sort((a, b) => b.size - a.size || a.name.localeCompare(b.name));
-    sorted.forEach(collection => {
-      const share = used > 0 ? collection.size / used * 100 : 0;
-      const row = node('tr');
-      const size = node('td', bytes(collection.size));
-      const bar = node('div', undefined, 'usage-bar');
-      const fill = node('span');
-      fill.style.width = Math.min(100, share).toFixed(1) + '%';
-      bar.append(fill);
-      size.append(bar);
-      const name = node('td', collection.name);
-      if (collection.one) {
-        name.append(node('div', collection.objects.toLocaleString() + ' ' +
-          (collection.objects === 1 ? collection.one : collection.many), 'usage-note'));
-      }
-      row.append(name, size, node('td', share.toFixed(1) + '%'),
-        node('td', collection.accounts.size.toLocaleString()), node('td', date(collection.updatedAtMs)));
-      collectionsBody.append(row);
+
+    // ---- Charts
+    renderDaily(daily);
+    const byModel = new Map();
+    aiModels.forEach(m => {
+      const item = byModel.get(m.model) || { label: m.model, value: 0, calls: 0, features: new Set(), upstream: m.upstream };
+      item.value += m.totalTokens;
+      item.calls += m.calls;
+      item.features.add(m.feature);
+      byModel.set(m.model, item);
     });
+    hbars($('usageByModel'), Array.from(byModel.values())
+      .sort((a, b) => b.value - a.value)
+      .map(m => ({ label: m.label, value: m.value,
+        tip: m.upstream + ' · ' + count(m.calls) + ' requests\n' + Array.from(m.features).join(', ') })),
+      { format: v => compact(v) + ' tokens', empty: 'No AI requests on your keys yet.' });
+    const sorted = Array.from(collections.values()).sort((a, b) => b.size - a.size || a.name.localeCompare(b.name));
+    hbars($('usageByCollection'), sorted.map(c => ({
+      label: c.name, value: c.size,
+      tip: pct(c.size, used).toFixed(1) + '% of storage · ' + c.accounts.size + ' account' + (c.accounts.size === 1 ? '' : 's')
+    })), { format: bytes, empty: 'No synced collections.' });
+    panel.querySelectorAll('[data-all-users]').forEach(card => { card.hidden = !!selected; });
+    if (!selected) {
+      hbars($('usageTopStorage'), users.filter(u => u.usedBytes > 0)
+        .sort((a, b) => b.usedBytes - a.usedBytes)
+        .map(u => ({ label: u.email, value: u.usedBytes, onClick: () => select(u.email),
+          tip: pct(u.usedBytes, u.quotaBytes).toFixed(0) + '% of their ' + bytes(u.quotaBytes) + ' (' + u.planId + ')' })),
+        { limit: 6, format: bytes, empty: 'No account stores anything yet.' });
+      hbars($('usageTopAi'), users.map(u => {
+        const models = (u.ai && u.ai.models) || [];
+        return { user: u, value: models.reduce((s, m) => s + m.totalTokens, 0), calls: models.reduce((s, m) => s + m.calls, 0) };
+      }).filter(r => r.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .map(r => ({ label: r.user.email, value: r.value, onClick: () => select(r.user.email),
+          tip: count(r.calls) + ' requests' })),
+        { limit: 6, format: v => compact(v) + ' tokens', empty: 'No AI requests yet.' });
+    }
+
+    // ---- Full tables (collapsed by default)
     function emptyRow(body, text, span) {
       const row = node('tr');
       const cell = node('td', text, 'empty');
@@ -11905,12 +12287,30 @@ window.lumaAskReason = function (form, message) {
       row.append(cell);
       body.append(row);
     }
+    collectionsBody.replaceChildren();
+    sorted.forEach(collection => {
+      const share = pct(collection.size, used);
+      const row = node('tr');
+      const name = node('td', collection.name);
+      if (collection.one) {
+        name.append(node('div', collection.objects.toLocaleString() + ' ' +
+          (collection.objects === 1 ? collection.one : collection.many), 'usage-note'));
+      }
+      row.append(name, node('td', bytes(collection.size)), node('td', share.toFixed(1) + '%'),
+        node('td', collection.accounts.size.toLocaleString()), node('td', date(collection.updatedAtMs)));
+      collectionsBody.append(row);
+    });
+    if (!sorted.length) emptyRow(collectionsBody, 'No synced collections.', 5);
     aiModelsBody.replaceChildren();
     Array.from(aiModels.values())
       .sort((a, b) => b.totalTokens - a.totalTokens || b.calls - a.calls)
       .forEach(model => {
         const row = node('tr');
-        row.append(node('td', model.feature), node('td', model.upstream), node('td', model.model),
+        const feature = node('td', model.feature);
+        const key = node('i', undefined, 'ukey');
+        key.style.background = featureColor(model.feature);
+        feature.prepend(key);
+        row.append(feature, node('td', model.upstream), node('td', model.model),
           node('td', count(model.calls)), node('td', count(model.inputTokens)),
           node('td', count(model.outputTokens)), node('td', count(model.totalTokens)),
           node('td', count(model.tokens7d)), node('td', money(model.costUsd)),
@@ -11928,13 +12328,6 @@ window.lumaAskReason = function (form, message) {
       aiRecentBody.append(row);
     });
     if (!aiRecent.length) emptyRow(aiRecentBody, 'No AI requests yet.', 8);
-    if (!sorted.length) {
-      const row = node('tr');
-      const cell = node('td', 'No synced collections.', 'empty');
-      cell.colSpan = 5;
-      row.append(cell);
-      collectionsBody.append(row);
-    }
   }
   async function load() {
     if (loading) return;
@@ -11981,6 +12374,7 @@ window.lumaAskReason = function (form, message) {
     plugins: document.getElementById('panel-plugins'),
     metrics: document.getElementById('panel-metrics'),
     assistant: document.getElementById('panel-assistant'),
+    tests: document.getElementById('panel-tests'),
     control: document.getElementById('panel-control'),
   };
   function activate(tab) {

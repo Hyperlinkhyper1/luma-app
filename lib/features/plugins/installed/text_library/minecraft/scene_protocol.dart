@@ -30,6 +30,18 @@ Map<String, Object?> libraryMessage(LibrarySnapshot snapshot) => {
 /// Every string the scene shows, localised here so the page needs no
 /// translations of its own. Placeholders are handed through as `{0}`, `{1}`
 /// for the page to fill in.
+/// The classroom's strings in every language the app speaks, by language
+/// code. The classroom speaks the language of the reader's school country,
+/// not the app's, so the page picks from these once it knows the country.
+Map<String, Map<String, String>> classroomStringsByLanguage() => {
+      for (final locale in L.supportedLocales)
+        locale.languageCode: {
+          for (final MapEntry(:key, :value)
+              in sceneStrings(lookupL(locale)).entries)
+            if (key.startsWith('class')) key: value,
+        },
+    };
+
 Map<String, String> sceneStrings(L t) => {
   'loading': t.textLibraryMcLoading,
   'newCase': t.textLibraryMcNewCase,

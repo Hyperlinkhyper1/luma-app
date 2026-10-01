@@ -22,7 +22,7 @@
   const range = (from, to, label) => Array.from({length: to - from + 1}, (_, i) => label(from + i));
   const COUNTRIES = [
     {
-      name: 'Nederland',
+      name: 'Nederland', lang: 'nl',
       schools: [
         {name: 'Basisschool', years: range(3, 8, n => `Groep ${n}`)},
         {
@@ -63,7 +63,7 @@
       },
     },
     {
-      name: 'België (Vlaanderen)',
+      name: 'België (Vlaanderen)', lang: 'nl',
       schools: [
         {name: 'Lagere school', years: range(1, 6, n => `${n}e leerjaar`)},
         {name: 'Secundair onderwijs', years: range(1, 6, n => `${n}e jaar`), levels: [['A-stroom', 2], ['B-stroom', 2], ['ASO', 6, 3], ['TSO', 6, 3], ['KSO', 6, 3], ['BSO', 7, 3]]},
@@ -72,7 +72,7 @@
       publishers: {default: ['Van In', 'Die Keure', 'Pelckmans', 'Plantyn']},
     },
     {
-      name: 'Deutschland',
+      name: 'Deutschland', lang: 'de',
       schools: [
         {name: 'Grundschule', years: range(1, 4, n => `Klasse ${n}`)},
         {name: 'Weiterführende Schule', years: range(5, 13, n => `Klasse ${n}`), levels: [['Hauptschule', 10], ['Realschule', 10], ['Gymnasium', 13], ['Gesamtschule', 13]]},
@@ -81,7 +81,7 @@
       publishers: {default: ['Cornelsen', 'Klett', 'Westermann', 'C.C. Buchner']},
     },
     {
-      name: 'United Kingdom',
+      name: 'United Kingdom', lang: 'en',
       schools: [
         {name: 'Primary school', years: range(1, 6, n => `Year ${n}`)},
         {name: 'Secondary school', years: range(7, 13, n => `Year ${n}`), levels: [['Key Stage 3', 9, 7], ['GCSE Foundation', 11, 10], ['GCSE Higher', 11, 10], ['A level', 13, 12]]},
@@ -90,7 +90,7 @@
       publishers: {default: ['Pearson', 'Oxford University Press', 'Collins', 'Hodder Education', 'CGP', 'AQA']},
     },
     {
-      name: 'United States',
+      name: 'United States', lang: 'en',
       schools: [
         {name: 'Elementary school', years: ['Kindergarten', ...range(1, 5, n => `Grade ${n}`)]},
         {name: 'Middle school', years: range(6, 8, n => `Grade ${n}`)},
@@ -100,7 +100,7 @@
       publishers: {default: ['McGraw Hill', 'Savvas', 'Houghton Mifflin Harcourt', 'Big Ideas Learning', 'Illustrative Mathematics', 'Amplify']},
     },
     {
-      name: 'France',
+      name: 'France', lang: 'fr',
       schools: [
         {name: 'École élémentaire', years: ['CP', 'CE1', 'CE2', 'CM1', 'CM2']},
         {name: 'Collège', years: ['6e', '5e', '4e', '3e']},
@@ -110,7 +110,7 @@
       publishers: {default: ['Hachette', 'Nathan', 'Bordas', 'Belin', 'Hatier', 'Magnard']},
     },
     {
-      name: 'España',
+      name: 'España', lang: 'es',
       schools: [
         {name: 'Primaria', years: range(1, 6, n => `${n}º`)},
         {name: 'ESO', years: range(1, 4, n => `${n}º`)},
@@ -121,6 +121,20 @@
     },
   ];
   const countryInfo = name => COUNTRIES.find(c => c.name === name) || null;
+  // The language a country's schools teach in, for one typed under
+  // "somewhere else": its name in English or in its own words. Null when
+  // unknown, and the classroom then speaks the app's language.
+  const COUNTRY_LANGS = [
+    [/^(nederland|netherlands|holland|the netherlands|pays-bas|países bajos|荷兰|suriname|belgi[eë]|vlaanderen|flanders)/i, 'nl'],
+    [/^(united kingdom|uk|england|scotland|wales|ireland|united states|usa|america|canada|australia|new zealand|south africa)/i, 'en'],
+    [/^(france|belgique|wallonie|luxembourg|québec|quebec|suisse|sénégal|côte d'ivoire|maroc|tunisie|algérie)/i, 'fr'],
+    [/^(españa|spain|méxico|mexico|argentina|colombia|chile|perú|peru|venezuela|ecuador|uruguay|paraguay|bolivia|cuba|guatemala|costa rica|panamá|panama)/i, 'es'],
+    [/^(中国|中國|china|台湾|台灣|taiwan|香港|hong kong|singapore|新加坡)/i, 'zh'],
+  ];
+  function languageOf(name) {
+    if (!name) return null;
+    return countryInfo(name)?.lang || COUNTRY_LANGS.find(([re]) => re.test(name.trim()))?.[1] || null;
+  }
   // The years a level runs through: a level is [name, last year, first
   // year], so vmbo stops after the fourth and havo after the fifth. Years
   // without a number (CP, Seconde) are always offered.
@@ -159,8 +173,12 @@
   };
 
   function create({T, gui, send, scene, W, atlas: getAtlas, mat, toast}) {
+    // The classroom's strings per language, from the app. Once the country
+    // is known the classroom speaks its schools' language, like the teacher.
+    let languages = {};
     const t = (key, ...args) => {
-      let s = gui.strings?.[key] ?? EN[key] ?? key;
+      const own = languages[languageOf(country)];
+      let s = own?.[key] ?? gui.strings?.[key] ?? EN[key] ?? key;
       args.forEach((a, i) => { s = s.replace(`{${i}}`, a); });
       return s;
     };
@@ -792,6 +810,11 @@
 
     const classroom = {
       receive, build, step, pick, open, close, useDoor,
+      setLanguages(map) {
+        languages = map && typeof map === 'object' ? map : {};
+        if (screen) refresh();
+        drawBoard();
+      },
       get colliders() { return door.colliders; },
       get isOpen() { return !!screen; },
       get access() { return access; },
@@ -851,5 +874,5 @@
     }
   }
 
-  window.LibraryClassroom = {create, demo, COUNTRIES, yearsFor};
+  window.LibraryClassroom = {create, demo, COUNTRIES, yearsFor, languageOf};
 })();
