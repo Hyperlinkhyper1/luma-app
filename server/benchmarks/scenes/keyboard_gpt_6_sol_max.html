@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101918">
+  <title>KORA 65 | The Anatomy of a Keystroke</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #101918;
+      --paper: #f0ede4;
+      --muted: #a1aaa4;
+      --accent: #da815e;
+      --angle-x: 57deg;
+      --angle-y: -10deg;
+      --scene-scale: 1;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { min-width: 320px; min-height: 100%; margin: 0; }
+
+    body {
+      background: var(--ink);
+      color: var(--paper);
+      font-family: Arial, Helvetica, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    button { font: inherit; }
+
+    button:focus-visible, .keyboard:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 5px;
+    }
+
+    .showcase {
+      position: relative;
+      min-height: 720px;
+      min-height: max(720px, 100svh);
+      isolation: isolate;
+      overflow: hidden;
+      background:
+        radial-gradient(ellipse 54% 55% at 64% 62%, rgba(73, 88, 75, .26), transparent 76%),
+        radial-gradient(ellipse 36% 50% at 100% 100%, rgba(107, 70, 54, .09), transparent 83%),
+        #101918;
+    }
+
+    .showcase::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(241, 239, 224, .025) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(241, 239, 224, .025) 1px, transparent 1px);
+      background-size: 86px 86px;
+      mask-image: linear-gradient(90deg, transparent 8%, #000 100%);
+    }
+
+    .showcase::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse 43% 31% at 62% 70%, rgba(218, 129, 94, .075), transparent 75%);
+      animation: ambient-breathe 8s ease-in-out infinite alternate;
+    }
+
+    .site-header {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 37px clamp(26px, 5.4vw, 92px);
+    }
+
+    .site-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 13px;
+      color: #eae8dc;
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .25em;
+      line-height: 1;
+    }
+
+    .mark-symbol {
+      position: relative;
+      display: block;
+      width: 25px;
+      height: 25px;
+      border: 1.5px solid var(--paper);
+      border-radius: 50%;
+    }
+
+    .mark-symbol::before, .mark-symbol::after {
+      content: "";
+      position: absolute;
+      height: 1.5px;
+      background: var(--paper);
+      transform-origin: left center;
+    }
+
+    .mark-symbol::before { width: 13px; top: 7px; left: 8px; transform: rotate(132deg); }
+    .mark-symbol::after { width: 11px; top: 12px; left: 11px; transform: rotate(45deg); }
+
+    .sound-area { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+    .sound-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 31px;
+      padding: 0;
+      color: #e7e6da;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .18em;
+      transition: color .2s ease;
+    }
+
+    .sound-button:hover { color: var(--accent); }
+    .sound-button svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+    .mute-slash, .sound-button.is-muted .sound-wave { display: none; }
+    .sound-button.is-muted .mute-slash { display: block; }
+
+    .audio-hint {
+      margin: 0;
+      color: #828f88;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-align: right;
+      transition: opacity .3s ease;
+    }
+
+    .audio-hint.is-hidden { opacity: 0; }
+
+    .intro {
+      position: relative;
+      z-index: 3;
+      width: min(510px, 42vw);
+      margin-left: clamp(26px, 5.4vw, 92px);
+      margin-top: clamp(52px, 8vh, 110px);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 0 0 14px;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .23em;
+      line-height: 1.2;
+    }
+
+    .eyebrow::before { content: ""; display: block; width: 18px; height: 1px; background: currentColor; }
+
+    h1 {
+      display: flex;
+      align-items: baseline;
+      gap: .13em;
+      margin: 0 0 19px -7px;
+      color: #f1eee4;
+      font-size: clamp(82px, 10.5vw, 164px);
+      font-weight: 800;
+      line-height: .88;
+      letter-spacing: -.105em;
+    }
+
+    h1 .edition {
+      color: var(--accent);
+      font-size: .33em;
+      font-weight: 500;
+      letter-spacing: -.075em;
+      transform: translateY(-.05em);
+    }
+
+    .intro-copy {
+      max-width: 343px;
+      margin: 0;
+      color: #b8c0b8;
+      font-size: clamp(14px, 1.05vw, 16px);
+      line-height: 1.7;
+      letter-spacing: .005em;
+    }
+
+    .replay-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 15px;
+      margin-top: 27px;
+      padding: 0 0 9px;
+      color: #f0eee3;
+      border: 0;
+      border-bottom: 1px solid rgba(240, 238, 227, .48);
+      background: transparent;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      transition: color .2s ease, border-color .2s ease;
+      pointer-events: auto;
+    }
+
+    .replay-button:hover { color: var(--accent); border-color: var(--accent); }
+    .replay-button svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .45s ease; }
+    .replay-button:hover svg { transform: rotate(-45deg); }
+
+    .scene-frame {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      perspective: 1600px;
+      perspective-origin: 56% 51%;
+      transform-style: preserve-3d;
+      pointer-events: none;
+    }
+
+    .keyboard {
+      position: absolute;
+      top: 63%;
+      left: 57%;
+      width: 872px;
+      height: 300px;
+      transform: translate(-50%, -50%) rotateX(var(--angle-x)) rotateY(var(--angle-y)) rotateZ(-16deg) scale(var(--scene-scale));
+      transform-origin: center center;
+      transform-style: preserve-3d;
+      pointer-events: auto;
+      touch-action: none;
+      cursor: grab;
+      transition: transform .35s ease-out;
+    }
+
+    .keyboard.is-dragging { cursor: grabbing; transition: none; }
+    .keyboard * { box-sizing: border-box; }
+
+    .ground-shadow {
+      position: absolute;
+      inset: 11px 5px -22px;
+      border-radius: 48%;
+      background: rgba(0, 0, 0, .68);
+      filter: blur(36px);
+      transform: translateZ(-75px);
+      pointer-events: none;
+    }
+
+    .case-body, .case-body > div, .component, .component > div,
+    #switchField, #keyField,
+    .switch-unit, .switch-unit > span, .keycap, .keycap > span {
+      transform-style: preserve-3d;
+    }
+
+    #switchField, #keyField { position: absolute; inset: 0; pointer-events: none; }
+    #keyField .keycap { pointer-events: auto; }
+
+    .case-body { position: absolute; inset: 0; pointer-events: none; }
+
+    .case-bottom {
+      position: absolute;
+      inset: 0;
+      border-radius: 19px;
+      background: #5c625c;
+      transform: translateZ(-18px);
+      box-shadow: 0 35px 60px rgba(0, 0, 0, .3);
+    }
+
+    .case-well {
+      position: absolute;
+      inset: 16px;
+      border-radius: 9px;
+      background: #26302e;
+      transform: translateZ(0);
+      box-shadow: inset 0 0 0 2px #151f1e, inset 0 9px 20px rgba(0, 0, 0, .65);
+    }
+
+    .case-rim {
+      position: absolute;
+      inset: 0;
+      border: 19px solid #c9c4b6;
+      border-radius: 20px;
+      background: transparent;
+      transform: translateZ(22px);
+      box-shadow: inset 0 0 0 2px rgba(76, 82, 75, .35), 0 0 0 1px #f0ecdf, 0 8px 11px rgba(0, 0, 0, .27);
+    }
+
+    .case-front, .case-back {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 40px;
+      transform-origin: top center;
+      transform: translateZ(22px) rotateX(-90deg);
+    }
+
+    .case-front {
+      top: 100%;
+      overflow: hidden;
+      background: linear-gradient(180deg, #b8b3a5 0%, #8f9287 11%, #5e6862 79%, #4c5650 100%);
+      border-bottom: 2px solid #323b37;
+      border-radius: 0 0 13px 13px;
+      box-shadow: inset 0 2px 0 #f0eee3;
+    }
+
+    .case-front::before {
+      content: "";
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      top: 7px;
+      height: 1px;
+      background: rgba(246, 242, 229, .38);
+    }
+
+    .case-front span {
+      position: absolute;
+      right: 36px;
+      top: 17px;
+      color: #e6e0d1;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .28em;
+    }
+
+    .case-back { top: 0; background: #686f67; }
+
+    .case-left, .case-right {
+      position: absolute;
+      top: 0;
+      width: 40px;
+      height: 100%;
+      transform-origin: left center;
+      transform: translateZ(22px) rotateY(90deg);
+    }
+
+    .case-left { left: 0; background: #73776d; }
+    .case-right {
+      left: 100%;
+      border-radius: 0 13px 13px 0;
+      background: linear-gradient(90deg, #c4beaf, #7c857a 18%, #59645d 90%);
+      box-shadow: inset 2px 0 0 rgba(255, 251, 239, .4);
+    }
+
+    .case-screw {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      border: 1px solid #817f71;
+      background: radial-gradient(circle at 35% 30%, #eee9d8, #777b70 70%);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .45);
+      transform: translateZ(23px);
+    }
+
+    .case-screw::after { content: ""; position: absolute; left: 2px; top: 2px; width: 2px; height: 1px; background: #66685d; transform: rotate(-35deg); }
+
+    .component {
+      position: absolute;
+      visibility: hidden;
+      opacity: 0;
+      transform: translate3d(0, var(--travel-y), var(--start-z)) rotateY(var(--twist));
+      transition: transform 900ms cubic-bezier(.18, .78, .2, 1), opacity 260ms ease, visibility 0s;
+      pointer-events: none;
+    }
+
+    .component.is-in {
+      visibility: visible;
+      opacity: 1;
+      transform: translate3d(0, 0, var(--rest-z)) rotateY(0deg);
+    }
+
+    .component .face {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: 6px;
+      transform: translateZ(1px);
+    }
+
+    .component .edge-front {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      width: 100%;
+      height: var(--thickness);
+      transform-origin: top center;
+      transform: rotateX(-90deg);
+      border-radius: 0 0 3px 3px;
+    }
+
+    .component .edge-right {
+      position: absolute;
+      top: 0;
+      left: 100%;
+      width: var(--thickness);
+      height: 100%;
+      transform-origin: left center;
+      transform: rotateY(90deg);
+    }
+
+    .pcb {
+      left: 20px;
+      top: 20px;
+      width: 832px;
+      height: 260px;
+      --rest-z: 7px;
+      --start-z: 175px;
+      --travel-y: -65px;
+      --twist: -9deg;
+      --thickness: 4px;
+    }
+
+    .pcb .face {
+      border: 2px solid #b18b5b;
+      background-color: #24534c;
+      background-image:
+        repeating-linear-gradient(90deg, transparent 0 25px, rgba(202, 153, 91, .17) 26px 27px, transparent 28px 52px),
+        repeating-linear-gradient(0deg, transparent 0 32px, rgba(202, 153, 91, .13) 33px 34px, transparent 35px 52px),
+        linear-gradient(115deg, #2b6257, #173d3b);
+      box-shadow: inset 0 0 0 3px #19463f, inset 0 0 19px rgba(4, 24, 23, .55);
+    }
+
+    .pcb .edge-front { background: linear-gradient(#b88f58 0 2px, #25443d 2px); }
+    .pcb .edge-right { background: #8d6e4b; }
+
+    .pcb-stamp, .foam-stamp, .plate-stamp {
+      position: absolute;
+      bottom: 7px;
+      right: 14px;
+      font-family: "Courier New", monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      white-space: nowrap;
+    }
+
+    .pcb-stamp { color: #bbbf9e; }
+
+    .pcb-footprint {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(214, 176, 104, .72);
+      border-radius: 3px;
+      background: radial-gradient(circle at center, #1b3835 0 8px, transparent 9px),
+                  linear-gradient(90deg, transparent 46%, rgba(218, 173, 95, .3) 47% 53%, transparent 54%);
+      box-shadow: inset 0 0 0 2px rgba(22, 67, 58, .7);
+    }
+
+    .pcb-footprint::after {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #c79c64;
+      box-shadow: 7px 7px 0 #c79c64;
+    }
+
+    .foam {
+      left: 24px;
+      top: 24px;
+      width: 824px;
+      height: 252px;
+      --rest-z: 13px;
+      --start-z: 235px;
+      --travel-y: -58px;
+      --twist: 8deg;
+      --thickness: 6px;
+    }
+
+    .foam .face {
+      border: 1px solid #495551;
+      background-color: #303c39;
+      background-image: radial-gradient(rgba(170, 188, 176, .11) .7px, transparent .8px),
+                        linear-gradient(145deg, #37443e, #202d2b);
+      background-size: 5px 5px, auto;
+      box-shadow: inset 0 0 0 2px rgba(11, 20, 19, .25);
+    }
+
+    .foam .edge-front { background: #182321; }
+    .foam .edge-right { background: #202b29; }
+    .foam-stamp { color: #87958a; }
+
+    .foam-hole {
+      position: absolute;
+      width: 31px;
+      height: 31px;
+      border-radius: 3px;
+      border: 2px solid #46534c;
+      background: #15201e;
+      box-shadow: inset 0 2px 5px #0b1413;
+    }
+
+    .plate {
+      left: 28px;
+      top: 28px;
+      width: 816px;
+      height: 244px;
+      --rest-z: 19px;
+      --start-z: 275px;
+      --travel-y: -50px;
+      --twist: -7deg;
+      --thickness: 5px;
+    }
+
+    .plate .face {
+      border: 1px solid #d1d2c7;
+      background-color: #919e98;
+      background-image: repeating-linear-gradient(2deg, rgba(255, 255, 255, .075) 0 1px, transparent 1px 4px),
+                        linear-gradient(135deg, #adb7af 0%, #87958e 47%, #687870 100%);
+      box-shadow: inset 0 0 0 2px rgba(52, 68, 62, .5), inset 0 0 20px rgba(231, 237, 222, .16);
+    }
+
+    .plate .edge-front { background: linear-gradient(#c5cdc2, #63716b); }
+    .plate .edge-right { background: #6e8076; }
+    .plate-stamp { color: #394e46; }
+
+    .plate-cutout {
+      position: absolute;
+      width: 29px;
+      height: 29px;
+      border: 2px solid rgba(206, 215, 199, .72);
+      border-radius: 3px;
+      background: #293531;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, .7), 0 1px 1px rgba(29, 46, 39, .45);
+    }
+
+    .plate-cutout::after {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border: 1px solid rgba(12, 26, 23, .6);
+    }
+
+    .switch-unit {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      visibility: hidden;
+      opacity: 0;
+      transform: translate3d(0, -45px, 210px) rotateY(22deg) scale(.78);
+      transition: transform 590ms cubic-bezier(.15, .75, .2, 1), opacity 190ms ease, visibility 0s;
+      pointer-events: none;
+    }
+
+    .switch-unit.is-in {
+      visibility: visible;
+      opacity: 1;
+      transform: translate3d(0, 0, 20px) rotateY(0deg) scale(1);
+    }
+
+    .switch-top {
+      position: absolute;
+      inset: 0;
+      border: 3px solid #82918a;
+      border-radius: 4px;
+      background: linear-gradient(135deg, #566660, #25302e);
+      box-shadow: inset 0 0 0 2px #1b2624, 0 1px 1px rgba(0, 0, 0, .35);
+      transform: translateZ(14px);
+    }
+
+    .switch-front {
+      position: absolute;
+      left: 0;
+      top: 100%;
+      width: 100%;
+      height: 14px;
+      transform-origin: top center;
+      transform: translateZ(14px) rotateX(-90deg);
+      background: linear-gradient(#65736d, #25302d);
+    }
+
+    .switch-right {
+      position: absolute;
+      left: 100%;
+      top: 0;
+      width: 14px;
+      height: 100%;
+      transform-origin: left center;
+      transform: translateZ(14px) rotateY(90deg);
+      background: #333f3a;
+    }
+
+    .switch-stem {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #d7855d;
+      border: 1px solid #e8a47e;
+      box-shadow: inset -2px -2px 0 #a8563f, 0 0 0 2px #252e2a;
+      transform: translateZ(19px);
+    }
+
+    .switch-stem::before, .switch-stem::after {
+      content: "";
+      position: absolute;
+      background: #cf7653;
+    }
+
+    .switch-stem::before { width: 16px; height: 4px; left: -4px; top: 2px; z-index: -1; }
+    .switch-stem::after { width: 4px; height: 16px; left: 2px; top: -4px; z-index: -1; }
+
+    .keycap {
+      position: absolute;
+      display: block;
+      height: 47px;
+      padding: 0;
+      border: 0;
+      background: none;
+      appearance: none;
+      overflow: visible;
+      color: var(--legend);
+      visibility: hidden;
+      opacity: 0;
+      transform: translate3d(0, -63px, 250px) rotateY(18deg) scale(.88);
+      transition: transform 660ms cubic-bezier(.17, .8, .17, 1), opacity 230ms ease, visibility 0s;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      --key-top: #e8e3d8;
+      --key-front: #b5b4aa;
+      --key-right: #c8c4b9;
+      --legend: #34413e;
+    }
+
+    .keycap.is-in {
+      visibility: visible;
+      opacity: 1;
+      transform: translate3d(0, 0, 36px) rotateY(0deg) scale(1);
+      transition: transform 170ms cubic-bezier(.2, 1.35, .38, 1), opacity 230ms ease, visibility 0s;
+    }
+
+    .keycap.is-in.is-installing { transition: transform 660ms cubic-bezier(.17, .8, .17, 1), opacity 230ms ease, visibility 0s; }
+    .keycap.is-in.is-pressed { transform: translate3d(0, 0, 30px) rotateY(0deg) scale(1); transition-duration: 75ms, 230ms, 0s; }
+
+    .keycap.dark {
+      --key-top: #3c4945;
+      --key-front: #1e2a27;
+      --key-right: #2a3733;
+      --legend: #e5e8dc;
+    }
+
+    .keycap.accent {
+      --key-top: #dc8964;
+      --key-front: #a7533d;
+      --key-right: #c77251;
+      --legend: #fff5e9;
+    }
+
+    .cap-top {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, .28);
+      background: var(--key-top);
+      box-shadow: inset 0 2px 1px rgba(255, 255, 255, .36), inset 0 -3px 4px rgba(15, 24, 22, .13), 0 0 0 1px rgba(21, 28, 25, .2);
+      transform: translateZ(17px);
+      backface-visibility: hidden;
+      transition: filter 80ms ease;
+    }
+
+    .dark .cap-top { box-shadow: inset 0 2px 1px rgba(255, 255, 255, .12), inset 0 -3px 4px rgba(0, 0, 0, .22), 0 0 0 1px #1c2925; }
+    .accent .cap-top { box-shadow: inset 0 2px 1px rgba(255, 236, 210, .35), inset 0 -3px 4px rgba(83, 34, 27, .2), 0 0 0 1px #af5c41; }
+    .keycap.is-pressed .cap-top { filter: brightness(.88); }
+
+    .cap-front {
+      position: absolute;
+      top: calc(100% - 2px);
+      left: 2px;
+      width: calc(100% - 4px);
+      height: 17px;
+      border-radius: 0 0 4px 4px;
+      background: linear-gradient(180deg, var(--key-front), color-mix(in srgb, var(--key-front), #171f1c 19%));
+      transform-origin: top center;
+      transform: translateZ(17px) rotateX(-90deg);
+      box-shadow: inset 0 2px 2px rgba(255, 255, 255, .1);
+    }
+
+    .cap-right {
+      position: absolute;
+      top: 2px;
+      left: calc(100% - 2px);
+      width: 17px;
+      height: calc(100% - 4px);
+      border-radius: 0 4px 4px 0;
+      background: var(--key-right);
+      transform-origin: left center;
+      transform: translateZ(17px) rotateY(90deg);
+    }
+
+    .cap-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      max-width: 100%;
+      line-height: 1;
+      transform: translateZ(1px);
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .legend-main { font-size: 15px; font-weight: 700; letter-spacing: .015em; }
+    .legend-secondary { margin-bottom: 3px; font-size: 8px; font-weight: 700; opacity: .7; }
+    .keycap.is-long .legend-main { font-size: 10px; font-weight: 800; letter-spacing: .085em; }
+    .keycap.is-space .legend-main { font-size: 8px; letter-spacing: .3em; opacity: .64; }
+    .keycap.is-arrow .legend-main { font-size: 9px; letter-spacing: .04em; }
+
+    .bottom-bar {
+      position: absolute;
+      right: clamp(26px, 5.4vw, 92px);
+      bottom: clamp(30px, 5.7vh, 62px);
+      left: clamp(26px, 5.4vw, 92px);
+      z-index: 4;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      pointer-events: none;
+    }
+
+    .build-readout { width: min(260px, 43vw); }
+
+    .readout-row { display: flex; align-items: baseline; gap: 17px; margin-bottom: 15px; }
+
+    .readout-number {
+      flex: none;
+      color: var(--accent);
+      font-family: "Courier New", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+
+    .readout-title {
+      color: #e5e9dd;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      white-space: nowrap;
+    }
+
+    .readout-title.is-changing { animation: readout-in .4s ease both; }
+
+    .progress-track { height: 1px; background: rgba(230, 231, 218, .28); overflow: hidden; }
+    .progress-fill { display: block; width: 0; height: 100%; background: var(--accent); transition: width .75s ease; }
+
+    .interaction-note {
+      margin: 0 0 1px;
+      color: #aab5a9;
+      font-family: "Courier New", monospace;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .15em;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .interaction-note::before { content: "+"; margin-right: 12px; color: var(--accent); font-size: 15px; font-weight: 400; vertical-align: -1px; }
+
+    .keyboard.is-resetting .component,
+    .keyboard.is-resetting .switch-unit,
+    .keyboard.is-resetting .keycap { transition: none !important; }
+
+    @keyframes ambient-breathe { from { opacity: .45; } to { opacity: 1; } }
+    @keyframes readout-in { from { opacity: .25; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 800px) {
+      .showcase { min-height: 620px; min-height: max(620px, 100svh); }
+      .intro { width: 52vw; margin-top: 52px; }
+      h1 { font-size: clamp(76px, 12vw, 112px); }
+      .intro-copy { max-width: 300px; }
+      .keyboard { left: 56%; top: 62%; }
+    }
+
+    @media (max-width: 600px) {
+      .site-header { padding: 24px 22px; }
+      .site-mark { font-size: 10px; gap: 9px; }
+      .mark-symbol { width: 21px; height: 21px; }
+      .sound-button { font-size: 9px; }
+      .audio-hint { max-width: 150px; font-size: 8px; line-height: 1.5; }
+      .intro { width: calc(100% - 44px); margin: 56px 22px 0; }
+      .eyebrow { font-size: 9px; margin-bottom: 12px; }
+      h1 { margin-left: -4px; margin-bottom: 16px; font-size: clamp(70px, 17vw, 95px); }
+      .intro-copy { max-width: 285px; font-size: 13px; line-height: 1.55; }
+      .replay-button { margin-top: 20px; font-size: 10px; }
+      .scene-frame { perspective: 1050px; perspective-origin: 50% 55%; }
+      .keyboard { left: 52%; top: 62%; }
+      .bottom-bar { left: 22px; right: 22px; bottom: 28px; align-items: flex-end; }
+      .build-readout { width: 200px; }
+      .readout-row { gap: 9px; margin-bottom: 12px; }
+      .readout-number { font-size: 9px; }
+      .readout-title { font-size: 9px; letter-spacing: .09em; }
+      .interaction-note { width: 104px; font-size: 8px; line-height: 1.6; white-space: normal; }
+      .interaction-note::before { display: none; }
+    }
+
+    @media (max-width: 380px) {
+      .site-header { padding-top: 20px; }
+      .intro { margin-top: 43px; }
+      .keyboard { top: 60%; }
+      .bottom-bar { bottom: 22px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="showcase" id="top">
+    <header class="site-header">
+      <a class="site-mark" href="#top" aria-label="Kora 65, back to top"><span class="mark-symbol" aria-hidden="true"></span>KORA / STUDIO</a>
+      <div class="sound-area">
+        <button class="sound-button" id="muteButton" type="button" aria-label="Mute keyboard sounds" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z"></path><path class="sound-wave" d="M16 9a4 4 0 0 1 0 6M18.5 6a8 8 0 0 1 0 12"></path><path class="mute-slash" d="m17 9 5 6m0-6-5 6"></path></svg>
+          <span id="soundLabel">SOUND ON</span>
+        </button>
+        <p class="audio-hint" id="audioHint" aria-live="polite">SOUND UNLOCKS ON FIRST INPUT</p>
+      </div>
+    </header>
+
+    <section class="intro" aria-labelledby="heroTitle">
+      <p class="eyebrow">THE ANATOMY OF A KEYSTROKE</p>
+      <h1 id="heroTitle">KORA<span class="edition">65</span></h1>
+      <p class="intro-copy">A little ritual in every keystroke. Watch a precision-built keyboard come to life, one layer at a time.</p>
+      <button class="replay-button" id="replayButton" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.3-5.7M20 4v6h-6"></path></svg>
+        REPLAY ASSEMBLY
+      </button>
+    </section>
+
+    <div class="scene-frame" aria-label="Three-dimensional Kora 65 mechanical keyboard">
+      <div class="keyboard" id="keyboard" role="group" tabindex="0" aria-label="Interactive 3D keyboard. Drag to rotate it, then click keys or use your physical keyboard after assembly.">
+        <div class="ground-shadow" aria-hidden="true"></div>
+        <div class="case-body" aria-hidden="true">
+          <div class="case-bottom"></div>
+          <div class="case-well"></div>
+          <div class="case-back"></div>
+          <div class="case-left"></div>
+          <div class="case-right"></div>
+          <div class="case-front"><span>KORA / 65</span></div>
+          <div class="case-rim"></div>
+          <span class="case-screw" style="left: 9px; top: 9px;"></span>
+          <span class="case-screw" style="right: 9px; top: 9px;"></span>
+          <span class="case-screw" style="left: 9px; bottom: 9px;"></span>
+          <span class="case-screw" style="right: 9px; bottom: 9px;"></span>
+        </div>
+
+        <div class="component pcb" id="pcb" aria-hidden="true">
+          <div class="edge-front"></div><div class="edge-right"></div>
+          <div class="face" id="pcbFace"><span class="pcb-stamp">KORA // MAINBOARD / REV.01</span></div>
+        </div>
+        <div class="component foam" id="foam" aria-hidden="true">
+          <div class="edge-front"></div><div class="edge-right"></div>
+          <div class="face" id="foamFace"><span class="foam-stamp">ACOUSTIC FOAM / 03 MM</span></div>
+        </div>
+        <div class="component plate" id="plate" aria-hidden="true">
+          <div class="edge-front"></div><div class="edge-right"></div>
+          <div class="face" id="plateFace"><span class="plate-stamp">ANODIZED PLATE / K65</span></div>
+        </div>
+        <div id="switchField" aria-hidden="true"></div>
+        <div id="keyField"></div>
+      </div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="build-readout" aria-live="polite" aria-atomic="true">
+        <div class="readout-row"><span class="readout-number" id="stageNumber">01 / 05</span><span class="readout-title" id="stageTitle">THE CIRCUIT BOARD</span></div>
+        <div class="progress-track" id="progressTrack" role="progressbar" aria-label="Assembly progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="progress-fill" id="progressFill"></span></div>
+      </div>
+      <p class="interaction-note" id="interactionNote">ASSEMBLING, LAYER BY LAYER</p>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const PITCH = 52;
+      const MARGIN = 20;
+      const GAP = 5;
+      const keyboard = document.getElementById('keyboard');
+      const pcb = document.getElementById('pcb');
+      const foam = document.getElementById('foam');
+      const plate = document.getElementById('plate');
+      const pcbFace = document.getElementById('pcbFace');
+      const foamFace = document.getElementById('foamFace');
+      const plateFace = document.getElementById('plateFace');
+      const switchField = document.getElementById('switchField');
+      const keyField = document.getElementById('keyField');
+      const stageNumber = document.getElementById('stageNumber');
+      const stageTitle = document.getElementById('stageTitle');
+      const progressFill = document.getElementById('progressFill');
+      const progressTrack = document.getElementById('progressTrack');
+      const interactionNote = document.getElementById('interactionNote');
+      const muteButton = document.getElementById('muteButton');
+      const soundLabel = document.getElementById('soundLabel');
+      const audioHint = document.getElementById('audioHint');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      const k = (label, code, width = 1, style = '', sound = 'letter', shifted = '') => ({ label, code, width, style, sound, shifted });
+      const numberKeys = [
+        k('1', 'Digit1', 1, '', 'letter', '!'), k('2', 'Digit2', 1, '', 'letter', '@'),
+        k('3', 'Digit3', 1, '', 'letter', '#'), k('4', 'Digit4', 1, '', 'letter', '$'),
+        k('5', 'Digit5', 1, '', 'letter', '%'), k('6', 'Digit6', 1, '', 'letter', '^'),
+        k('7', 'Digit7', 1, '', 'letter', '&'), k('8', 'Digit8', 1, '', 'letter', '*'),
+        k('9', 'Digit9', 1, '', 'letter', '('), k('0', 'Digit0', 1, '', 'letter', ')')
+      ];
+      const letters = (sequence) => [...sequence].map(letter => k(letter, `Key${letter}`));
+      const rows = [
+        [k('ESC', 'Escape', 1, 'accent', 'modifier'), ...numberKeys,
+          k('-', 'Minus', 1, '', 'letter', '_'), k('=', 'Equal', 1, '', 'letter', '+'),
+          k('BACKSPACE', 'Backspace', 2, 'dark', 'backspace'), k('DEL', 'Delete', 1, 'dark', 'backspace')],
+        [k('TAB', 'Tab', 1.5, 'dark', 'modifier'), ...letters('QWERTYUIOP'),
+          k('[', 'BracketLeft', 1, '', 'letter', '{'), k(']', 'BracketRight', 1, '', 'letter', '}'),
+          k('\\', 'Backslash', 1.5, 'dark', 'letter', '|'), k('PG UP', 'PageUp', 1, 'dark', 'navigation')],
+        [k('CAPS', 'CapsLock', 1.75, 'dark', 'modifier'), ...letters('ASDFGHJKL'),
+          k(';', 'Semicolon', 1, '', 'letter', ':'), k("'", 'Quote', 1, '', 'letter', '"'),
+          k('ENTER', 'Enter', 2.25, 'accent', 'enter'), k('HOME', 'Home', 1, 'dark', 'navigation')],
+        [k('SHIFT', 'ShiftLeft', 2.25, 'dark', 'modifier'), ...letters('ZXCVBNM'),
+          k(',', 'Comma', 1, '', 'letter', '<'), k('.', 'Period', 1, '', 'letter', '>'),
+          k('/', 'Slash', 1, '', 'letter', '?'), k('SHIFT', 'ShiftRight', 1.75, 'dark', 'modifier'),
+          { gap: 1 }, k('UP', 'ArrowUp', 1, 'dark', 'navigation')],
+        [k('CTRL', 'ControlLeft', 1.25, 'dark', 'modifier'), k('META', 'MetaLeft', 1.25, 'dark', 'modifier'),
+          k('ALT', 'AltLeft', 1.25, 'dark', 'modifier'), k('SPACE', 'Space', 5.75, '', 'space'),
+          k('ALT', 'AltRight', 1, 'dark', 'modifier'), k('FN', 'ContextMenu', 1, 'dark', 'modifier'),
+          k('CTRL', 'ControlRight', 1, 'dark', 'modifier'), { gap: .5 },
+          k('LEFT', 'ArrowLeft', 1, 'dark', 'navigation'), k('DOWN', 'ArrowDown', 1, 'dark', 'navigation'),
+          k('RIGHT', 'ArrowRight', 1, 'dark', 'navigation')]
+      ];
+
+      const keys = [];
+      const byCode = new Map();
+
+      function addSurfaceDetail(parent, className, x, y, size, inset) {
+        const detail = document.createElement('span');
+        detail.className = className;
+        detail.style.left = `${x - inset - size / 2}px`;
+        detail.style.top = `${y - inset - size / 2}px`;
+        parent.appendChild(detail);
+      }
+
+      rows.forEach((row, rowIndex) => {
+        let units = 0;
+        row.forEach(spec => {
+          if (spec.gap) { units += spec.gap; return; }
+
+          const centerX = MARGIN + (units + spec.width / 2) * PITCH;
+          const centerY = MARGIN + (rowIndex + .5) * PITCH;
+          const x = MARGIN + units * PITCH + GAP / 2;
+          const y = MARGIN + rowIndex * PITCH + GAP / 2;
+          const width = spec.width * PITCH - GAP;
+
+          addSurfaceDetail(pcbFace, 'pcb-footprint', centerX, centerY, 30, 20);
+          addSurfaceDetail(foamFace, 'foam-hole', centerX, centerY, 31, 24);
+          addSurfaceDetail(plateFace, 'plate-cutout', centerX, centerY, 29, 28);
+
+          const sw = document.createElement('span');
+          sw.className = 'switch-unit';
+          sw.style.left = `${centerX - 13}px`;
+          sw.style.top = `${centerY - 13}px`;
+          sw.innerHTML = '<span class="switch-front"></span><span class="switch-right"></span><span class="switch-top"></span><span class="switch-stem"></span>';
+          switchField.appendChild(sw);
+
+          const cap = document.createElement('button');
+          cap.type = 'button';
+          cap.className = `keycap ${spec.style}`.trim();
+          if (spec.width > 1.4 || spec.label.length > 3) cap.classList.add('is-long');
+          if (spec.code === 'Space') cap.classList.add('is-space');
+          if (spec.code.startsWith('Arrow')) cap.classList.add('is-arrow');
+          cap.style.left = `${x}px`;
+          cap.style.top = `${y}px`;
+          cap.style.width = `${width}px`;
+          cap.setAttribute('aria-label', `${spec.label} key`);
+          cap.dataset.code = spec.code;
+          cap.innerHTML = '<span class="cap-front"></span><span class="cap-right"></span><span class="cap-top"><span class="cap-label"><span class="legend-secondary"></span><span class="legend-main"></span></span></span>';
+          const secondary = cap.querySelector('.legend-secondary');
+          if (spec.shifted) secondary.textContent = spec.shifted;
+          else secondary.remove();
+          cap.querySelector('.legend-main').textContent = spec.label;
+          keyField.appendChild(cap);
+
+          const entry = { ...spec, x: centerX, row: rowIndex, cap, sw, pressedAt: 0, releaseTimer: 0 };
+          keys.push(entry);
+          byCode.set(spec.code, entry);
+          units += spec.width;
+        });
+      });
+
+      const leftToRight = [...keys].sort((a, b) => a.x - b.x || a.row - b.row);
+      const layers = [pcb, foam, plate];
+      let timers = [];
+      let assembled = false;
+      let muted = false;
+      let audioContext;
+      let noiseBuffer;
+      let output;
+      let assemblyVersion = 0;
+      let angleX = 57;
+      let angleY = -10;
+      let drag = null;
+
+      const stages = [
+        ['01 / 05', 'THE CIRCUIT BOARD', 5],
+        ['02 / 05', 'THE ACOUSTIC FOAM', 24],
+        ['03 / 05', 'THE METAL PLATE', 43],
+        ['04 / 05', 'THE SWITCHES', 62],
+        ['05 / 05', 'THE KEYCAPS', 81],
+        ['05 / 05', 'READY TO TYPE', 100]
+      ];
+
+      function setStage(index) {
+        const [number, title, progress] = stages[index];
+        stageNumber.textContent = number;
+        stageTitle.textContent = title;
+        stageTitle.classList.remove('is-changing');
+        void stageTitle.offsetWidth;
+        stageTitle.classList.add('is-changing');
+        progressFill.style.width = `${progress}%`;
+        progressTrack.setAttribute('aria-valuenow', String(progress));
+        interactionNote.textContent = index === 5 ? 'DRAG TO ROTATE / CLICK OR TYPE' : 'ASSEMBLING, LAYER BY LAYER';
+      }
+
+      function schedule(fn, delay) { timers.push(window.setTimeout(fn, delay)); }
+
+      function finishAssembly() {
+        assembled = true;
+        setStage(5);
+      }
+
+      function runAssembly() {
+        const version = ++assemblyVersion;
+        timers.forEach(window.clearTimeout);
+        timers = [];
+        assembled = false;
+        drag = null;
+        keyboard.classList.remove('is-dragging');
+        keyboard.classList.add('is-resetting');
+        layers.forEach(layer => layer.classList.remove('is-in'));
+        keys.forEach(key => {
+          window.clearTimeout(key.releaseTimer);
+          key.cap.classList.remove('is-in', 'is-installing', 'is-pressed');
+          key.sw.classList.remove('is-in');
+        });
+        setStage(0);
+        progressFill.style.transition = 'none';
+        progressFill.style.width = '0%';
+        progressTrack.setAttribute('aria-valuenow', '0');
+        void keyboard.offsetWidth;
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (version !== assemblyVersion) return;
+          keyboard.classList.remove('is-resetting');
+          progressFill.style.transition = '';
+
+          if (reducedMotion.matches) {
+            layers.forEach(layer => layer.classList.add('is-in'));
+            keys.forEach(key => { key.sw.classList.add('is-in'); key.cap.classList.add('is-in'); });
+            finishAssembly();
+            return;
+          }
+
+          schedule(() => pcb.classList.add('is-in'), 180);
+          schedule(() => { setStage(1); foam.classList.add('is-in'); }, 1230);
+          schedule(() => { setStage(2); plate.classList.add('is-in'); }, 2320);
+          schedule(() => setStage(3), 3410);
+          leftToRight.forEach((key, index) => schedule(() => key.sw.classList.add('is-in'), 3510 + index * 48));
+          schedule(() => setStage(4), 7470);
+          leftToRight.forEach((key, index) => schedule(() => {
+            key.cap.classList.add('is-installing', 'is-in');
+            schedule(() => key.cap.classList.remove('is-installing'), 690);
+          }, 7540 + index * 50));
+          schedule(finishAssembly, 11800);
+        }));
+      }
+
+      function resizeScene() {
+        const w = window.innerWidth;
+        const h = keyboard.parentElement.clientHeight;
+        const compact = w < 700;
+        const widthFit = (w - (compact ? 18 : 56)) / (compact ? 1005 : 1130);
+        const heightFit = (h - (compact ? 350 : 185)) / (compact ? 315 : 505);
+        const scale = Math.min(compact ? .7 : 1.55, Math.max(.31, Math.min(widthFit, heightFit)));
+        keyboard.style.setProperty('--scene-scale', scale.toFixed(3));
+      }
+
+      function unlockAudio() {
+        const AudioConstructor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioConstructor) {
+          audioHint.textContent = 'AUDIO UNAVAILABLE IN THIS BROWSER';
+          return;
+        }
+        try {
+          if (!audioContext) {
+            audioContext = new AudioConstructor();
+            output = audioContext.createDynamicsCompressor();
+            output.threshold.value = -18;
+            output.ratio.value = 3;
+            output.connect(audioContext.destination);
+
+            noiseBuffer = audioContext.createBuffer(1, Math.ceil(audioContext.sampleRate * .4), audioContext.sampleRate);
+            const samples = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+          }
+          const resumed = audioContext.state !== 'running' ? audioContext.resume() : Promise.resolve();
+          resumed.then(() => { if (audioContext.state === 'running') audioHint.classList.add('is-hidden'); })
+            .catch(() => { audioHint.textContent = 'TAP A KEY TO ENABLE SOUND'; });
+        } catch (error) {
+          audioHint.textContent = 'AUDIO UNAVAILABLE IN THIS BROWSER';
+        }
+      }
+
+      const soundProfiles = {
+        letter:     { pitch: 188, filter: 1800, noise: .105, body: .12, duration: .082 },
+        space:      { pitch: 83,  filter: 630,  noise: .15,  body: .24, duration: .18 },
+        enter:      { pitch: 133, filter: 1300, noise: .14,  body: .16, duration: .135 },
+        backspace:  { pitch: 145, filter: 960,  noise: .13,  body: .16, duration: .11 },
+        modifier:   { pitch: 116, filter: 780,  noise: .09,  body: .14, duration: .12 },
+        navigation: { pitch: 161, filter: 1150, noise: .10,  body: .13, duration: .095 }
+      };
+
+      function playSound(group) {
+        if (muted || !audioContext) return;
+        if (audioContext.state !== 'running') {
+          audioContext.resume().then(() => {
+            if (audioContext.state === 'running') playSound(group);
+          }).catch(() => {});
+          return;
+        }
+        const profile = soundProfiles[group] || soundProfiles.letter;
+        const now = audioContext.currentTime;
+        const length = profile.duration;
+
+        const noise = audioContext.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(profile.filter * (0.94 + Math.random() * .12), now);
+        filter.Q.value = .7;
+        const noiseGain = audioContext.createGain();
+        noiseGain.gain.setValueAtTime(.0001, now);
+        noiseGain.gain.exponentialRampToValueAtTime(profile.noise, now + .002);
+        noiseGain.gain.exponentialRampToValueAtTime(.0001, now + length);
+        noise.connect(filter).connect(noiseGain).connect(output);
+        noise.start(now, Math.random() * .06);
+        noise.stop(now + length + .005);
+
+        const body = audioContext.createOscillator();
+        body.type = 'triangle';
+        body.frequency.setValueAtTime(profile.pitch * 1.32, now);
+        body.frequency.exponentialRampToValueAtTime(profile.pitch, now + .025);
+        const bodyGain = audioContext.createGain();
+        bodyGain.gain.setValueAtTime(.0001, now);
+        bodyGain.gain.exponentialRampToValueAtTime(profile.body, now + .003);
+        bodyGain.gain.exponentialRampToValueAtTime(.0001, now + length * .87);
+        body.connect(bodyGain).connect(output);
+        body.start(now);
+        body.stop(now + length);
+      }
+
+      function pressKey(key) {
+        if (!assembled) return;
+        if (key.cap.classList.contains('is-pressed')) {
+          if (!key.releaseTimer) return;
+          key.cap.classList.remove('is-pressed');
+          void key.cap.offsetWidth;
+        }
+        window.clearTimeout(key.releaseTimer);
+        key.releaseTimer = 0;
+        key.pressedAt = performance.now();
+        key.cap.classList.add('is-pressed');
+        unlockAudio();
+        playSound(key.sound);
+      }
+
+      function releaseKey(key) {
+        if (!key || !key.cap.classList.contains('is-pressed')) return;
+        const remaining = Math.max(0, 115 - (performance.now() - key.pressedAt));
+        window.clearTimeout(key.releaseTimer);
+        key.releaseTimer = window.setTimeout(() => {
+          key.cap.classList.remove('is-pressed');
+          key.releaseTimer = 0;
+        }, remaining);
+      }
+
+      keyboard.addEventListener('pointerdown', event => {
+        if (!assembled || (event.pointerType === 'mouse' && event.button !== 0)) return;
+        event.preventDefault();
+        keyboard.setPointerCapture(event.pointerId);
+        const cap = event.target.closest('.keycap');
+        const key = cap ? byCode.get(cap.dataset.code) : null;
+        drag = { id: event.pointerId, x: event.clientX, y: event.clientY, angleX, angleY, key, moved: false };
+        if (key) pressKey(key);
+      });
+
+      keyboard.addEventListener('pointermove', event => {
+        if (!drag || drag.id !== event.pointerId) return;
+        const dx = event.clientX - drag.x;
+        const dy = event.clientY - drag.y;
+        if (!drag.moved && Math.hypot(dx, dy) > 7) {
+          drag.moved = true;
+          keyboard.classList.add('is-dragging');
+          releaseKey(drag.key);
+        }
+        if (drag.moved) {
+          angleX = Math.max(32, Math.min(75, drag.angleX - dy * .12));
+          angleY = Math.max(-34, Math.min(34, drag.angleY + dx * .13));
+          keyboard.style.setProperty('--angle-x', `${angleX.toFixed(1)}deg`);
+          keyboard.style.setProperty('--angle-y', `${angleY.toFixed(1)}deg`);
+        }
+      });
+
+      function endPointer(event) {
+        if (!drag || drag.id !== event.pointerId) return;
+        releaseKey(drag.key);
+        drag = null;
+        keyboard.classList.remove('is-dragging');
+      }
+
+      keyboard.addEventListener('pointerup', endPointer);
+      keyboard.addEventListener('pointercancel', endPointer);
+      window.addEventListener('blur', () => {
+        if (drag) { releaseKey(drag.key); drag = null; keyboard.classList.remove('is-dragging'); }
+        keys.forEach(releaseKey);
+      });
+
+      document.addEventListener('keydown', event => {
+        if (!assembled || event.repeat) return;
+        if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
+        if (event.target.closest('a, button:not(.keycap)') && ['Space', 'Enter'].includes(event.code)) return;
+        const key = byCode.get(event.code);
+        if (!key) return;
+        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Backspace'].includes(event.code)) event.preventDefault();
+        pressKey(key);
+      });
+
+      document.addEventListener('keyup', event => releaseKey(byCode.get(event.code)));
+      document.addEventListener('pointerdown', unlockAudio, { capture: true, once: true });
+      document.addEventListener('keydown', unlockAudio, { capture: true, once: true });
+
+      muteButton.addEventListener('click', () => {
+        muted = !muted;
+        muteButton.classList.toggle('is-muted', muted);
+        muteButton.setAttribute('aria-pressed', String(muted));
+        muteButton.setAttribute('aria-label', muted ? 'Unmute keyboard sounds' : 'Mute keyboard sounds');
+        soundLabel.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+      });
+
+      document.getElementById('replayButton').addEventListener('click', runAssembly);
+      window.addEventListener('resize', resizeScene, { passive: true });
+      reducedMotion.addEventListener?.('change', runAssembly);
+
+      resizeScene();
+      runAssembly();
+    })();
+  </script>
+</body>
+</html>
