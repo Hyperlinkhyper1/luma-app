@@ -16,6 +16,22 @@ const _splitRelease = [
   'luma-1.0.250-unsigned.ipa',
 ];
 
+/// Removes a test's temp folder once Windows lets go of it. The installer
+/// the launcher starts runs on its own with the folder as its working
+/// directory, and a killed process can hold it a moment longer too; on a
+/// slow CI runner either can outlast the test. A folder still held after
+/// a few seconds is left for the system's own temp cleanup.
+Future<void> _deleteWhenReleased(Directory dir) async {
+  for (var attempt = 0; attempt < 50; attempt++) {
+    try {
+      if (dir.existsSync()) await dir.delete(recursive: true);
+      return;
+    } on FileSystemException {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+}
+
 /// What every release up to 1.0.248 contained: a single universal APK.
 const _universalRelease = [
   'luma-1.0.248.apk',
@@ -104,7 +120,7 @@ void main() {
     if (!Platform.isWindows) return;
 
     final temp = await Directory.systemTemp.createTemp('luma update handoff ');
-    addTearDown(() => temp.delete(recursive: true));
+    addTearDown(() => _deleteWhenReleased(temp));
     final marker = File('${temp.path}\\installer-started.txt');
     final installer = File('${temp.path}\\fake-installer.cmd');
     await installer.writeAsString(
@@ -134,7 +150,7 @@ void main() {
     if (!Platform.isWindows) return;
 
     final temp = await Directory.systemTemp.createTemp('luma update kill ');
-    addTearDown(() => temp.delete(recursive: true));
+    addTearDown(() => _deleteWhenReleased(temp));
     final marker = File('${temp.path}\\installer-started.txt');
     final installer = File('${temp.path}\\fake-installer.cmd');
     await installer.writeAsString(
