@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MERIDIAN 65 — Custom Mechanical Keyboard</title>
+<meta name="description" content="MERIDIAN 65 — an exploded-view, fully interactive 3D custom mechanical keyboard.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MERIDIAN 65 — exploded assembly plate
+   ============================================================ */
+:root{
+  --bone:#E9E2D6;
+  --bone-2:#F3EEE4;
+  --ink:#221F1B;
+  --ink-2:#6B6459;
+  --ink-3:#948C7F;
+  --line:rgba(34,31,27,.14);
+  --line-2:rgba(34,31,27,.30);
+  --orange:#DE4E1B;
+  --orange-2:#B93F14;
+  --u:50px;
+  --disp:'Archivo','Helvetica Neue',Arial,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1100px 700px at 16% -12%, #F6F2E9 0%, rgba(246,242,233,0) 62%),
+    radial-gradient(900px 700px at 96% 108%, #DED6C7 0%, rgba(222,214,199,0) 60%),
+    var(--bone);
+  color:var(--ink);
+  font-family:var(--mono);
+  overflow-x:hidden;
+  min-height:100%;
+}
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+  mix-blend-mode:multiply;
+}
+::selection{background:var(--orange);color:#fff}
+button{font:inherit;color:inherit}
+.mono-cap{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---------- header ---------- */
+.top{
+  position:fixed;top:0;left:0;right:0;height:64px;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:0 clamp(14px,3vw,32px);
+  background:rgba(233,226,214,.78);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand .mk{
+  font-family:var(--disp);font-weight:900;font-size:19px;letter-spacing:-.035em;
+  text-transform:uppercase;white-space:nowrap;
+}
+.brand .mk i{color:var(--orange);font-style:normal}
+.brand .sub{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+@media (max-width:720px){.brand .sub{display:none}}
+
+.ctl{display:flex;gap:8px;align-items:center}
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  border:1px solid var(--line-2);background:transparent;
+  padding:8px 13px;border-radius:2px;cursor:pointer;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  transition:background .22s ease,color .22s ease,border-color .22s ease,transform .12s ease;
+}
+.btn svg{width:13px;height:13px;display:block;flex:none}
+.btn:hover{background:var(--ink);color:var(--bone);border-color:var(--ink)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.btn.hot{border-color:var(--orange);color:var(--orange-2)}
+.btn.hot:hover{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn .dot{width:6px;height:6px;border-radius:50%;background:var(--orange);flex:none}
+.btn.off .dot{background:var(--ink-3)}
+@media (max-width:600px){
+  .btn{padding:8px 10px;letter-spacing:.1em}
+  .btn .lbl-hide{display:none}
+  #rgbLbl{display:none}
+  #btnRgb{border-color:var(--orange)}
+}
+
+/* ---------- layout ---------- */
+.wrap{
+  padding:64px clamp(14px,3vw,32px) 0;
+  display:grid;grid-template-columns:308px minmax(0,1fr);gap:clamp(16px,3vw,44px);
+  align-items:start;
+}
+@media (max-width:980px){
+  .wrap{grid-template-columns:minmax(0,1fr)}
+}
+
+/* ---------- rail ---------- */
+.rail{position:sticky;top:88px;padding-top:26px}
+.eyebrow{margin:0 0 16px;font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--orange-2)}
+.headline{
+  font-family:var(--disp);font-weight:900;font-size:clamp(30px,3.2vw,42px);
+  line-height:.94;letter-spacing:-.04em;text-transform:uppercase;margin:0 0 14px;
+}
+.headline em{font-style:normal;color:var(--orange)}
+.lede{margin:0 0 24px;font-size:11.5px;line-height:1.65;color:var(--ink-2);max-width:34ch}
+.parts{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.parts li{
+  display:grid;grid-template-columns:26px 1fr auto;gap:3px 10px;align-items:center;
+  padding:9px 2px;border-bottom:1px solid var(--line);position:relative;
+  transition:opacity .4s ease;
+}
+.parts .n{font-size:10px;letter-spacing:.1em;color:var(--ink-3);transition:color .3s ease}
+.parts .nm{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase}
+.parts .d{grid-column:2;font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin-top:2px}
+.parts i{
+  grid-row:1;grid-column:3;width:8px;height:8px;border:1px solid var(--line-2);border-radius:50%;
+  transition:background .3s ease,border-color .3s ease,box-shadow .3s ease;
+}
+.parts li.done .n{color:var(--orange-2)}
+.parts li.done i{background:var(--orange);border-color:var(--orange);box-shadow:0 0 0 3px rgba(222,78,27,.16)}
+.parts li.live .nm{color:var(--orange-2)}
+.parts li.live::before{
+  content:"";position:absolute;left:-10px;top:8px;bottom:8px;width:2px;background:var(--orange);
+}
+.railnote{margin-top:18px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);line-height:1.8}
+
+@media (max-width:980px){
+  .rail{position:static;order:2;padding-top:8px;padding-bottom:8px}
+  .parts{display:flex;gap:10px;overflow-x:auto;border-top:none;padding-bottom:6px;scrollbar-width:thin}
+  .parts li{flex:0 0 176px;border:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px;align-content:start}
+  .parts li.live::before{left:-1px;top:-1px;bottom:-1px}
+  .headline{font-size:clamp(28px,8vw,40px)}
+}
+
+/* ---------- stage ---------- */
+.stage{
+  position:relative;height:clamp(430px,66vh,700px);
+  isolation:isolate;
+}
+@media (max-width:980px){.stage{height:clamp(340px,52vh,520px);order:1;margin-top:6px}}
+.ghostwrap{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.ghost{
+  position:absolute;left:-3vw;bottom:-7vh;
+  font-family:var(--disp);font-weight:900;font-size:clamp(150px,25vw,400px);
+  line-height:.78;letter-spacing:-.055em;color:rgba(34,31,27,.072);
+  white-space:nowrap;user-select:none;
+}
+.scene{
+  position:absolute;inset:0;z-index:1;
+  perspective:1500px;perspective-origin:50% 46%;
+  transform:scale(var(--s,1));
+  transform-style:flat;
+}
+.kb{
+  position:absolute;left:50%;top:50%;width:0;height:0;
+  transform-style:preserve-3d;
+  transform:rotateX(calc(56deg + var(--py,0) * 1deg)) rotateZ(calc(-13deg + var(--px,0) * 1deg));
+  transition:transform .75s cubic-bezier(.2,.8,.3,1);
+}
+/* soft contact shadow (coplanar, no filter) */
+.shadow{
+  position:absolute;left:50%;top:50%;width:940px;height:360px;margin-left:-470px;margin-top:-180px;
+  transform:translateZ(-7px);pointer-events:none;
+  background:radial-gradient(ellipse at 50% 50%, rgba(44,34,24,.34) 0%, rgba(44,34,24,.20) 38%, rgba(44,34,24,.06) 62%, rgba(44,34,24,0) 76%);
+  opacity:1;transition:opacity .8s linear .85s;
+}
+.shadow.pre{opacity:0;transition-delay:0s}
+
+/* ---------- 3D primitives ---------- */
+/* NB: opacity/filter on a preserve-3d element flattens its children, so
+   the fly-in reveal uses visibility (discrete) instead of a fade. */
+.lay{
+  position:absolute;left:50%;top:50%;transform-style:preserve-3d;
+  transform:translate3d(var(--ax,0px),var(--ay,0px),calc(var(--z,0px) + var(--az,0px))) rotateX(var(--ar,0deg)) rotateZ(var(--br,0deg));
+  transition:transform var(--t,1s) cubic-bezier(.2,.86,.24,1) var(--d,0s),
+             visibility 0s linear var(--d,0s);
+}
+.lay.pre{--ax:150px;--ay:-70px;--az:330px;--ar:-15deg;--br:10deg;visibility:hidden}
+.box{position:absolute;left:50%;top:50%;transform-style:preserve-3d;transform:translate3d(var(--bx,0px),var(--by,0px),var(--bz,0px))}
+.f{position:absolute;left:50%;top:50%;backface-visibility:hidden;overflow:hidden}
+.lg{position:absolute;font-family:var(--disp);font-weight:700;color:var(--lg,#26231F);letter-spacing:.01em;white-space:nowrap}
+
+/* ---------- case ---------- */
+.case{--t:1s;--d:.85s;width:816px;height:266px;margin-left:-408px;margin-top:-133px}
+.case.pre{--ax:0px;--ay:90px;--az:-430px;--ar:11deg;--br:-7deg;visibility:hidden}
+.case .f{
+  background-color:#2E2B27;
+  background-image:linear-gradient(rgba(46,43,39,.84),rgba(46,43,39,.84)),url("https://images.pexels.com/photos/20818875/pexels-photo-20818875.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940");
+  background-size:cover,320px 320px;
+  background-blend-mode:normal,overlay;
+}
+.case .top{box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+.case .front{background-image:linear-gradient(rgba(40,37,34,.88),rgba(30,28,25,.92)),url("https://images.pexels.com/photos/20818875/pexels-photo-20818875.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940")}
+.case .left{background-image:linear-gradient(rgba(60,56,51,.84),rgba(40,37,34,.9)),url("https://images.pexels.com/photos/20818875/pexels-photo-20818875.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940")}
+.case .right{background-image:linear-gradient(rgba(28,26,23,.9),rgba(22,20,18,.94)),url("https://images.pexels.com/photos/20818875/pexels-photo-20818875.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940")}
+.case .back{background-image:linear-gradient(rgba(52,48,44,.86),rgba(34,31,28,.9)),url("https://images.pexels.com/photos/20818875/pexels-photo-20818875.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940")}
+.rim .top{
+  background:linear-gradient(160deg,rgba(255,255,255,.20),rgba(255,255,255,0) 34%),
+             linear-gradient(#3B3733,#2A2724);
+}
+.badge{
+  position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:7.5px;font-weight:500;text-align:center;
+  letter-spacing:.36em;color:rgba(233,226,214,.62);
+}
+.bleed{
+  position:absolute;left:50%;bottom:1px;width:60%;height:2px;margin-left:-30%;border-radius:2px;
+  background:linear-gradient(90deg,rgba(222,78,27,0),rgba(222,78,27,.85) 28%,rgba(222,78,27,.85) 72%,rgba(222,78,27,0));
+}
+
+/* ---------- pcb ---------- */
+.pcb{--t:.95s;--d:0s;width:800px;height:250px;margin-left:-400px;margin-top:-125px}
+.pcb .f{
+  background-color:#123B31;
+  background-image:
+    repeating-linear-gradient(90deg,rgba(200,140,70,0) 0 26px,rgba(198,138,66,.42) 26px 27px),
+    repeating-linear-gradient(0deg,rgba(200,140,70,0) 0 26px,rgba(198,138,66,.30) 26px 27px),
+    repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 3px,rgba(255,255,255,0) 3px 7px),
+    linear-gradient(158deg,#1A5544,#0D3128);
+}
+.pcb .front,.pcb .back{background:linear-gradient(#0B2A22,#08201A)}
+.pcb .left,.pcb .right{background:linear-gradient(#0E3529,#0A281F)}
+.silk{position:absolute;left:16px;bottom:7px;font-size:7.6px;letter-spacing:.26em;color:rgba(226,238,232,.55);white-space:nowrap}
+.pads{position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(circle,rgba(214,168,96,.5) 0 2.1px,rgba(214,168,96,0) 2.7px);
+  background-size:50px 50px;background-position:25px 25px;}
+
+/* ---------- foam ---------- */
+.foam{--t:.9s;--d:1.75s;width:794px;height:244px;margin-left:-397px;margin-top:-122px}
+.foam .f{
+  background-color:#6A655C;
+  background-image:radial-gradient(circle at 30% 20%,rgba(255,255,255,.16),rgba(255,255,255,0) 55%),
+    radial-gradient(rgba(255,255,255,.20) 1px,rgba(255,255,255,0) 1.4px),
+    radial-gradient(rgba(0,0,0,.22) 1px,rgba(0,0,0,0) 1.6px),
+    linear-gradient(150deg,#787267,#5A554D);
+  background-size:auto,9px 9px,13px 13px,auto;
+}
+.foam .front,.foam .back{background:linear-gradient(#5E594F,#4A463E)}
+.foam .left,.foam .right{background:linear-gradient(#6D675C,#545047)}
+
+/* ---------- plate ---------- */
+.plate{--t:.95s;--d:2.55s;width:800px;height:250px;margin-left:-400px;margin-top:-125px}
+.plate .f{
+  background-color:#A9853F;
+  background-image:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.11) 0 1px,rgba(255,255,255,0) 1px 3px),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,rgba(0,0,0,0) 1px 4px),
+    radial-gradient(circle at 22% 12%,rgba(255,236,196,.55),rgba(255,236,196,0) 48%),
+    linear-gradient(162deg,#CDA45D,#8B6C36);
+}
+.plate .front{background:linear-gradient(#8E6F38,#6B5226)}
+.plate .back{background:linear-gradient(#7C6030,#5E481F)}
+.plate .left{background:linear-gradient(#B08A47,#86672F)}
+.plate .right{background:linear-gradient(#6E5527,#4F3D1C)}
+
+/* ---------- switch ---------- */
+.sw{
+  position:absolute;left:50%;top:50%;transform-style:preserve-3d;
+  transform:translate3d(var(--ax,0px),var(--ay,0px),calc(28.5px + var(--az,0px)));
+  transition:transform .6s cubic-bezier(.22,.9,.24,1) var(--d,0s),
+             visibility 0s linear var(--d,0s);
+  --c:#D8D2C4;
+}
+.sw.pre{--ax:-60px;--ay:-70px;--az:215px;visibility:hidden}
+.sw .f{background-color:var(--c)}
+.sw .top{
+  background-color:var(--c);
+  background-image:
+    linear-gradient(#D2551F,#D2551F),
+    linear-gradient(#D2551F,#D2551F),
+    linear-gradient(155deg,rgba(255,255,255,.55),rgba(255,255,255,0) 55%);
+  background-repeat:no-repeat;
+  background-size:20px 5px,5px 20px,auto;
+  background-position:50% 50%,50% 50%,0 0;
+}
+.sw .front{background:linear-gradient(180deg,rgba(23,20,15,.24),rgba(23,20,15,.32)),var(--c)}
+.sw .left{background:linear-gradient(180deg,rgba(23,20,15,.08),rgba(23,20,15,.15)),var(--c)}
+.sw .right{background:linear-gradient(180deg,rgba(23,20,15,.34),rgba(23,20,15,.42)),var(--c)}
+.sw .back{background:linear-gradient(180deg,rgba(23,20,15,.18),rgba(23,20,15,.26)),var(--c)}
+.led{position:absolute;left:50%;top:50%;width:74px;height:74px;margin:-37px 0 0 -37px;transform:translateZ(-3.4px);pointer-events:none;transition:opacity .4s ease}
+.led .g{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,hsl(28 90% 60%/.50) 0%,hsl(28 90% 56%/.26) 34%,hsl(28 90% 52%/.10) 58%,hsl(28 90% 50%/0) 78%);}
+.led .wv{position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,hsl(30 96% 63%/.85) 0%,hsl(30 96% 58%/.45) 30%,hsl(30 96% 55%/.18) 55%,hsl(30 96% 55%/0) 76%);
+  animation:ledWave 7s linear infinite;animation-delay:var(--ld,0s)}
+.led .fl{position:absolute;inset:16%;border-radius:50%;opacity:0;transition:opacity .11s ease-out;
+  background:radial-gradient(circle,hsl(30 100% 88%) 0%,hsl(28 100% 72%/.75) 42%,hsl(28 100% 62%/0) 74%)}
+.sw.lit .fl{opacity:.95;transition-duration:.05s}
+@keyframes ledWave{
+  0%{filter:hue-rotate(0deg);opacity:.5}
+  50%{opacity:.95}
+  100%{filter:hue-rotate(360deg);opacity:.5}
+}
+.rgb-solid .led .wv{animation:ledBreathe 3.4s ease-in-out infinite;filter:none;opacity:.75}
+@keyframes ledBreathe{0%,100%{opacity:.5}50%{opacity:.95}}
+.rgb-off .led{opacity:0;transition:opacity .4s ease}
+.led{transition:opacity .4s ease}
+
+/* ---------- keycaps ---------- */
+.cslot{
+  position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;
+  transform:translate3d(var(--ax,0px),var(--ay,0px),var(--az,0px)) rotateX(var(--ar,0deg)) rotateZ(var(--br,0deg));
+  transition:transform .62s cubic-bezier(.2,.88,.24,1) var(--d,0s),
+             visibility 0s linear var(--d,0s);
+}
+.cslot.pre{--ax:55px;--ay:-60px;--az:180px;--br:-13deg;visibility:hidden}
+.cap{
+  --c:#E9E2D5;
+  transform:translate3d(0,0,calc(40.5px + var(--pz,0px) + var(--hz,0px)))
+            rotateX(calc((var(--tilt,0) + var(--hy,0)) * 1deg))
+            rotateY(calc(var(--hx,0) * -1deg));
+  transition:transform .26s cubic-bezier(.2,.95,.3,1);
+}
+.cap.is-down{--pz:-3.5px;transition:transform .055s ease-out}
+.assembled .cap:hover{--hz:1.6px}
+.cap .top{
+  background-color:var(--c);
+  background-image:
+    radial-gradient(ellipse at 30% 22%,rgba(255,255,255,.55),rgba(255,255,255,0) 62%),
+    linear-gradient(158deg,rgba(255,255,255,.30),rgba(255,255,255,0) 46%),
+    radial-gradient(circle at 78% 84%,rgba(0,0,0,.10),rgba(0,0,0,0) 55%);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.09);
+}
+.cap .front{background:linear-gradient(180deg,rgba(18,16,12,.26),rgba(18,16,12,.34)),var(--c);box-shadow:inset 0 1px 0 rgba(255,255,255,.16)}
+.cap .left{background:linear-gradient(180deg,rgba(18,16,12,.10),rgba(18,16,12,.17)),var(--c)}
+.cap .right{background:linear-gradient(180deg,rgba(18,16,12,.36),rgba(18,16,12,.44)),var(--c)}
+.cap .back{background:linear-gradient(180deg,rgba(18,16,12,.20),rgba(18,16,12,.27)),var(--c)}
+.cap .lg{left:7px;top:6px;font-size:11.5px;line-height:1}
+.cap.mod .lg{left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:7.6px;letter-spacing:.14em;text-transform:uppercase}
+.cap.wide .lg{left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:8.4px;letter-spacing:.3em;text-transform:uppercase}
+.k-mod{--c:#C8C0B0}
+.k-accent{--c:#DE4E1B;--lg:#F6F0E5}
+.k-space{--c:#332F2A;--lg:#EDE6D9}
+.k-accent .cap .front,.k-space .cap .front{background:color-mix(in srgb,var(--c) 74%,#000)}
+.k-accent .cap .left,.k-space .cap .left{background:color-mix(in srgb,var(--c) 88%,#000)}
+.k-accent .cap .right,.k-space .cap .right{background:color-mix(in srgb,var(--c) 64%,#000)}
+.k-accent .cap .back,.k-space .cap .back{background:color-mix(in srgb,var(--c) 76%,#000)}
+.cslot.k-accent,.cslot.k-space,.cslot.k-mod{}
+.cap{cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* ---------- knob ---------- */
+.knob{
+  width:42px;height:42px;margin-left:-21px;margin-top:-21px;
+  left:calc(50% + 375px);top:calc(50% - 100px);
+  --t:.9s;--d:6.9s;
+}
+.knob.pre{--ax:0px;--ay:-40px;--az:270px;--br:-540deg;visibility:hidden}
+.krot{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px 0 0 -21px;
+  transform-style:preserve-3d;transform:rotateZ(var(--kr,0deg));transition:transform .22s cubic-bezier(.3,1.4,.5,1)}
+.seg{position:absolute;left:50%;top:50%;backface-visibility:hidden;
+  background:linear-gradient(180deg,#57514A 0%,#3A352F 42%,#262320 100%);
+  box-shadow:inset 1px 0 0 rgba(255,255,255,.10),inset -1px 0 0 rgba(0,0,0,.4);
+  border-top:1px solid rgba(255,255,255,.30);
+}
+.ktop{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;
+  transform:translateZ(8.1px);
+  background:radial-gradient(circle at 34% 26%,#6A635A,#3A352F 58%,#24211E 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),0 0 0 1px rgba(0,0,0,.5);
+}
+.kmark{position:absolute;left:50%;top:50%;width:3px;height:11px;margin:-16px 0 0 -1.5px;border-radius:2px;
+  transform:translateZ(8.6px);background:var(--orange);box-shadow:0 0 6px rgba(222,78,27,.7)}
+.knobhit{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border:0;background:transparent;
+  transform:translateZ(9px);border-radius:50%;cursor:pointer;padding:0}
+.knobhit:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+
+/* ---------- status / hint ---------- */
+.status{
+  position:absolute;left:0;top:6px;z-index:3;display:flex;align-items:center;gap:10px;
+  font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);
+}
+.status .pip{width:7px;height:7px;border-radius:50%;background:var(--orange);animation:blip 1.1s ease-in-out infinite}
+.status.ready .pip{animation:none;background:var(--ink)}
+@keyframes blip{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.status b{font-weight:500;color:var(--ink)}
+.hint{
+  position:absolute;left:50%;bottom:2px;transform:translateX(-50%);z-index:4;
+  display:flex;align-items:center;gap:9px;white-space:nowrap;
+  border:1px solid var(--line-2);background:rgba(243,238,228,.9);border-radius:999px;
+  padding:7px 14px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2);
+  transition:opacity .4s ease,transform .4s ease;
+}
+.hint svg{width:13px;height:13px;flex:none;color:var(--orange-2)}
+.hint.gone{opacity:0;transform:translate(-50%,10px);pointer-events:none}
+@media (max-width:640px){.hint{font-size:8.4px;letter-spacing:.1em;padding:6px 11px;max-width:92%;white-space:normal;text-align:center}}
+
+/* ---------- telemetry ---------- */
+.strip{
+  margin-top:14px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:0;align-items:stretch;
+}
+.strip div{
+  flex:1 1 150px;padding:14px 16px 18px 0;border-right:1px solid var(--line);
+  padding-left:16px;
+}
+.strip div:first-child{padding-left:0}
+.strip div:last-child{border-right:0}
+.strip dt{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+.strip dd{margin:0;font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:-.01em}
+.strip dd span{font-family:var(--mono);font-weight:400;font-size:10px;color:var(--ink-2);letter-spacing:.05em}
+.legend{display:flex;flex-wrap:wrap;gap:14px;padding:12px 0 30px;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.legend b{display:inline-block;width:8px;height:8px;margin-right:6px;vertical-align:-1px;border:1px solid rgba(0,0,0,.2)}
+@media (max-width:640px){.strip div{flex:1 1 45%;padding-left:14px;border-bottom:1px solid var(--line)}}
+
+/* ---------- replay / reduced motion ---------- */
+.noanim *,.noanim{transition:none !important}
+.stage.rm *,.stage.rm{transition-duration:.01ms !important;transition-delay:0ms !important;animation:none !important}
+.stage.rm .led .wv{animation:none !important;opacity:.7}
+@media (prefers-reduced-motion:reduce){
+  .stage *,.stage{transition-duration:.01ms !important;transition-delay:0ms !important}
+  .led .wv{animation:none !important;opacity:.7}
+  .status .pip{animation:none}
+  .kb{transition:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <span class="mk">Meridian<i>65</i></span>
+    <span class="sub">Custom mechanical keyboard · exploded view</span>
+  </div>
+  <div class="ctl">
+    <button class="btn hot" id="btnReplay" type="button" title="Replay the assembly sequence">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+      <span class="lbl-hide">Replay</span>
+    </button>
+    <button class="btn hot" id="btnRgb" type="button" aria-pressed="true" title="Cycle lighting mode">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/><circle cx="12" cy="12" r="3.6"/></svg>
+      <span id="rgbLbl">Light · Wave</span>
+    </button>
+    <button class="btn off" id="btnMute" type="button" aria-pressed="false" title="Toggle sound">
+      <span class="dot"></span>
+      <span id="muteLbl">Sound off</span>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <aside class="rail">
+    <p class="eyebrow">Exploded assembly · part index</p>
+    <h1 class="headline">Six layers.<br>One <em>stroke.</em></h1>
+    <p class="lede">Gasket-mounted 65% board, 1 850 g of anodised aluminium. Every layer drops through space in build order — PCB first, keycaps last. Then press anything.</p>
+    <ol class="parts" id="parts">
+      <li data-part="case"><span class="n">01</span><span class="nm">Case</span><i></i><span class="d">6063-T5 alu · 1.85 kg</span></li>
+      <li data-part="pcb"><span class="n">02</span><span class="nm">PCB</span><i></i><span class="d">1.6 mm FR4 · hot-swap</span></li>
+      <li data-part="foam"><span class="n">03</span><span class="nm">Foam</span><i></i><span class="d">PORON 30 · 3 mm</span></li>
+      <li data-part="plate"><span class="n">04</span><span class="nm">Plate</span><i></i><span class="d">Brass · 1.5 mm · flex cut</span></li>
+      <li data-part="switches"><span class="n">05</span><span class="nm">Switches</span><i></i><span class="d">Linear · 45 gf · 3.4 mm</span></li>
+      <li data-part="keycaps"><span class="n">06</span><span class="nm">Keycaps</span><i></i><span class="d">PBT double-shot · Cherry</span></li>
+    </ol>
+    <p class="railnote">Sequence 02 → 01 → 03 → 04 → 05 → 06<br>Install order is PCB first,<br>left to right for caps.</p>
+  </aside>
+
+  <section class="stage rgb-wave" id="stage">
+    <div class="ghostwrap"><div class="ghost">Meridian</div></div>
+    <div class="scene" id="scene"><div class="kb" id="kb"></div></div>
+    <div class="status" id="status"><span class="pip"></span><span id="statusTxt">Assembling · <b>02 PCB</b></span></div>
+    <div class="hint" id="hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg>
+      <span>Sound unlocks on your first click or key press</span>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap" style="grid-template-columns:1fr">
+  <div>
+    <dl class="strip">
+      <div><dt>Layout</dt><dd>65% <span>· 67 keys + encoder</span></dd></div>
+      <div><dt>Switch</dt><dd>45 gf <span>· linear · 3.4 mm</span></dd></div>
+      <div><dt>Mount</dt><dd>Gasket <span>· PORON 30</span></dd></div>
+      <div><dt>Polling</dt><dd>1000 Hz <span>· 1 ms</span></dd></div>
+      <div><dt>Audio</dt><dd>Web Audio <span>· synthesised</span></dd></div>
+    </dl>
+    <div class="legend">
+      <span><b style="background:#E9E2D5"></b>Alphanumeric</span>
+      <span><b style="background:#C8C0B0"></b>Modifier</span>
+      <span><b style="background:#DE4E1B"></b>Accent</span>
+      <span><b style="background:#332F2A"></b>Spacebar</span>
+      <span style="color:var(--orange-2)">Click a key, or use your real keyboard</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================
+   1. LAYOUT DATA — 65% ANSI, 16u wide, 5 rows
+   ========================================================= */
+const U = 50;                                   // 1u = 50px
+const ROWS = [
+  [['Esc',1],['1',1],['2',1],['3',1],['4',1],['5',1],['6',1],['7',1],['8',1],['9',1],['0',1],['-',1],['=',1],['Backspace',2],['__KNOB__',1]],
+  [['Tab',1.5],['Q',1],['W',1],['E',1],['R',1],['T',1],['Y',1],['U',1],['I',1],['O',1],['P',1],['[',1],[']',1],['\\',1],['Home',1]],
+  [['Caps',1.75],['A',1],['S',1],['D',1],['F',1],['G',1],['H',1],['J',1],['K',1],['L',1],[';',1],["'",1],['Enter',2.25],['PgUp',1]],
+  [['Shift',2.25,'shiftL'],['Z',1],['X',1],['C',1],['V',1],['B',1],['N',1],['M',1],[',',1],['.',1],['/',1],['Shift',1.75,'shiftR'],['↑',1],['PgDn',1]],
+  [['Ctrl',1.75,'ctrl'],['Alt',1.25,'altL'],['Cmd',1.25,'cmdL'],['Space',6.25],['Cmd',1.25,'cmdR'],['Alt',1.25,'altR'],['←',1],['↓',1],['→',1]]
+];
+const TILT = [-9,-6,-3,0,6];                    // cherry-profile sculpt per row
+
+const MODS = ['Tab','Caps','Shift','Ctrl','Alt','Cmd','Fn'];
+const NAVS = ['Home','PgUp','PgDn','↑','←','↓','→'];
+
+function groupOf(l){
+  if(l === 'Space')     return 'space';
+  if(l === 'Enter')     return 'enter';
+  if(l === 'Backspace') return 'back';
+  if(l === 'Esc')       return 'esc';
+  if(MODS.includes(l))  return 'mod';
+  if(NAVS.includes(l))  return 'nav';
+  if(/^[0-9]$/.test(l) || ['-','=','[',']','\\',';',"'",',','.','/'].includes(l)) return 'num';
+  return 'alpha';
+}
+
+
+/* physical key → layout key */
+const PHYS = {
+  Escape:'Esc', Backquote:'Esc', Backspace:'Backspace', Tab:'Tab', CapsLock:'Caps', Enter:'Enter',
+  ShiftLeft:'shiftL', ShiftRight:'shiftR', ControlLeft:'ctrl', ControlRight:'ctrl',
+  AltLeft:'altL', AltRight:'altR', MetaLeft:'cmdL', MetaRight:'cmdR',
+  Space:'Space', ArrowUp:'↑', ArrowDown:'↓', ArrowLeft:'←', ArrowRight:'→',
+  Home:'Home', PageUp:'PgUp', PageDown:'PgDn'
+};
+const CODE2CHAR = {
+  Minus:'-', Equal:'=', BracketLeft:'[', BracketRight:']', Backslash:'\\',
+  Semicolon:';', Quote:"'", Comma:',', Period:'.', Slash:'/'
+};
+
+/* =========================================================
+   2. BOX BUILDER (real 3D boxes: 5 faces)
+   ========================================================= */
+function face(box, kind, w, h, tr){
+  const f = document.createElement('div');
+  f.className = 'f ' + kind;
+  f.style.width = w + 'px';
+  f.style.height = h + 'px';
+  f.style.marginLeft = (-w/2) + 'px';
+  f.style.marginTop = (-h/2) + 'px';
+  f.style.transform = tr;
+  box.appendChild(f);
+  return f;
+}
+function box(w, h, d, cls){
+  const b = document.createElement('div');
+  b.className = 'box' + (cls ? ' ' + cls : '');
+  b.style.width = w + 'px';
+  b.style.height = h + 'px';
+  b.style.marginLeft = (-w/2) + 'px';
+  b.style.marginTop = (-h/2) + 'px';
+  face(b,'top',    w, h, `translateZ(${d/2}px)`);
+  face(b,'front',  w, d, `translateY(${h/2}px) rotateX(-90deg)`);
+  face(b,'back',   w, d, `translateY(${-h/2}px) rotateX(90deg)`);
+  face(b,'left',   d, h, `translateX(${-w/2}px) rotateY(-90deg)`);
+  face(b,'right',  d, h, `translateX(${w/2}px) rotateY(90deg)`);
+  return b;
+}
+function place(el, x, y, z){
+  el.style.setProperty('--bx', x + 'px');
+  el.style.setProperty('--by', y + 'px');
+  el.style.setProperty('--bz', (z||0) + 'px');
+  return el;
+}
+
+/* =========================================================
+   3. BUILD THE KEYBOARD
+   ========================================================= */
+const kb    = document.getElementById('kb');
+const scene = document.getElementById('scene');
+const stage = document.getElementById('stage');
+
+const caps = new Map();   // id -> cap element
+const sws  = new Map();   // id -> switch element
+const byLabel = new Map();
+const idOfLabel = l => l; // label used as id when no explicit id
+
+let animated = [];        // every element that flies in
+
+function addLayer(cls, w, h, extra){
+  const l = document.createElement('div');
+  l.className = 'lay ' + cls;
+  l.style.width = w + 'px';
+  l.style.height = h + 'px';
+  l.style.marginLeft = (-w/2) + 'px';
+  l.style.marginTop = (-h/2) + 'px';
+  if(extra) l.style.cssText += extra;
+  kb.appendChild(l);
+  animated.push(l);
+  return l;
+}
+
+/* --- contact shadow --- */
+const shadow = document.createElement('div');
+shadow.className = 'shadow pre';
+kb.appendChild(shadow);
+
+/* --- 01 CASE: slab + four rim walls --- */
+const caseL = addLayer('case', 816, 266);
+caseL.appendChild(place(box(816,266,15), 0, 0, 7.5));
+const rimF = place(box(816,7,10,'rim'), 0, 129.5, 20);
+const rimB = place(box(816,7,10,'rim'), 0,-129.5, 20);
+const rimL = place(box(7,252,10,'rim'), -404.5, 0, 20);
+const rimR = place(box(7,252,10,'rim'),  404.5, 0, 20);
+[rimF,rimB,rimL,rimR].forEach(e => caseL.appendChild(e));
+// engraved badge + underglow bleed live on the front wall's outer face
+const frontFace = rimF.querySelector('.front');
+const badge = document.createElement('div');
+badge.className = 'badge'; badge.textContent = 'MERIDIAN 65';
+frontFace.appendChild(badge);
+const bleed = document.createElement('div');
+bleed.className = 'bleed';
+frontFace.appendChild(bleed);
+
+/* --- 02 PCB --- */
+const pcbL = addLayer('pcb', 800, 250);
+const pcbBox = box(800,250,2,'pcbbox');
+pcbBox.style.setProperty('--bz','16.5px');
+pcbL.appendChild(pcbBox);
+const pcbTop = pcbBox.querySelector('.top');
+const pads = document.createElement('div');
+pads.className = 'pads';
+pcbTop.appendChild(pads);
+const silk = document.createElement('div');
+silk.className = 'silk';
+silk.textContent = 'MERIDIAN 65 · REV C · HOT-SWAP';
+pcbTop.appendChild(silk);
+[[-250,-70,46,46],[186,-66,36,22],[-300,62,26,26]].forEach(([x,y,w,h])=>{
+  const c = box(w,h,2,'chip');
+  c.querySelectorAll('.f').forEach((f,i)=>{
+    f.style.background = i === 0 ? 'linear-gradient(150deg,#201E1B,#0D0C0B)'
+                                 : 'linear-gradient(#171514,#0A0908)';
+  });
+  pcbL.appendChild(place(c, x, y, 18.5));
+});
+
+/* --- 03 FOAM --- */
+const foamL = addLayer('foam', 794, 244);
+const foamBox = box(794,244,3,'foambox');
+foamBox.style.setProperty('--bz','21px');
+foamL.appendChild(foamBox);
+
+/* --- 04 PLATE (+ switches + caps live in plate coordinates) --- */
+const plateL = addLayer('plate', 800, 250);
+const plateBox = box(800,250,2.5,'platebox');
+plateBox.style.setProperty('--bz','23.75px');
+plateL.appendChild(plateBox);
+
+/* --- switches + keycaps --- */
+const keys = [];
+ROWS.forEach((row, r) => {
+  let x = 0;
+  row.forEach(([label, w, id], i) => {
+    const cx = x + w*U/2;
+    const cy = r*U + U/2;
+    x += w*U;
+    if(label === '__KNOB__'){ keys.push({knob:true, cx, cy}); return; }
+    const kid = id || (idOfLabel(label) + (id ? '' : ''));
+    const g = groupOf(label);
+
+    /* switch */
+    const sw = box(36,36,7,'sw');
+    sw.style.left = cx + 'px';
+    sw.style.top  = cy + 'px';
+    const led = document.createElement('div');
+    led.className = 'led';
+    led.innerHTML = '<span class="g"></span><span class="wv"></span><span class="fl"></span>';
+    sw.appendChild(led);
+    plateL.appendChild(sw);
+    sws.set(kid, sw);
+    if(!byLabel.has(label)) byLabel.set(label, kid);
+
+    /* keycap */
+    const slot = document.createElement('div');
+    slot.className = 'cslot';
+    slot.style.left = cx + 'px';
+    slot.style.top  = cy + 'px';
+
+    const cap = box(w*U - 4, U - 4, 9, 'cap');
+    cap.style.setProperty('--tilt', TILT[r] + '');
+
+    slot.appendChild(cap);
+
+    const topFace = cap.querySelector('.top');
+    const lg = document.createElement('span');
+    lg.className = 'lg';
+    lg.textContent = label === 'Space' ? 'Meridian 65' : label;
+    topFace.appendChild(lg);
+
+    cap.classList.add('k-' + g);
+    if(['Tab','Caps','Shift','Ctrl','Alt','Cmd'].includes(label)) cap.classList.add('mod');
+    if(['Space','Backspace','Enter'].includes(label)) cap.classList.add('wide');
+    if(label === 'Esc' || label === 'Enter' || ['↑','←','↓','→'].includes(label)) cap.classList.add('k-accent');
+    if(label === 'Space') cap.classList.add('k-space');
+    if(['Tab','Caps','Shift','Ctrl','Alt','Cmd','Home','PgUp','PgDn'].includes(label)) cap.classList.add('k-mod');
+
+    cap.dataset.group = g;
+    cap.dataset.kid = kid;
+    slot.dataset.kid = kid;
+    plateL.appendChild(slot);
+
+    caps.set(kid, cap);
+    keys.push({kid, cx, cy, g, label, slot, sw});
+  });
+});
+
+/* --- 06 KNOB (rotary encoder, top-right) --- */
+const knobData = keys.find(k => k.knob);
+const knobL = document.createElement('div');
+knobL.className = 'lay knob pre';
+knobL.style.left = `calc(50% + ${knobData.cx - 400}px)`;
+knobL.style.top  = `calc(50% + ${knobData.cy - 125}px)`;
+knobL.style.setProperty('--z', '33px');
+kb.appendChild(knobL);
+animated.push(knobL);
+
+const krot = document.createElement('div');
+krot.className = 'krot';
+knobL.appendChild(krot);
+const SEG = 16, R = 20, KW = 42;
+for(let i=0;i<SEG;i++){
+  const a = (360/SEG) * i;
+  const s = document.createElement('div');
+  s.className = 'seg';
+  const cw = 2*Math.PI*R/SEG + 0.7;
+  s.style.width = cw.toFixed(2) + 'px';
+  s.style.height = '16px';
+  s.style.marginLeft = (-cw/2).toFixed(2) + 'px';
+  s.style.marginTop = '-8px';
+  s.style.transform = `rotateZ(${a}deg) rotateX(-90deg) translateZ(${R}px)`;
+  krot.appendChild(s);
+}
+const ktop = document.createElement('div');
+ktop.className = 'ktop';
+krot.appendChild(ktop);
+const kmark = document.createElement('div');
+kmark.className = 'kmark';
+krot.appendChild(kmark);
+const khit = document.createElement('button');
+khit.className = 'knobhit';
+khit.type = 'button';
+khit.setAttribute('aria-label','Rotate the encoder');
+knobL.appendChild(khit);
+
+/* switch install order: left → right, top → bottom */
+const switchOrder = keys.filter(k => !k.knob).sort((a,b) => (a.cx - b.cx) || (a.cy - b.cy));
+const capOrder    = keys.filter(k => !k.knob).sort((a,b) => (a.cx - b.cx) || (a.cy - b.cy));
+
+const SW_BASE = 3450, SW_STAG = 20, CAP_BASE = 5150, CAP_STAG = 20;
+switchOrder.forEach((k,i) => { k.sw.style.setProperty('--d', (SW_BASE + i*SW_STAG) + 'ms'); animated.push(k.sw); });
+capOrder.forEach((k,i)    => { k.slot.style.setProperty('--d', (CAP_BASE + i*CAP_STAG) + 'ms'); animated.push(k.slot); });
+
+/* mark every fly-in element as "pre" initially */
+animated.forEach(el => el.classList.add('pre'));
+
+/* =========================================================
+   4. AUDIO — synthesised in the browser, no files
+   ========================================================= */
+const VOICE = {
+  alpha: {f:186, drop:.50, body:.34, dur:.14, clickF:2500, clickQ:1.0, clickG:.30, thumpF:118, thumpG:.20},
+  num:   {f:212, drop:.53, body:.32, dur:.13, clickF:3100, clickQ:1.1, clickG:.32, thumpF:132, thumpG:.18},
+  enter: {f:150, drop:.54, body:.40, dur:.24, clickF:2000, clickQ:0.9, clickG:.30, thumpF:96,  thumpG:.34},
+  back:  {f:172, drop:.52, body:.36, dur:.19, clickF:3400, clickQ:1.3, clickG:.36, thumpF:106, thumpG:.26},
+  space: {f:88,  drop:.58, body:.55, dur:.36, clickF:1150, clickQ:0.8, clickG:.16, thumpF:62,  thumpG:.55},
+  mod:   {f:128, drop:.56, body:.44, dur:.22, clickF:1450, clickQ:0.9, clickG:.20, thumpF:88,  thumpG:.40},
+  nav:   {f:236, drop:.54, body:.28, dur:.12, clickF:3200, clickQ:1.2, clickG:.28, thumpF:140, thumpG:.15},
+  esc:   {f:166, drop:.54, body:.38, dur:.21, clickF:3700, clickQ:1.4, clickG:.34, thumpF:100, thumpG:.30},
+  detent:{f:420, drop:.55, body:.16, dur:.05, clickF:4200, clickQ:2.2, clickG:.30, thumpF:0,   thumpG:0}
+};
+
+let AC = null, master = null, wet = null, NB = null, muted = false, unlocked = false;
+
+function makeNoise(sec){
+  const n = Math.floor(AC.sampleRate * sec);
+  const b = AC.createBuffer(1, n, AC.sampleRate);
+  const d = b.getChannelData(0);
+  for(let i=0;i<n;i++) d[i] = Math.random()*2 - 1;
+  return b;
+}
+function makeIR(sec){
+  const n = Math.floor(AC.sampleRate * sec);
+  const b = AC.createBuffer(2, n, AC.sampleRate);
+  for(let c=0;c<2;c++){
+    const d = b.getChannelData(c);
+    for(let i=0;i<n;i++){
+      const t = i/n;
+      d[i] = (Math.random()*2-1) * Math.pow(1-t, 2.6) * (1 - t*0.2);
+    }
+  }
+  return b;
+}
+function initAudio(){
+  if(AC) return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if(!Ctx) return;
+  try{ AC = new Ctx(); }catch(e){ return; }
+  master = AC.createGain(); master.gain.value = 0.9;
+  const comp = AC.createDynamicsCompressor();
+  comp.threshold.value = -16; comp.knee.value = 20; comp.ratio.value = 5;
+  comp.attack.value = .003; comp.release.value = .2;
+  master.connect(comp); comp.connect(AC.destination);
+  const conv = AC.createConvolver(); conv.buffer = makeIR(.34);
+  wet = AC.createGain(); wet.gain.value = .5;
+  wet.connect(conv); conv.connect(comp);
+  NB = makeNoise(.5);
+}
+function unlock(){
+  initAudio();
+  if(!AC) return;
+  if(AC.state === 'suspended') AC.resume();
+  if(!unlocked){
+    unlocked = true;
+    document.getElementById('hint').classList.add('gone');
+    setMute(false, true);
+  }
+}
+function setMute(state, silent){
+  muted = state;
+  const btn = document.getElementById('btnMute');
+  document.getElementById('muteLbl').textContent = muted ? 'Sound off' : 'Sound on';
+  btn.classList.toggle('off', muted);
+  btn.setAttribute('aria-pressed', String(!muted));
+  if(AC && master) master.gain.setTargetAtTime(muted ? 0 : 0.9, AC.currentTime, .02);
+  if(!silent && !muted) unlock();
+}
+function play(g, up){
+  if(!AC || muted) return;
+  if(AC.state === 'suspended') AC.resume();
+  const p = VOICE[g] || VOICE.alpha;
+  const t = AC.currentTime + 0.001;
+  const k = 1 + (Math.random()*0.06 - 0.03);
+  const isUp = !!up;
+  const f = p.f * k * (isUp ? 1.8 : 1);
+  const dur = p.dur * (isUp ? .5 : 1);
+
+  /* body — sine with pitch drop */
+  const o = AC.createOscillator();
+  o.type = isUp ? 'triangle' : 'sine';
+  o.frequency.setValueAtTime(f * 1.55, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(38, f * p.drop), t + dur * .5);
+  const og = AC.createGain();
+  const lvl = p.body * (isUp ? .42 : 1);
+  og.gain.setValueAtTime(.0001, t);
+  og.gain.exponentialRampToValueAtTime(lvl, t + .006);
+  og.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(og); og.connect(master);
+  const s1 = AC.createGain(); s1.gain.value = .5; og.connect(s1); s1.connect(wet);
+  o.start(t); o.stop(t + dur + .06);
+
+  /* click — bandpassed noise */
+  const n = AC.createBufferSource(); n.buffer = NB;
+  n.playbackRate.value = .9 + Math.random()*.2;
+  const bp = AC.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = p.clickF * k * (isUp ? 1.3 : 1);
+  bp.Q.value = p.clickQ || 1;
+  const ng = AC.createGain();
+  const cd = isUp ? .018 : .034;
+  ng.gain.setValueAtTime(.0001, t);
+  ng.gain.exponentialRampToValueAtTime(Math.max(.001, p.clickG * (isUp ? .5 : 1)), t + .002);
+  ng.gain.exponentialRampToValueAtTime(.0001, t + cd);
+  n.connect(bp); bp.connect(ng); ng.connect(master);
+  const s2 = AC.createGain(); s2.gain.value = .35; ng.connect(s2); s2.connect(wet);
+  n.start(t); n.stop(t + cd + .03);
+
+  /* bottom-out thump */
+  if(!isUp && p.thumpG){
+    const o2 = AC.createOscillator(); o2.type = 'sine';
+    o2.frequency.setValueAtTime(p.thumpF * 1.7, t);
+    o2.frequency.exponentialRampToValueAtTime(p.thumpF, t + .05);
+    const g2 = AC.createGain();
+    g2.gain.setValueAtTime(.0001, t);
+    g2.gain.exponentialRampToValueAtTime(p.thumpG, t + .004);
+    g2.gain.exponentialRampToValueAtTime(.0001, t + (g > 100 ? .17 : .3));
+    o2.connect(g2); g2.connect(master);
+    o2.start(t); o2.stop(t + .35);
+  }
+}
+
+/* =========================================================
+   5. INTERACTION — press / release / physical keys
+   ========================================================= */
+function pressEl(cap){
+  if(!cap || cap.classList.contains('is-down')) return;
+  cap.classList.add('is-down');
+  const kid = cap.dataset.kid;
+  const sw = sws.get(kid);
+  if(sw){ sw.classList.add('lit'); clearTimeout(sw._t); sw._t = setTimeout(()=>sw.classList.remove('lit'), 190); }
+  play(cap.dataset.group, false);
+}
+function releaseEl(cap){
+  if(!cap || !cap.classList.contains('is-down')) return;
+  cap.classList.remove('is-down');
+  cap.style.setProperty('--hx','0');
+  cap.style.setProperty('--hy','0');
+  play(cap.dataset.group, true);
+}
+function tiltAt(cap, ev){
+  const r = cap.getBoundingClientRect();
+  if(!r.width) return;
+  const nx = Math.max(-1, Math.min(1, ((ev.clientX - r.left) / r.width - .5) * 2));
+  const ny = Math.max(-1, Math.min(1, ((ev.clientY - r.top) / r.height - .5) * 2));
+  cap.style.setProperty('--hx', (nx * 4.5).toFixed(2));
+  cap.style.setProperty('--hy', (ny * 4.5).toFixed(2));
+}
+
+scene.addEventListener('pointerdown', e => {
+  unlock();
+  const cap = e.target.closest ? e.target.closest('.cap') : null;
+  if(cap){
+    if(e.cancelable) e.preventDefault();
+    tiltAt(cap, e);
+    pressEl(cap);
+    try{ cap.setPointerCapture(e.pointerId); }catch(err){}
+    e.stopPropagation();
+  }
+});
+window.addEventListener('pointerup', () => {
+  caps.forEach(c => releaseEl(c));
+});
+window.addEventListener('pointercancel', () => {
+  caps.forEach(c => releaseEl(c));
+});
+
+/* physical keyboard */
+function resolveCode(code){
+  if(PHYS[code]) return PHYS[code];
+  if(/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if(/^Digit[0-9]$/.test(code)) return code.slice(5);
+  if(CODE2CHAR[code]) return CODE2CHAR[code];
+  return null;
+}
+const down = new Set();
+window.addEventListener('keydown', e => {
+  unlock();
+  if(e.repeat) return;
+  const id = resolveCode(e.code);
+  if(!id) return;
+  const cap = caps.get(id) || caps.get(byLabel.get(id));
+  if(!cap) return;
+  const block = ['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab','Backspace','Slash','Quote'];
+  if(block.includes(e.code) && !e.ctrlKey && !e.metaKey && !e.altKey){
+    const tag = (e.target && e.target.tagName) || '';
+    if(!/INPUT|TEXTAREA|SELECT/.test(tag)) e.preventDefault();
+  }
+  down.add(id);
+  pressEl(cap);
+});
+window.addEventListener('keyup', e => {
+  const id = resolveCode(e.code);
+  if(!id) return;
+  const cap = caps.get(id) || caps.get(byLabel.get(id));
+  down.delete(id);
+  releaseEl(cap);
+});
+window.addEventListener('blur', () => {
+  caps.forEach(c => releaseEl(c));
+  down.clear();
+});
+
+/* encoder */
+let kr = 0;
+khit.addEventListener('click', () => {
+  unlock();
+  kr += 45;
+  krot.style.setProperty('--kr', kr + 'deg');
+  play('detent', false);
+});
+
+/* =========================================================
+   6. ASSEMBLY TIMELINE
+   ========================================================= */
+const timers = [];
+const statusEl = document.getElementById('status');
+const statusTxt = document.getElementById('statusTxt');
+const partsEl = document.getElementById('parts');
+let assembled = false;
+
+function clearTimers(){ while(timers.length) clearTimeout(timers.pop()); }
+function at(ms, fn){ timers.push(setTimeout(fn, ms)); }
+
+function partRow(name){ return partsEl.querySelector('[data-part="' + name + '"]'); }
+function markLive(name){
+  partsEl.querySelectorAll('li').forEach(li => li.classList.remove('live'));
+  const li = partRow(name); if(li) li.classList.add('live');
+}
+function markDone(name){
+  const li = partRow(name);
+  if(li){ li.classList.add('done'); li.classList.remove('live'); }
+}
+function setStatus(txt, ready){
+  statusTxt.innerHTML = txt;
+  statusEl.classList.toggle('ready', !!ready);
+}
+
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+function isReduced(){ return reduced.matches; }
+
+function assemble(){
+  clearTimers();
+  assembled = false;
+  stage.classList.remove('assembled');
+
+  /* instant reset */
+  stage.classList.add('noanim');
+  animated.forEach(el => el.classList.add('pre'));
+  partsEl.querySelectorAll('li').forEach(li => li.classList.remove('done','live'));
+  shadow.classList.add('pre');
+  void stage.offsetWidth;
+  stage.classList.remove('noanim');
+
+  const instant = isReduced();
+  if(instant) stage.classList.add('rm');
+  else stage.classList.remove('rm');
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      animated.forEach(el => el.classList.remove('pre'));
+      shadow.classList.remove('pre');
+    });
+  });
+
+  const beats = instant ? [
+    [0,'pcb'], [0,'case'], [0,'foam'], [0,'plate'], [0,'switches'], [0,'keycaps']
+  ] : [
+    [1150,'pcb'], [1900,'case'], [2750,'foam'], [3550,'plate'], [5450,'switches'], [7250,'keycaps']
+  ];
+  setStatus(instant ? 'Assembling · <b>02 PCB</b>' : 'Assembling · <b>02 PCB</b>');
+  beats.forEach(([t, name]) => {
+    at(t, () => {
+      markDone(name);
+      const labels = {pcb:'02 PCB', case:'01 CASE', foam:'03 FOAM', plate:'04 PLATE', switches:'05 SWITCHES · 67', keycaps:'06 KEYCAPS'};
+      markLive(name);
+      setStatus('Assembling · <b>' + labels[name] + '</b>', false);
+    });
+  });
+  at(instant ? 60 : 7900, () => {
+    partsEl.querySelectorAll('li').forEach(li => { li.classList.add('done'); li.classList.remove('live'); });
+    setStatus('<b>Ready</b> · press any key', true);
+    assembled = true;
+    stage.classList.add('assembled');
+  });
+}
+window.addEventListener('beforeunload', clearTimers);
+
+/* =========================================================
+   7. CONTROLS
+   ========================================================= */
+document.getElementById('btnReplay').addEventListener('click', () => { unlock(); assemble(); });
+
+const RGB_MODES = ['rgb-wave','rgb-solid','rgb-off'];
+const RGB_NAMES = ['Light · Wave','Light · Solid','Light · Off'];
+let rgbIdx = 0;
+document.getElementById('btnRgb').addEventListener('click', () => {
+  unlock();
+  rgbIdx = (rgbIdx + 1) % RGB_MODES.length;
+  RGB_MODES.forEach(c => stage.classList.remove(c));
+  stage.classList.add(RGB_MODES[rgbIdx]);
+  document.getElementById('rgbLbl').textContent = RGB_NAMES[rgbIdx];
+  document.getElementById('btnRgb').setAttribute('aria-pressed', String(rgbIdx !== 2));
+  document.getElementById('btnRgb').classList.toggle('hot', rgbIdx !== 2);
+});
+document.getElementById('btnMute').addEventListener('click', () => {
+  if(!unlocked){ unlock(); return; }
+  setMute(!muted);
+});
+
+/* unlock on the very first gesture of any kind */
+function firstGesture(){ unlock(); }
+window.addEventListener('pointerdown', firstGesture, {once:true});
+window.addEventListener('keydown', firstGesture, {once:true});
+
+/* =========================================================
+   8. FIT + PARALLAX
+   ========================================================= */
+function fit(){
+  const r = stage.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const s = Math.max(.3, Math.min(1.25, Math.min(r.width/900, r.height/360)));
+  scene.style.setProperty('--s', s.toFixed(3));
+}
+window.addEventListener('resize', fit);
+if(window.ResizeObserver) new ResizeObserver(fit).observe(stage);
+fit();
+
+const fine = window.matchMedia('(hover:hover) and (pointer:fine)');
+if(fine.matches && !isReduced()){
+  stage.addEventListener('pointermove', e => {
+    if(isReduced()) return;
+    const r = stage.getBoundingClientRect();
+    const nx = ((e.clientX - r.left)/r.width - .5) * 2;
+    const ny = ((e.clientY - r.top)/r.height - .5) * 2;
+    kb.style.setProperty('--px', (nx * 5).toFixed(2));
+    kb.style.setProperty('--py', (-ny * 3.5).toFixed(2));
+  });
+  stage.addEventListener('pointerleave', () => {
+    kb.style.setProperty('--px','0');
+    kb.style.setProperty('--py','0');
+  });
+}
+reduced.addEventListener && reduced.addEventListener('change', () => { fit(); });
+
+/* light sweep delay per switch for the wave */
+switchOrder.forEach((k,i) => k.sw.querySelector('.led .wv').style.setProperty('--ld', (-(i % 24) * .16).toFixed(2) + 's'));
+
+/* go */
+assemble();
+
+})();
+</script>
+</body>
+</html>
