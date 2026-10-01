@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechanical Keyboard Showcase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root {
+      --key-width: 50px;
+      --key-height: 50px;
+      --key-gap: 5px;
+      --case-height: 20px;
+      --pcb-height: 2px;
+      --foam-height: 5px;
+      --plate-height: 2px;
+      --switch-height: 15px;
+      --keycap-height: 10px;
+      --case-color: #2a2a2a;
+      --pcb-color: #1a1a1a;
+      --foam-color: #4a4a4a;
+      --plate-color: #c0c0c0;
+      --switch-color: #333333;
+      --keycap-color: #404040;
+      --keycap-text: #ffffff;
+      --accent-color: #6366f1;
+      --accent-glow: rgba(99, 102, 241, 0.3);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #0f0f23 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow-x: hidden;
+      color: #e0e0e0;
+    }
+
+    .scene-container {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      height: 500px;
+      perspective: 1200px;
+      margin: 20px 0;
+    }
+
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+    }
+
+    .layer {
+      position: absolute;
+      transform-style: preserve-3d;
+      transition: transform 1.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+
+    .case {
+      width: 800px;
+      height: var(--case-height);
+      background: var(--case-color);
+      border-radius: 8px 8px 0 0;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      transform: translateZ(0) rotateX(0deg);
+    }
+
+    .case::before {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      height: 15px;
+      background: linear-gradient(to bottom, var(--case-color) 0%, #111 100%);
+      transform: translateZ(-15px) rotateX(90deg);
+      transform-origin: top center;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .case::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(145deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+      border-radius: 8px 8px 0 0;
+      opacity: 0.3;
+    }
+
+    .pcb {
+      width: 780px;
+      height: var(--pcb-height);
+      background: var(--pcb-color);
+      border-radius: 4px;
+      transform: translateZ(-150px) translateY(-10px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+
+    .pcb::before {
+      content: '';
+      position: absolute;
+      inset: 2px;
+      background: repeating-linear-gradient(
+        0deg,
+        #2a2a2a,
+        #2a2a2a 2px,
+        #1a1a1a 2px,
+        #1a1a1a 4px
+      );
+      border-radius: 2px;
+      opacity: 0.5;
+    }
+
+    .foam {
+      width: 780px;
+      height: var(--foam-height);
+      background: var(--foam-color);
+      border-radius: 4px;
+      transform: translateZ(-300px) translateY(-13px);
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+    }
+
+    .foam::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.1) 3px,
+        rgba(0,0,0,0.1) 6px
+      );
+      border-radius: 4px;
+    }
+
+    .plate {
+      width: 780px;
+      height: var(--plate-height);
+      background: var(--plate-color);
+      border-radius: 2px;
+      transform: translateZ(-450px) translateY(-15px);
+      box-shadow: 0 1px 5px rgba(255, 255, 255, 0.2);
+    }
+
+    .plate::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, #a0a0a0 0%, #e0e0e0 100%);
+      border-radius: 2px;
+      opacity: 0.3;
+    }
+
+    .switches-container {
+      position: absolute;
+      transform: translateY(-15px);
+      transform-style: preserve-3d;
+    }
+
+    .keycaps-container {
+      position: absolute;
+      transform: translateY(-15px);
+      transform-style: preserve-3d;
+    }
+
+    .switch {
+      position: absolute;
+      width: var(--key-width);
+      height: var(--switch-height);
+      background: var(--switch-color);
+      border-radius: 3px;
+      transform-style: preserve-3d;
+      transition: transform 0.1s ease-out;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .switch::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%) translateZ(2px);
+      width: 14px;
+      height: 6px;
+      background: #111;
+      border-radius: 2px;
+    }
+
+    .switch::after {
+      content: '';
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%) translateZ(1px);
+      width: 10px;
+      height: 8px;
+      background: linear-gradient(to bottom, #444, #222);
+      border-radius: 1px;
+    }
+
+    .keycap {
+      position: absolute;
+      width: var(--key-width);
+      height: var(--keycap-height);
+      background: var(--keycap-color);
+      border-radius: 4px 4px 2px 2px;
+      transform-style: preserve-3d;
+      transition: transform 0.05s ease-out, box-shadow 0.05s ease-out;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--keycap-text);
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+    }
+
+    .keycap::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+    }
+
+    .keycap:hover {
+      background: #505050;
+    }
+
+    .keycap:active {
+      transform: translateZ(-5px) !important;
+    }
+
+    .keycap.pressed {
+      transform: translateZ(-5px) !important;
+      box-shadow: 0 0 3px rgba(0, 0, 0, 0.6) inset;
+    }
+
+    .keycap.space {
+      background: linear-gradient(180deg, #333 0%, #222 100%);
+    }
+
+    .keycap.enter,
+    .keycap.backspace {
+      background: linear-gradient(180deg, #3a3a5a 0%, #2a2a4a 100%);
+    }
+
+    .keycap.shift,
+    .keycap.ctrl,
+    .keycap.alt,
+    .keycap.win,
+    .keycap.menu,
+    .keycap.caps {
+      background: linear-gradient(180deg, #4a4a6a 0%, #3a3a5a 100%);
+    }
+
+    .keycap tab {
+      background: linear-gradient(180deg, #4a4a6a 0%, #3a3a5a 100%);
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 10px 20px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(99, 102, 241, 0.2);
+      color: #ffffff;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    button:hover {
+      background: rgba(99, 102, 241, 0.4);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button#mute.muted {
+      background: rgba(239, 68, 68, 0.2);
+    }
+
+    button#mute.muted:hover {
+      background: rgba(239, 68, 68, 0.4);
+    }
+
+    #audio-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: #aaa;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: none;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    #audio-hint.show {
+      display: block;
+    }
+
+    .rotary-knob {
+      position: absolute;
+      right: -30px;
+      top: 50%;
+      transform: translateY(-50%) translateZ(30px);
+      width: 24px;
+      height: 24px;
+      background: #333;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      cursor: pointer;
+    }
+
+    .rotary-knob::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 12px;
+      height: 2px;
+      background: #888;
+      transform: translate(-50%, -50%) rotate(45deg);
+      border-radius: 1px;
+    }
+
+    .rotary-knob::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 12px;
+      height: 2px;
+      background: #888;
+      transform: translate(-50%, -50%) rotate(-45deg);
+      border-radius: 1px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+
+    .rgb-indicator {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      width: 8px;
+      height: 8px;
+      background: var(--accent-color);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-glow);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    /* Responsive scaling */
+    @media (max-width: 900px) {
+      .scene-container {
+        height: 400px;
+        perspective: 900px;
+      }
+      :root {
+        --key-width: 40px;
+        --key-height: 40px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .scene-container {
+        height: 300px;
+        perspective: 600px;
+      }
+      :root {
+        --key-width: 30px;
+        --key-height: 30px;
+        --key-gap: 3px;
+      }
+      .case { width: 600px; }
+      .pcb, .foam, .plate { width: 580px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="audio-hint">Click anywhere to enable sound</div>
+  
+  <div class="scene-container">
+    <div class="scene" id="scene">
+      <div class="layer case" id="case"></div>
+      <div class="layer pcb" id="pcb"></div>
+      <div class="layer foam" id="foam"></div>
+      <div class="layer plate" id="plate"></div>
+      <div class="switches-container" id="switches-container"></div>
+      <div class="keycaps-container" id="keycaps-container"></div>
+      <div class="rotary-knob" id="rotary-knob"></div>
+      <div class="rgb-indicator"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="replay">Replay Assembly</button>
+    <button id="mute">Mute Sound</button>
+  </div>
+
+  <script>
+    // ============================================
+    // KEYBOARD LAYOUT DEFINITION
+    // ============================================
+    
+    const KEY_LAYOUT = [
+      // Row 0
+      { key: '`', type: 'letter', width: 1, x: 0, y: 0 },
+      { key: '1', type: 'letter', width: 1, x: 1, y: 0 },
+      { key: '2', type: 'letter', width: 1, x: 2, y: 0 },
+      { key: '3', type: 'letter', width: 1, x: 3, y: 0 },
+      { key: '4', type: 'letter', width: 1, x: 4, y: 0 },
+      { key: '5', type: 'letter', width: 1, x: 5, y: 0 },
+      { key: '6', type: 'letter', width: 1, x: 6, y: 0 },
+      { key: '7', type: 'letter', width: 1, x: 7, y: 0 },
+      { key: '8', type: 'letter', width: 1, x: 8, y: 0 },
+      { key: '9', type: 'letter', width: 1, x: 9, y: 0 },
+      { key: '0', type: 'letter', width: 1, x: 10, y: 0 },
+      { key: '-', type: 'letter', width: 1, x: 11, y: 0 },
+      { key: '=', type: 'letter', width: 1, x: 12, y: 0 },
+      { key: 'Backspace', type: 'backspace', width: 2, x: 13, y: 0 },
+
+      // Row 1
+      { key: 'Tab', type: 'tab', width: 1.5, x: 0, y: 1 },
+      { key: 'Q', type: 'letter', width: 1, x: 1.5, y: 1 },
+      { key: 'W', type: 'letter', width: 1, x: 2.5, y: 1 },
+      { key: 'E', type: 'letter', width: 1, x: 3.5, y: 1 },
+      { key: 'R', type: 'letter', width: 1, x: 4.5, y: 1 },
+      { key: 'T', type: 'letter', width: 1, x: 5.5, y: 1 },
+      { key: 'Y', type: 'letter', width: 1, x: 6.5, y: 1 },
+      { key: 'U', type: 'letter', width: 1, x: 7.5, y: 1 },
+      { key: 'I', type: 'letter', width: 1, x: 8.5, y: 1 },
+      { key: 'O', type: 'letter', width: 1, x: 9.5, y: 1 },
+      { key: 'P', type: 'letter', width: 1, x: 10.5, y: 1 },
+      { key: '[', type: 'letter', width: 1, x: 11.5, y: 1 },
+      { key: ']', type: 'letter', width: 1, x: 12.5, y: 1 },
+      { key: '\\', type: 'letter', width: 1.5, x: 13.5, y: 1 },
+
+      // Row 2
+      { key: 'Caps', type: 'caps', width: 1.75, x: 0, y: 2 },
+      { key: 'A', type: 'letter', width: 1, x: 1.75, y: 2 },
+      { key: 'S', type: 'letter', width: 1, x: 2.75, y: 2 },
+      { key: 'D', type: 'letter', width: 1, x: 3.75, y: 2 },
+      { key: 'F', type: 'letter', width: 1, x: 4.75, y: 2 },
+      { key: 'G', type: 'letter', width: 1, x: 5.75, y: 2 },
+      { key: 'H', type: 'letter', width: 1, x: 6.75, y: 2 },
+      { key: 'J', type: 'letter', width: 1, x: 7.75, y: 2 },
+      { key: 'K', type: 'letter', width: 1, x: 8.75, y: 2 },
+      { key: 'L', type: 'letter', width: 1, x: 9.75, y: 2 },
+      { key: ';', type: 'letter', width: 1, x: 10.75, y: 2 },
+      { key: "'", type: 'letter', width: 1, x: 11.75, y: 2 },
+      { key: 'Enter', type: 'enter', width: 2.25, x: 12.75, y: 2 },
+
+      // Row 3
+      { key: 'Shift', type: 'shift', width: 2.25, x: 0, y: 3 },
+      { key: 'Z', type: 'letter', width: 1, x: 2.25, y: 3 },
+      { key: 'X', type: 'letter', width: 1, x: 3.25, y: 3 },
+      { key: 'C', type: 'letter', width: 1, x: 4.25, y: 3 },
+      { key: 'V', type: 'letter', width: 1, x: 5.25, y: 3 },
+      { key: 'B', type: 'letter', width: 1, x: 6.25, y: 3 },
+      { key: 'N', type: 'letter', width: 1, x: 7.25, y: 3 },
+      { key: 'M', type: 'letter', width: 1, x: 8.25, y: 3 },
+      { key: ',', type: 'letter', width: 1, x: 9.25, y: 3 },
+      { key: '.', type: 'letter', width: 1, x: 10.25, y: 3 },
+      { key: '/', type: 'letter', width: 1, x: 11.25, y: 3 },
+      { key: 'Shift', type: 'shift', width: 2.75, x: 12.25, y: 3 },
+
+      // Row 4
+      { key: 'Ctrl', type: 'ctrl', width: 1.25, x: 0, y: 4 },
+      { key: 'Win', type: 'win', width: 1.25, x: 1.25, y: 4 },
+      { key: 'Alt', type: 'alt', width: 1.25, x: 2.5, y: 4 },
+      { key: 'Space', type: 'space', width: 6.25, x: 3.75, y: 4 },
+      { key: 'Alt', type: 'alt', width: 1.25, x: 10, y: 4 },
+      { key: 'Win', type: 'win', width: 1.25, x: 11.25, y: 4 },
+      { key: 'Menu', type: 'menu', width: 1.25, x: 12.5, y: 4 },
+      { key: 'Ctrl', type: 'ctrl', width: 1.25, x: 13.75, y: 4 }
+    ];
+
+    // ============================================
+    // CONFIGURATION
+    // ============================================
+    
+    const CONFIG = {
+      keyWidth: 50,
+      keyHeight: 50,
+      keyGap: 5,
+      caseHeight: 20,
+      pcbHeight: 2,
+      foamHeight: 5,
+      plateHeight: 2,
+      switchHeight: 15,
+      keycapHeight: 10,
+      
+      // Z positions (depth)
+      caseZ: 0,
+      pcbZ: 20,
+      foamZ: 22,
+      plateZ: 27,
+      switchBaseZ: 29,
+      keycapBaseZ: 44,
+      
+      // Animation offsets
+      explodedPCB: -150,
+      explodedFoam: -300,
+      explodedPlate: -450,
+      explodedSwitch: -600,
+      explodedKeycap: -750,
+      
+      // Animation timing (ms)
+      foamDelay: 0,
+      foamDuration: 1000,
+      plateDelay: 800,
+      plateDuration: 1000,
+      switchDelay: 1600,
+      switchInterval: 40,
+      keycapDelay: 3600,
+      keycapInterval: 30,
+      
+      // Key press
+      pressDepth: 5,
+      pressDuration: 100
+    };
+
+    // ============================================
+    // GLOBAL STATE
+    // ============================================
+    
+    let audioContext = null;
+    let isMuted = false;
+    let isAudioUnlocked = false;
+    let isAnimating = false;
+    let switches = [];
+    let keycaps = [];
+    let keyMap = {}; // Maps key characters to keycap elements
+    let keyTypeMap = {}; // Maps key characters to their type
+    let switchAssembledTransforms = [];
+    let keycapAssembledTransforms = [];
+
+    // ============================================
+    // AUDIO SYSTEM
+    // ============================================
+    
+    function initAudio() {
+      if (audioContext) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function unlockAudio() {
+      if (isAudioUnlocked) return;
+      if (!audioContext) initAudio();
+      
+      const buffer = audioContext.createBuffer(1, 1, audioContext.sampleRate);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+      
+      isAudioUnlocked = true;
+      setTimeout(() => {
+        document.getElementById('audio-hint').classList.remove('show');
+      }, 100);
+    }
+
+    function playKeySound(type) {
+      if (isMuted || !isAudioUnlocked) return;
+      if (!audioContext) return;
+
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      const filter = audioContext.createBiquadFilter();
+
+      oscillator.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Configure based on key type
+      let frequency, gain, duration, filterFreq, filterQ;
+      
+      switch(type) {
+        case 'space':
+          frequency = [120, 110]; // Slight detune for richness
+          gain = 0.15;
+          duration = 0.25;
+          filterFreq = 300;
+          filterQ = 2;
+          oscillator.type = 'sine';
+          break;
+        case 'enter':
+          frequency = 250;
+          gain = 0.12;
+          duration = 0.18;
+          filterFreq = 800;
+          filterQ = 1.5;
+          oscillator.type = 'sine';
+          break;
+        case 'backspace':
+          frequency = 180;
+          gain = 0.1;
+          duration = 0.15;
+          filterFreq = 500;
+          filterQ = 1.8;
+          oscillator.type = 'sawtooth';
+          break;
+        case 'shift':
+        case 'ctrl':
+        case 'alt':
+        case 'win':
+        case 'menu':
+        case 'caps':
+        case 'tab':
+          frequency = 200;
+          gain = 0.08;
+          duration = 0.12;
+          filterFreq = 600;
+          filterQ = 1.5;
+          oscillator.type = 'triangle';
+          break;
+        default: // letter keys
+          frequency = 400 + Math.random() * 300;
+          gain = 0.04 + Math.random() * 0.02;
+          duration = 0.08;
+          filterFreq = 1000 + Math.random() * 1000;
+          filterQ = 1.2;
+          oscillator.type = 'sine';
+      }
+
+      // Set up filter
+      filter.type = 'lowpass';
+      filter.frequency.value = filterFreq;
+      filter.Q.value = filterQ;
+
+      // Handle detuned frequencies
+      if (Array.isArray(frequency)) {
+        const osc2 = audioContext.createOscillator();
+        const gain2 = audioContext.createGain();
+        osc2.connect(filter);
+        osc2.frequency.value = frequency[1];
+        osc2.type = oscillator.type;
+        gain2.gain.value = gain * 0.7;
+        osc2.start();
+        osc2.stop(audioContext.currentTime + duration);
+        
+        gain2.connect(audioContext.destination);
+        gainNode.gain.value = gain * 0.3;
+      } else {
+        oscillator.frequency.value = frequency;
+        gainNode.gain.value = gain;
+      }
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+
+      // Apply envelope
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    }
+
+    // ============================================
+    // CREATE KEYBOARD ELEMENTS
+    // ============================================
+    
+    function createKeyboard() {
+      const scene = document.getElementById('scene');
+      const switchesContainer = document.getElementById('switches-container');
+      const keycapsContainer = document.getElementById('keycaps-container');
+      
+      // Calculate total width based on layout
+      let maxX = 0;
+      KEY_LAYOUT.forEach(key => {
+        maxX = Math.max(maxX, key.x + key.width);
+      });
+      
+      const totalWidth = maxX * (CONFIG.keyWidth + CONFIG.keyGap) - CONFIG.keyGap;
+      
+      // Center the keyboard horizontally
+      const offsetX = (800 - totalWidth) / 2;
+      
+      // Create switches
+      KEY_LAYOUT.forEach((key, index) => {
+        const switchEl = document.createElement('div');
+        switchEl.className = 'switch';
+        switchEl.dataset.index = index;
+        switchEl.dataset.key = key.key;
+        
+        const x = offsetX + key.x * (CONFIG.keyWidth + CONFIG.keyGap);
+        const y = key.y * (CONFIG.keyHeight + CONFIG.keyGap);
+        
+        switchEl.style.width = `${key.width * CONFIG.keyWidth}px`;
+        switchEl.style.height = `${CONFIG.switchHeight}px`;
+        switchEl.style.left = `${x}px`;
+        switchEl.style.top = `${y}px`;
+        const xOffset = (index % 2 === 0 ? -1 : 1) * (index * 2);
+        switchEl.style.transform = `translateZ(${CONFIG.explodedSwitch}px) translateX(${xOffset}px)`;
+        switchAssembledTransforms[index] = `translateZ(${CONFIG.switchBaseZ}px)`;
+        
+        switchesContainer.appendChild(switchEl);
+        switches.push(switchEl);
+      });
+      
+      // Create keycaps
+      KEY_LAYOUT.forEach((key, index) => {
+        const keycapEl = document.createElement('div');
+        keycapEl.className = `keycap ${key.type}`;
+        keycapEl.dataset.index = index;
+        keycapEl.dataset.key = key.key;
+        keycapEl.dataset.type = key.type;
+        keycapEl.textContent = key.key;
+        
+        const x = offsetX + key.x * (CONFIG.keyWidth + CONFIG.keyGap);
+        const y = key.y * (CONFIG.keyHeight + CONFIG.keyGap);
+        
+        keycapEl.style.width = `${key.width * CONFIG.keyWidth}px`;
+        keycapEl.style.height = `${CONFIG.keycapHeight}px`;
+        keycapEl.style.left = `${x}px`;
+        keycapEl.style.top = `${y}px`;
+        const xOffset = (index % 2 === 0 ? -1 : 1) * (index * 1.5);
+        keycapEl.style.transform = `translateZ(${CONFIG.explodedKeycap}px) translateX(${xOffset}px)`;
+        keycapAssembledTransforms[index] = `translateZ(${CONFIG.keycapBaseZ}px)`;
+        
+        // Special styling for certain keys
+        if (key.key === 'Space') {
+          keycapEl.classList.add('space');
+        } else if (key.key === 'Enter' || key.key === 'Backspace') {
+          keycapEl.classList.add(key.key.toLowerCase());
+        }
+        
+        // Add click handler
+        keycapEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          pressKey(index);
+        });
+        
+        keycapsContainer.appendChild(keycapEl);
+        keycaps.push(keycapEl);
+        
+        // Map key character to element
+        keyMap[key.key] = keycapEl;
+        keyTypeMap[key.key] = key.type;
+      });
+      
+      // Also map lowercase letters for keyboard input
+      KEY_LAYOUT.forEach(key => {
+        if (key.key.length === 1 && key.key.match(/[A-Z]/)) {
+          keyMap[key.key.toLowerCase()] = keyMap[key.key];
+          keyTypeMap[key.key.toLowerCase()] = key.type;
+        }
+      });
+      
+      // Map special keys
+      const specialKeyMap = {
+        ' ': 'Space',
+        'Enter': 'Enter',
+        'Backspace': 'Backspace',
+        'Tab': 'Tab',
+        'Shift': 'Shift',
+        'Control': 'Ctrl',
+        'Alt': 'Alt',
+        'Meta': 'Win',
+        'ContextMenu': 'Menu',
+        'CapsLock': 'Caps'
+      };
+      
+      Object.entries(specialKeyMap).forEach(([code, key]) => {
+        if (keyMap[key]) {
+          keyMap[code] = keyMap[key];
+          keyTypeMap[code] = keyTypeMap[key];
+        }
+      });
+    }
+
+    // ============================================
+    // KEY PRESS HANDLING
+    // ============================================
+    
+    function pressKey(index, fromKeyboard = false) {
+      if (!fromKeyboard) unlockAudio();
+      
+      const keycap = keycaps[index];
+      const switchEl = switches[index];
+      const type = KEY_LAYOUT[index].type;
+      
+      // Play sound
+      playKeySound(type);
+      
+      // Animate key press
+      keycap.classList.add('pressed');
+      keycap.style.transition = `transform ${CONFIG.pressDuration}ms ease-out`;
+      
+      // Use stored assembled transform and modify z for press
+      const assembledTransform = keycapAssembledTransforms[index];
+      const pressedZ = CONFIG.keycapBaseZ - CONFIG.pressDepth;
+      const pressedTransform = assembledTransform.replace(
+        /translateZ\([^)]+px\)/, 
+        `translateZ(${pressedZ}px)`
+      );
+      keycap.style.transform = pressedTransform;
+      
+      if (switchEl) {
+        switchEl.style.transition = `transform ${CONFIG.pressDuration}ms ease-out`;
+        const switchAssembledTransform = switchAssembledTransforms[index];
+        const switchPressedZ = CONFIG.switchBaseZ - CONFIG.pressDepth * 0.7;
+        const switchPressedTransform = switchAssembledTransform.replace(
+          /translateZ\([^)]+px\)/, 
+          `translateZ(${switchPressedZ}px)`
+        );
+        switchEl.style.transform = switchPressedTransform;
+      }
+      
+      // Release after duration
+      setTimeout(() => {
+        keycap.classList.remove('pressed');
+        keycap.style.transform = keycapAssembledTransforms[index];
+        if (switchEl) {
+          switchEl.style.transform = switchAssembledTransforms[index];
+        }
+      }, CONFIG.pressDuration);
+    }
+
+    function handleKeyDown(e) {
+      unlockAudio();
+      
+      // Handle modifier keys
+      let keyCode = e.key;
+      
+      // For Shift, we need to handle both left and right
+      if (e.key === 'Shift') {
+        // Find both shift keys
+        KEY_LAYOUT.forEach((key, index) => {
+          if (key.key === 'Shift') {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For Ctrl, Alt, Win - handle left/right
+      if (['Control', 'Alt', 'Meta'].includes(e.key)) {
+        KEY_LAYOUT.forEach((key, index) => {
+          if ((e.key === 'Control' && key.key === 'Ctrl') ||
+              (e.key === 'Alt' && key.key === 'Alt') ||
+              (e.key === 'Meta' && key.key === 'Win')) {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For Space
+      if (e.key === ' ' || e.code === 'Space') {
+        KEY_LAYOUT.forEach((key, index) => {
+          if (key.key === 'Space') {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For Enter
+      if (e.key === 'Enter' || e.code === 'Enter') {
+        KEY_LAYOUT.forEach((key, index) => {
+          if (key.key === 'Enter') {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For Backspace
+      if (e.key === 'Backspace' || e.code === 'Backspace') {
+        KEY_LAYOUT.forEach((key, index) => {
+          if (key.key === 'Backspace') {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For Tab
+      if (e.key === 'Tab' || e.code === 'Tab') {
+        KEY_LAYOUT.forEach((key, index) => {
+          if (key.key === 'Tab') {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For CapsLock
+      if (e.key === 'CapsLock' || e.code === 'CapsLock') {
+        KEY_LAYOUT.forEach((key, index) => {
+          if (key.key === 'Caps') {
+            pressKey(index, true);
+          }
+        });
+        return;
+      }
+      
+      // For regular keys
+      if (keyMap[keyCode]) {
+        const index = parseInt(keyMap[keyCode].dataset.index);
+        pressKey(index, true);
+      }
+    }
+
+    // ============================================
+    // ASSEMBLY ANIMATION
+    // ============================================
+    
+    function animateAssembly() {
+      if (isAnimating) return;
+      isAnimating = true;
+      
+      const scene = document.getElementById('scene');
+      const caseEl = document.getElementById('case');
+      const pcbEl = document.getElementById('pcb');
+      const foamEl = document.getElementById('foam');
+      const plateEl = document.getElementById('plate');
+      
+      // Force reflow to ensure initial state is applied
+      scene.offsetHeight;
+      
+      // Start animation
+      setTimeout(() => {
+        // Animate PCB
+        pcbEl.style.transition = `transform ${CONFIG.foamDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${CONFIG.foamDelay}ms`;
+        pcbEl.style.transform = `translateZ(${CONFIG.pcbZ}px) translateY(-10px)`;
+        
+        // Animate Foam
+        foamEl.style.transition = `transform ${CONFIG.foamDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${CONFIG.foamDelay}ms`;
+        foamEl.style.transform = `translateZ(${CONFIG.foamZ}px) translateY(-13px)`;
+        
+        // Animate Plate
+        plateEl.style.transition = `transform ${CONFIG.plateDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${CONFIG.plateDelay}ms`;
+        plateEl.style.transform = `translateZ(${CONFIG.plateZ}px) translateY(-15px)`;
+        
+        // Animate Switches
+        switches.forEach((sw, i) => {
+          const delay = CONFIG.switchDelay + (i * CONFIG.switchInterval);
+          sw.style.transition = `transform ${CONFIG.switchInterval * 2}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${delay}ms`;
+          sw.style.transform = `translateZ(${CONFIG.switchBaseZ}px)`;
+        });
+        
+        // Animate Keycaps
+        keycaps.forEach((kc, i) => {
+          const delay = CONFIG.keycapDelay + (i * CONFIG.keycapInterval);
+          kc.style.transition = `transform ${CONFIG.keycapInterval * 2}ms cubic-bezier(0.25, 0.1, 0.25, 1) ${delay}ms`;
+          kc.style.transform = `translateZ(${CONFIG.keycapBaseZ}px)`;
+        });
+        
+        // End animation
+        const totalDuration = CONFIG.keycapDelay + (keycaps.length * CONFIG.keycapInterval) + (CONFIG.keycapInterval * 2);
+        
+        setTimeout(() => {
+          isAnimating = false;
+          
+          // Clean up transitions for future interactions
+          pcbEl.style.transition = '';
+          foamEl.style.transition = '';
+          plateEl.style.transition = '';
+          switches.forEach(sw => sw.style.transition = '');
+          keycaps.forEach(kc => kc.style.transition = '');
+        }, totalDuration);
+      }, 10);
+    }
+
+    // ============================================
+    // CONTROLS
+    // ============================================
+    
+    function initControls() {
+      const replayBtn = document.getElementById('replay');
+      const muteBtn = document.getElementById('mute');
+      
+      replayBtn.addEventListener('click', () => {
+        unlockAudio();
+        animateAssembly();
+      });
+      
+      muteBtn.addEventListener('click', () => {
+        isMuted = !isMuted;
+        muteBtn.classList.toggle('muted', isMuted);
+        muteBtn.textContent = isMuted ? 'Unmute Sound' : 'Mute Sound';
+      });
+      
+      // Show audio hint on first load
+      document.getElementById('audio-hint').classList.add('show');
+      
+      // Hide hint on any click
+      document.addEventListener('click', () => {
+        unlockAudio();
+        document.getElementById('audio-hint').classList.remove('show');
+      }, { once: true });
+    }
+
+    // ============================================
+    // ROTARY KNOB
+    // ============================================
+    
+    function initRotaryKnob() {
+      const knob = document.getElementById('rotary-knob');
+      let isDragging = false;
+      let startAngle = 0;
+      let currentAngle = 0;
+      
+      knob.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+        e.preventDefault();
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = knob.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
+        
+        const angleDiff = currentAngle - startAngle;
+        knob.style.transform = `translateY(-50%) translateZ(30px) rotate(${angleDiff}rad)`;
+      });
+      
+      document.addEventListener('mouseup', () => {
+        isDragging = false;
+        // Spring back
+        knob.style.transition = 'transform 0.3s ease-out';
+        knob.style.transform = `translateY(-50%) translateZ(30px) rotate(0rad)`;
+        setTimeout(() => {
+          knob.style.transition = '';
+        }, 300);
+      });
+    }
+
+    // ============================================
+    // RESPONSIVE HANDLING
+    // ============================================
+    
+    function handleResize() {
+      // Adjust perspective based on window size
+      const sceneContainer = document.querySelector('.scene-container');
+      const width = window.innerWidth;
+      
+      if (width < 600) {
+        sceneContainer.style.perspective = `${width * 1.5}px`;
+      } else if (width < 900) {
+        sceneContainer.style.perspective = `${width}px`;
+      } else {
+        sceneContainer.style.perspective = '1200px';
+      }
+    }
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    
+    function init() {
+      createKeyboard();
+      initAudio();
+      initControls();
+      initRotaryKnob();
+      
+      // Add keyboard event listener
+      document.addEventListener('keydown', handleKeyDown);
+      
+      // Handle resize
+      window.addEventListener('resize', handleResize);
+      handleResize();
+      
+      // Start assembly animation after a brief delay
+      setTimeout(() => {
+        animateAssembly();
+      }, 500);
+    }
+
+    // Start when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
