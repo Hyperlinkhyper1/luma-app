@@ -636,7 +636,123 @@
     for (const u of [u0 + 0.25, u1 - 0.35]) f.box(K, u, 0.42, -0.3, u + 0.1, 0.62, 0, {front: wood, left: wood, right: wood, bottom: wood});
   }
 
+  // ── The post and the vault ─────────────────────────────────────────────
+  // A mailbox on a post by the front path, its door facing the path (-x).
+  // The flag and the letter in its mouth move, so the scene builds those
+  // apart (mailFlag, mailLetter).
+  const PAINT = {tex: 'iron_block', tint: [0.16, 0.26, 0.2]};
+  function mailbox(K, o) {
+    const dark = sides('dark_oak_planks');
+    const paint = sides(PAINT.tex, null, null, {tint: PAINT.tint});
+    const lid = sides(PAINT.tex, null, null, {tint: [0.12, 0.2, 0.15]});
+    b(K, o, [5.5, 0, 5.5], [10.5, 1.5, 10.5], sides('cobblestone'));
+    b(K, o, [7, 1.5, 7], [9, 17, 9], dark);
+    b(K, o, [3, 17, 6], [13, 18, 10], dark);
+    b(K, o, [2, 18, 5], [14, 24, 11], paint);
+    b(K, o, [2, 24, 6], [14, 25, 10], paint);
+    b(K, o, [2, 25, 7], [14, 25.6, 9], paint);
+    b(K, o, [1.6, 18.3, 5.3], [2, 24.8, 10.7], lid);
+    b(K, o, [1.1, 21, 7.4], [1.6, 22, 8.6], brass);
+  }
+  // Where the flag turns, and its box for picking, relative to the cell.
+  const MAIL_FLAG = [12 / 16, 20 / 16, 11.05 / 16];
+  const MAIL_BOX = [[1 / 16, 0, 4.5 / 16], [14.5 / 16, 26 / 16, 11.5 / 16]];
+
+  // The flag, built upright about its pivot; the scene lays it down.
+  function mailFlag(K, light) {
+    const red = sides('red_wool', null, null, {tint: [0.9, 0.9, 0.9]});
+    b(K, [0, 0, 0], [-0.5, -0.5, 0], [0.5, 8, 0.6], sides('dark_oak_planks'), {light, pivot: [0, 0, 0]});
+    b(K, [0, 0, 0], [0.5, 4.5, 0], [4.5, 8, 0.6], red, {light, pivot: [0, 0, 0]});
+  }
+
+  // A letter sticking out of the mailbox's door, in world units.
+  function mailLetter(K, o, light) {
+    const paper = sides('solid', null, null, {tint: [0.94, 0.88, 0.72]});
+    b(K, o, [-1.4, 23.4, 6.2], [2, 23.9, 9.8], paper, {light, emit: 0.25});
+    b(K, o, [-1.4, 23.9, 7.6], [-0.4, 24, 8.4], sides('red_wool'), {light, emit: 0.25});
+  }
+
+  // A hotel-room safe standing on a bookcase shelf among the books: a small
+  // black steel box, open at the front for its door. The door swings, so it
+  // is built apart (vaultDoor). Sizes in blocks, in the case's frame: `u`
+  // along the shelf, `v` up, `w` back from the shelf's front.
+  const VAULT = {u0: 1.05, u1: 1.95, v0: 1 + 1.5 / 16, v1: 1.66, front: -0.04, back: 0.72, wall: 1 / 16};
+  function vault(K, spec) {
+    const f = frame(spec.origin, spec.right, spec.n);
+    const V = VAULT, t = V.wall;
+    const body = {tex: 'iron_block', tint: [0.018, 0.018, 0.02]};
+    const lining = {tex: 'iron_block', tint: [0.006, 0.006, 0.007]};
+    const all6 = face => ({front: face, back: face, top: face, bottom: face, left: face, right: face});
+    // Walls: outsides in black steel, insides darker still.
+    f.box(K, V.u0, V.v0, V.front, V.u0 + t, V.v1, V.back, {...all6(body), right: lining}, {whole: true});
+    f.box(K, V.u1 - t, V.v0, V.front, V.u1, V.v1, V.back, {...all6(body), left: lining}, {whole: true});
+    f.box(K, V.u0 + t, V.v1 - t, V.front, V.u1 - t, V.v1, V.back, {...all6(body), bottom: lining}, {whole: true});
+    f.box(K, V.u0 + t, V.v0, V.front, V.u1 - t, V.v0 + t, V.back, {...all6(body), top: lining}, {whole: true});
+    f.box(K, V.u0 + t, V.v0 + t, V.back - t, V.u1 - t, V.v1 - t, V.back, {front: lining}, {whole: true});
+  }
+  // The opening the door shuts, and where its coins stand inside.
+  const vaultOpening = () => ({u0: VAULT.u0 + VAULT.wall + 0.005, u1: VAULT.u1 - VAULT.wall - 0.005, v0: VAULT.v0 + VAULT.wall + 0.005, v1: VAULT.v1 - VAULT.wall - 0.005});
+
+  // The safe's door, `w` × `h`, hinged on its left edge at the origin: it
+  // runs toward +x with its face at z = 0, and swings open by turning -y.
+  // A keypad and a little green display on the right, a knob on the left.
+  function vaultDoor(K, w, h, light) {
+    const plate = sides('iron_block', null, null, {tint: [0.03, 0.03, 0.034]});
+    const bezel = sides('iron_block', null, null, {tint: [0.008, 0.008, 0.009]});
+    const key = sides('iron_block', null, null, {tint: [0.32, 0.33, 0.35]});
+    const chrome = sides('iron_block', null, null, {tint: [0.55, 0.56, 0.58]});
+    const at = (a, c, faces, extra = {}) => box(K, a, c, faces, {light, whole: true, ...extra});
+    at([0, 0, -1.5 / 16], [w, h, 0], plate);
+    // The keypad: a dark bezel with twelve keys, three by four.
+    const kx = w * 0.56, kw = w * 0.36, ky = 0.06, kh = h * 0.56;
+    at([kx, ky, 0], [kx + kw, ky + kh, 0.25 / 16], bezel);
+    const cols = 3, rows = 4, gx = kw / cols, gy = kh / rows;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x0 = kx + c * gx + gx * 0.2, y0 = ky + r * gy + gy * 0.2;
+      at([x0, y0, 0.25 / 16], [x0 + gx * 0.6, y0 + gy * 0.6, 0.6 / 16], key);
+    }
+    // The display over it, lit green, and a red light beside it.
+    const dy = ky + kh + 0.035;
+    at([kx, dy, 0], [kx + kw, dy + 0.085, 0.25 / 16], bezel);
+    at([kx + 0.012, dy + 0.012, 0.25 / 16], [kx + kw - 0.012, dy + 0.073, 0.3 / 16], sides('solid', null, null, {tint: [0.2, 0.9, 0.35], emit: 1.2}));
+    at([kx + kw - 0.03, dy + 0.12, 0], [kx + kw, dy + 0.15, 0.4 / 16], sides('solid', null, null, {tint: [1, 0.1, 0.06], emit: 1.5}));
+    // A chrome knob to turn it open, and a brand plate under it.
+    const cx = w * 0.24, cy = h * 0.5;
+    at([cx - 0.06, cy - 0.06, 0], [cx + 0.06, cy + 0.06, 0.8 / 16], chrome);
+    at([cx - 0.085, cy - 0.018, 0.8 / 16], [cx + 0.085, cy + 0.018, 1.6 / 16], chrome);
+    at([cx - 0.07, 0.07, 0], [cx + 0.07, 0.1, 0.2 / 16], brass);
+  }
+
+  // Coins standing in stacks on the safe's floor, more the more it holds:
+  // one coin per `count`, spread over twelve stacks before any grows. `o`
+  // is the floor's front-left corner, the stacks going back along -z.
+  function goldPile(K, o, count, light) {
+    const gold = sides('gold_block', null, null, {emit: 0.06});
+    const r = 0.06, t = 0.032, across = 4, deep = 3;
+    for (let i = 0; i < count; i++) {
+      const s = i % (across * deep), level = Math.floor(i / (across * deep));
+      const x = o[0] + 0.1 + (s % across) * 0.175, z = o[2] - 0.12 - Math.floor(s / across) * 0.17;
+      const y = o[1] + level * t, jx = Math.sin(i * 2.1) * 0.008;
+      box(K, [x + jx - r, y, z - r * 0.7], [x + jx + r, y + t, z + r * 0.7], gold, {light, whole: true});
+      box(K, [x + jx - r * 0.7, y + 0.002, z - r], [x + jx + r * 0.7, y + t - 0.002, z + r], gold, {light, whole: true});
+    }
+  }
+
+  // A little stack of gold coins about the origin, for the hand: `n` of
+  // them, each a touch off the one under it.
+  function coinStack(K, n, light) {
+    const gold = sides('gold_block', null, null, {emit: 0.12});
+    const t = 1.1 / 16, r = 3 / 16;
+    for (let i = 0; i < n; i++) {
+      const jx = Math.sin(i * 2.4) * 0.018, jz = Math.cos(i * 1.7) * 0.018;
+      box(K, [jx - r, i * t, jz - r * 0.7], [jx + r, (i + 1) * t, jz + r * 0.7], gold, {light, whole: true});
+      // A hair lower, so its top never fights the first one's.
+      box(K, [jx - r * 0.7, i * t + 0.002, jz - r], [jx + r * 0.7, (i + 1) * t - 0.002, jz + r], gold, {light, whole: true});
+    }
+  }
+
   window.LibraryFurniture = {
+    mailbox, mailFlag, mailLetter, MAIL_FLAG, MAIL_BOX, vault, vaultDoor, goldPile, coinStack, VAULT, vaultOpening,
     armchair, windowSeat, desk, sideTable, teacup, bookStack, globe, floorLamp, pot, barrel, stool, postDecor,
     coatStand, clock, hangingPlant, rug, ladder, mantel,
     DESK_SEAT, deskChair, throwBlanket, cat, logPile, pumpkin, fence, bench, lantern, lampPost, doorLeaf, garland, wreath, windowBox,

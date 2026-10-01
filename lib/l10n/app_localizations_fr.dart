@@ -1738,4 +1738,71 @@ class LFr extends L {
   @override
   String get assistantPictureMissing =>
       'Cette image n\'est pas sur cet appareil';
+
+  @override
+  String get textLibraryMcMailbox => 'Boîte aux lettres';
+
+  @override
+  String textLibraryMcMailWaiting(String count) {
+    return 'Lettres en attente : $count';
+  }
+
+  @override
+  String textLibraryMcMailNext(String minutes) {
+    return 'Prochaine lettre dans $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTakeLetter => 'Prendre la lettre';
+
+  @override
+  String get textLibraryMcNewMail => 'Vous avez du courrier !';
+
+  @override
+  String get textLibraryMcNewMailBody => 'Une lettre attend dans la boîte';
+
+  @override
+  String get textLibraryMcLetterOpen => 'Cliquez sur la lettre pour l’ouvrir';
+
+  @override
+  String get textLibraryMcLetterTitle => 'Cher lecteur,';
+
+  @override
+  String get textLibraryMcLetterBody =>
+      'Merci de prendre soin de la bibliothèque. Voici un petit quelque chose pour votre coffre.';
+
+  @override
+  String get textLibraryMcLetterSign => '— La Poste de la bibliothèque';
+
+  @override
+  String get textLibraryMcLetterTake => 'Prendre les pièces';
+
+  @override
+  String textLibraryMcCoins(String count) {
+    return '$count pièces';
+  }
+
+  @override
+  String get textLibraryMcHandHint =>
+      'Rangez les pièces dans votre coffre, dans la bibliothèque près du feu';
+
+  @override
+  String get textLibraryMcVault => 'Coffre-fort';
+
+  @override
+  String get textLibraryMcVaultOpen => 'Ouvrir le coffre';
+
+  @override
+  String textLibraryMcVaultPut(String count) {
+    return 'Ranger $count pièces dans le coffre';
+  }
+
+  @override
+  String textLibraryMcVaultDeposited(String count) {
+    return '+$count pièces rangées';
+  }
+
+  @override
+  String get textLibraryMcVaultEmpty =>
+      'Rien ici pour l’instant. La poste apporte des pièces toutes les demi-heures.';
 }

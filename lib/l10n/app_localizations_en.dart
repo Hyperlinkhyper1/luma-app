@@ -1726,4 +1726,71 @@ class LEn extends L {
 
   @override
   String get assistantPictureMissing => 'This picture isn\'t on this device';
+
+  @override
+  String get textLibraryMcMailbox => 'Mailbox';
+
+  @override
+  String textLibraryMcMailWaiting(String count) {
+    return 'Letters waiting: $count';
+  }
+
+  @override
+  String textLibraryMcMailNext(String minutes) {
+    return 'Next letter in $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTakeLetter => 'Take the letter';
+
+  @override
+  String get textLibraryMcNewMail => 'You\'ve got mail!';
+
+  @override
+  String get textLibraryMcNewMailBody => 'A letter is waiting in the mailbox';
+
+  @override
+  String get textLibraryMcLetterOpen => 'Click the letter to open it';
+
+  @override
+  String get textLibraryMcLetterTitle => 'Dear reader,';
+
+  @override
+  String get textLibraryMcLetterBody =>
+      'Thank you for keeping the library. Here is a little something for your vault.';
+
+  @override
+  String get textLibraryMcLetterSign => '— The Library Post';
+
+  @override
+  String get textLibraryMcLetterTake => 'Take the coins';
+
+  @override
+  String textLibraryMcCoins(String count) {
+    return '$count coins';
+  }
+
+  @override
+  String get textLibraryMcHandHint =>
+      'Put the coins in your vault, in the bookcase by the fire';
+
+  @override
+  String get textLibraryMcVault => 'Vault';
+
+  @override
+  String get textLibraryMcVaultOpen => 'Open the vault';
+
+  @override
+  String textLibraryMcVaultPut(String count) {
+    return 'Put $count coins in the vault';
+  }
+
+  @override
+  String textLibraryMcVaultDeposited(String count) {
+    return '+$count coins put away';
+  }
+
+  @override
+  String get textLibraryMcVaultEmpty =>
+      'Nothing in here yet. The post brings coins every half hour.';
 }

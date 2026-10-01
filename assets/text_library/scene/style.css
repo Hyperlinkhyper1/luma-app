@@ -466,6 +466,100 @@ canvas#view.grab { cursor: grabbing; }
   background: #1b140e; color: #fff; font-size: 16px; text-align: center; font-family: system-ui, sans-serif;
 }
 
+/* ── The post ─────────────────────────────────────────────────────────
+   The letter comes up big out of the reader's hand (bottom right) as an
+   envelope; opened, the flap lifts and the letter takes its place. */
+#letter-card { display: flex; flex-direction: column; align-items: center; gap: calc(var(--g) * 8px); }
+#envelope {
+  position: relative; display: block; padding: 0; cursor: pointer;
+  width: calc(var(--g) * 160px); height: calc(var(--g) * 104px); max-width: 88vw; max-height: 60vh;
+  background:
+    linear-gradient(to top right, transparent 49.6%, #d9c79c 50%) left bottom / 50% 58% no-repeat,
+    linear-gradient(to top left, transparent 49.6%, #d9c79c 50%) right bottom / 50% 58% no-repeat,
+    #eadbb4;
+  border: calc(var(--g) * 2px) solid #6b4f2a;
+  box-shadow: inset 0 0 0 var(--px) #fff6e0, calc(var(--g) * 3px) calc(var(--g) * 3px) 0 #0006;
+  image-rendering: pixelated;
+  transform-origin: 100% 100%;
+  animation: letter-pop 0.55s cubic-bezier(.2, 1.35, .45, 1);
+  perspective: calc(var(--g) * 200px);
+}
+#envelope:hover, #envelope:focus-visible { outline: calc(var(--g) * 1px) solid #ffff55; outline-offset: calc(var(--g) * 2px); }
+#envelope .flap {
+  position: absolute; left: 0; right: 0; top: 0; height: 58%;
+  background: #f3e6c4;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform-origin: 50% 0;
+  transition: transform 0.35s ease-in;
+}
+#envelope .flap::after {
+  content: ''; position: absolute; inset: 0; background: #6b4f2a;
+  clip-path: polygon(0 0, 100% 0, 50% 100%, 50% calc(100% - var(--g) * 2px), calc(100% - var(--g) * 3px) 0, calc(var(--g) * 3px) 0, 50% calc(100% - var(--g) * 2px), 50% 100%);
+}
+#envelope .seal {
+  position: absolute; left: 50%; top: 58%; width: calc(var(--g) * 18px); height: calc(var(--g) * 18px);
+  transform: translate(-50%, -50%);
+  background: #a3261d; border: var(--px) solid #5c120c;
+  box-shadow: inset var(--px) var(--px) 0 #d8584a;
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%);
+  transition: opacity 0.2s;
+}
+#letter.opened #envelope .flap { transform: rotateX(180deg); }
+#letter.opened #envelope .seal { opacity: 0; }
+#letter.opened #envelope { animation: letter-open 0.4s ease-in forwards; }
+#letter-paper {
+  width: calc(var(--g) * 170px); max-width: 90vw;
+  padding: calc(var(--g) * 14px) calc(var(--g) * 14px) calc(var(--g) * 12px);
+  display: flex; flex-direction: column; gap: calc(var(--g) * 8px);
+  background: #f4ead0;
+  border: calc(var(--g) * 2px) solid #6b4f2a;
+  box-shadow: inset 0 0 0 var(--px) #fffaf0, inset 0 calc(var(--g) * -3px) 0 #e3d3a8, calc(var(--g) * 3px) calc(var(--g) * 3px) 0 #0006;
+  animation: paper-in 0.4s cubic-bezier(.2, 1.2, .4, 1);
+}
+#letter-paper .mc-ink { white-space: pre-wrap; }
+#letter-paper .amount {
+  display: flex; align-items: center; justify-content: center; gap: calc(var(--g) * 4px);
+  color: #9a6400; font-size: calc(var(--g) * 16px); line-height: calc(var(--g) * 18px);
+}
+#letter-paper .amount img, .vault-total img { width: calc(var(--g) * 16px); height: calc(var(--g) * 16px); image-rendering: pixelated; }
+#letter-sign { text-align: right; color: #4a3a28; }
+#letter-take { margin-top: calc(var(--g) * 8px); }
+body:has(#vault:not([hidden])) #actionbar, body:has(#letter:not([hidden])) #actionbar { opacity: 0; }
+#envelope-hint { animation: fade-in 0.6s ease-out 0.4s both; }
+#letter.opened #envelope-hint { visibility: hidden; }
+#letter.leaving #letter-card, #letter.leaving #letter-take { animation: letter-away 0.32s ease-in forwards; transform-origin: 100% 100%; }
+@keyframes letter-pop {
+  from { transform: translate(28vw, 32vh) scale(0.12) rotate(-12deg); opacity: 0.4; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes letter-open { to { transform: translateY(calc(var(--g) * 30px)) scale(0.9); opacity: 0; } }
+@keyframes paper-in { from { transform: translateY(calc(var(--g) * 40px)) scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes letter-away { to { transform: translate(30vw, 34vh) scale(0.1); opacity: 0; } }
+
+/* The vault's panel sits low, so the open vault shows above it. */
+.mc-screen.low { justify-content: flex-end; padding-bottom: calc(var(--g) * 24px); background: linear-gradient(#10101000 40%, #101010a0); }
+.vault-panel {
+  background: #c6c6c6e8; border: var(--px) solid #000;
+  box-shadow: inset var(--px) var(--px) 0 #fff, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #555;
+  min-width: calc(var(--g) * 176px);
+}
+.vault-panel #vault-title { color: #404040; text-shadow: none; }
+.vault-total { margin: 0; display: flex; align-items: center; gap: calc(var(--g) * 5px); }
+.vault-total .mc-title { color: #ffd84a; }
+.vault-total .dim { align-self: flex-end; color: #555; text-shadow: none; }
+#vault-note { color: #2f6b12; text-shadow: none; text-align: center; max-width: calc(var(--g) * 170px); }
+
+/* Coins in hand: a hotbar slot with the stack's count in its corner. */
+#purse {
+  position: absolute; left: 50%; bottom: calc(var(--g) * 8px); transform: translateX(-50%);
+  width: calc(var(--g) * 22px); height: calc(var(--g) * 22px);
+  background: #8b8b8bcc; border: var(--px) solid #000;
+  box-shadow: inset var(--px) var(--px) 0 #373737, inset calc(var(--g) * -1px) calc(var(--g) * -1px) 0 #fff;
+  pointer-events: none;
+}
+#purse img { position: absolute; inset: calc(var(--g) * 3px); width: calc(var(--g) * 16px); height: calc(var(--g) * 16px); image-rendering: pixelated; }
+#purse span { position: absolute; right: var(--px); bottom: 0; white-space: nowrap; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

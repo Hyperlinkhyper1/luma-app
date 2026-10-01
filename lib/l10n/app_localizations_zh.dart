@@ -1687,4 +1687,68 @@ class LZh extends L {
 
   @override
   String get assistantPictureMissing => '此图片不在本设备上';
+
+  @override
+  String get textLibraryMcMailbox => '信箱';
+
+  @override
+  String textLibraryMcMailWaiting(String count) {
+    return '待取信件：$count';
+  }
+
+  @override
+  String textLibraryMcMailNext(String minutes) {
+    return '下一封信 $minutes 分钟后到';
+  }
+
+  @override
+  String get textLibraryMcTakeLetter => '取出信件';
+
+  @override
+  String get textLibraryMcNewMail => '你有新邮件！';
+
+  @override
+  String get textLibraryMcNewMailBody => '信箱里有一封信';
+
+  @override
+  String get textLibraryMcLetterOpen => '点击信封打开';
+
+  @override
+  String get textLibraryMcLetterTitle => '亲爱的读者：';
+
+  @override
+  String get textLibraryMcLetterBody => '感谢你照看这座图书馆。这是给你金库的一点心意。';
+
+  @override
+  String get textLibraryMcLetterSign => '—— 图书馆邮局';
+
+  @override
+  String get textLibraryMcLetterTake => '收下金币';
+
+  @override
+  String textLibraryMcCoins(String count) {
+    return '$count 枚金币';
+  }
+
+  @override
+  String get textLibraryMcHandHint => '把金币放进壁炉旁书架里的金库';
+
+  @override
+  String get textLibraryMcVault => '金库';
+
+  @override
+  String get textLibraryMcVaultOpen => '打开金库';
+
+  @override
+  String textLibraryMcVaultPut(String count) {
+    return '把 $count 枚金币放进金库';
+  }
+
+  @override
+  String textLibraryMcVaultDeposited(String count) {
+    return '已存入 $count 枚金币';
+  }
+
+  @override
+  String get textLibraryMcVaultEmpty => '这里还是空的。邮局每半小时送来金币。';
 }

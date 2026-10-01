@@ -200,7 +200,10 @@
       document.execCommand('removeFormat');
       document.execCommand('foreColor', false, '#000000');
     } else if (cmd === 'undo' || cmd === 'redo') {
+      // With no typing left to take back, fall through to the drawings.
+      const before = flow.innerHTML;
       document.execCommand(cmd);
+      if (flow.innerHTML === before && undoArt(cmd === 'redo')) return;
     } else {
       document.execCommand(cmd, false, value);
     }
@@ -603,6 +606,15 @@
     if (e.key === 'PageDown') { e.preventDefault(); setPage(page + 1); }
     else if (e.key === 'PageUp') { e.preventDefault(); setPage(page - 1); }
     else if (e.ctrlKey && e.key.toLowerCase() === 's') { e.preventDefault(); handlers?.onInput?.(serialize()); }
+  });
+  // Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) go through the same undo as the
+  // buttons, so shapes come back off the page too, not just typing.
+  document.addEventListener('keydown', e => {
+    if ($('bookui').hidden || mode !== 'edit' || drag || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'z' && k !== 'y') return;
+    e.preventDefault();
+    command(k === 'y' || e.shiftKey ? 'redo' : 'undo');
   });
   document.addEventListener('selectionchange', () => {
     if ($('bookui').hidden || mode !== 'edit') return;

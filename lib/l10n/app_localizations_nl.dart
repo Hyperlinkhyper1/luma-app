@@ -1736,4 +1736,71 @@ class LNl extends L {
   @override
   String get assistantPictureMissing =>
       'Deze afbeelding staat niet op dit apparaat';
+
+  @override
+  String get textLibraryMcMailbox => 'Brievenbus';
+
+  @override
+  String textLibraryMcMailWaiting(String count) {
+    return 'Brieven die wachten: $count';
+  }
+
+  @override
+  String textLibraryMcMailNext(String minutes) {
+    return 'Volgende brief over $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTakeLetter => 'Pak de brief';
+
+  @override
+  String get textLibraryMcNewMail => 'Je hebt post!';
+
+  @override
+  String get textLibraryMcNewMailBody => 'Er ligt een brief in de brievenbus';
+
+  @override
+  String get textLibraryMcLetterOpen => 'Klik op de brief om hem te openen';
+
+  @override
+  String get textLibraryMcLetterTitle => 'Beste lezer,';
+
+  @override
+  String get textLibraryMcLetterBody =>
+      'Bedankt dat je de bibliotheek bijhoudt. Hier is iets kleins voor je kluis.';
+
+  @override
+  String get textLibraryMcLetterSign => '— De Bibliotheekpost';
+
+  @override
+  String get textLibraryMcLetterTake => 'Pak de munten';
+
+  @override
+  String textLibraryMcCoins(String count) {
+    return '$count munten';
+  }
+
+  @override
+  String get textLibraryMcHandHint =>
+      'Leg de munten in je kluis, in de boekenkast bij het vuur';
+
+  @override
+  String get textLibraryMcVault => 'Kluis';
+
+  @override
+  String get textLibraryMcVaultOpen => 'Open de kluis';
+
+  @override
+  String textLibraryMcVaultPut(String count) {
+    return 'Leg $count munten in de kluis';
+  }
+
+  @override
+  String textLibraryMcVaultDeposited(String count) {
+    return '+$count munten opgeborgen';
+  }
+
+  @override
+  String get textLibraryMcVaultEmpty =>
+      'Hier ligt nog niets. De post brengt elk half uur munten.';
 }

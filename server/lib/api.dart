@@ -14,6 +14,7 @@ import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
 import 'ai_model_sources.dart';
+import 'ai_preferred.dart';
 import 'ai_price_guard.dart';
 import 'preview_render.dart';
 import 'ai_usage_store.dart';
@@ -2324,18 +2325,50 @@ class Api {
     }
   }
 
-  /// The route a guarded selector is served by right now.
-  AiModeRoute? _guardedRoute(String mode) => switch (mode) {
-        'detector' => _aiDetectorRoute(),
-        'picture' => aiImageConfig.resolve(config.configuredAiUpstreams),
-        _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
-      };
+  /// Each selector's "if possible" model, tried before its main one (see
+  /// [AiPreferredStore]).
+  late final AiPreferredStore aiPreferred = AiPreferredStore(config.dataDir);
 
-  String _guardedLabel(String mode) => switch (mode) {
-        'detector' => 'AI Detector',
-        'picture' => 'Picture model',
-        _ => aiModeRoutes.displayName(mode),
-      };
+  /// The route a guarded key is served by right now: a selector's main
+  /// model, or its "if possible" model when one is set and has a key.
+  AiModeRoute? _guardedRoute(String mode) {
+    if (isAiPreferredKey(mode)) {
+      return aiPreferred.resolve(
+          aiSelectorOf(mode), config.configuredAiUpstreams);
+    }
+    return switch (mode) {
+      'detector' => _aiDetectorRoute(),
+      'picture' => aiImageConfig.resolve(config.configuredAiUpstreams),
+      _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
+    };
+  }
+
+  String _guardedLabel(String mode) {
+    final label = switch (aiSelectorOf(mode)) {
+      'detector' => 'AI Detector',
+      'picture' => 'Picture model',
+      final selector => aiModeRoutes.displayName(selector),
+    };
+    return isAiPreferredKey(mode) ? '$label (if possible)' : label;
+  }
+
+  /// The models a [selector] request tries, in order: its "if possible"
+  /// model unless that is unset, keyless or paused by its price guard, then
+  /// [main] unless that is paused. Empty when every model is paused.
+  Future<List<AiRouteCandidate>> _aiCandidates(
+      String selector, AiModeRoute? main) async {
+    final preferred =
+        aiPreferred.resolve(selector, config.configuredAiUpstreams);
+    return aiRouteCandidates(
+      selector,
+      preferred: preferred,
+      preferredPaused: preferred != null &&
+          await _evaluateAiPrice(aiPreferredKey(selector), route: preferred),
+      main: main,
+      mainPaused:
+          main != null && await _evaluateAiPrice(selector, route: main),
+    );
+  }
 
   /// Adds `provider.max_price` to an OpenRouter request body for [mode], so
   /// OpenRouter itself refuses every provider above the accepted price.
@@ -2408,6 +2441,16 @@ class Api {
   }
 
   /// Notes which OpenRouter provider served a chat turn and what it charges.
+  /// Adds one call on the operator's keys to the admin dashboard's per-user
+  /// AI log: which feature, provider and model, and the tokens it cost.
+  Future<void> _logAiCall(StoredUser user, String feature, AiModeRoute route,
+          String responseBody) =>
+      aiUsage.recordCall(user.id,
+          feature: feature,
+          upstream: route.upstream.label,
+          model: route.model,
+          usage: AiCallUsage.parse(responseBody));
+
   Future<void> _recordAiPaid(
       String mode, AiModeRoute route, String responseBody) async {
     if (route.upstream != AiUpstream.openrouter) return;
@@ -2451,6 +2494,7 @@ class Api {
         'upstream': route.upstream.label,
         'upstreamId': route.upstream.name,
         'defaultModels': switch (mode) {
+          _ when isAiPreferredKey(mode) => const <String, String>{},
           'picture' => {
               for (final e in kDefaultAiImageModels.entries) e.key.name: e.value,
             },
@@ -2777,44 +2821,94 @@ class Api {
               'over the coming days.');
     }
 
-    final route = aiModeRoutes.resolve(mode, config.configuredAiUpstreams)!;
+    final candidates = await _aiCandidates(meteredMode,
+        aiModeRoutes.resolve(mode, config.configuredAiUpstreams));
     Response paused() => errorResponse(503, 'model_disabled',
         'This assistant mode is paused right now. Try another mode.');
-    if (await _evaluateAiPrice(meteredMode, route: route)) return paused();
 
-    final upstreamBody = _aiUpstreamBody(body, route);
-    final maxPrice = _applyAiMaxPrice(meteredMode, route, upstreamBody);
-
-    try {
-      final (status, responseBody) =
-          await _callAiUpstream(route, upstreamBody);
-      // OpenRouter refuses when no provider is left at the accepted price.
-      // Re-read the endpoints right away so the refusal pauses the mode
-      // instead of surfacing as a raw upstream error.
-      if (status != 200 &&
-          maxPrice != null &&
-          await _evaluateAiPrice(meteredMode,
-              route: route, fetch: true, force: true)) {
-        return paused();
+    // The "if possible" model goes first; when it fails, the main model
+    // answers instead. Only the last model tried reports its failure.
+    for (final (index, candidate) in candidates.indexed) {
+      final last = index == candidates.length - 1;
+      final route = candidate.route;
+      final upstreamBody = _aiUpstreamBody(body, route);
+      final maxPrice = _applyAiMaxPrice(candidate.key, route, upstreamBody);
+      final int status;
+      final String responseBody;
+      try {
+        (status, responseBody) = await _callAiUpstream(route, upstreamBody);
+      } catch (e) {
+        if (!last) continue;
+        return errorResponse(
+            502, 'upstream_error', 'Could not reach the AI service.');
       }
-      if (status == 200) {
-        await _recordAiPaid(meteredMode, route, responseBody);
-        var tokens = 0;
-        try {
-          final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
-          tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
-        } catch (_) {}
-        // If the upstream somehow omits usage, charge a conservative flat
-        // amount so metering can't be sidestepped by malformed responses.
-        await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500,
-            mode: meteredMode);
+      if (status != 200) {
+        // OpenRouter refuses when no provider is left at the accepted price.
+        // Re-read the endpoints right away so the refusal pauses the model
+        // instead of surfacing as a raw upstream error.
+        final nowPaused = maxPrice != null &&
+            await _evaluateAiPrice(candidate.key,
+                route: route, fetch: true, force: true);
+        if (!last) {
+          stderr.writeln('[luma] ${_guardedLabel(candidate.key)} '
+              '${route.model} answered $status, falling back');
+          continue;
+        }
+        if (nowPaused) return paused();
+        return Response(status,
+            body: responseBody, headers: {'Content-Type': 'application/json'});
       }
+      await _recordAiPaid(candidate.key, route, responseBody);
+      await _logAiCall(
+          user,
+          'Assistant · ${aiModeRoutes.displayName(meteredMode)}',
+          route,
+          responseBody);
+      var tokens = 0;
+      try {
+        final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+        tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
+      } catch (_) {}
+      // If the upstream somehow omits usage, charge a conservative flat
+      // amount so metering can't be sidestepped by malformed responses.
+      await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500,
+          mode: meteredMode);
       return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});
-    } catch (e) {
-      return errorResponse(
-          502, 'upstream_error', 'Could not reach the AI service.');
     }
+    return paused();
+  }
+
+  /// Reads a selector's "if possible" fields (`<selector>.preferred.*`) from
+  /// an Assistant tab form. A blank model clears it; an error message means
+  /// the form is invalid.
+  static ({AiModeRoute? route, String? error}) _formPreferredRoute(
+      Map<String, String> form, String selector) {
+    final key = aiPreferredKey(selector);
+    final model = (form['$key.model'] ?? '').trim();
+    if (model.isEmpty) return (route: null, error: null);
+    final upstream = AiUpstream.parse(form['$key.upstream']);
+    if (upstream == null || !aiSelectorAccepts(selector, upstream)) {
+      return (
+        route: null,
+        error: 'Unknown provider for the $selector "if possible" model.'
+      );
+    }
+    if (!isValidAiModelId(model)) {
+      return (route: null, error: '"$model" is not a valid model id.');
+    }
+    final effort = form['$key.effort'] ?? '';
+    if (!kAiReasoningEfforts.contains(effort)) {
+      return (
+        route: null,
+        error: 'Unknown reasoning effort for the $selector "if possible" model.'
+      );
+    }
+    return (
+      route: AiModeRoute(upstream, model,
+          reasoningEffort: effort.isEmpty ? null : effort),
+      error: null
+    );
   }
 
   /// Saves the Assistant tab's mode → upstream/model form. A blank model
@@ -2824,6 +2918,14 @@ class Api {
     try {
       form = Uri.splitQueryString(await request.readAsString());
     } catch (_) {}
+    final preferred = <String, AiModeRoute?>{};
+    for (final mode in kAiModeNames.keys) {
+      final parsed = _formPreferredRoute(form, mode);
+      if (parsed.error != null) {
+        return errorResponse(400, 'bad_request', parsed.error!);
+      }
+      preferred[mode] = parsed.route;
+    }
     final routes = <String, AiModeRoute>{};
     for (final mode in kAiModeNames.keys) {
       final model = (form['$mode.model'] ?? '').trim();
@@ -2845,17 +2947,26 @@ class Api {
           reasoningEffort: effort.isEmpty ? null : effort);
     }
     await aiModeRoutes.save(routes);
+    for (final e in preferred.entries) {
+      await aiPreferred.save(e.key, e.value);
+    }
     await store.logActivity(
         'ai_routes_changed',
         'Assistant models: ${[
           for (final e in kAiModeNames.entries)
-            '${aiModeRoutes.displayName(e.key)} → ${routes[e.key]?.model ?? 'default'}'
+            '${aiModeRoutes.displayName(e.key)} → '
+                '${routes[e.key]?.model ?? 'default'}'
+                '${preferred[e.key] == null ? '' : ' (if possible ${preferred[e.key]!.model})'}'
         ].join(', ')}');
     return _adminFormResponse(request, '/admin',
         fragment: 'assistant',
         json: {
           'ok': true,
           'routes': {for (final e in routes.entries) e.key: e.value.toJson()},
+          'preferred': {
+            for (final e in preferred.entries)
+              if (e.value != null) e.key: e.value!.toJson(),
+          },
           'modeVersions': aiModeRoutes.versions,
         });
   }
@@ -2869,7 +2980,19 @@ class Api {
     } on FormatException {
       return errorResponse(400, 'bad_request', 'Malformed request.');
     }
-    final mode = body['mode'];
+    var mode = body['mode'];
+    // An "if possible" row tests exactly like its selector's main row, but
+    // only once a model is typed — a blank one means "not set".
+    if (mode is String && isAiPreferredKey(mode)) {
+      final model = body['model'];
+      if (model is! String || model.trim().isEmpty) {
+        return jsonResponse(200, {
+          'ok': false,
+          'error': 'Type an "if possible" model to test it.',
+        });
+      }
+      mode = aiSelectorOf(mode);
+    }
     if (mode == 'picture') return _adminAiImageTest(body);
     if (mode is! String ||
         (!kAiModeNames.containsKey(mode) && mode != 'detector')) {
@@ -3018,16 +3141,19 @@ class Api {
         int tokens
       })> _runAiDetector(
       AiModeRoute route, String instructions, String text,
-      {bool guarded = false}) async {
+      {String? guardKey, StoredUser? user}) async {
     final upstreamBody = _aiUpstreamBody({
       'messages': aiDetectorMessages(instructions, text),
       'max_tokens': 3000,
       'temperature': 0.2,
     }, route);
-    if (guarded) _applyAiMaxPrice('detector', route, upstreamBody);
+    if (guardKey != null) _applyAiMaxPrice(guardKey, route, upstreamBody);
     final (status, responseBody) = await _callAiUpstream(route, upstreamBody);
-    if (guarded && status == HttpStatus.ok) {
-      await _recordAiPaid('detector', route, responseBody);
+    if (guardKey != null && status == HttpStatus.ok) {
+      await _recordAiPaid(guardKey, route, responseBody);
+    }
+    if (user != null && status == HttpStatus.ok) {
+      await _logAiCall(user, 'AI Detector', route, responseBody);
     }
     var tokens = 0;
     String? content;
@@ -3103,29 +3229,39 @@ class Api {
           "You've hit your Luma AI usage limit for now — it frees up again "
               'over time.');
     }
-    if (await _evaluateAiPrice('detector', route: route)) {
+    final candidates = await _aiCandidates('detector', route);
+    if (candidates.isEmpty) {
       return errorResponse(503, 'model_disabled',
           'The AI check is paused right now. Try again later.');
     }
-    try {
-      final result = await _runAiDetector(
-          route, aiDetectorConfig.config.effectiveInstructions, text,
-          guarded: true);
-      if (result.status == HttpStatus.ok) {
-        await aiUsage.recordTokens(
-            user.id, result.tokens > 0 ? result.tokens : 1500,
-            mode: meteredMode);
+    // The "if possible" model goes first; the main model answers when it
+    // fails or replies in an unusable shape.
+    for (final (index, candidate) in candidates.indexed) {
+      final last = index == candidates.length - 1;
+      try {
+        final result = await _runAiDetector(candidate.route,
+            aiDetectorConfig.config.effectiveInstructions, text,
+            guardKey: candidate.key, user: user);
+        if (result.status == HttpStatus.ok) {
+          await aiUsage.recordTokens(
+              user.id, result.tokens > 0 ? result.tokens : 1500,
+              mode: meteredMode);
+        }
+        final verdict = result.verdict;
+        if (verdict != null) return jsonResponse(200, verdict.toJson());
+        if (last) {
+          return errorResponse(502, 'upstream_error',
+              'The AI review did not come back in a usable form. Try again.');
+        }
+      } catch (_) {
+        if (last) {
+          return errorResponse(
+              502, 'upstream_error', 'Could not reach the AI service.');
+        }
       }
-      final verdict = result.verdict;
-      if (verdict == null) {
-        return errorResponse(502, 'upstream_error',
-            'The AI review did not come back in a usable form. Try again.');
-      }
-      return jsonResponse(200, verdict.toJson());
-    } catch (_) {
-      return errorResponse(
-          502, 'upstream_error', 'Could not reach the AI service.');
     }
+    return errorResponse(
+        502, 'upstream_error', 'Could not reach the AI service.');
   }
 
   /// Saves the Assistant tab's AI Detector card. A blank model falls back
@@ -3167,15 +3303,26 @@ class Api {
         instructions == kDefaultAiDetectorInstructions.trim()) {
       instructions = '';
     }
+    final preferred = _formPreferredRoute(form, 'detector');
+    if (preferred.error != null) {
+      return errorResponse(400, 'bad_request', preferred.error!);
+    }
     final saved = AiDetectorConfig(
         route: route, instructions: instructions.isEmpty ? null : instructions);
     await aiDetectorConfig.save(saved);
+    await aiPreferred.save('detector', preferred.route);
     await store.logActivity(
         'ai_routes_changed',
-        'AI Detector model → ${route?.model ?? 'Nebula default'}, '
+        'AI Detector model → ${route?.model ?? 'Nebula default'}'
+            '${preferred.route == null ? '' : ' (if possible ${preferred.route!.model})'}, '
             '${saved.instructions == null ? 'default' : 'custom'} instructions');
     return _adminFormResponse(request, '/admin',
-        fragment: 'assistant', json: {'ok': true, ...saved.toJson()});
+        fragment: 'assistant',
+        json: {
+          'ok': true,
+          ...saved.toJson(),
+          if (preferred.route != null) 'preferred': preferred.route!.toJson(),
+        });
   }
 
   /// The Assistant's picture mode model, picked on the Assistant tab.
@@ -3234,44 +3381,55 @@ class Api {
               'now — it frees up again over the next few hours.');
     }
 
-    if (await _evaluateAiPrice('picture', route: route)) {
-      return errorResponse(503, 'model_disabled',
-          'Picture mode is paused right now. Try again later.');
-    }
-    final imageBody = aiImageRequestBody(route, prompt);
-    final maxPrice = _applyAiMaxPrice('picture', route, imageBody);
+    Response paused() => errorResponse(503, 'model_disabled',
+        'Picture mode is paused right now. Try again later.');
+    final candidates = await _aiCandidates('picture', route);
+    if (candidates.isEmpty) return paused();
 
-    try {
-      final (status, responseBody) = await _postJsonWithRetry(
-        aiImageEndpoint(route.upstream),
-        {
-          HttpHeaders.authorizationHeader:
-              'Bearer ${config.aiUpstreamKey(route.upstream)}',
-          if (route.upstream == AiUpstream.openrouter) ...{
-            'HTTP-Referer': config.publicUrl,
-            'X-Title': 'luma',
+    // The "if possible" model draws first; the main model takes over when
+    // it fails or answers without a picture.
+    for (final (index, candidate) in candidates.indexed) {
+      final last = index == candidates.length - 1;
+      final drawWith = candidate.route;
+      final imageBody = aiImageRequestBody(drawWith, prompt);
+      final maxPrice = _applyAiMaxPrice(candidate.key, drawWith, imageBody);
+      final int status;
+      final String responseBody;
+      try {
+        (status, responseBody) = await _postJsonWithRetry(
+          aiImageEndpoint(drawWith.upstream),
+          {
+            HttpHeaders.authorizationHeader:
+                'Bearer ${config.aiUpstreamKey(drawWith.upstream)}',
+            if (drawWith.upstream == AiUpstream.openrouter) ...{
+              'HTTP-Referer': config.publicUrl,
+              'X-Title': 'luma',
+            },
           },
-        },
-        jsonEncode(imageBody),
-        timeout: const Duration(seconds: 120),
-      );
-      if (status != HttpStatus.ok &&
-          maxPrice != null &&
-          await _evaluateAiPrice('picture',
-              route: route, fetch: true, force: true)) {
-        return errorResponse(503, 'model_disabled',
-            'Picture mode is paused right now. Try again later.');
-      }
-      if (status == HttpStatus.ok) {
-        await _recordAiPaid('picture', route, responseBody);
+          jsonEncode(imageBody),
+          timeout: const Duration(seconds: 120),
+        );
+      } catch (_) {
+        if (!last) continue;
+        return errorResponse(
+            502, 'upstream_error', 'Could not reach the picture model.');
       }
       if (status != HttpStatus.ok) {
-        stderr.writeln('[luma] picture model ${route.model} answered $status');
+        final nowPaused = maxPrice != null &&
+            await _evaluateAiPrice(candidate.key,
+                route: drawWith, fetch: true, force: true);
+        stderr.writeln('[luma] ${_guardedLabel(candidate.key)} '
+            '${drawWith.model} answered $status');
+        if (!last) continue;
+        if (nowPaused) return paused();
         return errorResponse(502, 'upstream_error',
             'The picture model could not draw that. Try again.');
       }
+      await _recordAiPaid(candidate.key, drawWith, responseBody);
+      await _logAiCall(user, 'Picture', drawWith, responseBody);
       final image = parseAiImageResponse(responseBody);
       if (image == null) {
+        if (!last) continue;
         return errorResponse(502, 'no_image',
             'The picture model answered without a picture. Try rewording it.');
       }
@@ -3280,13 +3438,11 @@ class Api {
         'image': image.base64,
         'mimeType': image.mimeType,
         if (image.text != null) 'text': image.text,
-        'model': route.model,
+        'model': drawWith.model,
         'weeklyPct': pct,
       });
-    } catch (_) {
-      return errorResponse(
-          502, 'upstream_error', 'Could not reach the picture model.');
     }
+    return paused();
   }
 
   /// The picture card's Test button: draws one small picture with the
@@ -3400,12 +3556,23 @@ class Api {
       }
       route = AiModeRoute(upstream, model);
     }
+    final preferred = _formPreferredRoute(form, 'picture');
+    if (preferred.error != null) {
+      return errorResponse(400, 'bad_request', preferred.error!);
+    }
     await aiImageConfig.save(route);
-    await store.logActivity('ai_routes_changed',
-        'Picture model → ${route?.model ?? 'default'}');
+    await aiPreferred.save('picture', preferred.route);
+    await store.logActivity(
+        'ai_routes_changed',
+        'Picture model → ${route?.model ?? 'default'}'
+            '${preferred.route == null ? '' : ' (if possible ${preferred.route!.model})'}');
     return _adminFormResponse(request, '/admin',
         fragment: 'assistant',
-        json: {'ok': true, if (route != null) 'route': route.toJson()});
+        json: {
+          'ok': true,
+          if (route != null) 'route': route.toJson(),
+          if (preferred.route != null) 'preferred': preferred.route!.toJson(),
+        });
   }
 
   Response _itadStatus(Request request, StoredUser user) =>
@@ -3803,6 +3970,13 @@ class Api {
       );
       if (status == 200 && isNewUserTurn) {
         await aiUsage.recordSupportMessage(user.id);
+      }
+      if (status == 200) {
+        await _logAiCall(
+            user,
+            'Luma Support',
+            AiModeRoute(AiUpstream.mistral, upstreamBody['model'] as String),
+            responseBody);
       }
       return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});
@@ -5756,6 +5930,7 @@ class Api {
           .map((meta) => meta.toJson()).toList()
           ..sort((a, b) => (b['size'] as int).compareTo(a['size'] as int)),
         'lastLoginAtMs': user.lastLoginAtMs,
+        'ai': aiUsage.callSummary(user.id),
       };
 
   Response _adminUsers(Request request) {
@@ -9407,6 +9582,26 @@ syncToolbar();
       'nova': 'Nova (\$5/mo)',
     };
 
+    String fmtCount(int n) => n
+        .toString()
+        .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+
+    // Requests and tokens on the operator's AI keys, with the model that
+    // used the most; the full breakdown lives on the Usage & stats tab.
+    String aiCell(StoredUser u) {
+      final models = (aiUsage.callSummary(u.id, recent: 0)['models'] as List)
+          .cast<Map<String, dynamic>>();
+      if (models.isEmpty) return '<span class="muted">—</span>';
+      var calls = 0, tokens = 0;
+      for (final m in models) {
+        calls += m['calls'] as int;
+        tokens += m['totalTokens'] as int;
+      }
+      return '${fmtCount(tokens)} tokens'
+          '<div class="muted" style="font-size:12px">${fmtCount(calls)} requests'
+          ' · mostly ${_htmlEscape(models.first['model'] as String)}</div>';
+    }
+
     final rows = users.map((u) {
       final used = store.usedBytes(u.id);
       final pct =
@@ -9511,6 +9706,7 @@ syncToolbar();
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
           '<span class="muted" style="font-size:12px">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
           '</td>'
+          '<td class="nowrap">${aiCell(u)}</td>'
           '<td class="nowrap">${fmtDate(u.createdAtMs)}</td>'
           '<td class="nowrap">${fmtDate(u.lastLoginAtMs)}</td>'
           '<td class="actions-cell">$action</td>'
@@ -9710,7 +9906,7 @@ syncToolbar();
         '<div class="tab-panel" id="panel-users">'
         '<div class="card table-card">'
         '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
-        '<th>Storage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
+        '<th>Storage</th><th>AI usage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table>'
         '</div>'
         '$bansCard'
@@ -10095,7 +10291,8 @@ syncToolbar();
           '<td class="actions-cell"><button type="button" '
           'class="btn btn-ghost btn-sm ai-test" data-mode="$mode">Test</button>'
           '<div class="ai-test-out muted" id="ai-test-$mode"></div></td>'
-          '</tr>';
+          '</tr>'
+          '${_aiPreferredRow(mode, configured)}';
     }).join();
 
     const upstreamEnvVar = {
@@ -10136,6 +10333,10 @@ syncToolbar();
         '.ai-detector-grid label,.ai-detector-label{display:block;font-size:11px;'
         'letter-spacing:.05em;text-transform:uppercase;color:#8d86a8;margin-bottom:6px}'
         '.ai-detector-grid select{width:100%}'
+        '.ai-pref-row td{border-top:0;padding-top:0}'
+        '.ai-pref-tag{color:#a9a0c3;font-size:12.5px}'
+        '.ai-pref-head{font-size:12px;font-weight:600;color:#a9a0c3;'
+        'margin:4px 0 8px;padding-top:12px;border-top:1px dashed #2d2645}'
         '.ai-picker{background:#151122;color:#ece8f7;border:1px solid #2d2645;'
         'border-radius:16px;padding:0;width:min(1120px,calc(100vw - 24px));'
         'max-height:calc(100dvh - 24px);box-shadow:0 24px 64px #0009}'
@@ -10171,7 +10372,11 @@ syncToolbar();
         'live (Google and Mistral use the same model\'s OpenRouter price). '
         'With Guard on, a mode switches itself off as soon as its price rises '
         'above the price you last accepted, and stays off until you press '
-        '"Accept price &amp; re-enable", pick another model, or turn Guard off.</div>'
+        '"Accept price &amp; re-enable", pick another model, or turn Guard off. '
+        'Under each main model you can set an "if possible" model: it '
+        'answers first whenever it can, and the main model takes over when '
+        'it is unset, its provider has no key, it fails, or its own price '
+        'guard paused it.</div>'
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
         '$keyLine</div>'
         '<form method="post" action="/admin/ai-routes" class="ai-routes">'
@@ -10229,6 +10434,102 @@ syncToolbar();
       '<button type="button" class="btn btn-primary btn-sm ai-accept" '
       'data-mode="$mode" id="ai-accept-$mode" style="display:none">'
       'Accept price &amp; re-enable</button></div>';
+
+  /// The form controls of [selector]'s "if possible" model: provider,
+  /// model (with the model browser), reasoning (not for pictures) and its
+  /// status badge. Field names use `<selector>.preferred` so the browser,
+  /// Test button and price poller treat it like any other selector.
+  ({String upstream, String model, String? effort, String status})
+      _aiPreferredFields(String selector, Set<AiUpstream> configured) {
+    String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
+    final key = aiPreferredKey(selector);
+    final stored = aiPreferred.stored(selector);
+    final upstreams = [
+      for (final u in AiUpstream.values)
+        if (aiSelectorAccepts(selector, u)) u
+    ];
+    final upstream = stored?.upstream ??
+        upstreams.firstWhere(configured.contains,
+            orElse: () => upstreams.first);
+    final upstreamOptions = upstreams.map((u) {
+      final hasKey = configured.contains(u);
+      return '<option value="${u.name}"${u == upstream ? ' selected' : ''}>'
+          '${esc(u.label)}${hasKey ? '' : ' (no key)'}</option>';
+    }).join();
+    final effortOptions = kAiReasoningEfforts.map((r) {
+      final label = r.isNotEmpty
+          ? r
+          : kAiModeNames.containsKey(selector)
+              ? "App's choice"
+              : "Model's default";
+      return '<option value="$r"'
+          '${(stored?.reasoningEffort ?? '') == r ? ' selected' : ''}>'
+          '$label</option>';
+    }).join();
+    final String status;
+    if (stored == null) {
+      status = '<span class="badge warn">not set · main answers</span>';
+    } else if (!configured.contains(stored.upstream)) {
+      status = '<span class="badge err">no key · main answers</span>';
+    } else {
+      status = '<span class="badge ok">tried first</span>';
+    }
+    return (
+      upstream: '<select name="$key.upstream" id="ai-upstream-$key" '
+          'class="ai-upstream" data-mode="$key">$upstreamOptions</select>',
+      model: '<input type="text" name="$key.model" id="ai-model-$key" '
+          'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
+          'placeholder="not set — the main model answers" maxlength="200" '
+          'spellcheck="false" autocomplete="off">'
+          '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
+          'data-mode="$key">Browse models</button>',
+      effort: selector == 'picture'
+          ? null
+          : '<select name="$key.effort" id="ai-effort-$key">'
+              '$effortOptions</select>',
+      status: status,
+    );
+  }
+
+  /// The Assistant models table row under each mode for its "if possible"
+  /// model.
+  String _aiPreferredRow(String mode, Set<AiUpstream> configured) {
+    final key = aiPreferredKey(mode);
+    final f = _aiPreferredFields(mode, configured);
+    return '<tr class="ai-pref-row">'
+        '<td class="nowrap"><span class="ai-pref-tag">↳ If possible</span>'
+        '<div class="muted" style="font-size:11px">falls back to the main model</div></td>'
+        '<td>${f.upstream}</td>'
+        '<td>${f.model}</td>'
+        '<td class="ai-price-cell" data-mode="$key">${_aiPriceBlock(key)}</td>'
+        '<td>${f.effort}</td>'
+        '<td class="nowrap">${f.status}<div id="ai-paused-$key"></div></td>'
+        '<td class="actions-cell"><button type="button" '
+        'class="btn btn-ghost btn-sm ai-test" data-mode="$key">Test</button>'
+        '<div class="ai-test-out muted" id="ai-test-$key"></div></td>'
+        '</tr>';
+  }
+
+  /// The "if possible" block of the AI Detector and picture cards, laid out
+  /// on the same grid as the card's main model.
+  String _aiPreferredGrid(String selector, Set<AiUpstream> configured) {
+    final key = aiPreferredKey(selector);
+    final f = _aiPreferredFields(selector, configured);
+    return '<div class="ai-pref-head">If possible, use this model</div>'
+        '<div class="ai-detector-grid ai-pref-grid">'
+        '<div><label for="ai-upstream-$key">Provider</label>${f.upstream}</div>'
+        '<div><label for="ai-model-$key">Model</label>${f.model}</div>'
+        '${f.effort == null ? '' : '<div><label for="ai-effort-$key">Reasoning</label>${f.effort}</div>'}'
+        '<div><span class="ai-detector-label">Status</span>${f.status}'
+        '<div style="margin-top:6px"><button type="button" '
+        'class="btn btn-ghost btn-sm ai-test" data-mode="$key">Test</button>'
+        '<div class="ai-test-out muted" id="ai-test-$key"></div></div>'
+        '<div id="ai-paused-$key"></div></div>'
+        '<div class="ai-price-cell" data-mode="$key">'
+        '<span class="ai-detector-label">Price / 1M tokens</span>'
+        '${_aiPriceBlock(key)}</div>'
+        '</div>';
+  }
 
   String _adminAiDetectorCard(Set<AiUpstream> configured) {
     String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
@@ -10297,6 +10598,7 @@ syncToolbar();
         '<span class="ai-detector-label">Price / 1M tokens</span>'
         '${_aiPriceBlock('detector')}</div>'
         '</div>'
+        '${_aiPreferredGrid('detector', configured)}'
         '<div style="display:flex;justify-content:space-between;align-items:center;'
         'gap:8px;margin-bottom:6px"><label class="ai-detector-label" '
         'for="ai-detector-instructions" style="margin:0">Instructions '
@@ -10350,8 +10652,8 @@ syncToolbar();
         '<h2>Picture model</h2>'
         '<div class="maint-desc">The model behind the Assistant\'s picture '
         'mode. Google AI Studio draws with Imagen through its images '
-        'endpoint; OpenRouter uses any model that can output images (for '
-        'example Gemini Flash Image). Each picture takes a flat share of the '
+        'endpoint; OpenRouter draws through its images endpoint with any '
+        'image model (Gemini Flash Image, Ming, FLUX…). Each picture takes a flat share of the '
         'user\'s weekly limit for the mode they have selected: $costs.</div>'
         '<form method="post" action="/admin/ai-image" class="ai-routes" '
         'id="aiImageForm">'
@@ -10375,6 +10677,7 @@ syncToolbar();
         '<span class="ai-detector-label">Price / 1M tokens</span>'
         '${_aiPriceBlock('picture')}</div>'
         '</div>'
+        '${_aiPreferredGrid('picture', configured)}'
         '<div class="maint-actions" style="margin:16px 0 0">'
         '<button type="submit" class="btn btn-primary">Save picture model</button>'
         '<span class="muted" style="font-size:12px">Leave the model blank for the default.</span>'
@@ -10560,15 +10863,29 @@ syncToolbar();
   }
   var lastPrices;
   function renderPrices(j) {
-      Object.keys(j.modes || {}).forEach(function (mode) {
-        var m = j.modes[mode];
+      document.querySelectorAll('.ai-price-cell').forEach(function (cell) {
+        var mode = cell.dataset.mode;
+        var m = (j.modes || {})[mode];
+        var preferred = /\.preferred$/.test(mode);
+        if (!m && !preferred) return;
         var el = document.getElementById('ai-price-' + mode);
         if (!el) return;
         var input = document.getElementById('ai-model-' + mode);
         var upstream = document.querySelector('.ai-upstream[data-mode="' + mode + '"]');
-        var modelId = input.value.trim() || m.defaultModels[upstream.value];
-        var draft = modelId !== m.model || upstream.value !== m.upstreamId;
+        var modelId = input.value.trim() || (m ? m.defaultModels[upstream.value] : '');
         var guard = document.getElementById('ai-guard-' + mode);
+        if (!modelId) {
+          el.textContent = '—';
+          el.className = 'ai-price';
+          document.getElementById('ai-price-note-' + mode).textContent =
+            'Not set: the main model answers every request.';
+          guard.style.display = 'none';
+          document.getElementById('ai-accept-' + mode).style.display = 'none';
+          document.getElementById('ai-paused-' + mode).replaceChildren();
+          return;
+        }
+        guard.style.display = '';
+        var draft = !m || modelId !== m.model || upstream.value !== m.upstreamId;
         guard.disabled = draft;
         if (draft) {
           var candidate = models.find(function (model) {
@@ -10604,7 +10921,9 @@ syncToolbar();
         if (risen) {
           var badge = document.createElement('span');
           badge.className = 'badge err';
-          badge.textContent = 'paused — price rose';
+          badge.textContent = preferred
+            ? 'paused — price rose, main model answers'
+            : 'paused — price rose';
           paused.appendChild(badge);
         }
       });
@@ -10906,13 +11225,28 @@ window.lumaAskReason = function (form, message) {
     <p id="usageTracking" class="usage-note"></p>
   </div>
   <div class="card table-card">
+    <h2>AI usage on your API keys</h2>
+    <p class="usage-note">Every Assistant, Picture, AI Detector and Luma Support request the server answered with your keys. On-device models are not included.</p>
+    <table>
+      <thead><tr><th>Feature</th><th>Provider</th><th>Model</th><th>Requests</th><th>Input tokens</th><th>Output tokens</th><th>Total tokens</th><th>Last 7 days</th><th>Cost</th><th>Last used</th></tr></thead>
+      <tbody id="usageAiModels"></tbody>
+    </table>
+  </div>
+  <div class="card table-card">
+    <h2>Recent AI requests</h2>
+    <table>
+      <thead><tr><th>When</th><th>Account</th><th>Feature</th><th>Model</th><th>Input tokens</th><th>Output tokens</th><th>Total tokens</th><th>Cost</th></tr></thead>
+      <tbody id="usageAiRecent"></tbody>
+    </table>
+  </div>
+  <div class="card table-card">
     <h2>Storage by collection</h2>
     <table>
       <thead><tr><th>Collection</th><th>Storage used</th><th>Share</th><th>Accounts</th><th>Last updated</th></tr></thead>
       <tbody id="usageCollections"></tbody>
     </table>
   </div>
-  <p class="usage-note">Storage covers encrypted sync collections and their plan quota. App transfer estimates authenticated API payloads before compression. Streamed bodies, headers, TLS, WebSockets and other device traffic are excluded.</p>
+  <p class="usage-note">AI usage is logged per request from when this tracking was added, kept for 180 days. Storage covers encrypted sync collections and their plan quota. App transfer estimates authenticated API payloads before compression. Streamed bodies, headers, TLS, WebSockets and other device traffic are excluded.</p>
   <noscript><p class="empty">Enable JavaScript to search users and view usage.</p></noscript>
 </div>
 ''';
@@ -10930,7 +11264,45 @@ window.lumaAskReason = function (form, message) {
   const account = document.getElementById('usageAccount');
   const tracking = document.getElementById('usageTracking');
   const collectionsBody = document.getElementById('usageCollections');
+  const aiModelsBody = document.getElementById('usageAiModels');
+  const aiRecentBody = document.getElementById('usageAiRecent');
   const refresh = document.getElementById('usageRefresh');
+  // Server object names are the app's sync ids. Some carry a random id per
+  // device or file (aiu_<device>, cf_<file>_<chunk>), which means nothing to
+  // a person, so those are grouped under one readable name.
+  const collectionNames = {
+    settings: 'Settings', notes: 'Notes', finance: 'Finance', calendar: 'Calendar',
+    bulletin_board: 'Bulletin board', qr_codes: 'QR codes', card_wallet: 'Card wallet',
+    errands: 'Errands', data_management: 'Data management', mood_journal: 'Mood journal',
+    ai_usage: 'AI Usage (agents & library)', school: 'School', mind_map: 'Mind maps',
+    whiteboard: 'Whiteboards', price_tracker: 'Price tracker', wifi_speed_test: 'Wi-Fi speed test',
+    groceries: 'Groceries', airline_tycoon: 'Airline Tycoon',
+    airline_tycoon_airport_v2: 'Airline Tycoon (airport mode)', passwords: 'Passwords',
+    assistant_memory: 'Assistant memory', cloud_files_index: 'Cloud Files (file list)',
+    minecraft_cloud_index: 'Minecraft cloud backups (list)'
+  };
+  const collectionPatterns = [
+    [/^aiu_[0-9a-f]+$/, 'AI Usage (usage history per device)', 'device', 'devices'],
+    [/^cf_.+_\d+$/, 'Cloud Files (file contents)', 'file part', 'file parts'],
+    [/^mc_.+_\d+$/, 'Minecraft cloud backups (world data)', 'backup part', 'backup parts'],
+  ];
+  function describeCollection(name) {
+    if (collectionNames[name]) return { label: collectionNames[name] };
+    for (const [pattern, label, one, many] of collectionPatterns) {
+      if (pattern.test(name)) return { label: label, one: one, many: many };
+    }
+    const home = /^home_(.+)$/.exec(name);
+    if (home) return { label: 'Home layout (' + home[1].replace(/_/g, ' ') + ')' };
+    const words = name.replace(/_/g, ' ');
+    return { label: words.charAt(0).toUpperCase() + words.slice(1) };
+  }
+  function count(value) {
+    return Math.round(value || 0).toLocaleString();
+  }
+  function money(value) {
+    if (value == null) return '—';
+    return '$' + (value < 0.01 && value > 0 ? value.toFixed(4) : value.toFixed(2));
+  }
   let users = [];
   let selectedEmail = null;
   let loading = false;
@@ -10982,6 +11354,9 @@ window.lumaAskReason = function (form, message) {
     let used = 0, quota = 0, remaining = 0, uploaded = 0, downloaded = 0, requests = 0;
     let tracked = 0, since = null, collectionCount = 0;
     const collections = new Map();
+    const aiModels = new Map();
+    const aiRecent = [];
+    let aiCalls = 0, aiTokens = 0, aiTokens7d = 0, aiCost = null;
     shown.forEach(user => {
       used += user.usedBytes;
       quota += user.quotaBytes;
@@ -10995,21 +11370,47 @@ window.lumaAskReason = function (form, message) {
       }
       (user.collections || []).forEach(collection => {
         collectionCount++;
-        const item = collections.get(collection.name) || {
-          name: collection.name, size: 0, accounts: 0, updatedAtMs: 0
+        const described = describeCollection(collection.name);
+        const item = collections.get(described.label) || {
+          name: described.label, one: described.one, many: described.many,
+          size: 0, objects: 0, accounts: new Set(), updatedAtMs: 0
         };
         item.size += collection.size;
-        item.accounts++;
+        item.objects++;
+        item.accounts.add(user.email);
         item.updatedAtMs = Math.max(item.updatedAtMs, collection.updatedAtMs);
         collections.set(item.name, item);
       });
+      const ai = user.ai || { models: [], recent: [] };
+      ai.models.forEach(model => {
+        const key = model.feature + '\u0000' + model.upstream + '\u0000' + model.model;
+        const item = aiModels.get(key) || {
+          feature: model.feature, upstream: model.upstream, model: model.model, calls: 0,
+          inputTokens: 0, outputTokens: 0, totalTokens: 0, tokens7d: 0, costUsd: null, lastAtMs: 0
+        };
+        item.calls += model.calls;
+        item.inputTokens += model.inputTokens;
+        item.outputTokens += model.outputTokens;
+        item.totalTokens += model.totalTokens;
+        item.tokens7d += model.tokens7d;
+        if (model.costUsd != null) item.costUsd = (item.costUsd || 0) + model.costUsd;
+        item.lastAtMs = Math.max(item.lastAtMs, model.lastAtMs);
+        aiModels.set(key, item);
+        aiCalls += model.calls;
+        aiTokens += model.totalTokens;
+        aiTokens7d += model.tokens7d;
+        if (model.costUsd != null) aiCost = (aiCost || 0) + model.costUsd;
+      });
+      ai.recent.forEach(call => aiRecent.push(Object.assign({ email: user.email }, call)));
     });
     cards.replaceChildren();
     [
       ['Storage used', bytes(used)], ['Storage capacity', bytes(quota)],
       ['Storage remaining', bytes(remaining)], ['Collections', collectionCount.toLocaleString()],
       ['Uploaded', bytes(uploaded)], ['Downloaded', bytes(downloaded)],
-      ['Total transfer', bytes(uploaded + downloaded)], ['API requests', requests.toLocaleString()]
+      ['Total transfer', bytes(uploaded + downloaded)], ['API requests', requests.toLocaleString()],
+      ['AI requests', count(aiCalls)], ['AI tokens', count(aiTokens)],
+      ['AI tokens, last 7 days', count(aiTokens7d)], ['AI cost (reported)', money(aiCost)]
     ].forEach(([label, value]) => {
       const card = node('div', undefined, 'stat');
       card.append(node('div', value, 'n'), node('div', label, 'l'));
@@ -11034,10 +11435,45 @@ window.lumaAskReason = function (form, message) {
       fill.style.width = Math.min(100, share).toFixed(1) + '%';
       bar.append(fill);
       size.append(bar);
-      row.append(node('td', collection.name), size, node('td', share.toFixed(1) + '%'),
-        node('td', collection.accounts.toLocaleString()), node('td', date(collection.updatedAtMs)));
+      const name = node('td', collection.name);
+      if (collection.one) {
+        name.append(node('div', collection.objects.toLocaleString() + ' ' +
+          (collection.objects === 1 ? collection.one : collection.many), 'usage-note'));
+      }
+      row.append(name, size, node('td', share.toFixed(1) + '%'),
+        node('td', collection.accounts.size.toLocaleString()), node('td', date(collection.updatedAtMs)));
       collectionsBody.append(row);
     });
+    function emptyRow(body, text, span) {
+      const row = node('tr');
+      const cell = node('td', text, 'empty');
+      cell.colSpan = span;
+      row.append(cell);
+      body.append(row);
+    }
+    aiModelsBody.replaceChildren();
+    Array.from(aiModels.values())
+      .sort((a, b) => b.totalTokens - a.totalTokens || b.calls - a.calls)
+      .forEach(model => {
+        const row = node('tr');
+        row.append(node('td', model.feature), node('td', model.upstream), node('td', model.model),
+          node('td', count(model.calls)), node('td', count(model.inputTokens)),
+          node('td', count(model.outputTokens)), node('td', count(model.totalTokens)),
+          node('td', count(model.tokens7d)), node('td', money(model.costUsd)),
+          node('td', date(model.lastAtMs)));
+        aiModelsBody.append(row);
+      });
+    if (!aiModels.size) emptyRow(aiModelsBody, 'No AI requests on your keys yet.', 10);
+    aiRecentBody.replaceChildren();
+    aiRecent.sort((a, b) => b.atMs - a.atMs).slice(0, 50).forEach(call => {
+      const row = node('tr');
+      row.append(node('td', date(call.atMs)), node('td', call.email), node('td', call.feature),
+        node('td', call.model), node('td', count(call.inputTokens)),
+        node('td', count(call.outputTokens)), node('td', count(call.totalTokens)),
+        node('td', money(call.costUsd)));
+      aiRecentBody.append(row);
+    });
+    if (!aiRecent.length) emptyRow(aiRecentBody, 'No AI requests yet.', 8);
     if (!sorted.length) {
       const row = node('tr');
       const cell = node('td', 'No synced collections.', 'empty');

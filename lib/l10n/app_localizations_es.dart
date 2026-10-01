@@ -1734,4 +1734,71 @@ class LEs extends L {
   @override
   String get assistantPictureMissing =>
       'Esta imagen no está en este dispositivo';
+
+  @override
+  String get textLibraryMcMailbox => 'Buzón';
+
+  @override
+  String textLibraryMcMailWaiting(String count) {
+    return 'Cartas esperando: $count';
+  }
+
+  @override
+  String textLibraryMcMailNext(String minutes) {
+    return 'Próxima carta en $minutes min';
+  }
+
+  @override
+  String get textLibraryMcTakeLetter => 'Coger la carta';
+
+  @override
+  String get textLibraryMcNewMail => '¡Tienes correo!';
+
+  @override
+  String get textLibraryMcNewMailBody => 'Hay una carta en el buzón';
+
+  @override
+  String get textLibraryMcLetterOpen => 'Haz clic en la carta para abrirla';
+
+  @override
+  String get textLibraryMcLetterTitle => 'Querido lector:';
+
+  @override
+  String get textLibraryMcLetterBody =>
+      'Gracias por cuidar la biblioteca. Aquí tienes algo para tu cámara acorazada.';
+
+  @override
+  String get textLibraryMcLetterSign => '— El Correo de la biblioteca';
+
+  @override
+  String get textLibraryMcLetterTake => 'Coger las monedas';
+
+  @override
+  String textLibraryMcCoins(String count) {
+    return '$count monedas';
+  }
+
+  @override
+  String get textLibraryMcHandHint =>
+      'Guarda las monedas en tu cámara, en la estantería junto al fuego';
+
+  @override
+  String get textLibraryMcVault => 'Cámara acorazada';
+
+  @override
+  String get textLibraryMcVaultOpen => 'Abrir la cámara';
+
+  @override
+  String textLibraryMcVaultPut(String count) {
+    return 'Guardar $count monedas en la cámara';
+  }
+
+  @override
+  String textLibraryMcVaultDeposited(String count) {
+    return '+$count monedas guardadas';
+  }
+
+  @override
+  String get textLibraryMcVaultEmpty =>
+      'Aún no hay nada. El correo trae monedas cada media hora.';
 }

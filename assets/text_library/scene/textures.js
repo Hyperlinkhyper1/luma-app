@@ -108,6 +108,9 @@
     dandelion: 'textures/block/dandelion.png',
     cornflower: 'textures/block/cornflower.png',
     sweet_berry_bush: 'textures/block/sweet_berry_bush_stage3.png',
+    // The vault in the reading room and the coins the post brings.
+    iron_block: 'textures/block/iron_block.png',
+    gold_block: 'textures/block/gold_block.png',
   };
   const pathOf = entry => (typeof entry === 'string' ? entry : entry?.path);
 
@@ -466,6 +469,17 @@
       if (x === 0 || x === 15) return [150, 110, 80, 255];
       const f = y % 2 ? 0.9 : 1;
       return shade([236, 226, 198], f * (0.96 + r() * 0.06));
+    });
+  }
+
+  // A block of metal: a bright rim along the top and left, a dark one along
+  // the bottom and right, faintly brushed in between.
+  function metal(name, base) {
+    const r = rng(name);
+    return paint(16, 16, (x, y) => {
+      if (x === 0 || y === 0) return shade(base, 1.12);
+      if (x === 15 || y === 15) return shade(base, 0.7);
+      return shade(base, 0.94 + r() * 0.05 + (y % 4 === 1 ? 0.03 : 0));
     });
   }
 
@@ -948,6 +962,8 @@
     dandelion: () => plant('dandelion', [70, 120, 40], [240, 206, 40]),
     cornflower: () => plant('cornflower', [60, 110, 40], [80, 110, 220]),
     sweet_berry_bush: berryBush,
+    iron_block: () => metal('iron_block', [214, 214, 214]),
+    gold_block: () => metal('gold_block', [246, 204, 58]),
   };
 
   // The season. Grass and ferns are grey in the jar and coloured by the

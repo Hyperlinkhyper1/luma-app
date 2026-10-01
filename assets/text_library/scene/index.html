@@ -39,6 +39,7 @@
     <button class="pad right" data-move="turn:-1" type="button" aria-label="Turn right"></button>
     <button class="pad down" data-move="fwd:-1" type="button" aria-label="Back"></button>
   </div>
+  <div id="purse" role="status" hidden><img id="purse-coin" alt=""><span id="purse-count" class="mc-text"></span></div>
   <div id="toasts" aria-live="polite"></div>
 </div>
 
@@ -130,6 +131,32 @@
   <p id="book-hint" class="mc-text dim small"></p>
 </div>
 
+<div id="letter" class="mc-screen" hidden>
+  <div id="letter-card" role="dialog" aria-modal="true" aria-labelledby="letter-title">
+    <button id="envelope" type="button">
+      <span class="flap" aria-hidden="true"></span>
+      <span class="seal" aria-hidden="true"></span>
+    </button>
+    <p id="envelope-hint" class="mc-text"></p>
+    <div id="letter-paper" hidden>
+      <p id="letter-title" class="mc-ink"></p>
+      <p id="letter-body" class="mc-ink"></p>
+      <p class="mc-ink amount"><img id="letter-coin" alt=""><span id="letter-sum"></span></p>
+      <p id="letter-sign" class="mc-ink"></p>
+    </div>
+  </div>
+  <button id="letter-take" class="mc-button wide" type="button" hidden></button>
+</div>
+
+<div id="vault" class="mc-screen low" hidden>
+  <div class="mc-dialog vault-panel" role="dialog" aria-modal="true" aria-labelledby="vault-title">
+    <h2 id="vault-title" class="mc-text"></h2>
+    <p class="vault-total"><img id="vault-coin" alt=""><span id="vault-sum" class="mc-title"></span><span id="vault-unit" class="mc-text dim"></span></p>
+    <p id="vault-note" class="mc-text"></p>
+    <button id="vault-done" class="mc-button wide" type="button"></button>
+  </div>
+</div>
+
 <nav id="a11y" class="sr-only" aria-label="Library"></nav>
 <div id="error" role="alert" hidden></div>
 
@@ -146,6 +173,7 @@
 <script src="weather.js"></script>
 <script src="gui.js"></script>
 <script src="book.js"></script>
+<script src="mail.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

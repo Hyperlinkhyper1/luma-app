@@ -83,9 +83,12 @@
           break;
         case 'view':
           S.visible = m.visible !== false;
+          if (!S.visible && post.loaded) post.save();
           if (S.visible) { loop.wake(); weather.audio.resume(); } else weather.audio.pause();
           break;
         case 'library': onLibrary(m.subjects || []); break;
+        // The post and the vault as the app kept them.
+        case 'mail': post.load(m.state); break;
         case 'assets':
           onAssets(m).catch(error => {
             console.error('Library assets failed', error);
@@ -158,6 +161,9 @@
     firstLibrary: false,
     assetsReady: false,
   };
+  // The coins: letters in the mailbox, what is in hand, what is in the vault.
+  const post = LibraryMail.create({send, reducedMotion: () => S.reducedMotion});
+
   try { S.quality = localStorage.getItem('library.quality') || (/Android/.test(navigator.userAgent) ? 'fast' : 'fancy'); } catch { /* storage blocked */ }
   try { S.timeMode = localStorage.getItem('library.time') || 'cycle'; } catch { /* storage blocked */ }
   {
@@ -891,6 +897,8 @@
     U.fireOrigin.value.set(...built.fire);
     const b = built.bounds;
     R.post.box = {min: [b.min[0] + 1, 0, b.min[2] + 0.5], max: [b.max[0] - 1, built.layout.top, b.max[2] - 0.5]};
+    U.clearMin.value.set(b.min[0], b.min[1], b.min[2]);
+    U.clearMax.value.set(b.max[0], Math.max(b.max[1], built.layout.top), b.max[2]);
     if (S.floor >= built.layout.floors) S.floor = 0;
     shadowDirty = true;
     if (S.caseSubject != null) {
@@ -900,6 +908,9 @@
     }
     if (blocked(S.px, S.pz)) { S.px = 0; S.pz = built.layout.hallStart - 1.8; }
     buildDoor();
+    buildPost();
+    coins.count = -1;
+    buildCoins();
     buildHand();
     buildSitter();
     buildClock();
@@ -1317,6 +1328,7 @@
     let hint = '';
     if (S.mode === 'placing') hint = gui.t('moveHint');
     else if (seated) hint = S.touch ? '' : gui.t('standHint');
+    else if (post.state.hand > 0 && S.mode === 'overview') hint = gui.t('handHint');
     else if (empty) hint = gui.t('emptyHall');
     else if (S.mode === 'overview' && !S.walked) hint = gui.t('walkHint');
     else if (S.mode === 'overview' && !look.locked && !S.touch) hint = gui.t('lookHint');
@@ -1324,6 +1336,7 @@
     $('settings-open').hidden = S.mode === 'desk';
     $('move-pad').hidden = !(S.mode === 'overview' && S.touch);
     $('crosshair').hidden = !(look.locked && looking(S.mode));
+    post.refreshPurse(looking(S.mode));
   }
 
   // ── Picking ────────────────────────────────────────────────────────────
@@ -1460,6 +1473,12 @@
     });
     const t = S.floor === 0 ? boxHit(ray, ...doorBox()) : null;
     if (t != null && t < REACH) consider(t, {kind: 'door'});
+    if (S.floor === 0) {
+      for (const [kind, spot] of [['mailbox', S.built.mailbox], ['vault', S.built.vault]]) {
+        const hit = spot ? boxHit(ray, ...spot.box) : null;
+        if (hit != null && hit < REACH) consider(hit, {kind});
+      }
+    }
     return best;
   }
 
@@ -1509,6 +1528,13 @@
       outlineBox(h.box);
       const inside = h.c.subject.books.filter(b => W.isDrawerSlot(b.slot) && W.drawerOf(b.slot) === h.d).length;
       gui.tooltip([gui.t(drawerState(h.c, h.d).target ? 'closeDrawer' : 'openDrawer'), {text: gui.t('books', inside), cls: 'sub'}], x, y);
+    } else if (h.kind === 'mailbox') {
+      outlineBox(S.built.mailbox.box);
+      const n = post.state.letters.length;
+      gui.tooltip(n ? [gui.t('takeLetter'), {text: gui.t('mailWaiting', n), cls: 'sub'}] : [gui.t('mailbox'), {text: mailNext(), cls: 'sub'}], x, y);
+    } else if (h.kind === 'vault') {
+      outlineBox(S.built.vault.box);
+      gui.tooltip([post.state.hand ? gui.t('vaultPut', post.state.hand) : gui.t('vaultOpen'), {text: gui.t('coins', post.state.vault), cls: 'sub'}], x, y);
     } else if (h.kind === 'stairs') {
       outlineBox(h.box);
       gui.tooltip([gui.t(h.dir > 0 ? 'upstairs' : 'downstairs')], x, y);
@@ -1561,6 +1587,10 @@
       await sit(S.built.seats[h.i], h.at);
     } else if (h.kind === 'door') {
       toggleDoor();
+    } else if (h.kind === 'mailbox') {
+      await useMailbox();
+    } else if (h.kind === 'vault') {
+      await useVault();
     } else if (h.kind === 'drawer') {
       if (S.mode === 'shelf' || S.mode === 'placing') toggleDrawer(h.c, h.d);
       else {
@@ -2062,6 +2092,194 @@
     poseDoor();
   }
 
+  // ── The post and the vault ─────────────────────────────────────────────
+  // The mailbox's flag stands up while a letter waits, with the letter in
+  // its mouth. The vault's door swings open to take the coins in hand, and
+  // the gold inside grows with what it holds.
+  const mailbox = {flag: null, letter: null, raise: 0, pulled: false};
+  const vault = {door: null, pile: null, open: 0, target: 0, pileCount: -1, busy: false};
+  const coins = {mesh: null, count: -1, flying: false};
+  const COIN_TILT = new T.Quaternion().setFromEuler(new T.Euler(0.45, 0.35, 0));
+  const HELD_LIGHT = [0.55, 0.85, 0.2];
+  const mailNext = () => gui.t('mailNext', Math.max(1, Math.ceil(post.nextIn() / 60)));
+  const disposeMesh = m => { if (m) { scene.remove(m); m.geometry.dispose(); } };
+
+  function buildPost() {
+    disposeMesh(mailbox.flag); disposeMesh(mailbox.letter); disposeMesh(vault.door);
+    mailbox.flag = mailbox.letter = vault.door = null;
+    const b = S.built, K = mb => ({mb, grid: b.grid, atlas});
+    if (b.mailbox) {
+      const light = b.grid.sample(b.mailbox.flag, [0, 0, 1]);
+      let mb = new W.MeshBuilder();
+      LibraryFurniture.mailFlag(K(mb), light);
+      mailbox.flag = new T.Mesh(mb.geometry(T), dynMat);
+      mailbox.flag.position.set(...b.mailbox.flag);
+      mb = new W.MeshBuilder();
+      LibraryFurniture.mailLetter(K(mb), b.mailbox.cell, light);
+      mailbox.letter = new T.Mesh(mb.geometry(T), dynMat);
+      scene.add(mailbox.flag, mailbox.letter);
+    }
+    if (b.vault) {
+      const mb = new W.MeshBuilder();
+      LibraryFurniture.vaultDoor(K(mb), b.vault.w, b.vault.h, b.grid.sample(b.vault.light, [0, 0, 1]));
+      vault.door = new T.Mesh(mb.geometry(T), blockMat);
+      vault.door.position.set(...b.vault.hinge);
+      scene.add(vault.door);
+    }
+    vault.pileCount = -1;
+    rebuildPile();
+    poseMailbox();
+    poseVault();
+  }
+
+  // A coin in the safe for every five, up to a full safe of sixty.
+  function rebuildPile() {
+    const b = S.built;
+    if (!b?.vault || !atlas) return;
+    const n = post.state.vault > 0 ? Math.min(60, Math.ceil(post.state.vault / 5)) : 0;
+    if (n === vault.pileCount) return;
+    vault.pileCount = n;
+    disposeMesh(vault.pile);
+    vault.pile = null;
+    if (!n) return;
+    const mb = new W.MeshBuilder();
+    LibraryFurniture.goldPile({mb, grid: b.grid, atlas}, b.vault.pile, n, b.grid.sample(b.vault.light, [0, 0, 1]));
+    vault.pile = new T.Mesh(mb.geometry(T), dynMat);
+    vault.pile.userData.noShadow = true;
+    scene.add(vault.pile);
+  }
+
+  // A stack of coins in the hand, taller the more there are.
+  function buildCoins() {
+    const n = post.state.hand > 0 ? Math.min(8, 2 + Math.floor(post.state.hand / 10)) : 0;
+    if (n === coins.count || coins.flying) return;
+    disposeMesh(coins.mesh);
+    coins.mesh = null;
+    coins.count = n;
+    if (!n || !S.built || !atlas) return;
+    const mb = new W.MeshBuilder();
+    LibraryFurniture.coinStack({mb, grid: S.built.grid, atlas}, n, HELD_LIGHT);
+    coins.mesh = new T.Mesh(mb.geometry(T), heldHandMat);
+    coins.mesh.userData.noShadow = true;
+    coins.mesh.frustumCulled = false;
+    scene.add(coins.mesh);
+  }
+
+  function poseMailbox() {
+    if (mailbox.flag) mailbox.flag.rotation.z = (1 - easeInOut(mailbox.raise)) * Math.PI / 2;
+    if (mailbox.letter) mailbox.letter.visible = post.state.letters.length > 0 && !mailbox.pulled;
+  }
+  function poseVault() {
+    if (vault.door) vault.door.rotation.y = -easeInOut(vault.open) * 1.75;
+  }
+  const approach = (v, to, step) => (to > v ? Math.min(to, v + step) : Math.max(to, v - step));
+  function stepPost(dt) {
+    const up = post.state.letters.length ? 1 : 0;
+    if (mailbox.raise !== up) {
+      mailbox.raise = approach(mailbox.raise, up, dt * (S.reducedMotion ? 10 : 2.5));
+      poseMailbox();
+      shadowDirty = true;
+    }
+    if (vault.open !== vault.target) {
+      vault.open = approach(vault.open, vault.target, dt * (S.reducedMotion ? 10 : 1.8));
+      poseVault();
+      shadowDirty = true;
+    }
+    if (!coins.mesh || coins.flying) return;
+    const shown = handShown() && !held.mesh;
+    coins.mesh.visible = shown;
+    if (!shown) return;
+    const tr = handTransform(true);
+    coins.mesh.position.copy(tr.pos);
+    coins.mesh.quaternion.copy(tr.quat).multiply(COIN_TILT);
+    coins.mesh.scale.setScalar(0.5);
+    coins.mesh.material = heldHandMat;
+  }
+
+  // Takes the mouse back after a letter or the vault, if walking had it.
+  function relock() {
+    if (look.resume && looking(S.mode)) { look.resume = false; lockPointer(); }
+  }
+
+  // The first letter comes out of the box and up big; read, its coins are
+  // in your hand.
+  async function useMailbox() {
+    if (post.letterOpen || !S.built) return;
+    if (!post.state.letters.length) {
+      gui.toast(gui.t('mailbox'), mailNext(), post.coin);
+      return;
+    }
+    mailbox.pulled = true;
+    poseMailbox();
+    freeMouse();
+    const took = await post.showLetter(post.state.letters[0]);
+    mailbox.pulled = false;
+    if (took) {
+      post.takeLetter();
+      swingArm();
+    }
+    poseMailbox();
+    relock();
+  }
+
+  // Opens the vault: coins in hand fly in first, then it shows what it holds.
+  async function useVault() {
+    if (vault.busy || post.vaultOpen || !S.built?.vault) return;
+    vault.busy = true;
+    vault.target = 1;
+    let put = 0;
+    try {
+      if (post.state.hand > 0) {
+        if (coins.mesh) {
+          coins.flying = true;
+          coins.mesh.visible = true;
+          coins.mesh.material = heldMat;
+          const from = handTransform();
+          from.quat.multiply(COIN_TILT);
+          applyTransform(coins.mesh, from);
+          await new Promise(r => setTimeout(r, S.reducedMotion ? 0 : 300));
+          const p = S.built.vault.pile;
+          const into = new T.Vector3(p[0] + 0.38, p[1] + 0.1, p[2] - 0.3);
+          await tween(coins.mesh, {pos: into, quat: new T.Quaternion(), scale: 0.3}, S.reducedMotion ? 0.15 : 0.75, 0.3);
+          poof(into.toArray(), 8, 0.12);
+          coins.flying = false;
+        }
+        put = post.deposit();
+      } else {
+        await new Promise(r => setTimeout(r, S.reducedMotion ? 0 : 450));
+      }
+      freeMouse();
+      await post.showVault(put);
+    } finally {
+      coins.flying = false;
+      vault.target = 0;
+      vault.busy = false;
+    }
+    relock();
+  }
+
+  post.onChange(what => {
+    buildCoins();
+    rebuildPile();
+    poseMailbox();
+    refreshHud();
+    rebuildA11y();
+    if (what === 'arrived') {
+      gui.toast(gui.t('newMail'), gui.t('newMailBody'), post.coin);
+      if (S.built?.mailbox) poof(S.built.mailbox.flag, 6, 0.2);
+    }
+  });
+
+  // The post counts the time the hall is open and on screen.
+  let postClock = performance.now();
+  setInterval(() => {
+    const now = performance.now();
+    const dt = Math.min(5, (now - postClock) / 1000);
+    postClock = now;
+    if (S.visible && !document.hidden) post.tick(dt);
+  }, 1000);
+  addEventListener('pagehide', () => { if (post.loaded) post.save(); });
+
   const keys = new Set();
   const pad = {fwd: 0, turn: 0};
   function stepWalk(dt) {
@@ -2421,6 +2639,10 @@
       });
       for (const s of stairBoxes()) add(gui.t(s.dir > 0 ? 'upstairs' : 'downstairs'), () => climb(s.dir));
       add(gui.t(door.target ? 'closeDoor' : 'openDoor'), () => { toggleDoor(); rebuildA11y(); });
+      if (S.floor === 0) {
+        add(`${gui.t('mailbox')} — ${post.state.letters.length ? gui.t('mailWaiting', post.state.letters.length) : mailNext()}`, () => useMailbox());
+        add(`${gui.t('vault')} — ${gui.t('coins', post.state.vault)}`, () => useVault());
+      }
     } else if (S.mode === 'shelf') {
       const c = currentCase();
       add(gui.t('back'), () => toOverview());
@@ -2580,7 +2802,8 @@
     // behind the open book is only softened, so you can see yourself write.
     if (S.mode === 'desk') { p.focus = 2.6; p.aperture = 0.22; }
     if (Book.open) p.blurAll = S.mode === 'desk' ? 0.22 : 0.55;
-    if (gui.isModalOpen()) p.blurAll = 0.85;
+    // The vault panel sits low so the open safe stays in sight above it.
+    if (gui.isModalOpen()) p.blurAll = post.vaultOpen ? 0.1 : 0.85;
     return p;
   }
 
@@ -2616,6 +2839,7 @@
     stepCamera(dt, time);
     stepTweens(dt);
     stepHand(dt, time);
+    stepPost(dt);
     stepSitter(time);
     stepParticles(dt, time);
     if (look.locked || S.mode === 'seated') updateHover();
@@ -2699,7 +2923,15 @@
     return {
       async handle(m) {
         switch (m.type) {
-          case 'ready': emit({type: 'init', strings: {}}); snapshot(); break;
+          case 'ready': {
+            emit({type: 'init', strings: {}});
+            snapshot();
+            let mail = null;
+            try { mail = JSON.parse(localStorage.getItem('library.mail') || 'null'); } catch { /* storage blocked */ }
+            emit({type: 'mail', state: mail});
+            break;
+          }
+          case 'mail': try { localStorage.setItem('library.mail', JSON.stringify(m.state)); } catch { /* storage blocked */ } break;
           case 'assetsWanted': {
             const files = {};
             if (mcBase) {
@@ -2785,7 +3017,7 @@
 
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
-    S, R, W, V, view, hand, sitter, door, weather, climb, blocked,
+    S, R, W, V, view, hand, sitter, door, weather, climb, blocked, post, mailbox, vault, coins,
     get hover() { return hover; },
     // Steps the simulation without waiting on the display.
     advance(seconds) {

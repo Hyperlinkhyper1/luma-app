@@ -1706,7 +1706,10 @@ class _ChatComposerState extends State<_ChatComposer> {
       modelSelector: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _ModelSelector(settings: settings),
+          _ModelSelector(
+            settings: settings,
+            picture: composeMode == AssistantComposeMode.picture,
+          ),
           meter,
         ],
       ),
@@ -1768,8 +1771,12 @@ final List<_ModelChoice> _apiKeyModels = [
 /// providers. Selecting one flips the provider (and Luma AI mode) in
 /// Settings, which the surrounding chat body already listens to.
 class _ModelSelector extends StatefulWidget {
-  const _ModelSelector({required this.settings});
+  const _ModelSelector({required this.settings, this.picture = false});
   final SettingsController settings;
+
+  /// Picture mode draws with the admin-picked image model whatever chat
+  /// model is selected, so the pill names that instead and stops opening.
+  final bool picture;
 
   @override
   State<_ModelSelector> createState() => _ModelSelectorState();
@@ -1909,10 +1916,12 @@ class _ModelSelectorState extends State<_ModelSelector> {
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final picture = widget.picture;
     return TextButton(
-      onPressed: _openMenu,
+      onPressed: picture ? null : _openMenu,
       style: TextButton.styleFrom(
         foregroundColor: luma.textSecondary,
+        disabledForegroundColor: luma.textSecondary,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         minimumSize: const Size(0, 32),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1922,15 +1931,17 @@ class _ModelSelectorState extends State<_ModelSelector> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _active.label,
+            picture ? 'Luma Picture 1.0' : _active.label,
             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
           ),
-          const SizedBox(width: 2),
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            size: 17,
-            color: luma.textMuted,
-          ),
+          if (!picture) ...[
+            const SizedBox(width: 2),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 17,
+              color: luma.textMuted,
+            ),
+          ],
         ],
       ),
     );

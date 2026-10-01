@@ -188,9 +188,12 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: Row(
                   children: [
-                    if (widget.leading != null)
-                      Flexible(child: widget.leading!),
-                    const Spacer(),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: widget.leading,
+                      ),
+                    ),
                     widget.modelSelector,
                     const SizedBox(width: 6),
                     _SendButton(

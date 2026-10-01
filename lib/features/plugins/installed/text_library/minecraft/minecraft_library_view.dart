@@ -13,6 +13,7 @@ import '../../_shared/windows_webview.dart' show windowsAssetPath;
 import '../text_library_models.dart';
 import '../text_library_repository.dart';
 import '../text_library_scope.dart';
+import 'mail_store.dart';
 import 'player_skin.dart';
 import 'scene_protocol.dart';
 import 'vanilla_assets.dart';
@@ -159,8 +160,16 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         });
         _sendVisibility();
         _sendLibrary();
+        final mail = await loadMail();
+        _send({'type': 'mail', 'state': mail?.toJson()});
         final saved = await loadSavedSkin();
         if (saved != null) _send(saved.toMessage());
+      case 'mail':
+        try {
+          await saveMail(MailState.fromJson(message['state']));
+        } catch (_) {
+          // The next change saves it again.
+        }
       case 'pickSkin':
         await _pickSkin();
       case 'skinName':

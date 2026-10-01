@@ -770,5 +770,58 @@
   "assistantResearchSequential": "Agents taking turns on this device",
   "assistantResearchWriting": "Writing up the answer…",
   "assistantPictureDrawing": "Drawing your picture…",
-  "assistantPictureMissing": "This picture isn't on this device"
+  "assistantPictureMissing": "This picture isn't on this device",
+  "textLibraryMcMailbox": "Mailbox",
+  "textLibraryMcMailWaiting": "Letters waiting: {count}",
+  "@textLibraryMcMailWaiting": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcMailNext": "Next letter in {minutes} min",
+  "@textLibraryMcMailNext": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcTakeLetter": "Take the letter",
+  "textLibraryMcNewMail": "You've got mail!",
+  "textLibraryMcNewMailBody": "A letter is waiting in the mailbox",
+  "textLibraryMcLetterOpen": "Click the letter to open it",
+  "textLibraryMcLetterTitle": "Dear reader,",
+  "textLibraryMcLetterBody": "Thank you for keeping the library. Here is a little something for your vault.",
+  "textLibraryMcLetterSign": "— The Library Post",
+  "textLibraryMcLetterTake": "Take the coins",
+  "textLibraryMcCoins": "{count} coins",
+  "@textLibraryMcCoins": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcHandHint": "Put the coins in your vault, in the bookcase by the fire",
+  "textLibraryMcVault": "Vault",
+  "textLibraryMcVaultOpen": "Open the vault",
+  "textLibraryMcVaultPut": "Put {count} coins in the vault",
+  "@textLibraryMcVaultPut": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcVaultDeposited": "+{count} coins put away",
+  "@textLibraryMcVaultDeposited": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcVaultEmpty": "Nothing in here yet. The post brings coins every half hour."
 }

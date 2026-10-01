@@ -27,11 +27,14 @@ const kDefaultAiImageModels = {
   AiUpstream.openrouter: 'google/gemini-2.5-flash-image',
 };
 
-/// Google serves Imagen on the OpenAI-compat images endpoint; OpenRouter
-/// draws through ordinary chat completions with an image output modality.
+/// Google serves Imagen on the OpenAI-compat images endpoint. OpenRouter
+/// draws through its unified images endpoint, which takes every image model;
+/// image-only ones (Ming, FLUX…) refuse chat completions outright.
 Uri aiImageEndpoint(AiUpstream upstream) => switch (upstream) {
       AiUpstream.google => Uri.parse(
           'https://generativelanguage.googleapis.com/v1beta/openai/images/generations'),
+      AiUpstream.openrouter =>
+        Uri.parse('https://openrouter.ai/api/v1/images'),
       _ => Uri.parse(upstream.endpoint),
     };
 
@@ -45,10 +48,8 @@ Map<String, dynamic> aiImageRequestBody(AiModeRoute route, String prompt) =>
         },
       _ => {
           'model': route.model,
-          'modalities': ['image', 'text'],
-          'messages': [
-            {'role': 'user', 'content': prompt},
-          ],
+          'prompt': prompt,
+          'n': 1,
         },
     };
 
@@ -65,10 +66,10 @@ class AiImageResult {
   final String? text;
 }
 
-/// Pulls the first picture out of either upstream's response shape: the
-/// images endpoint's `data[].b64_json`, or OpenRouter's
-/// `choices[].message.images[].image_url.url` data URL. Null when the model
-/// answered without one.
+/// Pulls the first picture out of either response shape: an images
+/// endpoint's `data[].b64_json` (with OpenRouter's `media_type`), or a chat
+/// completion's `choices[].message.images[].image_url.url` data URL. Null
+/// when the model answered without one.
 AiImageResult? parseAiImageResponse(String body) {
   Object? decoded;
   try {
@@ -84,7 +85,12 @@ AiImageResult? parseAiImageResponse(String body) {
       if (item is Map && item['b64_json'] is String) {
         final b64 = (item['b64_json'] as String).trim();
         if (b64.isEmpty) continue;
-        return AiImageResult(base64: b64, mimeType: _sniffMime(b64));
+        final mediaType = item['media_type'];
+        return AiImageResult(
+            base64: b64,
+            mimeType: mediaType is String && mediaType.startsWith('image/')
+                ? mediaType
+                : _sniffMime(b64));
       }
     }
   }

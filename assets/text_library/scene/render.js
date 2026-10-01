@@ -94,6 +94,8 @@
     uniform float shadowOn;
     uniform float opacity;
     uniform vec3 highlight;
+    uniform vec3 clearMin;
+    uniform vec3 clearMax;
     varying vec2 vUvp;
     flat varying vec3 vTile;
     varying vec3 vLight;
@@ -179,7 +181,14 @@
       }
       color += highlight * 0.35;
 
-      float fog = 1.0 - exp(-vDepth * fogDensity);
+      // The air inside the house is clear: only the stretch of the view
+      // ray that runs outdoors gathers fog, from either side of a window.
+      vec3 ray = vWorld - cameraPosition;
+      vec3 inv = 1.0 / (ray + vec3(equal(ray, vec3(0.0))) * 1e-6);
+      vec3 t0 = (clearMin - cameraPosition) * inv, t1 = (clearMax - cameraPosition) * inv;
+      float enter = clamp(max(max(min(t0.x, t1.x), min(t0.y, t1.y)), min(t0.z, t1.z)), 0.0, 1.0);
+      float leave = clamp(min(min(max(t0.x, t1.x), max(t0.y, t1.y)), max(t0.z, t1.z)), 0.0, 1.0);
+      float fog = 1.0 - exp(-vDepth * (1.0 - max(leave - enter, 0.0)) * fogDensity);
       // Rain thickens the air: the far trees and islands grey out.
       color = mix(color, fogColor, fog * (0.55 + 0.35 * overcast));
       gl_FragColor = vec4(color, opacity);
@@ -512,6 +521,8 @@
       fogDensity: {value: 0.012},
       overcast: {value: 0},
       flash: {value: 0},
+      clearMin: {value: new T.Vector3(1e9, 1e9, 1e9)},
+      clearMax: {value: new T.Vector3(-1e9, -1e9, -1e9)},
       atlas: {value: null},
       atlasSize: {value: new T.Vector2(1, 1)},
       atlasCols: {value: 1},

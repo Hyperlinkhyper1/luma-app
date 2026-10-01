@@ -21,14 +21,26 @@ void main() {
     expect(body['response_format'], 'b64_json');
   });
 
-  test('openrouter requests ask chat completions for an image', () {
-    const route =
-        AiModeRoute(AiUpstream.openrouter, 'google/gemini-2.5-flash-image');
+  test('openrouter requests go to its unified images endpoint', () {
+    const route = AiModeRoute(
+        AiUpstream.openrouter, 'inclusionai/ming-image-0.1-design');
     expect(aiImageEndpoint(route.upstream).toString(),
-        AiUpstream.openrouter.endpoint);
+        'https://openrouter.ai/api/v1/images');
     final body = aiImageRequestBody(route, 'a cat');
-    expect(body['modalities'], ['image', 'text']);
-    expect((body['messages'] as List).single['content'], 'a cat');
+    expect(body['model'], route.model);
+    expect(body['prompt'], 'a cat');
+    expect(body.containsKey('messages'), isFalse);
+  });
+
+  test('parses the openrouter images shape with its media type', () {
+    final result = parseAiImageResponse(jsonEncode({
+      'data': [
+        {'b64_json': 'UklGRAAA', 'media_type': 'image/webp'}
+      ],
+      'usage': {'cost': 0.01},
+    }));
+    expect(result!.base64, 'UklGRAAA');
+    expect(result.mimeType, 'image/webp');
   });
 
   test('parses the images endpoint shape', () {

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'ai_mode_routing.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_sources.dart';
+import 'ai_preferred.dart';
 import 'util.dart';
 
 /// Per-million-token price of the model behind a mode, in USD.
@@ -80,10 +81,13 @@ AiPrice? priceFor(AiModelCatalogStore catalog, AiModeRoute route) {
   return price.known ? price : null;
 }
 
-/// Every model selector on the Assistant tab the price guard watches: the
-/// three chat modes, the AI Detector and the picture model.
-final kAiGuardedSelectors =
-    List<String>.unmodifiable([...kAiModeNames.keys, 'detector', 'picture']);
+/// Every model the price guard watches: each selector's main model (the
+/// three chat modes, the AI Detector and the picture model) and its "if
+/// possible" model, which is paused on a price rise just the same.
+final kAiGuardedSelectors = List<String>.unmodifiable([
+  ...kAiModelSelectors,
+  for (final selector in kAiModelSelectors) aiPreferredKey(selector),
+]);
 
 /// The cheapest endpoint OpenRouter currently reports as up.
 AiEndpointPrice? cheapestEndpoint(List<AiEndpointPrice> endpoints) {

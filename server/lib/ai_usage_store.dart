@@ -41,10 +41,21 @@ AiTokenBudget aiTokenBudget(String? planId, String mode) {
 /// Persisted as one JSON file in the data directory; events outside the
 /// longest window are pruned on every touch so the file stays tiny.
 class AiUsageStore {
-  AiUsageStore._(this._file, this._data);
+  AiUsageStore._(this._file, this._data, this._callsFile, this._calls);
 
   final File _file;
   Future<void> _saveTail = Future.value();
+
+  /// Every upstream call a user made on the operator's keys, kept for the
+  /// admin dashboard: userId -> [[ms, feature, upstream, model, input,
+  /// output, total, costUsd|null], ...]. Separate from [_data] because the
+  /// budget windows prune after 7 days while this keeps a longer history.
+  final File _callsFile;
+  final Map<String, dynamic> _calls;
+  Future<void> _callsSaveTail = Future.value();
+
+  static const _callRetention = Duration(days: 180);
+  static const _maxCallsPerUser = 5000;
 
   /// userId -> {'tokens': [[ms, tokens, mode], ...], 'support': [ms, ...],
   ///             'webSearches': [ms, ...]}
@@ -55,17 +66,23 @@ class AiUsageStore {
   static const _webSearchWindow = Duration(days: 7);
 
   static Future<AiUsageStore> open(String dataDir) async {
-    final file = File('$dataDir${Platform.pathSeparator}ai_usage.json');
-    Map<String, dynamic> data = {};
-    if (await file.exists()) {
-      try {
-        final decoded = jsonDecode(await file.readAsString());
-        if (decoded is Map<String, dynamic>) data = decoded;
-      } catch (_) {
-        // Corrupt file — start fresh rather than refusing to boot.
+    Future<(File, Map<String, dynamic>)> load(String name) async {
+      final file = File('$dataDir${Platform.pathSeparator}$name');
+      Map<String, dynamic> data = {};
+      if (await file.exists()) {
+        try {
+          final decoded = jsonDecode(await file.readAsString());
+          if (decoded is Map<String, dynamic>) data = decoded;
+        } catch (_) {
+          // Corrupt file — start fresh rather than refusing to boot.
+        }
       }
+      return (file, data);
     }
-    return AiUsageStore._(file, data);
+
+    final (file, data) = await load('ai_usage.json');
+    final (callsFile, calls) = await load('ai_calls.json');
+    return AiUsageStore._(file, data, callsFile, calls);
   }
 
   Map<String, dynamic> _entry(String userId) =>
@@ -162,10 +179,124 @@ class AiUsageStore {
     await _save();
   }
 
+  /// Logs one upstream call billed to the operator's keys. Recorded even
+  /// when [usage] reports no tokens, so the request count stays honest.
+  Future<void> recordCall(
+    String userId, {
+    required String feature,
+    required String upstream,
+    required String model,
+    required AiCallUsage usage,
+  }) async {
+    final cutoff =
+        DateTime.now().subtract(_callRetention).millisecondsSinceEpoch;
+    final rows = [
+      for (final row in _callRows(userId))
+        if ((row[0] as int) > cutoff) row,
+      [
+        DateTime.now().millisecondsSinceEpoch,
+        feature,
+        upstream,
+        usage.model ?? model,
+        usage.inputTokens,
+        usage.outputTokens,
+        usage.totalTokens,
+        usage.costUsd,
+      ],
+    ];
+    if (rows.length > _maxCallsPerUser) {
+      rows.removeRange(0, rows.length - _maxCallsPerUser);
+    }
+    _calls[userId] = rows;
+    await _saveCalls();
+  }
+
+  List<List<Object?>> _callRows(String userId) {
+    final raw = _calls[userId] as List? ?? const [];
+    return [
+      for (final row in raw)
+        if (row is List && row.length >= 8 && row[0] is int)
+          List<Object?>.from(row),
+    ];
+  }
+
+  /// The admin dashboard's view of [userId]'s AI calls: one line per
+  /// feature + provider + model, plus the most recent calls.
+  Map<String, dynamic> callSummary(String userId, {int recent = 25}) {
+    final rows = _callRows(userId);
+    final weekAgo = DateTime.now()
+        .subtract(const Duration(days: 7))
+        .millisecondsSinceEpoch;
+    final groups = <String, Map<String, dynamic>>{};
+    for (final row in rows) {
+      final at = row[0] as int;
+      final total = _count(row[6]);
+      final group = groups.putIfAbsent(
+          '${row[1]}\u0000${row[2]}\u0000${row[3]}',
+          () => {
+                'feature': row[1],
+                'upstream': row[2],
+                'model': row[3],
+                'calls': 0,
+                'inputTokens': 0,
+                'outputTokens': 0,
+                'totalTokens': 0,
+                'tokens7d': 0,
+                'costUsd': null,
+                'firstAtMs': at,
+                'lastAtMs': at,
+              });
+      group['calls'] = (group['calls'] as int) + 1;
+      group['inputTokens'] = (group['inputTokens'] as int) + _count(row[4]);
+      group['outputTokens'] = (group['outputTokens'] as int) + _count(row[5]);
+      group['totalTokens'] = (group['totalTokens'] as int) + total;
+      if (at > weekAgo) group['tokens7d'] = (group['tokens7d'] as int) + total;
+      if (row[7] case final num cost) {
+        group['costUsd'] = ((group['costUsd'] as num?) ?? 0) + cost;
+      }
+      group['lastAtMs'] = at;
+    }
+    final models = groups.values.toList()
+      ..sort((a, b) =>
+          (b['totalTokens'] as int).compareTo(a['totalTokens'] as int));
+    return {
+      'models': models,
+      'recent': [
+        for (final row in rows.reversed.take(recent))
+          {
+            'atMs': row[0],
+            'feature': row[1],
+            'upstream': row[2],
+            'model': row[3],
+            'inputTokens': _count(row[4]),
+            'outputTokens': _count(row[5]),
+            'totalTokens': _count(row[6]),
+            'costUsd': row[7],
+          },
+      ],
+    };
+  }
+
+  static int _count(Object? v) => v is num ? v.toInt() : 0;
+
   /// Forgets a deleted account's usage history.
   Future<void> deleteUser(String userId) async {
+    if (_calls.remove(userId) != null) await _saveCalls();
     if (_data.remove(userId) == null) return;
     await _save();
+  }
+
+  Future<void> _saveCalls() {
+    final snapshot = jsonEncode(_calls);
+    final save = _callsSaveTail.then((_) async {
+      try {
+        await _callsFile.writeAsString(snapshot, flush: true);
+      } catch (_) {
+        // Best effort — this log feeds the dashboard, never the metering.
+      }
+    });
+    _callsSaveTail = save;
+    return save;
   }
 
   Future<void> _save() {
@@ -180,5 +311,68 @@ class AiUsageStore {
     });
     _saveTail = save;
     return save;
+  }
+}
+
+/// Token counts (and cost, when the provider reports one) read out of an
+/// upstream response. Understands the OpenAI-compatible `usage` block every
+/// chat upstream returns, the image endpoints' input/output variant, and
+/// Gemini's native `usageMetadata`.
+class AiCallUsage {
+  const AiCallUsage({
+    this.inputTokens = 0,
+    this.outputTokens = 0,
+    int? totalTokens,
+    this.costUsd,
+    this.model,
+  }) : totalTokens = totalTokens ?? inputTokens + outputTokens;
+
+  final int inputTokens;
+  final int outputTokens;
+  final int totalTokens;
+  final double? costUsd;
+
+  /// The model the provider says actually answered, when it says.
+  final String? model;
+
+  static AiCallUsage parse(String responseBody) {
+    Object? decoded;
+    try {
+      decoded = jsonDecode(responseBody);
+    } catch (_) {
+      return const AiCallUsage();
+    }
+    if (decoded is! Map) return const AiCallUsage();
+    int count(Object? v) => v is num ? v.toInt() : 0;
+    final rawModel = decoded['model'] ?? decoded['modelVersion'];
+    final model = rawModel is String && rawModel.isNotEmpty ? rawModel : null;
+    final usage = decoded['usage'];
+    if (usage is Map) {
+      final input = count(usage['prompt_tokens'] ?? usage['input_tokens']);
+      final output =
+          count(usage['completion_tokens'] ?? usage['output_tokens']);
+      final total = count(usage['total_tokens']);
+      final cost = usage['cost'];
+      return AiCallUsage(
+        inputTokens: input,
+        outputTokens: output,
+        totalTokens: total > 0 ? total : input + output,
+        costUsd: cost is num ? cost.toDouble() : null,
+        model: model,
+      );
+    }
+    final meta = decoded['usageMetadata'];
+    if (meta is Map) {
+      final input = count(meta['promptTokenCount']);
+      final output = count(meta['candidatesTokenCount']);
+      final total = count(meta['totalTokenCount']);
+      return AiCallUsage(
+        inputTokens: input,
+        outputTokens: output,
+        totalTokens: total > 0 ? total : input + output,
+        model: model,
+      );
+    }
+    return AiCallUsage(model: model);
   }
 }

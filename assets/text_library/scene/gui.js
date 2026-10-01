@@ -36,6 +36,13 @@
     shapes: 'Shapes', shapeCircle: 'Circle', shapeSquare: 'Square', shapeTriangle: 'Triangle', shapeStar: 'Star',
     shapeHeart: 'Heart', shapeLine: 'Line', shapeFill: 'Filled or outline',
     drawHint: 'drag on the page to draw it · right-click a drawing to remove it',
+    mailbox: 'Mailbox', mailWaiting: 'Letters waiting: {0}', mailNext: 'Next letter in {0} min', takeLetter: 'Take the letter',
+    newMail: "You've got mail!", newMailBody: 'A letter is waiting in the mailbox', letterOpen: 'Click the letter to open it',
+    letterTitle: 'Dear reader,', letterBody: 'Thank you for keeping the library. Here is a little something for your vault.',
+    letterSign: '— The Library Post', letterTake: 'Take the coins', coins: '{0} coins',
+    handHint: 'Put the coins in your vault, in the bookcase by the fire', vault: 'Vault', vaultOpen: 'Open the vault',
+    vaultPut: 'Put {0} coins in the vault', vaultDeposited: '+{0} coins put away',
+    vaultEmpty: 'Nothing in here yet. The post brings coins every half hour.',
   };
 
   const MC_COLORS = [
@@ -235,7 +242,7 @@
     },
 
     isModalOpen() {
-      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden;
+      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden || !$('letter').hidden || !$('vault').hidden;
     },
   };
 

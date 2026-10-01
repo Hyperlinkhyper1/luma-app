@@ -563,17 +563,20 @@
   // The hall's own books, for the reading room's shelves: random leather,
   // some leaning, the odd stack lying flat.
   const DECO = [[92, 40, 30], [44, 62, 92], [52, 78, 46], [112, 82, 44], [70, 40, 70], [130, 100, 60], [40, 70, 72], [90, 64, 40], [150, 120, 84]];
-  function fillShelves(K, f, width, seed, P = PROFILES.ground) {
+  function fillShelves(K, f, width, seed, P = PROFILES.ground, gap = null) {
     const r = LibraryTextures.rng('shelf' + seed);
     for (let v = P.shelfBottom; v < P.shelfTop; v++) {
       const v0 = v + BOARD;
       let u = SIDE + 0.02;
       while (u < width - SIDE - 0.1) {
         if (width >= 4 && u > width / 2 - MID - 0.12 && u < width / 2 + MID) { u = width / 2 + MID + 0.02; continue; }
+        // Room left on this shelf for something else (the safe).
+        const room = gap && gap.v === v && u < gap.u1 ? gap.u0 - 0.1 : width - SIDE;
+        if (gap && gap.v === v && u < gap.u1 && u + 0.16 > room) { u = gap.u1 + 0.02; continue; }
         const roll = r();
         if (roll < 0.07) { u += 0.15 + r() * 0.3; continue; }
         const tint = DECO[Math.floor(r() * DECO.length)].map(c => c * (0.8 + r() * 0.35) / 255);
-        if (roll < 0.14 && u + 0.6 < width - SIDE) {
+        if (roll < 0.14 && u + 0.6 < room) {
           // A stack lying flat.
           let y = v0;
           const count = 2 + Math.floor(r() * 3);
@@ -588,7 +591,7 @@
           continue;
         }
         const w = 0.14 + r() * 0.12, h = 0.58 + r() * 0.3, d = 0.55 + r() * 0.18, back = (0.3 + r() * 1.4) / 16;
-        const u1 = Math.min(width - SIDE - 0.01, u + w);
+        const u1 = Math.min(room - 0.01, u + w);
         bookBoxes(K, f, u, u1, v0, Math.min(h, SLOT_H - 0.04), back, d, tint, {tex: 'spine_deco', tint, uv: [0, 0, 16, 16]});
         u = u1 + 0.005;
       }
@@ -624,7 +627,7 @@
     f.box(K, 0, P.shelfBottom, DEPTH, width, P.shelfTop, DEPTH, {front: {tex: 'spruce_planks', tint: [0.7, 0.64, 0.6]}}, {ao: 0.46, light});
     f.box(K, 0, P.shelfTop, 0, width, P.caseTop - 0.125, DEPTH, {front: trim, bottom: wood, left: end ? trim : null, right: end ? trim : null}, {ao, light});
     f.box(K, 0, P.caseTop - 0.125, -2 / 16, width, P.caseTop, DEPTH, {front: trim, top: trim, bottom: trim, left: end ? trim : null, right: end ? trim : null}, {light});
-    if (opts.fill != null) fillShelves(K, f, width, opts.fill, P);
+    if (opts.fill != null) fillShelves(K, f, width, opts.fill, P, opts.gap);
     return f;
   }
 
@@ -1173,7 +1176,19 @@
     }
     distantIslands(mb, atlas, isle);
     for (const c of cases) if (!c.placeholder) builtInCase(K, c.spec, {drawers: true});
-    endCases.forEach((spec, i) => builtInCase(K, spec, {fill: i}));
+    // The right-hand case keeps a hotel-room safe on its lowest shelf.
+    const Vt = Fu.VAULT, vs = endCases[1], vo = Fu.vaultOpening();
+    endCases.forEach((spec, i) => builtInCase(K, spec, {fill: i, gap: i === 1 ? {v: 1, u0: Vt.u0, u1: Vt.u1} : null}));
+    Fu.vault(K, vs);
+    const [ox, , oz] = vs.origin;
+    const vaultAt = {
+      // The door's hinge (its front left corner) and size.
+      hinge: [ox + vo.u0, vo.v0, oz - Vt.front],
+      w: vo.u1 - vo.u0, h: vo.v1 - vo.v0,
+      box: [[ox + Vt.u0, Vt.v0, oz - Vt.back], [ox + Vt.u1, Vt.v1, oz - Vt.front + 0.06]],
+      pile: [ox + Vt.u0 + Vt.wall, Vt.v0 + Vt.wall, oz - 0.07],
+      light: [ox + 1.5, 1.4, oz + 0.5],
+    };
 
     // Window panes: thin glass in the middle of each opening, a sill below
     // inside, and painted shutters outside.
@@ -1268,6 +1283,8 @@
       fire: [0, 0.6, fz + 0.5],
       seats,
       door: {z: F, hinges: [[-1, 1], [1, -1]], height: 3},
+      vault: vaultAt,
+      mailbox: outside.mailbox,
       stairs: hasStairs ? {...STAIR, flights} : null,
       trees: outside.trees,
       campfire: outside.campfire,
@@ -1665,6 +1682,16 @@
       later.push(() => Fu.lampPost(K, [x, 0, z]));
     }
 
+    // The mailbox, beside the path a few steps out from the door.
+    const mailCell = [2, 0, F + 3];
+    const mailbox = {
+      cell: mailCell,
+      flag: Fu.MAIL_FLAG.map((v, k) => mailCell[k] + v),
+      box: Fu.MAIL_BOX.map(p => p.map((v, k) => mailCell[k] + v)),
+    };
+    solidBox(mailCell[0] + 0.25, mailCell[2] + 0.3, mailCell[0] + 0.9, mailCell[2] + 0.7);
+    later.push(() => Fu.mailbox(K, mailCell));
+
     // A pumpkin patch in the front yard with hay bales beside it.
     const patch = {x0: -W - 8, x1: -W - 3, z0: F + 3, z1: F + 8};
     for (let x = patch.x0; x <= patch.x1; x++) for (let z = patch.z0; z <= patch.z1; z++) {
@@ -1888,7 +1915,7 @@
         }
       }
     });
-    return {trees, deck, campfire: campfireAt};
+    return {trees, deck, campfire: campfireAt, mailbox};
   }
 
   // Small islands drifting in the distance, each with a tree or two: only

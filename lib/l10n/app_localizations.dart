@@ -3210,6 +3210,114 @@ abstract class L {
   /// In en, this message translates to:
   /// **'This picture isn\'t on this device'**
   String get assistantPictureMissing;
+
+  /// No description provided for @textLibraryMcMailbox.
+  ///
+  /// In en, this message translates to:
+  /// **'Mailbox'**
+  String get textLibraryMcMailbox;
+
+  /// No description provided for @textLibraryMcMailWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Letters waiting: {count}'**
+  String textLibraryMcMailWaiting(String count);
+
+  /// No description provided for @textLibraryMcMailNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next letter in {minutes} min'**
+  String textLibraryMcMailNext(String minutes);
+
+  /// No description provided for @textLibraryMcTakeLetter.
+  ///
+  /// In en, this message translates to:
+  /// **'Take the letter'**
+  String get textLibraryMcTakeLetter;
+
+  /// No description provided for @textLibraryMcNewMail.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve got mail!'**
+  String get textLibraryMcNewMail;
+
+  /// No description provided for @textLibraryMcNewMailBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A letter is waiting in the mailbox'**
+  String get textLibraryMcNewMailBody;
+
+  /// No description provided for @textLibraryMcLetterOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Click the letter to open it'**
+  String get textLibraryMcLetterOpen;
+
+  /// No description provided for @textLibraryMcLetterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dear reader,'**
+  String get textLibraryMcLetterTitle;
+
+  /// No description provided for @textLibraryMcLetterBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for keeping the library. Here is a little something for your vault.'**
+  String get textLibraryMcLetterBody;
+
+  /// No description provided for @textLibraryMcLetterSign.
+  ///
+  /// In en, this message translates to:
+  /// **'— The Library Post'**
+  String get textLibraryMcLetterSign;
+
+  /// No description provided for @textLibraryMcLetterTake.
+  ///
+  /// In en, this message translates to:
+  /// **'Take the coins'**
+  String get textLibraryMcLetterTake;
+
+  /// No description provided for @textLibraryMcCoins.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} coins'**
+  String textLibraryMcCoins(String count);
+
+  /// No description provided for @textLibraryMcHandHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the coins in your vault, in the bookcase by the fire'**
+  String get textLibraryMcHandHint;
+
+  /// No description provided for @textLibraryMcVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault'**
+  String get textLibraryMcVault;
+
+  /// No description provided for @textLibraryMcVaultOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the vault'**
+  String get textLibraryMcVaultOpen;
+
+  /// No description provided for @textLibraryMcVaultPut.
+  ///
+  /// In en, this message translates to:
+  /// **'Put {count} coins in the vault'**
+  String textLibraryMcVaultPut(String count);
+
+  /// No description provided for @textLibraryMcVaultDeposited.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} coins put away'**
+  String textLibraryMcVaultDeposited(String count);
+
+  /// No description provided for @textLibraryMcVaultEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing in here yet. The post brings coins every half hour.'**
+  String get textLibraryMcVaultEmpty;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {
