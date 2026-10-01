@@ -71,6 +71,29 @@ extension SchoolTestsApi on Api {
       return errorResponse(409, 'no_key',
           'The server has no ${upstream.label} key. Paste one to run the test with it.');
     }
+    AiModeRoute? judge;
+    final judgeModel = body['judgeModel'] is String
+        ? (body['judgeModel'] as String).trim()
+        : '';
+    if (judgeModel.isNotEmpty) {
+      final judgeUpstream = AiUpstream.parse(body['judgeUpstream'] is String
+          ? body['judgeUpstream'] as String
+          : null);
+      if (judgeUpstream == null) {
+        return errorResponse(
+            400, 'bad_request', 'Choose a valid provider for the judge.');
+      }
+      if (!isValidAiModelId(judgeModel)) {
+        return errorResponse(
+            400, 'bad_request', 'Enter a valid model ID for the judge.');
+      }
+      final sharesKey = apiKey != null && judgeUpstream == upstream;
+      if (!sharesKey && !config.configuredAiUpstreams.contains(judgeUpstream)) {
+        return errorResponse(409, 'no_key',
+            'The server has no ${judgeUpstream.label} key for the judge. Pick a judge on the same provider as the pasted key, or one the server has a key for.');
+      }
+      judge = AiModeRoute(judgeUpstream, judgeModel);
+    }
     if (schoolTests.running != null) {
       return errorResponse(
           409, 'busy', 'A test is already running. Stop it or wait for it.');
@@ -92,6 +115,7 @@ extension SchoolTestsApi on Api {
       keyHint: apiKey == null ? null : schoolTestKeyHint(apiKey),
       startedAtMs: now,
       total: suite.cases.length,
+      judge: judge,
     );
     await schoolTests.add(run);
     unawaited(_runSchoolTest(run, suite, apiKey));
@@ -106,15 +130,15 @@ extension SchoolTestsApi on Api {
       return flat.length > 300 ? '${flat.substring(0, 300)}…' : flat;
     }
 
-    Future<SchoolTestReply> call(List<Map<String, String>> messages,
-        {required double temperature}) async {
+    Future<SchoolTestReply> callRoute(AiModeRoute route, String? key,
+        List<Map<String, String>> messages, double temperature) async {
       final upstreamBody = Api._aiUpstreamBody({
         'messages': messages,
         'max_tokens': _maxTokens,
         'temperature': temperature,
-      }, run.route);
+      }, route);
       final (status, responseBody) =
-          await _callAiUpstream(run.route, upstreamBody, apiKey: apiKey);
+          await _callAiUpstream(route, upstreamBody, apiKey: key);
       var tokens = 0;
       String? content;
       String? error;
@@ -138,14 +162,21 @@ extension SchoolTestsApi on Api {
             tokens: tokens,
             fatal: refused,
             error: scrub('HTTP $status${error == null ? '' : ': $error'}'
-                '${refused ? ' — ${run.route.upstream.label} refused the '
-                    '${apiKey == null ? 'server\'s' : 'pasted'} key' : ''}'));
+                '${refused ? ' — ${route.upstream.label} refused the '
+                    '${key == null ? 'server\'s' : 'pasted'} key' : ''}'));
       }
       return SchoolTestReply(
           content: content,
           tokens: tokens,
           error: content == null ? 'Empty reply.' : null);
     }
+
+    Future<SchoolTestReply> call(List<Map<String, String>> messages,
+            {required double temperature}) =>
+        callRoute(run.route, apiKey, messages, temperature);
+    final judge = run.judge;
+    final judgeKey =
+        judge != null && judge.upstream == run.route.upstream ? apiKey : null;
 
     var lastSave = DateTime.now();
     try {
@@ -154,6 +185,10 @@ extension SchoolTestsApi on Api {
         suite,
         classroomConfig.config.effectiveInstructions,
         call,
+        judge: judge == null
+            ? null
+            : (messages, {required temperature}) =>
+                callRoute(judge, judgeKey, messages, temperature),
         onProgress: () async {
           if (DateTime.now().difference(lastSave).inSeconds < 3) return;
           lastSave = DateTime.now();
@@ -265,7 +300,10 @@ extension SchoolTestsApi on Api {
         '.st-lvl{font-family:ui-monospace,Consolas,monospace}'
         '.st-lvl.good{color:#7ee08a}.st-lvl.mid{color:#e0c87e}.st-lvl.bad{color:#e07e7e}'
         '.st-detail td.nowrap{white-space:nowrap}'
-        '@media (max-width:900px){.st-form{grid-template-columns:1fr}}'
+        '.st-judge{margin-top:10px;grid-template-columns:minmax(150px,1fr) minmax(220px,2fr) 3fr}'
+        '.st-note{font-size:11.5px;color:#a9a0c3;margin-top:4px}'
+        '@media (max-width:900px){.st-form,.st-judge{grid-template-columns:1fr}'
+        '.st-judge .muted{grid-column:auto!important}}'
         '</style>'
         '<div class="card">'
         '<h2>School test</h2>'
@@ -275,7 +313,7 @@ extension SchoolTestsApi on Api {
         'server, not by the model; grading cases compare the model\'s '
         'verdict with yours (half a point when it is one step off), and '
         '"harsh" counts right answers it marked wrong. Every case has a '
-        'difficulty from 1 to 6 and counts that many times, so the hard cases '
+        'difficulty from 1 to 8 and counts that many times, so the hard cases '
         'decide the score. Grading and question '
         'cases use the classroom tutor\'s live instructions from the '
         'Assistant tab. Paste an API key to run a model on a key the server '
@@ -300,6 +338,19 @@ extension SchoolTestsApi on Api {
         '<button id="stStopBtn" type="button" class="btn btn-ghost" hidden>Stop</button>'
         '</div>'
         '</div>'
+        '<div class="st-form st-judge">'
+        '<div><label for="stJudgeUpstream">Judge provider</label>'
+        '<select id="stJudgeUpstream">$upstreamOptions</select></div>'
+        '<div><label for="stJudgeModel">Judge model (for L7–L8)</label>'
+        '<input id="stJudgeModel" type="text" list="ai-dl-${upstream.name}" '
+        'maxlength="200" spellcheck="false" autocomplete="off" '
+        'placeholder="a strong model; blank skips judged cases"></div>'
+        '<div class="muted" style="font-size:11.5px;grid-column:span 3">'
+        'The judge solves each written question itself and rates the '
+        'feedback. Pick a model stronger than the one you test. It uses the '
+        'server\'s key, or the pasted key when it is on the same provider.'
+        '</div>'
+        '</div>'
         '<div id="stStatus" class="maint-status" style="margin-top:12px"></div>'
         '<div id="stProgress" class="bn-progress" hidden>'
         '<div class="bn-progress-head"><span id="stProgressLabel"></span></div>'
@@ -309,9 +360,9 @@ extension SchoolTestsApi on Api {
         '</div>'
         '<div style="overflow-x:auto;margin-top:14px">'
         '<table><thead><tr><th>When</th><th>Model</th><th>Score</th>'
-        '<th>By kind</th><th>By level</th><th>Harsh</th><th>Errors</th><th>Tokens</th>'
+        '<th>By kind</th><th>By level</th><th>Harsh</th><th>Flaky</th><th>Errors</th><th>Tokens</th>'
         '<th>Avg time</th><th></th></tr></thead>'
-        '<tbody id="stRuns"><tr><td colspan="10" class="muted">Loading…</td></tr>'
+        '<tbody id="stRuns"><tr><td colspan="11" class="muted">Loading…</td></tr>'
         '</tbody></table></div>'
         '</div>'
         '<div class="card st-suite">'
@@ -328,7 +379,13 @@ extension SchoolTestsApi on Api {
         '<code>question</code>, a <code>studentAnswer</code> and '
         '<code>expect.result</code>: correct, partly or wrong. '
         '<code>question</code> cases need only the lesson; the model writes '
-        'a question and its format is checked. Every case may set a '
+        'a question and its format is checked. <code>author</code> cases '
+        'need the lesson and optional <code>requirements</code>; the model '
+        'writes a question with its answer key and the judge checks it. '
+        '<code>feedback</code> cases are written like <code>grade</code> '
+        'cases; the judge also rates the feedback. <code>repeat</code> (1 to '
+        '$kSchoolTestMaxRepeat) runs a case that often and scores the average. '
+        'Every case may set a '
         '<code>difficulty</code> from 1 (easy) to $kSchoolTestMaxDifficulty '
         '(hardest), default 1; it is also the case\'s weight in the score. '
         'Up to $kSchoolTestMaxCases cases.</div>'
@@ -399,14 +456,20 @@ const _schoolTestsScript = r'''
   upstream.addEventListener('change', () => {
     model.setAttribute('list', 'ai-dl-' + upstream.value);
   });
+  const judgeUpstream = document.getElementById('stJudgeUpstream');
+  const judgeModel = document.getElementById('stJudgeModel');
+  judgeUpstream.addEventListener('change', () => {
+    judgeModel.setAttribute('list', 'ai-dl-' + judgeUpstream.value);
+  });
 
-  const kindNames = { answer: 'Answers', grade: 'Grading', question: 'Questions' };
+  const kindNames = { answer: 'Answers', grade: 'Grading', question: 'Questions',
+    author: 'Writing', feedback: 'Feedback' };
   function render(state) {
     const runs = state.runs || [];
     const finished = runs.filter((r) => r.status === 'done');
     const best = finished.reduce((b, r) => (!b || r.score > b.score ? r : b), null);
     if (!runs.length) {
-      rows.innerHTML = '<tr><td colspan="10" class="muted">No runs yet. Pick a model and press Run test.</td></tr>';
+      rows.innerHTML = '<tr><td colspan="11" class="muted">No runs yet. Pick a model and press Run test.</td></tr>';
     } else {
       rows.innerHTML = runs.map((r) => {
         const kinds = Object.entries(r.byKind || {}).map(([k, v]) =>
@@ -430,7 +493,8 @@ const _schoolTestsScript = r'''
           + '<td class="st-kinds">' + (kinds || '—') + '</td>'
           + '<td class="st-kinds">' + (levels || '—') + '</td>'
           + '<td>' + (r.harsh ? '<span class="badge err">' + r.harsh + '</span>' : '0') + '</td>'
-          + '<td>' + r.errors + '</td>'
+          + '<td>' + (r.flaky ? '<span class="badge warn">' + r.flaky + '</span>' : '0') + '</td>'
+          + '<td>' + r.errors + (r.skipped ? '<div class="muted" style="font-size:11px">' + r.skipped + ' skipped</div>' : '') + '</td>'
           + '<td>' + r.tokens.toLocaleString() + '</td>'
           + '<td>' + (r.avgMs / 1000).toFixed(1) + ' s</td>'
           + '<td class="actions-cell nowrap">'
@@ -439,7 +503,7 @@ const _schoolTestsScript = r'''
           + (r.status === 'running' ? '' : '<button type="button" class="btn btn-ghost btn-sm st-del-btn">Delete</button>')
           + '</td></tr>';
         return main + (open.has(r.id)
-          ? '<tr class="st-detail" data-detail="' + esc(r.id) + '"><td colspan="10" class="muted">Loading…</td></tr>'
+          ? '<tr class="st-detail" data-detail="' + esc(r.id) + '"><td colspan="11" class="muted">Loading…</td></tr>'
           : '');
       }).join('');
       open.forEach(loadDetail);
@@ -478,9 +542,14 @@ const _schoolTestsScript = r'''
           + '<td class="nowrap">' + esc(kindNames[c.kind] || c.kind) + '</td>'
           + '<td>' + esc(c.expected) + '</td>'
           + '<td>' + esc(c.got) + (c.error ? '<div class="badge err">' + esc(c.error) + '</div>' : '')
-          + (c.harsh ? ' <span class="badge err">harsh</span>' : '') + '</td>'
-          + '<td><span class="st-score ' + scoreClass(c.score * 100) + '" style="font-size:13px">'
-          + (c.score === 1 ? '✓' : c.score === 0 ? '✗' : '½') + '</span></td>'
+          + (c.harsh ? ' <span class="badge err">harsh</span>' : '')
+          + (c.judgeNote ? '<div class="st-note">Judge: ' + esc(c.judgeNote) + '</div>' : '') + '</td>'
+          + '<td class="nowrap">' + (c.skipped ? '<span class="muted">skipped</span>'
+            : '<span class="st-score ' + scoreClass(c.score * 100) + '" style="font-size:13px">'
+              + (c.score === 1 ? '✓' : c.score === 0 ? '✗' : Math.round(c.score * 100) + '%') + '</span>')
+          + (c.attempts && c.attempts.length > 1
+            ? '<div class="muted" style="font-size:11px">' + c.attempts.filter((a) => a === 1).length
+              + '/' + c.attempts.length + ' right</div>' : '') + '</td>'
           + '<td>' + (c.ms / 1000).toFixed(1) + ' s</td></tr>').join('')
         + '</tbody></table>';
     });
@@ -518,6 +587,8 @@ const _schoolTestsScript = r'''
       upstream: upstream.value,
       model: model.value.trim(),
       reasoningEffort: effort.value,
+      judgeUpstream: judgeUpstream.value,
+      judgeModel: judgeModel.value.trim(),
       apiKey: keyTouched ? key.value.trim() : '',
     }).then((j) => {
       if (!j.id) {

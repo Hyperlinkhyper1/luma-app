@@ -6,6 +6,7 @@ import 'ai_mode_routing.dart';
 import 'classroom.dart';
 import 'util.dart';
 
+part 'school_test_judge.dart';
 part 'school_test_starter.dart';
 
 /// The school test: a fixed set of cases the operator writes on the admin
@@ -24,15 +25,23 @@ part 'school_test_starter.dart';
 ///    mistake that hurts a student most.
 ///  * `question` — the model writes a question for a lesson, exactly as the
 ///    classroom does, and only the shape of the reply is checked.
+///  * `author` and `feedback` — scored with the help of a judge model; see
+///    `school_test_judge.dart`.
 ///
-/// Grading and question cases use the classroom tutor's live instructions,
-/// so a run measures the model under the setup students actually get.
+/// A case may also `repeat` up to [kSchoolTestMaxRepeat] times; it then
+/// scores the average, so a model that is only right some of the time
+/// loses points it would keep on a single lucky run.
+///
+/// Every case uses the classroom tutor's live instructions, so a run
+/// measures the model under the setup students actually get.
 
-const kSchoolTestKinds = ['answer', 'grade', 'question'];
+const kSchoolTestKinds = ['answer', 'grade', 'question', 'author', 'feedback'];
 
 const kSchoolTestMaxCases = 500;
 
-const kSchoolTestMaxDifficulty = 6;
+const kSchoolTestMaxDifficulty = 8;
+
+const kSchoolTestMaxRepeat = 5;
 
 const kSchoolTestMaxSuiteChars = 400000;
 
@@ -63,6 +72,8 @@ class SchoolTestCase {
     this.accept = const [],
     this.expectResult,
     this.difficulty = 1,
+    this.repeat = 1,
+    this.requirements = '',
   });
 
   final String id;
@@ -71,8 +82,14 @@ class SchoolTestCase {
   final String question;
   final List<String> choices;
 
-  /// Only for `grade`.
+  /// For `grade` and `feedback`.
   final String studentAnswer;
+
+  /// For `author`: what kind of question to write, in the operator's words.
+  final String requirements;
+
+  /// How many times the case runs; it scores the average.
+  final int repeat;
 
   /// `answer` cases set exactly one of [expectNumber], [expectChoice] or
   /// [accept].
@@ -83,15 +100,17 @@ class SchoolTestCase {
   final String? expectChoice;
   final List<String> accept;
 
-  /// `correct`, `partly` or `wrong`, only for `grade`.
+  /// `correct`, `partly` or `wrong`, for `grade` and `feedback`.
   final String? expectResult;
 
-  /// 1 (onderbouw basics) to 6 (central-exam style). A case counts this many
+  /// 1 (onderbouw basics) to 8 (judged tutoring work). A case counts this many
   /// times towards a run's score, so the hard cases decide it.
   final int difficulty;
 
   String get expectedLabel {
     if (kind == 'grade') return expectResult!;
+    if (kind == 'feedback') return '$expectResult, with sound feedback';
+    if (kind == 'author') return 'a sound question with a right key';
     if (kind == 'question') return 'a well-formed question';
     if (expectNumber != null) {
       return tolerance > 0
@@ -162,7 +181,7 @@ class SchoolTestSuite {
           for (final c in list)
             if (_str(c) case final s when s.isNotEmpty) s,
       ];
-      if (kind != 'question' && question.isEmpty) {
+      if (kind != 'question' && kind != 'author' && question.isEmpty) {
         throw FormatException('$where ($id): add a "question".');
       }
       if (choices.isNotEmpty && (choices.length < 2 || choices.length > 6)) {
@@ -177,6 +196,14 @@ class SchoolTestSuite {
             '$where ($id): "difficulty" must be a whole number from 1 to $kSchoolTestMaxDifficulty.');
       }
       final difficulty = rawDifficulty;
+      final rawRepeat = raw['repeat'] ?? 1;
+      if (rawRepeat is! int ||
+          rawRepeat < 1 ||
+          rawRepeat > kSchoolTestMaxRepeat) {
+        throw FormatException(
+            '$where ($id): "repeat" must be a whole number from 1 to $kSchoolTestMaxRepeat.');
+      }
+      final repeat = rawRepeat;
       switch (kind) {
         case 'answer':
           final number = expect['number'];
@@ -215,8 +242,9 @@ class SchoolTestSuite {
             expectChoice: choice.isEmpty ? null : choice,
             accept: accept,
             difficulty: difficulty,
+            repeat: repeat,
           ));
-        case 'grade':
+        case 'grade' || 'feedback':
           final result = _str(expect['result']).toLowerCase();
           if (!const {'correct', 'partly', 'wrong'}.contains(result)) {
             throw FormatException('$where ($id): "expect.result" must be '
@@ -235,10 +263,16 @@ class SchoolTestSuite {
             studentAnswer: studentAnswer,
             expectResult: result,
             difficulty: difficulty,
+            repeat: repeat,
           ));
         default:
           cases.add(SchoolTestCase(
-              id: id, kind: kind, lesson: lesson, difficulty: difficulty));
+              id: id,
+              kind: kind,
+              lesson: lesson,
+              difficulty: difficulty,
+              repeat: repeat,
+              requirements: _str(raw['requirements'])));
       }
     }
     return SchoolTestSuite(cases, language: language.isEmpty ? 'nl' : language);
@@ -281,7 +315,9 @@ List<Map<String, String>> schoolTestAnswerMessages(
 List<Map<String, String>> schoolTestMessages(
     String instructions, SchoolTestCase c, String language) {
   switch (c.kind) {
-    case 'grade':
+    case 'author':
+      return schoolTestAuthorMessages(instructions, c, language);
+    case 'grade' || 'feedback':
       return classroomReviewMessages(
           instructions,
           c.lesson,
@@ -411,6 +447,10 @@ class SchoolTestCaseResult {
     this.error,
     this.ms = 0,
     this.tokens = 0,
+    this.skipped = false,
+    this.judgeNote,
+    this.attempts = const [],
+    this.fatal = false,
   });
 
   final String id;
@@ -428,6 +468,68 @@ class SchoolTestCaseResult {
   final int ms;
   final int tokens;
 
+  /// Not scored: a judged case with no judge, or a judge reply that was
+  /// unusable. The tested model is not blamed for either.
+  final bool skipped;
+
+  /// What the judge said, for judged kinds.
+  final String? judgeNote;
+
+  /// Each attempt's score when the case repeats.
+  final List<double> attempts;
+
+  /// The provider refused the key; never stored.
+  final bool fatal;
+
+  /// Repeated, and the attempts did not all score the same.
+  bool get flaky => attempts.length > 1 && attempts.toSet().length > 1;
+
+  SchoolTestCaseResult copyWith({bool? fatal}) => SchoolTestCaseResult(
+        id: id,
+        kind: kind,
+        expected: expected,
+        score: score,
+        got: got,
+        harsh: harsh,
+        difficulty: difficulty,
+        error: error,
+        ms: ms,
+        tokens: tokens,
+        skipped: skipped,
+        judgeNote: judgeNote,
+        attempts: attempts,
+        fatal: fatal ?? this.fatal,
+      );
+
+  /// Folds the attempts at one case into its result: the mean score, the
+  /// first attempt's reply, and the totals.
+  static SchoolTestCaseResult combine(List<SchoolTestCaseResult> tries) {
+    if (tries.length == 1) return tries.single;
+    final scored = tries.where((t) => !t.skipped).toList();
+    final first = tries.first;
+    final failed = tries.where((t) => t.error != null && !t.skipped).length;
+    return SchoolTestCaseResult(
+      id: first.id,
+      kind: first.kind,
+      expected: first.expected,
+      score: scored.isEmpty
+          ? 0
+          : scored.fold<double>(0, (s, t) => s + t.score) / scored.length,
+      got: first.got,
+      harsh: tries.any((t) => t.harsh),
+      difficulty: first.difficulty,
+      error: failed > 0
+          ? '$failed of ${tries.length} attempts failed: '
+              '${tries.firstWhere((t) => t.error != null && !t.skipped).error}'
+          : (scored.isEmpty ? first.error : null),
+      ms: tries.fold<int>(0, (s, t) => s + t.ms) ~/ tries.length,
+      tokens: tries.fold(0, (s, t) => s + t.tokens),
+      skipped: scored.isEmpty,
+      judgeNote: first.judgeNote,
+      attempts: [for (final t in scored) t.score],
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'kind': kind,
@@ -439,6 +541,9 @@ class SchoolTestCaseResult {
         if (error != null) 'error': error,
         'ms': ms,
         'tokens': tokens,
+        if (skipped) 'skipped': true,
+        if (judgeNote != null) 'judgeNote': judgeNote,
+        if (attempts.isNotEmpty) 'attempts': attempts,
       };
 
   static SchoolTestCaseResult? fromJson(Object? raw) {
@@ -454,6 +559,13 @@ class SchoolTestCaseResult {
       error: raw['error'] is String ? raw['error'] as String : null,
       ms: (raw['ms'] as num?)?.toInt() ?? 0,
       tokens: (raw['tokens'] as num?)?.toInt() ?? 0,
+      skipped: raw['skipped'] == true,
+      judgeNote: raw['judgeNote'] is String ? raw['judgeNote'] as String : null,
+      attempts: [
+        if (raw['attempts'] case final List list)
+          for (final a in list)
+            if (a is num) a.toDouble(),
+      ],
     );
   }
 }
@@ -585,11 +697,15 @@ class SchoolTestRun {
     this.status = 'running',
     this.finishedAtMs,
     this.note,
+    this.judge,
     List<SchoolTestCaseResult>? results,
   }) : results = results ?? [];
 
   final String id;
   final AiModeRoute route;
+
+  /// The model that scored the judged cases, if one was picked.
+  final AiModeRoute? judge;
 
   /// Whether the operator pasted a key for this run instead of using the
   /// server's. The key itself is never stored.
@@ -619,7 +735,7 @@ class SchoolTestRun {
   static double _weighted(Iterable<SchoolTestCaseResult> list) {
     var points = 0.0;
     var weight = 0;
-    for (final r in list) {
+    for (final r in list.where((r) => !r.skipped)) {
       points += r.score * r.difficulty;
       weight += r.difficulty;
     }
@@ -630,19 +746,27 @@ class SchoolTestRun {
         for (final kind in kSchoolTestKinds)
           if (results.where((r) => r.kind == kind).toList() case final list
               when list.isNotEmpty)
-            kind: {'n': list.length, 'score': _weighted(list)},
+            kind: {
+              'n': list.where((r) => !r.skipped).length,
+              'score': _weighted(list)
+            },
       };
 
-  /// Plain (unweighted) score per difficulty level, keyed "1" to "5".
+  /// Score per difficulty level, keyed "1" to "8".
   Map<String, dynamic> byDifficulty() => {
         for (var d = 1; d <= kSchoolTestMaxDifficulty; d++)
           if (results.where((r) => r.difficulty == d).toList() case final list
               when list.isNotEmpty)
-            '$d': {'n': list.length, 'score': _weighted(list)},
+            '$d': {
+              'n': list.where((r) => !r.skipped).length,
+              'score': _weighted(list)
+            },
       };
 
   int get harsh => results.where((r) => r.harsh).length;
-  int get errors => results.where((r) => r.error != null).length;
+  int get errors => results.where((r) => r.error != null && !r.skipped).length;
+  int get skipped => results.where((r) => r.skipped).length;
+  int get flaky => results.where((r) => r.flaky).length;
   int get tokens => results.fold(0, (s, r) => s + r.tokens);
 
   Map<String, dynamic> summaryJson() => {
@@ -665,6 +789,10 @@ class SchoolTestRun {
         'byDifficulty': byDifficulty(),
         'harsh': harsh,
         'errors': errors,
+        'skipped': skipped,
+        'flaky': flaky,
+        if (judge != null) 'judgeModel': judge!.model,
+        if (judge != null) 'judgeUpstreamLabel': judge!.upstream.label,
         'tokens': tokens,
         'avgMs': results.isEmpty
             ? 0
@@ -674,6 +802,7 @@ class SchoolTestRun {
   Map<String, dynamic> toJson() => {
         ...summaryJson(),
         'route': route.toJson(),
+        if (judge != null) 'judge': judge!.toJson(),
         'results': [for (final r in results) r.toJson()],
       };
 
@@ -693,6 +822,7 @@ class SchoolTestRun {
       status: status == 'running' ? 'interrupted' : status,
       finishedAtMs: (raw['finishedAtMs'] as num?)?.toInt(),
       note: raw['note'] is String ? raw['note'] as String : null,
+      judge: AiModeRoute.fromJson(raw['judge']),
       results: [
         if (raw['results'] case final List list)
           for (final r in list)
@@ -702,14 +832,17 @@ class SchoolTestRun {
   }
 }
 
-/// Runs every case of [suite] through [call], [parallel] at a time, adding
-/// each result to [run] as it lands. [onProgress] fires after each one;
-/// [SchoolTestRun.stopRequested] is checked before each case starts.
+/// Runs every case of [suite] through [call], [parallel] cases at a time,
+/// each as many times as it repeats, adding each case's combined result to
+/// [run] as it lands. Judged kinds also go through [judge]; without one
+/// they are skipped, not failed. [onProgress] fires after each case;
+/// [SchoolTestRun.stopRequested] is checked before each attempt.
 Future<void> runSchoolTestSuite(
   SchoolTestRun run,
   SchoolTestSuite suite,
   String instructions,
   SchoolTestCall call, {
+  SchoolTestCall? judge,
   int parallel = 4,
   Future<void> Function()? onProgress,
 }) async {
@@ -717,22 +850,21 @@ Future<void> runSchoolTestSuite(
   Future<void> worker() async {
     while (next < suite.cases.length && !run.stopRequested) {
       final c = suite.cases[next++];
-      final watch = Stopwatch()..start();
-      SchoolTestReply reply;
-      try {
-        reply = await call(schoolTestMessages(instructions, c, suite.language),
-            temperature: c.kind == 'question' ? 0.8 : 0.2);
-      } catch (e) {
-        reply = SchoolTestReply(error: '$e');
+      final tries = <SchoolTestCaseResult>[];
+      for (var i = 0; i < c.repeat; i++) {
+        if (i > 0 && run.stopRequested) break;
+        final attempt = await attemptSchoolTestCase(
+            c, instructions, suite.language, call, judge);
+        tries.add(attempt);
+        if (attempt.fatal) {
+          if (!run.stopRequested) {
+            run.stopRequested = true;
+            run.note = attempt.error;
+          }
+          break;
+        }
       }
-      run.results.add(scoreSchoolTestCase(c, reply.content,
-          error: reply.error,
-          ms: watch.elapsedMilliseconds,
-          tokens: reply.tokens));
-      if (reply.fatal && !run.stopRequested) {
-        run.stopRequested = true;
-        run.note = reply.error;
-      }
+      run.results.add(SchoolTestCaseResult.combine(tries));
       await onProgress?.call();
     }
   }

@@ -1,11 +1,13 @@
 part of 'school_test.dart';
 
 /// The cases a fresh server starts with, until the operator writes their
-/// own on the Tests tab: about a hundred havo/vwo cases over six difficulty
+/// own on the Tests tab: about 140 havo/vwo cases over eight difficulty
 /// levels. Level 1 is onderbouw recall; level 5 the vwo 6 traps where
 /// cheap models slip; level 6 central-exam style chains of several steps
-/// where one wrong step loses the answer. Every number here was worked out
-/// by hand; keep it that way when adding one.
+/// where one wrong step loses the answer; level 7 writing questions and
+/// repeated runs for consistency; level 8 messy student answers and the
+/// feedback itself. Levels 7 and 8 lean on a judge model. Every number here
+/// was worked out by hand; keep it that way when adding one.
 final String kStarterSchoolTestSuite =
     const JsonEncoder.withIndent('  ').convert({
   'language': 'nl',
@@ -413,6 +415,148 @@ final String kStarterSchoolTestSuite =
         'Een bal wordt vanaf 20 m hoogte horizontaal weggegooid met 15 m/s (g = 9,81 m/s²). Op welke horizontale afstand komt hij neer?',
         't = √(2h/g) = √(40/9,81) = 2,02 s, dus x = 15 · 2,02 ≈ 30 m.',
         'correct'),
+
+    // Level 7 — writing questions (judged) and consistency: every case runs
+    // several times and scores the average, so luck does not count.
+    _author('schrijf-integraal', _integreren,
+        'Een rekenvraag over de oppervlakte tussen twee grafieken met één exact getal als antwoord.'),
+    _author('schrijf-halveringstijd', _straling,
+        'Een rekenvraag in twee stappen over halveringstijd, met de benodigde gegevens in de vraag.'),
+    _author('schrijf-zuren-mc', _zurenBasen,
+        'Meerkeuze met vier opties, precies één juist, over het verschil tussen sterke en zwakke zuren.'),
+    _author('schrijf-kruising', _genetica,
+        'Een kansvraag over een kruising tussen twee heterozygote ouders.'),
+    _author('schrijf-werkwoord', _werkwoordspelling,
+        'Een invulzin met precies één juiste werkwoordsvorm, waarbij d/t of de verleden tijd een valkuil is.'),
+    _author('schrijf-engels-mc', _tenses,
+        'A multiple-choice question with four options about the past perfect.'),
+    _author('schrijf-europa', _europa,
+        'Een vraag naar een oorzaak of gevolg met één eenduidig, controleerbaar antwoord.'),
+    _author('schrijf-elasticiteit', _elasticiteit,
+        'Een rekenvraag over prijselasticiteit met getallen in de vraag.'),
+    _author('schrijf-naamval', _naamvallen,
+        'Een invulzin met één juist lidwoord na een voorzetsel.'),
+    _author('schrijf-normaal', _statistiek,
+        'Een rekenvraag met de normale verdeling waarvan het antwoord een percentage is.'),
+    _answer('herhaal-oppervlakte', 7, _integreren,
+        'Gegeven f(x) = x² en g(x) = 2x + 3. Bereken de oppervlakte van het vlakdeel dat door de grafieken van f en g wordt ingesloten. Geef het antwoord als decimaal getal, afgerond op drie decimalen.',
+        number: 10.667, tolerance: 0.001, repeat: 5),
+    _answer('herhaal-binomiaal', 7, _statistiek,
+        'Bij een meerkeuzetoets met 10 vragen is de kans dat een leerling een vraag goed gokt 0,3, onafhankelijk per vraag. Bereken de kans dat hij er precies 2 goed gokt, afgerond op drie decimalen.',
+        number: 0.233, tolerance: 0.0005, repeat: 5),
+    _answer('herhaal-buffer', 7, _zurenBasen,
+        'Een bufferoplossing bevat 0,10 M ethaanzuur en 0,20 M natriumethanoaat (Kz = 1,8 × 10⁻⁵). Bereken de pH, afgerond op twee decimalen.',
+        number: 5.05, tolerance: 0.01, repeat: 5),
+    _answer('herhaal-drager', 7, _genetica,
+        'Twee ouders zijn allebei heterozygoot (Aa) voor een recessieve erfelijke aandoening. Hun kind is niet ziek. Hoe groot is de kans dat dit kind drager is? Geef een decimaal getal, afgerond op drie decimalen.',
+        number: 0.667, tolerance: 0.001, repeat: 5),
+    _answer('herhaal-antwoordde', 7, _werkwoordspelling,
+        "Vul de juiste vorm in: 'Gisteren ___ (antwoorden) hij niet op mijn vraag.'",
+        accept: ['antwoordde'], repeat: 5),
+    _answer('herhaal-satelliet', 7, _gravitatie,
+        'Een satelliet beschrijft een cirkelbaan op 400 km hoogte boven het aardoppervlak. Gebruik R(aarde) = 6,371 × 10⁶ m, M(aarde) = 5,972 × 10²⁴ kg en G = 6,674 × 10⁻¹¹ N·m²/kg². Bereken de baansnelheid in km/s, afgerond op één decimaal.',
+        number: 7.7, tolerance: 0.1, repeat: 5),
+
+    // Level 8 — real student mess (each run three times) and the feedback
+    // itself, rated by the judge.
+    _grade(
+        'rommel-ladder',
+        8,
+        _pythagoras,
+        'Een ladder van 5 m staat tegen een muur. De voet staat 3 m van de muur. Hoe hoog komt de ladder?',
+        'uhm 25-9 is 16 dus wortel daarvan... 4m denk ik',
+        'correct',
+        repeat: 3),
+    _grade(
+        'rommel-alleen-getal',
+        8,
+        _procenten,
+        'Een fiets kost 450 euro. Hij wordt 20% duurder. Wat is de nieuwe prijs?',
+        '540',
+        'correct',
+        repeat: 3),
+    _grade(
+        'rommel-twijfel',
+        8,
+        _procenten,
+        'Een fiets kost 450 euro. Hij wordt 20% duurder. Wat is de nieuwe prijs?',
+        '450 x 1,2 = 540 euro maar ik weet niet zeker of dat klopt',
+        'correct',
+        repeat: 3),
+    _grade(
+        'rommel-andere-vraag',
+        8,
+        _cirkel,
+        'Bereken de oppervlakte van een cirkel met een straal van 3 cm.',
+        'omtrek = 2πr = 2 · π · 3 = 18,8 cm',
+        'wrong',
+        repeat: 3),
+    _grade('rommel-goed-antwoord-foute-reden', 8, _kwadratisch,
+        'Los op: x² − 5x + 6 = 0', 'x = 2 en x = 3, want 2 + 3 = 6', 'partly',
+        repeat: 3),
+    _grade(
+        'rommel-spelfouten',
+        8,
+        _spijsvertering,
+        'Wat is de functie van rode bloedcellen?',
+        'ze vervoerren zuurstoff door het lichaam',
+        'correct',
+        repeat: 3),
+    _grade(
+        'rommel-zonder-eenheid',
+        8,
+        _beweging,
+        'Een auto rijdt 2,0 uur met een constante snelheid van 80 km/h. Welke afstand legt hij af?',
+        '160',
+        'correct',
+        repeat: 3),
+    _grade('rommel-weet-niet', 8, _logaritmen, 'Los op: 2 · ³log(x) = 4',
+        'weet ik niet sorry', 'wrong',
+        repeat: 3),
+    _grade(
+        'rommel-engels-woord',
+        8,
+        _bevolking,
+        'Hoe heet het verschijnsel dat het aandeel ouderen in een bevolking steeds groter wordt?',
+        "ageing population, op z'n nederlands vergrijsing",
+        'correct',
+        repeat: 3),
+    _grade(
+        'rommel-halve-zin',
+        8,
+        _optica,
+        'Een bolle lens heeft een brandpuntsafstand van 10 cm en een voorwerp staat op 15 cm. Waar ontstaat het beeld?',
+        '1/b = 1/10 − 1/15 → b = 30',
+        'correct',
+        repeat: 3),
+    _feedback('feedback-merkwaardig', _haakjes, 'Werk de haakjes weg: (x + 3)²',
+        'x² + 9', 'wrong'),
+    _feedback(
+        'feedback-procent',
+        _procenten,
+        'Een fiets kost 450 euro. Hij wordt 20% duurder. Wat is de nieuwe prijs?',
+        '20% van 450 is 80, dus 450 + 80 = 530 euro.',
+        'partly'),
+    _feedback(
+        'feedback-zwak-zuur',
+        _zurenBasen,
+        'Bereken de pH van een 0,10 M oplossing van ethaanzuur (Kz = 1,8 × 10⁻⁵).',
+        'pH = −log(0,10) = 1,00',
+        'wrong'),
+    _feedback('feedback-dt', _werkwoordspelling,
+        "Vul de juiste vorm in: 'Hij ___ (vinden) het leuk.'", 'vind', 'wrong'),
+    _feedback(
+        'feedback-hardy-weinberg',
+        _populatiegenetica,
+        'In een populatie in Hardy-Weinbergevenwicht vertoont 16% het recessieve fenotype. Welk percentage is heterozygoot?',
+        '16% is aa, dus de overige 84% is drager.',
+        'wrong'),
+    _feedback(
+        'feedback-goed-onhandig',
+        _beweging,
+        'Een steen valt vanuit stilstand 2,0 s vrij (g = 9,81 m/s²). Hoe ver valt hij?',
+        's = ½ · 9,81 · 2,0² dat is 19,6 meter ongeveer',
+        'correct'),
   ],
 });
 
@@ -440,11 +584,13 @@ Map<String, Object> _answer(
   num? tolerance,
   String? choice,
   List<String>? accept,
+  int repeat = 1,
 }) =>
     {
       'id': id,
       'kind': 'answer',
       'difficulty': difficulty,
+      if (repeat > 1) 'repeat': repeat,
       'lesson': lesson,
       'question': question,
       if (choices != null) 'choices': choices,
@@ -462,11 +608,14 @@ Map<String, Object> _grade(
         Map<String, String> lesson,
         String question,
         String studentAnswer,
-        String result) =>
+        String result,
+        {int repeat = 1,
+        String kind = 'grade'}) =>
     {
       'id': id,
-      'kind': 'grade',
+      'kind': kind,
       'difficulty': difficulty,
+      if (repeat > 1) 'repeat': repeat,
       'lesson': lesson,
       'question': question,
       'studentAnswer': studentAnswer,
@@ -475,6 +624,24 @@ Map<String, Object> _grade(
 
 Map<String, Object> _question(String id, Map<String, String> lesson) =>
     {'id': id, 'kind': 'question', 'difficulty': 1, 'lesson': lesson};
+
+/// A judged question-writing case: run three times, the judge checks each.
+Map<String, Object> _author(
+        String id, Map<String, String> lesson, String requirements) =>
+    {
+      'id': id,
+      'kind': 'author',
+      'difficulty': 7,
+      'repeat': 3,
+      'lesson': lesson,
+      'requirements': requirements,
+    };
+
+/// A judged feedback case: run twice, verdict plus feedback quality.
+Map<String, Object> _feedback(String id, Map<String, String> lesson,
+        String question, String studentAnswer, String result) =>
+    _grade(id, 8, lesson, question, studentAnswer, result,
+        repeat: 2, kind: 'feedback');
 
 final _procenten = _lesson('Wiskunde', 'leerjaar 2', 'havo/vwo',
     'Moderne Wiskunde', '6', '6.3', 'Rekenen met procenten');

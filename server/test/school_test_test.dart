@@ -45,9 +45,14 @@ void main() {
     test('the starter set parses', () {
       final suite = SchoolTestSuite.parse(kStarterSchoolTestSuite);
       expect(suite.language, 'nl');
-      expect(suite.cases.map((c) => c.kind).toSet(),
-          {'answer', 'grade', 'question'});
-      expect(suite.cases.length, greaterThanOrEqualTo(80));
+      expect(suite.cases.map((c) => c.kind).toSet(), kSchoolTestKinds.toSet());
+      expect(suite.cases.length, greaterThanOrEqualTo(130));
+      expect(
+          suite.cases
+              .where((c) => c.difficulty >= 7)
+              .every((c) => c.repeat > 1),
+          isTrue,
+          reason: 'L7 and L8 measure consistency, so every case repeats');
       for (var d = 1; d <= kSchoolTestMaxDifficulty; d++) {
         expect(suite.cases.where((c) => c.difficulty == d).length,
             greaterThanOrEqualTo(10),
@@ -118,7 +123,7 @@ void main() {
                 ]
               })),
           fails('twice'));
-      for (final bad in [0, 7, 2.5, 'hard']) {
+      for (final bad in [0, 9, 2.5, 'hard']) {
         expect(
             () => SchoolTestSuite.parse(
                 one({'kind': 'question', 'difficulty': bad})),
@@ -376,6 +381,142 @@ void main() {
     expect(schoolTestKeyProblem(AiUpstream.mistral, 'AbCdEfGh1234'), isNull);
     expect(schoolTestKeyHint('sk-or-v1-0123456789abcdef'), 'sk-or-v1-…cdef');
     expect(schoolTestKeyHint('AbCdEfGh1234'), 'AbC…1234');
+  });
+
+  group('judged cases and repeats', () {
+    SchoolTestRun newRun() => SchoolTestRun(
+          id: 'j',
+          route: const AiModeRoute(AiUpstream.openrouter, 'x/y'),
+          ownKey: false,
+          startedAtMs: 0,
+          total: 1,
+        );
+    SchoolTestSuite one(Map<String, dynamic> c) =>
+        SchoolTestSuite.parse(jsonEncode({
+          'cases': [
+            {'id': 'c', 'lesson': _lesson, ...c}
+          ]
+        }));
+    final authored = jsonEncode({
+      'question': 'Rechthoekszijden 5 en 12; schuine zijde?',
+      'choices': [],
+      'answer': '13',
+    });
+    String verdict(bool key, {bool level = true}) => jsonEncode({
+          'solution': '13',
+          'key_correct': key,
+          'one_answer': true,
+          'fits_level': level,
+          'complete': true,
+          'issues': level ? '' : 'Te makkelijk.',
+        });
+
+    test('an authored question is scored by the judge; a wrong key is zero',
+        () async {
+      for (final (v, expected) in [
+        (verdict(true), 1.0),
+        (verdict(true, level: false), 0.75),
+        (verdict(false), 0.0),
+      ]) {
+        final run = newRun();
+        late List<Map<String, String>> judged;
+        await runSchoolTestSuite(
+          run,
+          one({'kind': 'author', 'requirements': 'Een rekenvraag.'}),
+          'Teach.',
+          (messages, {required temperature}) async {
+            expect(messages.last['content'], contains('Een rekenvraag.'));
+            return SchoolTestReply(content: authored, tokens: 5);
+          },
+          judge: (messages, {required temperature}) async {
+            judged = messages;
+            expect(temperature, 0);
+            return SchoolTestReply(content: v, tokens: 7);
+          },
+        );
+        final r = run.results.single;
+        expect(r.score, expected, reason: v);
+        expect(r.tokens, 12);
+        expect(
+            judged.first['content'], contains('solve the question yourself'));
+        expect(judged.last['content'], contains('<key>\n13\n</key>'));
+      }
+    });
+
+    test('without a judge a judged case is skipped, not failed', () async {
+      final run = newRun();
+      await runSchoolTestSuite(
+          run,
+          one({'kind': 'author'}),
+          'Teach.',
+          (messages, {required temperature}) async =>
+              SchoolTestReply(content: authored));
+      final r = run.results.single;
+      expect(r.skipped, isTrue);
+      expect(run.skipped, 1);
+      expect(run.errors, 0);
+      expect(run.score, 0);
+      expect(run.summaryJson()['byKind'], {
+        'author': {'n': 0, 'score': 0},
+      });
+    });
+
+    test('feedback is half verdict, half the judge on the feedback', () async {
+      final run = newRun();
+      await runSchoolTestSuite(
+        run,
+        one({
+          'kind': 'feedback',
+          'question': '(x + 3)²',
+          'studentAnswer': 'x² + 9',
+          'expect': {'result': 'wrong'},
+        }),
+        'Teach.',
+        (messages, {required temperature}) async => SchoolTestReply(
+            content: jsonEncode({
+          'result': 'partly',
+          'feedback': 'Je vergeet 6x.',
+          'answer': 'x² + 6x + 9'
+        })),
+        judge: (messages, {required temperature}) async {
+          expect(messages.last['content'],
+              contains('The right verdict is: wrong.'));
+          return SchoolTestReply(
+              content: jsonEncode({
+            'accurate': true,
+            'language_ok': true,
+            'fits_level': true,
+            'helpful': true,
+            'issues': '',
+          }));
+        },
+      );
+      // Verdict one step off (0.5) and perfect feedback (1.0).
+      expect(run.results.single.score, 0.75);
+    });
+
+    test('a repeated case scores the average and is marked flaky', () async {
+      final run = newRun();
+      var n = 0;
+      await runSchoolTestSuite(
+        run,
+        one({
+          'kind': 'answer',
+          'question': '6 en 8?',
+          'repeat': 4,
+          'expect': {'number': 10},
+        }),
+        'Teach.',
+        (messages, {required temperature}) async =>
+            SchoolTestReply(content: n++ == 0 ? '11' : '10'),
+      );
+      final r = run.results.single;
+      expect(r.attempts, [0, 1, 1, 1]);
+      expect(r.score, 0.75);
+      expect(r.flaky, isTrue);
+      expect(run.flaky, 1);
+      expect(run.results, hasLength(1));
+    });
   });
 
   test('a stop request ends the run before the next case', () async {
