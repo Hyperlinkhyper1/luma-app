@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AEON 65 — Mechanical Keyboard, Assembled in 3D</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<style>
+/* ============ base ============ */
+html body{
+  margin:0; min-height:100%;
+  background:#07090d;
+  color:#e8eaef;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+html{scroll-behavior:smooth}
+#app{
+  min-height:100vh; min-height:100dvh; display:flex; flex-direction:column;
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #17202c 0%, rgba(9,12,17,0) 60%),
+    radial-gradient(900px 500px at 85% 110%, #1b1526 0%, rgba(9,12,17,0) 65%),
+    #07090d;
+}
+::selection{background:#c98b3f;color:#10130f}
+
+/* ============ 3D scene ============ */
+.stage{
+  position:absolute; inset:0; overflow:hidden;
+  perspective:1500px; perspective-origin:50% 50%;
+  touch-action:none; cursor:grab;
+}
+.stage.grabbing{cursor:grabbing}
+.zoomer{position:absolute; inset:0; transform-style:preserve-3d;}
+.orbit{
+  position:absolute; left:50%; top:50%; width:0; height:0;
+  transform-style:preserve-3d; will-change:transform;
+}
+.orbit-inner,.layer,.kb,.part,.box,.knobspin{
+  position:absolute; left:0; top:0; width:0; height:0; transform-style:preserve-3d;
+}
+.kb{left:0; top:0}
+.face{
+  position:absolute; left:0; top:0;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  pointer-events:none; transform-origin:50% 50%;
+  background-size:100% 100%;
+}
+.pending{visibility:hidden}
+.hit{pointer-events:auto; cursor:pointer; -webkit-tap-highlight-color:transparent; touch-action:none}
+
+/* ---- desk ---- */
+.desk{
+  background:
+    radial-gradient(closest-side at 50% 52%, rgba(0,0,0,.82), rgba(0,0,0,0) 72%),
+    radial-gradient(closest-side at 50% 54%, var(--glowc, rgba(120,190,255,.22)), rgba(0,0,0,0) 70%),
+    linear-gradient(#151a21 0%, #0b0e13 55%, #080a0e 100%);
+}
+
+/* ---- case: CNC aluminium ---- */
+.c-wall.tp{ /* top rim */
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.35), rgba(255,255,255,.05) 18%, rgba(255,255,255,.09) 50%, rgba(255,255,255,.05) 82%, rgba(0,0,0,.35)),
+    linear-gradient(180deg,#3d4552,#2a313b);
+  box-shadow:inset 0 0 0 1px rgba(203,160,88,.30);
+}
+.c-wall.fs,.c-wall.bs{
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, rgba(0,0,0,0) 1px 3px),
+    linear-gradient(180deg,#39414e,#22272f 60%,#161a20);
+}
+.c-wall.rs{background:linear-gradient(90deg,#2f3641,#1a1f26)}
+.c-wall.ls{background:linear-gradient(270deg,#333b47,#1c222a)}
+.c-base.tp{
+  background:
+    radial-gradient(120% 160% at 50% 0%, #232a33, #14181e 70%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.c-base.fs,.c-base.bs,.c-base.rs,.c-base.ls{background:#1a1e24}
+.badge{
+  position:absolute; right:26px; top:50%; transform:translateY(-50%);
+  padding:2px 7px; border-radius:3px;
+  font:600 9px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.28em; color:#f0dcae;
+  background:linear-gradient(180deg,rgba(214,174,96,.28),rgba(214,174,96,.10));
+  box-shadow:inset 0 0 0 1px rgba(224,187,110,.45);
+}
+.usbport{
+  position:absolute; left:60px; top:50%; transform:translateY(-50%);
+  width:46px; height:17px; border-radius:3px;
+  background:linear-gradient(180deg,#0b0d11,#191d24);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
+}
+.vent{position:absolute;top:50%;transform:translateY(-50%);width:2px;height:11px;border-radius:1px;background:rgba(0,0,0,.55)}
+
+/* ---- pcb ---- */
+.pcb.tp{
+  background:
+    radial-gradient(140% 180% at 50% 0%, #1b2b25, #0d1512 70%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+}
+.pcb.fs,.pcb.bs{background:linear-gradient(180deg,#1d3029,#0f1714)}
+.pcb.rs,.pcb.ls{background:linear-gradient(90deg,#0f1714,#1d3029)}
+.trace{position:absolute;height:1px;background:rgba(214,182,102,.5)}
+.pad{position:absolute;border-radius:1.5px;background:linear-gradient(180deg,#e2c281,#a5823c)}
+.slot{position:absolute;border-radius:4px;background:#080b0d;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.hole{position:absolute;border-radius:50%;background:#0a0c0f;box-shadow:inset 0 0 0 1px rgba(226,194,129,.5)}
+.silk{position:absolute;font:500 8px/1.3 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em;color:rgba(226,194,129,.75);white-space:nowrap}
+
+/* ---- poron foam ---- */
+.foam.tp{
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.05), rgba(0,0,0,0) 60%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.028) 0 2px, rgba(0,0,0,0) 2px 5px),
+    linear-gradient(180deg,#1c1f25,#14171c);
+}
+.foam.fs,.foam.bs{background:linear-gradient(180deg,#20242b,#14171c)}
+.foam.rs,.foam.ls{background:linear-gradient(90deg,#181c22,#22262e)}
+.foam.tp .fcut{position:absolute;border-radius:5px;background:#0d1014;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+
+/* ---- brass plate ---- */
+.plate.tp{
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 1px, rgba(0,0,0,0) 1px 4px),
+    linear-gradient(105deg,#8f6d2c 0%,#d8b571 22%,#a9822f 44%,#e6cd94 62%,#8a6a2a 82%,#c1a05c 100%);
+}
+.plate.fs,.plate.bs{background:linear-gradient(180deg,#c9a95f,#7d5f22)}
+.plate.rs,.plate.ls{background:linear-gradient(90deg,#7d5f22,#c9a95f)}
+.cut{position:absolute;border-radius:2px;background:#101418;box-shadow:inset 0 0 3px rgba(0,0,0,.9), 0 0 0 1px rgba(255,240,200,.18)}
+.screw{position:absolute;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f0e2bd,#6b5424 70%);box-shadow:0 0 0 1px rgba(0,0,0,.4)}
+
+/* ---- per-key LED plane ---- */
+.ledPlane{
+  overflow:hidden;
+  -webkit-mask-image:radial-gradient(circle, #000 0 44%, rgba(0,0,0,0) 47%);
+  mask-image:radial-gradient(circle, #000 0 44%, rgba(0,0,0, 0) 47%);
+  -webkit-mask-size:60px 60px; mask-size:60px 60px;
+  -webkit-mask-repeat:repeat; mask-repeat:repeat;
+  opacity:var(--lb,0); transition:opacity .8s ease;
+}
+.ledRainbow{
+  position:absolute; left:-900px; top:0; height:100%; width:2700px; will-change:transform;
+  opacity:1;
+  background:repeating-linear-gradient(90deg,
+    hsl(0 92% 62%),hsl(40 95% 60%),hsl(80 90% 58%),hsl(140 88% 55%),hsl(180 92% 58%),
+    hsl(220 95% 64%),hsl(265 92% 66%),hsl(310 92% 64%),hsl(350 92% 62%));
+  background-size:900px 100%;
+}
+.fx-wave .ledRainbow{animation:ledWave var(--wspd,7s) linear infinite}
+.fx-breathe .ledPlane{animation:ledBreathe 3.6s ease-in-out infinite}
+.fx-off{--lb:0 !important}
+@keyframes ledWave{from{transform:translate3d(0,0,0)}to{transform:translate3d(-900px,0,0)}}
+@keyframes ledBreathe{0%,100%{opacity:calc(var(--lb,.7) * .30)}50%{opacity:var(--lb,.7)}}
+
+.pressGlow{background:radial-gradient(circle, rgba(255,246,224,.55), rgba(255,220,160,0) 68%)}
+
+/* ---- switches ---- */
+.sw-body.tp{
+  background:
+    radial-gradient(circle at 50% 50%, #14171c 0 27%, rgba(0,0,0,0) 28%),
+    linear-gradient(180deg,#b7bfc9,#8d95a0);
+}
+.sw-body.fs,.sw-body.bs{
+  background:linear-gradient(180deg,#b0b8c3 0%,#8a929d 42%,#5c636d 50%,#2b3038 58%,#1d2228 100%);
+}
+.sw-body.rs{background:linear-gradient(90deg,#1d2228,#8a929d 45%,#2b3038)}
+.sw-body.ls{background:linear-gradient(270deg,#1d2228,#8a929d 45%,#2b3038)}
+.sw-stem.tp{
+  background-color:#cf4f26;
+  background-image:linear-gradient(#ffe6d2,#ffe6d2),linear-gradient(#ffe6d2,#ffe6d2);
+  background-size:3px 58%,58% 3px;
+  background-position:center center; background-repeat:no-repeat;
+}
+.sw-stem.fs,.sw-stem.bs{background:linear-gradient(180deg,#e06a3a,#a63c19)}
+.sw-stem.rs{background:linear-gradient(90deg,#a63c19,#e06a3a)}
+.sw-stem.ls{background:linear-gradient(270deg,#a63c19,#e06a3a)}
+
+/* ---- keycaps (tapered frustum) ---- */
+.cap-g-alpha{--ct:#ece4d2;--cb:#b3a88c;--lg:#3c3a33}
+.cap-g-mod{--ct:#49536a;--cb:#20252f;--lg:#e2e8f4}
+.cap-g-acc{--ct:#d3653c;--cb:#8d3a18;--lg:#fff0e3}
+.cap-g-space{--ct:#3b4353;--cb:#1c212a;--lg:#8b95a8}
+.ct{
+  background:
+    radial-gradient(125% 135% at 30% 24%, rgba(255,255,255,.17), rgba(255,255,255,0) 62%),
+    radial-gradient(140% 170% at 70% 90%, rgba(0,0,0,.20), rgba(0,0,0,0) 60%),
+    var(--ct);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);
+}
+.cw.cf,.cw.cb{
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.30), rgba(0,0,0,0) 14%, rgba(0,0,0,0) 86%, rgba(0,0,0,.30)),
+    linear-gradient(180deg,var(--ct),var(--cb));
+}
+.cw.cl{background:linear-gradient(90deg,var(--cb),var(--ct))}
+.cw.cr{background:linear-gradient(90deg,var(--ct),var(--cb))}
+.lg{position:absolute;font-weight:600;line-height:1;white-space:nowrap;user-select:none;letter-spacing:.01em}
+.lg.tl{left:6px;top:5px;font-size:12px}
+.lg.lc{left:7px;top:50%;transform:translateY(-50%);font-size:10px;letter-spacing:.04em}
+.lg.cc{left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-size:10px;letter-spacing:.34em}
+
+/* ---- rotary knob (brass cylinder) ---- */
+.knob-side{background:#8a6d33}
+.knob-top{
+  border-radius:50%;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(0,0,0,.34) 0 2.4deg, rgba(255,255,255,.06) 2.4deg 5.1deg),
+    radial-gradient(circle at 42% 34%, #f2e0ac, #b3913f 58%, #6d5626 100%);
+  box-shadow:inset 0 0 0 2px rgba(64,48,16,.55);
+}
+.knob-dot{position:absolute;left:50%;top:7px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#fff6dd,#8c6f2d)}
+.knob-hint{opacity:0;transition:opacity .25s}
+.knobWrap:hover .knob-hint{opacity:1}
+.knobWrap{cursor:ns-resize}
+
+/* ---- 3D floating layer labels ---- */
+.lbl{
+  position:absolute;left:0;top:0;transform-origin:50% 50%;
+  padding:3px 8px;border-radius:4px;white-space:nowrap;
+  font:600 10px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.14em;
+  color:#f0e2bd;background:rgba(12,15,20,.72);
+  box-shadow:inset 0 0 0 1px rgba(203,160,88,.35);
+  opacity:0;transition:opacity .35s ease;
+  backface-visibility:visible;
+}
+
+/* ============ HUD / chrome ============ */
+.hud-pill{
+  background:rgba(10,13,18,.72); backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.10);
+}
+.btn{
+  display:inline-flex;align-items:center;gap:.45rem;
+  padding:.5rem .85rem;border-radius:.7rem;font-size:12px;font-weight:600;letter-spacing:.03em;
+  border:1px solid rgba(255,255,255,.14);color:#dfe4ec;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+  transition:transform .12s ease, background .2s ease, border-color .2s ease, opacity .2s;
+}
+.btn:hover{background:linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.06));border-color:rgba(255,255,255,.28)}
+.btn:active{transform:translateY(1px) scale(.99)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn.gold{
+  border-color:rgba(214,174,96,.5);color:#f6e6c2;
+  background:linear-gradient(180deg,rgba(214,174,96,.30),rgba(214,174,96,.10));
+}
+.btn.gold:hover{background:linear-gradient(180deg,rgba(214,174,96,.45),rgba(214,174,96,.16))}
+.btn.on{border-color:rgba(126,214,168,.6);color:#c8f5de;background:linear-gradient(180deg,rgba(66,190,133,.28),rgba(66,190,133,.08))}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.ctl-label{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:#8d97a8}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;height:20px;background:transparent;cursor:pointer;width:100%;
+}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:rgba(255,255,255,.14)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;margin-top:-5px;border-radius:50%;
+  background:linear-gradient(180deg,#f4e3ba,#c39c4c);box-shadow:0 0 0 1px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.5);
+}
+input[type=range]::-moz-range-track{height:4px;border-radius:99px;background:rgba(255,255,255,.14)}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:50%;background:#e0bd76}
+select{
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#e6eaf1;
+  border-radius:.55rem;padding:.32rem .5rem;font-size:11.5px;outline:none;cursor:pointer;
+}
+select option{background:#0d1116}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012));border:1px solid rgba(255,255,255,.09)}
+.specrow{display:flex;justify-content:space-between;gap:.75rem;padding:.42rem 0;border-bottom:1px dashed rgba(255,255,255,.08);font-size:11.5px}
+.specrow dt{color:#8d97a8}
+.specrow dd{color:#e9edf4;text-align:right}
+.bar{height:3px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#c99b4e,#f2dca6);transition:width .25s ease}
+.fadein{animation:fadeUp .7s cubic-bezier(.2,.7,.2,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .fadein{animation:none}
+  .fx-wave .ledRainbow{animation-duration:26s}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= HEADER ================= -->
+  <header class="px-4 sm:px-7 pt-5 pb-3 flex flex-wrap items-end justify-between gap-x-6 gap-y-2 fadein">
+    <div>
+      <div class="text-[10px] tracking-[.4em] uppercase text-amber-300/70 mono">Aeon Keyboards · Build Studio</div>
+      <h1 class="text-2xl sm:text-[2.1rem] leading-tight font-semibold tracking-tight mt-1">
+        AEON 65 <span class="text-white/35 font-light">— gasket-mount, assembled live</span>
+      </h1>
+    </div>
+    <div class="flex flex-wrap gap-1.5 text-[10px] mono text-white/60">
+      <span class="px-2 py-1 rounded-md border border-white/10 bg-white/[.04]">60% · 61 keys</span>
+      <span class="px-2 py-1 rounded-md border border-white/10 bg-white/[.04]">brass plate</span>
+      <span class="px-2 py-1 rounded-md border border-white/10 bg-white/[.04]">AEON Tactile 55g</span>
+      <span class="px-2 py-1 rounded-md border border-white/10 bg-white/[.04]">rotary encoder</span>
+    </div>
+  </header>
+
+  <!-- ================= MAIN ================= -->
+  <main class="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_336px] gap-3 sm:gap-4 px-3 sm:px-6 pb-3">
+
+    <!-- ---------- 3D scene ---------- -->
+    <section class="relative rounded-2xl border border-white/10 overflow-hidden min-h-[440px] xl:min-h-[560px] bg-[radial-gradient(120%_100%_at_50%_0%,#131a24_0%,#080a0e_70%)]">
+      <div id="stage" class="stage">
+        <div class="zoomer" id="zoomer">
+          <div class="orbit" id="orbit">
+            <div class="orbit-inner">
+              <div class="kb fx-wave" id="kb"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- stage HUD -->
+      <div class="absolute left-3 top-3 sm:left-4 sm:top-4 hud-pill rounded-xl px-3.5 py-2.5 w-[15.5rem] max-w-[62%] pointer-events-none">
+        <div class="flex items-center gap-2">
+          <span id="stageDot" class="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse"></span>
+          <span id="stageName" class="text-[11px] font-semibold tracking-[.16em] uppercase text-white/90">Preparing</span>
+        </div>
+        <div id="stageSub" class="text-[10.5px] text-white/45 mt-0.5 mono">initialising build…</div>
+        <div class="bar mt-2"><i id="stageBar"></i></div>
+      </div>
+
+      <!-- orbit hint -->
+      <div class="absolute right-3 top-3 sm:right-4 sm:top-4 hud-pill rounded-lg px-2.5 py-1.5 text-[10px] text-white/45 mono pointer-events-none hidden sm:block">
+        drag&nbsp;→&nbsp;orbit&nbsp;·&nbsp;scroll&nbsp;→&nbsp;zoom
+      </div>
+
+      <!-- audio hint -->
+      <div id="audioHint" class="absolute left-1/2 -translate-x-1/2 bottom-3 hud-pill rounded-full px-3.5 py-1.5 text-[11px] text-amber-200/90 flex items-center gap-2 transition-opacity duration-500">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+        <span id="audioHintText">Tap anywhere to enable key sounds</span>
+      </div>
+    </section>
+
+    <!-- ---------- specs ---------- -->
+    <aside class="flex flex-col gap-3 min-w-0">
+      <div class="panel rounded-2xl p-4 fadein">
+        <div class="text-[10px] tracking-[.3em] uppercase text-amber-300/70 mono mb-2">Bill of materials</div>
+        <dl class="m-0">
+          <div class="specrow"><dt>Case</dt><dd>6063 alu · bead-blast</dd></div>
+          <div class="specrow"><dt>Mount</dt><dd>Gasket · silicone socks</dd></div>
+          <div class="specrow"><dt>Plate</dt><dd>1.5 mm brass</dd></div>
+          <div class="specrow"><dt>Foam</dt><dd>3.5 mm Poron</dd></div>
+          <div class="specrow"><dt>PCB</dt><dd>1.6 mm · flex-cut</dd></div>
+          <div class="specrow"><dt>Switches</dt><dd>AEON Tactile 55 g</dd></div>
+          <div class="specrow"><dt>Keycaps</dt><dd>PBT dye-sub · MTNU</dd></div>
+          <div class="specrow border-b-0"><dt>Encoder</dt><dd>Brass · 20 detents</dd></div>
+        </dl>
+      </div>
+
+      <div class="panel rounded-2xl p-4 fadein">
+        <div class="text-[10px] tracking-[.3em] uppercase text-amber-300/70 mono mb-2.5">Sound lab</div>
+        <div class="grid grid-cols-3 gap-1.5">
+          <button class="btn justify-center" data-snd="alpha">Alpha</button>
+          <button class="btn justify-center" data-snd="mod">Mod</button>
+          <button class="btn justify-center" data-snd="nav">Nav</button>
+          <button class="btn justify-center" data-snd="enter">Enter</button>
+          <button class="btn justify-center" data-snd="backspace">Bksp</button>
+          <button class="btn justify-center" data-snd="space">Space</button>
+        </div>
+        <p class="text-[10.5px] leading-relaxed text-white/40 mt-2.5">
+          Every group is synthesised live: filtered noise bursts for the click, pitched triangle
+          bodies for the <span class="text-white/70">thock</span>, sub-tones and stabiliser rattle on
+          the 6.25u spacebar.
+        </p>
+      </div>
+
+      <div class="panel rounded-2xl p-4 hidden xl:block fadein">
+        <div class="text-[10px] tracking-[.3em] uppercase text-amber-300/70 mono mb-2.5">Try it</div>
+        <ul class="text-[11.5px] text-white/55 space-y-1.5 leading-snug">
+          <li>· Click or tap any keycap to press it.</li>
+          <li>· Type on your real keyboard — it mirrors here.</li>
+          <li>· Drag the <span class="text-amber-200/90">brass knob</span> to shift the light hue; click it to toggle RGB.</li>
+          <li>· Pull the <span class="text-amber-200/90">explode</span> slider to open the stack.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ================= CONTROLS ================= -->
+  <footer class="px-3 sm:px-6 pb-4 pt-1">
+    <div class="hud-pill rounded-2xl px-3 sm:px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div class="flex items-center gap-2">
+        <button id="btnReplay" class="btn gold">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          Replay assembly
+        </button>
+        <button id="btnDemo" class="btn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7V5h16v2M9 20h6M12 5v15"/></svg>
+          <span id="demoLabel">Type demo</span>
+        </button>
+        <button id="btnView" class="btn">Reset view</button>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnMute" class="btn on" aria-pressed="false">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path id="muteWave" d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+          <span id="muteLabel">Sound on</span>
+        </button>
+        <div class="w-[74px]"><input id="vol" type="range" min="0" max="100" value="72" aria-label="Volume"></div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="ctl-label">RGB</span>
+        <select id="fx" aria-label="Lighting effect">
+          <option value="wave">Wave</option>
+          <option value="breathe">Breathing</option>
+          <option value="static">Static</option>
+          <option value="off">Off</option>
+        </select>
+        <div class="w-[68px]"><input id="bri" type="range" min="10" max="100" value="72" aria-label="Brightness"></div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-1 min-w-[170px] max-w-[280px]">
+        <span class="ctl-label">Explode</span>
+        <input id="sep" type="range" min="0" max="100" value="0" aria-label="Layer separation">
+        <span id="sepVal" class="mono text-[10px] text-white/40 w-7 text-right">0%</span>
+      </div>
+    </div>
+    <p class="text-center text-[10px] text-white/25 mono mt-2.5">
+      CSS 3D transforms · Web Audio synthesis · no images, no audio files
+    </p>
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   0 · constants
+   ========================================================================= */
+const RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const PITCH = 60, GAP = 6;                 // 1u pitch + cap gap
+const COLS = 15, ROWS_N = 5;
+const MATRIX_W = COLS*PITCH, MATRIX_H = ROWS_N*PITCH;   // 900 x 300
+const PAD_L = 30, PAD_T = 30, PAD_B = 34, KNOB_ZONE = 70, PAD_R = 30;
+const CASE_W = PAD_L + MATRIX_W + KNOB_ZONE + PAD_R;    // 1030
+const CASE_H = PAD_T + MATRIX_H + PAD_B;                // 364
+const WALL   = 12;
+const IN_W = CASE_W - WALL*2, IN_H = CASE_H - WALL*2;
+
+/* z stack (local up = +z) — every solid is stacked, never crossing another plane */
+const Z_CASE = 34;            // case wall top
+const Z_BASE = 5;             // case floor thickness
+const Z_PCB0 = 12,  Z_PCB_T = 1.7;         // pcb top 13.7
+const Z_FOAM0= 14.6,Z_FOAM_T = 3.4;        // foam top 18.0
+const Z_PL0  = 19.4,Z_PL_T   = 2.0;        // plate top 21.4
+const Z_SW0  = 21.6, SW_H = 8;             // switch body 21.6 → 29.6
+const Z_STEM0= 29.7, STEM_H = 4.5;         // stem 29.7 → 34.2
+const CAP_BASE = 33.2, CAP_H = 13, CAP_T = 7;   // cap 33.2 → 46.2
+const KNOB_R = 27, KNOB_Z0 = 15.4, KNOB_H = 17;
+
+/* interior stack that must clear the encoder zone (knob left edge = KX-KNOB_R) */
+const PL_W = 920, PL_H = 322, PL_CX = -27, PL_CY = -2;   // plate  x -487 … 433
+const FO_W = 906, FO_H = 310;                            // foam   x -480 … 426
+
+/* separation (explode view) travel */
+const SEP = { pcb:118, foam:214, plate:312, switches:426, caps:550, knob:668 };
+
+/* =========================================================================
+   1 · tiny dom helpers
+   ========================================================================= */
+const $ = s => document.querySelector(s);
+function el(cls, tag){ const d=document.createElement(tag||"div"); if(cls) d.className=cls; return d; }
+
+/* generic 3D face: positioned by its CENTRE (cx,cy,cz), sized (w,h) */
+function face(parent, cls, w, h, cx, cy, cz, rot, extra){
+  const f = el("face "+cls);
+  f.style.width = w+"px"; f.style.height = h+"px";
+  f.style.transform = "translate3d("+(cx-w/2)+"px,"+(cy-h/2)+"px,"+cz+"px)"+(rot?" "+rot:"");
+  if(extra) for(const k in extra) f.style[k]=extra[k];
+  parent.appendChild(f);
+  return f;
+}
+/* axis-aligned box: footprint (w,h) centred at (cx,cy), bottom at z0, depth d */
+function box(parent, cls, w, h, z0, d, cx, cy, o){
+  o = o||{}; const cz = z0+d/2;
+  if(o.bottom) face(parent, cls+" bt", w, h, cx, cy, z0, "rotateX(180deg)");
+  if(o.top!==false) face(parent, cls+" tp", w, h, cx, cy, z0+d, "");
+  if(o.sides!==false){
+    face(parent, cls+" fs", w, d, cx, cy+h/2, cz, "rotateX(-90deg)");
+    face(parent, cls+" bs", w, d, cx, cy-h/2, cz, "rotateX(90deg)");
+    face(parent, cls+" rs", d, h, cx+w/2, cy, cz, "rotateY(90deg)");
+    face(parent, cls+" ls", d, h, cx-w/2, cy, cz, "rotateY(-90deg)");
+  }
+  return parent;
+}
+/* tapered keycap frustum: base (w,h) at z0, height ch, inset t */
+function capGroup(parent, w, h, z0, ch, t, cls){
+  const g = el("cap "+cls); parent.appendChild(g);
+  const s  = Math.hypot(ch,t);
+  const al = Math.atan2(t,ch)*180/Math.PI;
+  const zc = z0 + ch/2;
+  const top = face(g, "ct", w-2*t, h-2*t, 0, 0, z0+ch, "");
+  const cpF = "polygon("+t+"px 0,"+(w-t)+"px 0,"+w+"px "+s+"px,0 "+s+"px)";
+  const cpL = "polygon(0 0,"+s+"px "+t+"px,"+s+"px "+(h-t)+"px,0 "+h+"px)";
+  const cpR = "polygon(0 "+t+"px,"+s+"px 0,"+s+"px "+h+"px,0 "+(h-t)+"px)";
+  face(g, "cw cf", w, s, 0,  h/2-t/2, zc, "rotateX("+(al-90)+"deg)", {clipPath:cpF});
+  face(g, "cw cb", w, s, 0, -h/2+t/2, zc, "rotateX("+(90-al)+"deg)", {clipPath:cpF});
+  face(g, "cw cl", s, h, -w/2+t/2, 0, zc, "rotateY("+(al-90)+"deg)", {clipPath:cpL});
+  face(g, "cw cr", s, h,  w/2-t/2, 0, zc, "rotateY("+(90-al)+"deg)", {clipPath:cpR});
+  return {g:g, top:top};
+}
+
+/* =========================================================================
+   2 · layout  (60% + encoder zone)
+   ========================================================================= */
+function K(w,l,c,k){ return [w,l,c,k||"alpha"]; }
+const LAYOUT = [
+  [ K(1,"Esc","Escape","nav"), K(1,"1","Digit1"),K(1,"2","Digit2"),K(1,"3","Digit3"),K(1,"4","Digit4"),
+    K(1,"5","Digit5"),K(1,"6","Digit6"),K(1,"7","Digit7"),K(1,"8","Digit8"),K(1,"9","Digit9"),K(1,"0","Digit0"),
+    K(1,"-","Minus"),K(1,"=","Equal"), K(2,"Backspace","Backspace","backspace") ],
+  [ K(1.5,"Tab","Tab","mod"), K(1,"Q","KeyQ"),K(1,"W","KeyW"),K(1,"E","KeyE"),K(1,"R","KeyR"),K(1,"T","KeyT"),
+    K(1,"Y","KeyY"),K(1,"U","KeyU"),K(1,"I","KeyI"),K(1,"O","KeyO"),K(1,"P","KeyP"),
+    K(1,"[","BracketLeft"),K(1,"]","BracketRight"), K(1.5,"\\","Backslash") ],
+  [ K(1.75,"Caps","CapsLock","mod"), K(1,"A","KeyA"),K(1,"S","KeyS"),K(1,"D","KeyD"),K(1,"F","KeyF"),
+    K(1,"G","KeyG"),K(1,"H","KeyH"),K(1,"J","KeyJ"),K(1,"K","KeyK"),K(1,"L","KeyL"),
+    K(1,";","Semicolon"),K(1,"'","Quote"), K(2.25,"Enter","Enter","enter") ],
+  [ K(2.25,"Shift","ShiftLeft","mod"), K(1,"Z","KeyZ"),K(1,"X","KeyX"),K(1,"C","KeyC"),K(1,"V","KeyV"),
+    K(1,"B","KeyB"),K(1,"N","KeyN"),K(1,"M","KeyM"),K(1,",","Comma"),K(1,".","Period"),K(1,"/","Slash"),
+    K(2.75,"Shift","ShiftRight","mod") ],
+  [ K(1.25,"Ctrl","ControlLeft","mod"),K(1.25,"Win","MetaLeft","mod"),K(1.25,"Alt","AltLeft","mod"),
+    K(6.25,"AEON","Space","space"), K(1.25,"Alt","AltRight","mod"),K(1.25,"Fn","Fn","mod"),
+    K(1.25,"Menu","ContextMenu","mod"),K(1.25,"Ctrl","ControlRight","mod") ]
+];
+
+/* =========================================================================
+   3 · audio engine
+   ========================================================================= */
+const S = {
+  ctx:null, bus:null, master:null, noise:null, muted:false, vol:.72, running:false,
+  init(){
+    if(this.ctx){ if(this.ctx.state==="suspended") this.ctx.resume(); return; }
+    const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    const c = this.ctx = new AC();
+    const master = c.createGain(); master.gain.value = this.muted?0:this.vol;
+    const lp = c.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=11500; lp.Q.value=.4;
+    const comp = c.createDynamicsCompressor();
+    comp.threshold.value=-17; comp.knee.value=20; comp.ratio.value=4.2; comp.attack.value=.003; comp.release.value=.18;
+    const out = c.createGain(); out.gain.value=.95;
+    master.connect(lp); lp.connect(comp); comp.connect(out); out.connect(c.destination);
+    // small room
+    const conv = c.createConvolver(); conv.buffer = S.ir(c,.42,3.4);
+    const wet = c.createGain(); wet.gain.value=.13;
+    const bus = c.createGain(); bus.gain.value=1;
+    bus.connect(master); bus.connect(conv); conv.connect(wet); wet.connect(lp);
+    // noise source buffer
+    const n = c.createBuffer(1, Math.floor(c.sampleRate*.7), c.sampleRate);
+    const d = n.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    this.noise=n; this.bus=bus; this.master=master;
+    const upd=()=>{ this.running = c.state==="running"; audioHint(); };
+    upd(); c.onstatechange=upd;
+    if(c.state==="suspended") c.resume().then(upd,upd);
+  },
+  ir(c,dur,dec){
+    const len=Math.floor(c.sampleRate*dur), b=c.createBuffer(2,len,c.sampleRate);
+    for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch);
+      for(let i=0;i<len;i++){ d[i]=(Math.random()*2-1)*Math.pow(1-i/len,dec)*.6; } }
+    return b;
+  }
+};
+const rnd = (a,b)=>a+Math.random()*(b-a);
+
+const SND = {
+  alpha:     {freq:214, decay:.055, level:.50, nf:2950, nq:1.15, nl:.55, nd:.026, harm:.34},
+  mod:       {freq:184, decay:.046, level:.42, nf:2320, nq:1.00, nl:.46, nd:.022, harm:.28},
+  nav:       {freq:196, decay:.050, level:.50, nf:3150, nq:1.20, nl:.52, nd:.024, harm:.30},
+  enter:     {freq:136, decay:.100, level:.74, nf:2650, nq:1.40, nl:.62, nd:.042, harm:.52},
+  backspace: {freq:166, decay:.062, level:.68, nf:3450, nq:1.50, nl:.60, nd:.030, harm:.40},
+  space:     {freq:95,  decay:.135, level:.86, nf:1150, nq:.85,  nl:.55, nd:.062, harm:.30, sub:60, rattle:3},
+  knob:      {freq:318, decay:.030, level:.34, nf:4200, nq:2.20, nl:.42, nd:.014, harm:.20}
+};
+
+function nz(c, t, freq, q, level, dec, dest){
+  const src=c.createBufferSource(); src.buffer=S.noise; src.loop=true;
+  const bp=c.createBiquadFilter(); bp.type="bandpass"; bp.frequency.value=freq*rnd(.9,1.1); bp.Q.value=q;
+  const g=c.createGain();
+  g.gain.setValueAtTime(.0001,t);
+  g.gain.exponentialRampToValueAtTime(Math.max(.001,level),t+.0012);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dec);
+  src.connect(bp); bp.connect(g); g.connect(dest);
+  src.start(t, rnd(0,.35)); src.stop(t+dec+.03);
+  return g;
+}
+function playHit(p, pan, mul, up){
+  if(!S.ctx || S.muted) return;
+  const c=S.ctx, t=c.currentTime+.001;
+  const vg=c.createGain(); vg.gain.value=1;
+  const pn=c.createStereoPanner(); pn.pan.value=Math.max(-1,Math.min(1,pan||0));
+  vg.connect(pn); pn.connect(S.bus);
+  const dur = up ? Math.max(.018,(p.decay||.05)*.5) : (p.decay||.05);
+  const lvl = (p.level||.5)*(up?.30:1)*(mul==null?1:mul);
+  // body
+  const f0 = (p.freq||200)*(up?1.62:1)*rnd(.965,1.035);
+  const o=c.createOscillator(); o.type="triangle";
+  o.frequency.setValueAtTime(f0,t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(38,f0*.68), t+dur);
+  const og=c.createGain();
+  og.gain.setValueAtTime(.0001,t);
+  og.gain.exponentialRampToValueAtTime(lvl,t+.0018);
+  og.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(og); og.connect(vg); o.start(t); o.stop(t+dur+.04);
+  // harmonic
+  if(p.harm && !up){
+    const o2=c.createOscillator(); o2.type="sine";
+    o2.frequency.setValueAtTime(f0*2.03,t);
+    const g2=c.createGain();
+    g2.gain.setValueAtTime(.0001,t);
+    g2.gain.exponentialRampToValueAtTime(lvl*p.harm,t+.0014);
+    g2.gain.exponentialRampToValueAtTime(.0001,t+dur*.7);
+    o2.connect(g2); g2.connect(vg); o2.start(t); o2.stop(t+dur);
+  }
+  // sub thump (long keys)
+  if(p.sub && !up){
+    const o3=c.createOscillator(); o3.type="sine";
+    o3.frequency.setValueAtTime(p.sub,t);
+    o3.frequency.exponentialRampToValueAtTime(p.sub*.62,t+.16);
+    const g3=c.createGain();
+    g3.gain.setValueAtTime(.0001,t);
+    g3.gain.exponentialRampToValueAtTime(lvl*.85,t+.006);
+    g3.gain.exponentialRampToValueAtTime(.0001,t+.19);
+    o3.connect(g3); g3.connect(vg); o3.start(t); o3.stop(t+.22);
+  }
+  // click
+  nz(c,t,(p.nf||2800)*(up?1.5:1),p.nq||1.1,(p.nl||.5)*(up?.4:1)*(mul==null?1:mul),
+     up?Math.max(.012,(p.nd||.03)*.6):(p.nd||.03), vg);
+  // stabiliser rattle
+  if(p.rattle && !up){
+    for(let i=1;i<=p.rattle;i++) nz(c,t+i*.011, 3600+i*750, 2.4, (p.nl||.5)*.30, .012, vg);
+  }
+}
+
+/* =========================================================================
+   4 · build the scene
+   ========================================================================= */
+const kb = $("#kb"), orbit = $("#orbit"), zoomer = $("#zoomer"), stageEl = $("#stage");
+const L = {};                                    // layers
+function layer(name){ const d=el("layer pending"); kb.appendChild(d); L[name]=d; return d; }
+
+/* ---- desk ---- */
+(function(){
+  const d = face(kb, "desk", 1900, 1050, 0, 0, -17, "");
+  d.style.setProperty("--glowc","rgba(120,190,255,.20)");
+})();
+
+/* ---- case ---- */
+(function(){
+  const c = layer("case");
+  box(c, "c-base", IN_W, IN_H, 0, Z_BASE, 0, 0, {sides:true});          // floor
+  box(c, "c-wall c-w-n", CASE_W, WALL, 0, Z_CASE, 0, -CASE_H/2+WALL/2);
+  box(c, "c-wall c-w-s", CASE_W, WALL, 0, Z_CASE, 0,  CASE_H/2-WALL/2);
+  box(c, "c-wall c-w-w", WALL, CASE_H, 0, Z_CASE, -CASE_W/2+WALL/2, 0);
+  box(c, "c-wall c-w-e", WALL, CASE_H, 0, Z_CASE,  CASE_W/2-WALL/2, 0);
+  // front badge + vents
+  const fw = c.querySelector(".c-w-s.fs");
+  if(fw){ const b=el("badge"); b.textContent="AEON 65"; fw.appendChild(b);
+    for(let i=0;i<9;i++){ const v=el("vent"); v.style.left=(70+i*11)+"px"; fw.appendChild(v); } }
+  const bw = c.querySelector(".c-w-n.fs");
+  if(bw){ const u=el("usbport"); bw.appendChild(u); }
+})();
+
+/* ---- PCB ---- */
+const MX = -CASE_W/2 + PAD_L, MY = -CASE_H/2 + PAD_T;   // matrix origin
+(function(){
+  const p = layer("pcb");
+  const pcb = box(p, "pcb", IN_W-10, IN_H-10, Z_PCB0, Z_PCB_T, 0, 0);
+  const top = p.querySelector(".pcb.tp");
+  const ox = (IN_W-10)/2, oy = (IN_H-10)/2;
+  // traces
+  for(let i=0;i<9;i++){
+    const t=el("trace"); const y=oy-26-i*13;
+    t.style.cssText="left:"+(24+rnd(0,26))+"px;top:"+y+"px;width:"+(IN_W-160-rnd(0,120))+"px;transform:rotate("+rnd(-.4,.4)+"deg)";
+    top.appendChild(t);
+  }
+  for(let i=0;i<5;i++){
+    const t=el("trace");
+    t.style.cssText="left:"+(ox+MX*0+30)+"px;top:"+(40+i*16)+"px;width:1px;height:"+(IN_H-90)+"px;background:rgba(214,182,102,.28)";
+    top.appendChild(t);
+  }
+  // hot-swap pads per key
+  LAYOUT.forEach((row,r)=>{ let off=0;
+    row.forEach(k=>{ const w=k[0]*PITCH;
+      const pad=el("pad");
+      pad.style.cssText="left:"+(MX+off+w/2+ox-17)+"px;top:"+(MY+r*PITCH+PITCH/2+oy-8)+"px;width:34px;height:16px";
+      top.appendChild(pad); off+=w;
+    });
+  });
+  // flex cuts, holes, silkscreen
+  [[ox-70,oy-30],[ox-70,-oy+30],[-ox+70,oy-30],[-ox+70,-oy+30]].forEach(pt=>{
+    const s=el("slot"); s.style.cssText="left:"+(pt[0]-38)+"px;top:"+(pt[1]-5)+"px;width:76px;height:10px"; top.appendChild(s);
+  });
+  [[-ox+34,-oy+22],[-ox+34,oy-22],[ox-34,-oy+22],[ox-34,oy-22]].forEach(pt=>{
+    const h=el("hole"); h.style.cssText="left:"+(pt[0]-3.5)+"px;top:"+(pt[1]-3.5)+"px;width:7px;height:7px"; top.appendChild(h);
+  });
+  const sk=el("silk"); sk.textContent="AEON 65 · REV 2.1 · FLEX-CUT";
+  sk.style.cssText="left:"+(MX+ox+4)+"px;top:"+(MY+oy+MATRIX_H+8)+"px";
+  top.appendChild(sk);
+  const sk2=el("silk"); sk2.textContent="1.6 mm FR4 · HOT-SWAP · PER-KEY RGB";
+  sk2.style.cssText="left:"+(MX+ox+4)+"px;top:"+(MY+oy-16)+"px;color:rgba(226,194,129,.45)";
+  top.appendChild(sk2);
+})();
+
+/* ---- foam ---- */
+(function(){
+  const f = layer("foam");
+  box(f, "foam", FO_W, FO_H, Z_FOAM0, Z_FOAM_T, PL_CX, PL_CY);
+  const top=f.querySelector(".foam.tp"), ox=FO_W/2, oy=FO_H/2;
+  LAYOUT.forEach((row,r)=>{ let off=0;
+    row.forEach(k=>{ const w=k[0]*PITCH;
+      const c=el("fcut");
+      c.style.cssText="left:"+(MX+off+w/2-PL_CX+ox-15)+"px;top:"+(MY+r*PITCH+PITCH/2-PL_CY+oy-15)+"px;width:30px;height:30px";
+      top.appendChild(c); off+=w;
+    });
+  });
+})();
+
+/* ---- brass plate + per-key lighting (painted into the plate surface) ---- */
+(function(){
+  const p = layer("plate");
+  box(p, "plate", PL_W, PL_H, Z_PL0, Z_PL_T, PL_CX, PL_CY);
+  const top=p.querySelector(".plate.tp"), ox=PL_W/2, oy=PL_H/2;
+  L.plateTop = top;
+  /* diffused RGB: one masked dot-grid element, panned by transform */
+  const lp = el("ledPlane");
+  lp.style.cssText = "position:absolute;left:"+(MX-PL_CX+ox)+"px;top:"+(MY-PL_CY+oy)+
+                     "px;width:"+MATRIX_W+"px;height:"+MATRIX_H+"px";
+  top.appendChild(lp);
+  const rb = el("ledRainbow"); lp.appendChild(rb);
+  L.ledPlane = lp; L.ledRainbow = rb;
+  LAYOUT.forEach((row,r)=>{ let off=0;
+    row.forEach(k=>{ const w=k[0]*PITCH;
+      const c=el("cut");
+      c.style.cssText="left:"+(MX+off+w/2-PL_CX+ox-7.5)+"px;top:"+(MY+r*PITCH+PITCH/2-PL_CY+oy-7.5)+"px;width:15px;height:15px";
+      top.appendChild(c); off+=w;
+    });
+  });
+  [[-ox+22,-oy+16],[-ox+22,oy-16],[ox-22,-oy+16],[ox-22,oy-16],[0,-oy+16],[0,oy-16]].forEach(pt=>{
+    const s=el("screw"); s.style.cssText="left:"+(pt[0]-4)+"px;top:"+(pt[1]-4)+"px;width:8px;height:8px"; top.appendChild(s);
+  });
+})();
+
+/* ---- switches + keycaps ---- */
+const keys = [], byCode = {};
+const SW_F = 42, STEM_F = 15;
+const CAPCLS = {alpha:"alpha", mod:"mod", space:"space", nav:"acc", enter:"acc", backspace:"mod"};
+const LGCOL  = {alpha:"#3c3a33", mod:"#e2e8f4", space:"#8b95a8", acc:"#fff0e3"};
+(function(){
+  const swLayer = layer("switches");
+  const capLayer = el("layer"); kb.appendChild(capLayer); L.caps = capLayer;
+
+  LAYOUT.forEach((row,r)=>{
+    let off = 0;
+    row.forEach(def=>{
+      const [uw,label,code,kind] = def;
+      const w = uw*PITCH - GAP, h = PITCH - GAP;
+      const x = MX + off + uw*PITCH/2, y = MY + r*PITCH + PITCH/2;
+      off += uw*PITCH;
+
+      /* switch */
+      const sw = el("part pending"); swLayer.appendChild(sw);
+      box(sw, "sw-body", SW_F, SW_F, Z_SW0, SW_H, 0, 0);
+      const stem = el("part stemw"); sw.appendChild(stem);
+      box(stem, "sw-stem", STEM_F, STEM_F, Z_STEM0, STEM_H, 0, 0);
+
+      /* keycap */
+      const capw = el("part capw pending"); capLayer.appendChild(capw);
+      const grp = capGroup(capw, w, h, CAP_BASE, CAP_H, CAP_T, "cap-g-"+(CAPCLS[kind]||"alpha"));
+      const lg = el("lg " + (kind==="space"?"cc":(kind==="mod"||kind==="enter"||kind==="backspace"?"lc":"tl")));
+      grp.top.appendChild(lg);
+      lg.style.color = LGCOL[CAPCLS[kind]]||"#3a3a3a";
+      lg.textContent = label;
+
+      /* hit area (rides on the cap) */
+      const hit = face(capw, "hit", w, h, 0, 0, CAP_BASE+CAP_H+1, "");
+      hit.style.background="rgba(0,0,0,0)";
+      hit.setAttribute("role","button");
+      hit.setAttribute("aria-label", label+" key");
+
+      const k = { code:code, kind:kind, label:label, x:x, y:y, w:w, h:h, row:r,
+                  sw:sw, stem:stem, capw:capw, hit:hit, down:false,
+                  homeSw:"translate3d("+x+"px,"+y+"px,0px)",
+                  awaySw:"translate3d("+(x+46)+"px,"+(y-34)+"px,330px)",
+                  homeCap:"translate3d("+x+"px,"+y+"px,0px)",
+                  awayCap:"translate3d("+(x-52)+"px,"+(y-42)+"px,352px)" };
+      keys.push(k); byCode[code]=k;
+    });
+  });
+})();
+
+/* ---- rotary encoder ---- */
+const KX = MX + MATRIX_W + KNOB_ZONE/2 + 6, KY = MY + 30;
+let knobAngle = 0, knobWrap, knobSpin;
+(function(){
+  const lay = layer("knob");
+  knobWrap = el("part knobWrap"); lay.appendChild(knobWrap);
+  knobSpin = el("knobspin"); knobWrap.appendChild(knobSpin);
+  const N = 16, chord = 2*KNOB_R*Math.sin(Math.PI/N);
+  for(let i=0;i<N;i++){
+    const a = i*360/N;
+    const d = Math.cos((a+40)*Math.PI/180);            // fake light from upper-left
+    const b = .30 + .72*Math.max(0,d);
+    const col = "rgb("+Math.round(150*b+34)+","+Math.round(118*b+26)+","+Math.round(58*b+12)+")";
+    face(knobSpin, "knob-side", chord+0.6, KNOB_H, 0, 0, KNOB_Z0+KNOB_H/2,
+         "rotateZ("+a+"deg) translate3d(0,"+KNOB_R+"px,0) rotateX(90deg)", {background:col});
+  }
+  const top = face(knobSpin, "knob-top", KNOB_R*2, KNOB_R*2, 0, 0, KNOB_Z0+KNOB_H, "");
+  const dot = el("knob-dot"); top.appendChild(dot);
+  box(knobSpin, "pcb", 11, 11, Z_PCB0+Z_PCB_T+.1, 1.6, 0, 0);   // shaft, rests on the PCB
+  const hint = face(knobWrap, "hit knob-hint", 96, 26, 0, 0, KNOB_Z0+KNOB_H+16, "");
+  hint.style.cssText += ";text-align:center;font:600 9px/26px ui-monospace,Menlo,monospace;letter-spacing:.18em;color:#f0e2bd;background:rgba(10,13,18,.8);border-radius:99px;box-shadow:inset 0 0 0 1px rgba(203,160,88,.4);pointer-events:none";
+  hint.textContent = "DRAG · HUE";
+  const hit = face(knobWrap, "hit", KNOB_R*2+6, KNOB_R*2+6, 0, 0, KNOB_Z0+KNOB_H+2, "");
+  hit.style.borderRadius="50%"; hit.style.background="rgba(0,0,0,0)";
+  hit.setAttribute("aria-label","Rotary encoder");
+  knobSpin.style.transform = "translate3d("+KX+"px,"+KY+"px,0px) rotateZ("+knobAngle+"deg)";
+  L.knobHit = hit;
+})();
+
+/* ---- floating layer labels (explode view) ---- */
+const LABELS = [
+  ["pcb","PCB · 1.6 mm FR4"],["foam","PORON FOAM · 3.5 mm"],
+  ["plate","BRASS PLATE · 1.5 mm + RGB"],["switches","AEON TACTILE 55 g"],
+  ["caps","PBT MTNU KEYCAPS"],["knob","ROTARY ENCODER"]
+];
+LABELS.forEach(function(d){
+  const name=d[0];
+  const lay=L[name]; if(!lay) return;
+  const f = face(lay, "lbl", 210, 22, CASE_W/2+96, -CASE_H/2+30, 22, "");
+  f.style.textAlign="left"; f.textContent=d[1];
+  f.style.left="0"; f.style.top="0";
+  f.style.width="210px"; f.style.height="22px";
+  f.style.lineHeight="22px";
+  L[name+"Lbl"]=f;
+});
+
+/* =========================================================================
+   5 · camera
+   ========================================================================= */
+const view = { ex:57, sp:-15, z:1, tex:57, tsp:-15, tz:1, auto:false, idle:0 };
+let fitScale = 1;
+function applyView(){
+  orbit.style.transform = "rotateX("+view.ex.toFixed(2)+"deg) rotateZ("+view.sp.toFixed(2)+"deg)";
+  const s = fitScale*view.z;
+  zoomer.style.transform = "scale3d("+s+","+s+","+s+")";
+}
+function fit(){
+  const w = stageEl.clientWidth||800, h = stageEl.clientHeight||500;
+  fitScale = Math.max(.20, Math.min(w/1210, h/640));
+  applyView();
+}
+window.addEventListener("resize", fit);
+
+/* orbit drag */
+let drag=null;
+stageEl.addEventListener("pointerdown", function(e){
+  S.init();
+  if(e.target.closest && e.target.closest(".hit")) return;   // keys/knob own it
+  drag = {x:e.clientX, y:e.clientY, ex:view.ex, sp:view.sp};
+  stageEl.classList.add("grabbing");
+  stageEl.setPointerCapture && stageEl.setPointerCapture(e.pointerId);
+});
+stageEl.addEventListener("pointermove", function(e){
+  if(!drag) return;
+  view.tsp = Math.max(-85, Math.min(85, drag.sp + (e.clientX-drag.x)*.34));
+  view.tex = Math.max(21,  Math.min(84,  drag.ex - (e.clientY-drag.y)*.30));
+  view.idle = 0;
+});
+function endDrag(){ drag=null; stageEl.classList.remove("grabbing"); }
+stageEl.addEventListener("pointerup", endDrag);
+stageEl.addEventListener("pointercancel", endDrag);
+stageEl.addEventListener("pointerleave", endDrag);
+stageEl.addEventListener("wheel", function(e){
+  if(e.ctrlKey) return;
+  e.preventDefault();
+  view.tz = Math.max(.5, Math.min(1.9, view.tz * (1 - e.deltaY*.0011)));
+  view.idle=0;
+}, {passive:false});
+
+(function loop(){
+  view.ex += (view.tex-view.ex)*.11;
+  view.sp += (view.tsp-view.sp)*.11;
+  view.z  += (view.tz -view.z )*.13;
+  if(view.auto && !drag){ view.tsp += .055; view.tsp=Math.max(-85,Math.min(85,view.tsp)); }
+  view.idle++;
+  applyView();
+  requestAnimationFrame(loop);
+})();
+
+/* =========================================================================
+   6 · key interaction
+   ========================================================================= */
+let assembling = true, soundOn = true;
+function press(k, silent){
+  if(!k || k.down || assembling) return;
+  k.down = true;
+  const capT = k.capw, stemT = k.stem;
+  const pz = "translate3d("+k.x+"px,"+k.y+"px,-7px)";
+  capT.style.transitionDuration="62ms"; capT.style.transitionTimingFunction="cubic-bezier(.3,.9,.4,1)";
+  capT.style.transform = pz;
+  stemT.style.transitionDuration="62ms"; stemT.style.transitionTimingFunction="cubic-bezier(.3,.9,.4,1)";
+  stemT.style.transform = "translate3d(0px,0px,-7px)";
+  if(!silent) playHit(SND[k.kind]||SND.alpha, (k.x/(MATRIX_W/2))*.65, 1, false);
+  // press glow, painted on the plate surface
+  const gw = k.w+30, gh = k.h+30;
+  const g = el("pressGlow");
+  g.style.cssText = "position:absolute;pointer-events:none;left:"+(k.x-PL_CX+PL_W/2-gw/2)+
+                    "px;top:"+(k.y-PL_CY+PL_H/2-gh/2)+"px;width:"+gw+"px;height:"+gh+"px;opacity:0";
+  L.plateTop.appendChild(g);
+  const a=g.animate([{opacity:0,transform:"scale(.55)"},
+                     {opacity:.95,transform:"scale(1)"},
+                     {opacity:0,transform:"scale(1.2)"}], {duration:520, easing:"ease-out"});
+  a.onfinish=function(){ g.remove(); };
+  a.oncancel=function(){ g.remove(); };
+}
+function release(k, silent){
+  if(!k || !k.down) return;
+  k.down = false;
+  const dur = RM?70:150;
+  k.capw.style.transitionDuration=dur+"ms";
+  k.capw.style.transitionTimingFunction="cubic-bezier(.2,1.5,.4,1)";
+  k.capw.style.transform = k.homeCap;
+  k.stem.style.transitionDuration=dur+"ms";
+  k.stem.style.transitionTimingFunction="cubic-bezier(.2,1.5,.4,1)";
+  k.stem.style.transform = "translate3d(0px,0px,0px)";
+  if(!silent) playHit(SND[k.kind]||SND.alpha, (k.x/(MATRIX_W/2))*.65, .8, true);
+}
+keys.forEach(function(k){
+  k.hit.addEventListener("pointerdown", function(e){
+    e.stopPropagation(); S.init();
+    k.hit.setPointerCapture && k.hit.setPointerCapture(e.pointerId);
+    press(k);
+  });
+  const up = function(e){ e.stopPropagation(); release(k); };
+  k.hit.addEventListener("pointerup", up);
+  k.hit.addEventListener("pointercancel", up);
+  k.hit.addEventListener("lostpointercapture", function(){ release(k); });
+});
+
+/* physical keyboard */
+const PREVENT = new Set(["Space","Tab","Backspace","Enter","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Slash","Quote"]);
+window.addEventListener("keydown", function(e){
+  S.init();
+  const k = byCode[e.code];
+  if(!k) return;
+  const t = e.target, field = t && (t.tagName==="INPUT"||t.tagName==="SELECT"||t.tagName==="TEXTAREA"||t.isContentEditable);
+  if(!field && PREVENT.has(e.code) && !e.metaKey && !e.ctrlKey) e.preventDefault();
+  if(e.repeat){ if(!k.down) press(k); return; }
+  press(k);
+});
+window.addEventListener("keyup", function(e){
+  const k = byCode[e.code]; if(!k) return;
+  release(k);
+});
+window.addEventListener("blur", function(){ keys.forEach(function(k){ release(k,true); }); });
+
+/* sound lab buttons */
+document.querySelectorAll("[data-snd]").forEach(function(b){
+  b.addEventListener("click", function(){
+    S.init();
+    const kind=b.getAttribute("data-snd");
+    const rep = {alpha:"KeyH",mod:"ShiftLeft",nav:"Escape",enter:"Enter",backspace:"Backspace",space:"Space"}[kind];
+    const k = byCode[rep];
+    if(k){ press(k); setTimeout(function(){ release(k); }, 110); }
+    else playHit(SND[kind], 0, 1, false);
+  });
+});
+
+/* =========================================================================
+   7 · knob
+   ========================================================================= */
+let rgbOn = true, fxMode = "wave", brightness = .72, huePan = 0, detent = 0;
+function setKnob(){ knobSpin.style.transform = "translate3d("+KX+"px,"+KY+"px,0px) rotateZ("+knobAngle+"deg)"; }
+function applyLight(){
+  kb.className = "kb fx-"+(rgbOn?fxMode:"off");
+  kb.style.setProperty("--lb", rgbOn?brightness.toFixed(3):"0");
+  kb.style.setProperty("--wspd","7s");
+  const rb = L.ledRainbow, pan = (huePan*2.5)%900;
+  if(fxMode==="wave" && rgbOn){
+    rb.style.animation = "";                                  // class animation runs
+    rb.style.transform = "";
+    rb.style.animationDelay = (-(huePan/360*7000)/1000).toFixed(3)+"s";
+  } else {
+    rb.style.animation = "none";                               // hold a static pan
+    rb.style.animationDelay = "";
+    rb.style.transform = "translate3d("+(-900+pan)+"px,0,0)";
+  }
+  // desk glow follows the average hue
+  const h = (huePan*2.5)%360;
+  const a = rgbOn? .10+brightness*.22 : .04;
+  kb.querySelector(".desk").style.setProperty("--glowc","hsla("+h.toFixed(0)+",85%,62%,"+a.toFixed(3)+")");
+}
+(function(){
+  let dragging=false, lastY=0;
+  const hit=L.knobHit;
+  hit.addEventListener("pointerdown", function(e){
+    e.stopPropagation(); S.init(); dragging=true; lastY=e.clientY;
+    hit.setPointerCapture && hit.setPointerCapture(e.pointerId);
+  });
+  hit.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    const dy = e.clientY-lastY; lastY=e.clientY;
+    knobAngle = Math.max(-260, Math.min(260, knobAngle - dy*1.35));
+    huePan = (huePan - dy*.7 + 3600)%360;
+    setKnob(); applyLight();
+    const d = Math.round(knobAngle/18);
+    if(d!==detent){ detent=d; playHit(SND.knob, .5, .8, false); }
+  });
+  const end=function(e){ if(e) e.stopPropagation(); dragging=false; };
+  hit.addEventListener("pointerup", end);
+  hit.addEventListener("pointercancel", end);
+})();
+
+/* =========================================================================
+   8 · explode slider
+   ========================================================================= */
+const HOME = "translate3d(0px,0px,0px) rotateX(0deg) rotateZ(0deg)";
+const AWAY = {
+  case:"translate3d(0px,150px,-350px) rotateX(-16deg) rotateZ(8deg)",
+  pcb:"translate3d(-34px,-96px,430px) rotateX(-24deg) rotateZ(-7deg)",
+  leds:"translate3d(0px,0px,0px) rotateX(0deg) rotateZ(0deg)",
+  foam:"translate3d(26px,-74px,372px) rotateX(20deg) rotateZ(7deg)",
+  plate:"translate3d(-18px,-62px,340px) rotateX(-15deg) rotateZ(-5deg)",
+  switches:"translate3d(0px,0px,0px) rotateX(0deg) rotateZ(0deg)",
+  caps:"translate3d(0px,0px,0px) rotateX(0deg) rotateZ(0deg)",
+  knob:"translate3d(34px,-46px,310px) rotateX(-28deg) rotateZ(42deg)"
+};
+const sepInput=$("#sep"), sepVal=$("#sepVal");
+function applySep(v){
+  const t = v/100;
+  for(const n in SEP){ const l=L[n]; if(!l) continue; l.style.transform = "translate3d(0px,0px,"+(SEP[n]*t).toFixed(1)+"px) rotateX(0deg) rotateZ(0deg)"; }
+  LABELS.forEach(function(d){ const f=L[d[0]+"Lbl"]; if(f) f.style.opacity = t>.18?1:0; });
+  sepVal.textContent = Math.round(v)+"%";
+}
+sepInput.addEventListener("input", function(){ if(!assembling) applySep(+sepInput.value); });
+
+/* =========================================================================
+   9 · assembly timeline
+   ========================================================================= */
+const stageName=$("#stageName"), stageSub=$("#stageSub"), stageBar=$("#stageBar");
+function setStage(n,s,p){ stageName.textContent=n; stageSub.textContent=s; stageBar.style.width=Math.round(p)+"%"; }
+
+let run=0, timers=[], anims=[];
+const wait = ms => new Promise(r=>timers.push(setTimeout(r,ms)));
+function at(ms,fn){ timers.push(setTimeout(fn,ms)); }
+function clearRun(){ timers.forEach(clearTimeout); timers=[]; anims.forEach(a=>a.cancel()); anims=[]; }
+
+function flyPart(elm, from, to, dur, delay, arc, ease){
+  at(delay, function(){
+    elm.classList.remove("pending");
+    elm.style.transform = to;
+    const kf = arc ? [{transform:from},{transform:arc,offset:.52},{transform:to}] : [{transform:from},{transform:to}];
+    const a = elm.animate(kf, {duration:dur, easing:ease||"cubic-bezier(.16,.74,.22,1)"});
+    anims.push(a);
+  });
+}
+function resetScene(){
+  clearRun();
+  knobAngle=0; setKnob();
+  for(const n in L){ const l=L[n];
+    if(!l.classList || !l.classList.contains("layer")) continue;
+    l.getAnimations().forEach(a=>a.cancel());
+    if(AWAY[n] && n!=="switches" && n!=="caps"){ l.style.transform=AWAY[n]; l.classList.add("pending"); }
+    else { l.style.transform=HOME; l.classList.remove("pending"); }
+    const f=L[n+"Lbl"]; if(f) f.style.opacity=0;
+  }
+  keys.forEach(function(k){
+    k.sw.getAnimations().forEach(a=>a.cancel());
+    k.capw.getAnimations().forEach(a=>a.cancel());
+    k.sw.classList.add("pending"); k.capw.classList.add("pending");
+    k.sw.style.transform=k.awaySw; k.capw.style.transform=k.awayCap;
+    k.stem.style.transitionDuration="0ms"; k.stem.style.transform="translate3d(0px,0px,0px)";
+    k.capw.style.transitionDuration="0ms";
+    k.down=false;
+  });
+  kb.style.setProperty("--lb","0");
+  applySep(0); sepInput.value=0;
+}
+function snapAssembled(){
+  for(const n in L){ const l=L[n];
+    if(!l.classList || !l.classList.contains("layer")) continue;
+    l.style.transform=HOME; l.classList.remove("pending"); }
+  keys.forEach(function(k){ k.sw.classList.remove("pending"); k.capw.classList.remove("pending");
+    k.sw.style.transform=k.homeSw; k.capw.style.transform=k.homeCap; });
+  applyLight();
+}
+async function assemble(){
+  const my = ++run;
+  assembling = true;
+  sepInput.disabled = true; sepInput.style.opacity=.45;
+  $("#btnDemo").disabled = true;
+  resetScene();
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  if(my!==run) return;
+
+  if(RM){
+    snapAssembled();
+    assembling=false; sepInput.disabled=false; sepInput.style.opacity=1; $("#btnDemo").disabled=false;
+    setStage("Assembled","reduced-motion: shown fully built",100);
+    return;
+  }
+
+  const D=1;
+  /* 1 · case */
+  setStage("Case","CNC 6063 aluminium · bead-blasted", 8);
+  flyPart(L.case, AWAY.case, HOME, 980, 0, "translate3d(0px,90px,-170px) rotateX(-8deg) rotateZ(4deg)", "cubic-bezier(.2,.8,.2,1)");
+  await wait(1080); if(my!==run) return;
+
+  /* 2 · PCB */
+  setStage("PCB","1.6 mm flex-cut · hot-swap", 16);
+  flyPart(L.pcb, AWAY.pcb, HOME, 860, 0, "translate3d(-16px,-46px,215px) rotateX(-12deg) rotateZ(-3deg)");
+  await wait(940); if(my!==run) return;
+
+  /* 3 · foam */
+  setStage("Foam","3.5 mm Poron · case + plate", 26);
+  flyPart(L.foam, AWAY.foam, HOME, 760, 0, "translate3d(12px,-36px,190px) rotateX(10deg) rotateZ(3deg)");
+  await wait(830); if(my!==run) return;
+
+  /* 4 · plate */
+  setStage("Plate","1.5 mm brass · gasket mounted", 36);
+  flyPart(L.plate, AWAY.plate, HOME, 820, 0, "translate3d(-9px,-30px,170px) rotateX(-8deg) rotateZ(-2deg)");
+  await wait(890); if(my!==run) return;
+
+  /* 5 · switches, one by one, left → right */
+  const n = keys.length, step=42;
+  keys.forEach(function(k,i){
+    flyPart(k.sw, k.awaySw, k.homeSw, 430, i*step, "translate3d("+(k.x+18)+"px,"+(k.y-14)+"px,168px)");
+    at(i*step, function(){
+      setStage("Switches", (i+1)+" / "+n+" · AEON Tactile", 44 + (i/n)*24);
+      if(i%2===0) playHit({freq:300,decay:.03,level:.10,nf:2600,nq:2,nl:.10,nd:.014}, (k.x/(MATRIX_W/2))*.6, 1, false);
+    });
+  });
+  await wait(n*step+470); if(my!==run) return;
+
+  /* 6 · keycaps, one by one, left → right */
+  keys.forEach(function(k,i){
+    flyPart(k.capw, k.awayCap, k.homeCap, 420, i*38, "translate3d("+(k.x-20)+"px,"+(k.y-17)+"px,176px)");
+    at(i*38, function(){
+      setStage("Keycaps", (i+1)+" / "+n+" · PBT MTNU", 70 + (i/n)*22);
+      if(i%3===0) playHit({freq:250,decay:.04,level:.075,nf:2100,nq:1.6,nl:.08,nd:.02}, (k.x/(MATRIX_W/2))*.6, 1, false);
+    });
+  });
+  await wait(n*38+450); if(my!==run) return;
+
+  /* 7 · encoder */
+  setStage("Encoder","brass rotary · media + lighting", 94);
+  flyPart(L.knob, AWAY.knob, HOME, 760, 0, "translate3d(16px,-22px,150px) rotateX(-14deg) rotateZ(18deg)");
+  at(120, function(){ knobAngle=0; });
+  at(560, function(){
+    knobAngle=64; setKnob();
+    anims.push(knobSpin.animate([{transform:knobSpin.style.transform.replace("rotateZ(64deg)","rotateZ(0deg)")},{transform:knobSpin.style.transform}],{duration:420,easing:"cubic-bezier(.3,1.4,.4,1)"}));
+    playHit(SND.knob, .5, 1, false);
+  });
+  await wait(900); if(my!==run) return;
+
+  /* 8 · lighting */
+  setStage("Lighting","per-key RGB · wave", 100);
+  applyLight();
+  at(700, function(){
+    setStage("Ready","click a key · or type on your keyboard", 100);
+    assembling=false; sepInput.disabled=false; sepInput.style.opacity=1; $("#btnDemo").disabled=false;
+  });
+  await wait(760); if(my!==run) return;
+}
+
+/* =========================================================================
+   10 · controls
+   ========================================================================= */
+$("#btnReplay").addEventListener("click", function(){ S.init(); assemble(); });
+
+const btnMute=$("#btnMute"), muteLabel=$("#muteLabel"), muteWave=$("#muteWave");
+btnMute.addEventListener("click", function(){
+  S.init();
+  S.muted=!S.muted;
+  if(S.master) S.master.gain.value = S.muted?0:S.vol;
+  btnMute.classList.toggle("on", !S.muted);
+  btnMute.setAttribute("aria-pressed", String(S.muted));
+  muteLabel.textContent = S.muted?"Muted":"Sound on";
+  muteWave.style.opacity = S.muted?".25":"1";
+});
+$("#vol").addEventListener("input", function(e){
+  S.vol = (+e.target.value)/100;
+  if(S.master && !S.muted) S.master.gain.value = S.vol;
+});
+$("#fx").addEventListener("change", function(e){
+  rgbOn = e.target.value!=="off"; fxMode = e.target.value; applyLight();
+});
+$("#bri").addEventListener("input", function(e){
+  brightness = .10 + (+e.target.value)/100*.90; applyLight();
+});
+$("#btnView").addEventListener("click", function(){
+  view.tex=57; view.tsp=-15; view.tz=1; view.idle=0;
+});
+
+/* type demo */
+const DEMO = "The quick brown fox jumps over 2 lazy dogs.";
+const CHAR = {" ":"Space",".":"Period",",":"Comma",";":"Semicolon","'":"Quote","-":"Minus","=":"Equal",
+              "/":"Slash","\\":"Backslash","[":"BracketLeft","]":"BracketRight","1":"Digit1","2":"Digit2"};
+let demoRun=0, demoOn=false;
+$("#btnDemo").addEventListener("click", async function(){
+  S.init();
+  const my=++demoRun;
+  demoOn=!demoOn;
+  $("#demoLabel").textContent = demoOn?"Stop demo":"Type demo";
+  if(!demoOn){ keys.forEach(k=>release(k,true)); return; }
+  for(const ch of DEMO){
+    if(my!==demoRun || !demoOn) break;
+    let code = CHAR[ch];
+    if(!code){
+      if(/[a-z]/.test(ch)) code = "Key"+ch.toUpperCase();
+      else if(/[A-Z]/.test(ch)) code = "Key"+ch;
+      else if(/[0-9]/.test(ch)) code = "Digit"+ch;
+      else code = "Period";
+    }
+    const upper = /[A-Z]/.test(ch);
+    const k = byCode[code];
+    if(upper && byCode.ShiftLeft) press(byCode.ShiftLeft);
+    if(k) press(k);
+    await new Promise(r=>setTimeout(r, RM?90:118));
+    if(k) release(k);
+    if(upper && byCode.ShiftLeft) release(byCode.ShiftLeft);
+    await new Promise(r=>setTimeout(r, RM?26:38));
+  }
+  if(my===demoRun){ demoOn=false; $("#demoLabel").textContent="Type demo"; }
+});
+
+/* audio hint */
+const audioHintEl=$("#audioHint");
+function audioHint(){
+  if(S.running && !S.muted){ audioHintEl.style.opacity="0"; setTimeout(()=>audioHintEl.style.display="none",600); }
+  else if(S.ctx && S.ctx.state==="suspended"){ $("#audioHintText").textContent="Click to resume audio"; }
+}
+["pointerdown","keydown","touchstart"].forEach(ev=>window.addEventListener(ev, function(){ S.init(); }, {passive:true, once:false}));
+
+/* =========================================================================
+   11 · go
+   ========================================================================= */
+fit(); applyLight(); setStage("Preparing","loading build studio…",2);
+if(RM){ $("#audioHintText").textContent="Tap a key to hear it (reduced motion on)"; }
+setTimeout(assemble, 420);
+})();
+</script>
+</body>
+</html>
