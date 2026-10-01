@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Text Library</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="classroom.css">
 </head>
 <body>
 <canvas id="view" aria-hidden="true"></canvas>
@@ -191,6 +192,20 @@
   </div>
 </div>
 
+<div id="pc" class="mc-screen clear" hidden>
+  <div class="pc-frame" role="dialog" aria-modal="true" aria-labelledby="pc-title">
+    <div class="pc-screen">
+      <div class="pc-bar"><span id="pc-title"></span><span class="pc-dots" aria-hidden="true"></span></div>
+      <div id="pc-body" aria-live="polite"></div>
+      <div class="pc-actions">
+        <button id="pc-send" class="pc-button" type="button"></button>
+        <button id="pc-off" class="pc-button" type="button"></button>
+      </div>
+    </div>
+    <div class="pc-chin" aria-hidden="true"><i></i></div>
+  </div>
+</div>
+
 <nav id="a11y" class="sr-only" aria-label="Library"></nav>
 <div id="error" role="alert" hidden></div>
 
@@ -210,6 +225,8 @@
 <script src="book.js"></script>
 <script src="mail.js"></script>
 <script src="market.js"></script>
+<script src="desk.js"></script>
+<script src="classroom.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

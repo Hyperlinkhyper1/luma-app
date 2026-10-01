@@ -342,7 +342,7 @@
   // It stands on a plot right of the path, its counter facing the path
   // (-x). Coordinates are blocks from the plot's corner.
   const STALL = {
-    size: [6, 5],
+    size: [6, 6],
     counter: [0.9, 0.95, 2.0, 4.05],
     trader: [2.6, 2.5],
     // Where he comes round the counter from, on the side nearest the house.
@@ -354,6 +354,13 @@
     llamaLane: 6.3,
     post: [5.75, 2.55],
     wares: {x: 1.45, y: 1.12, z0: 1.3, z1: 3.7},
+    // The book review desk past the counter's south end: the computer faces
+    // the stall, and the reader sits with their back to the counter.
+    desk: {
+      box: [[0.15, 0, 4.42], [1.65, 1.35, 5.85]],
+      solids: [[0.15, 5.25, 1.65, 5.85], [0.68, 4.5, 1.12, 4.94]],
+      seat: [0.9, 0.5, 4.72],
+    },
     awning: {back: [3.62, 2.98], front: [0.32, 2.5], z0: 0.72, z1: 4.28},
   };
 
@@ -424,6 +431,45 @@
       addBox(K.mb, FLAT, K.atlas, [0, 0, 0], [(ex - 0.03) * 16, (ey - drop) * 16, (za + 0.01) * 16], [(ex + 0.02) * 16, ey * 16, (zb - 0.01) * 16], all('awning', {tint: i % 2 ? [1, 1, 1] : [0.9, 0.9, 0.9]}));
     }
     return {hinge: [bx, by]};
+  }
+
+  // The review desk in the plot's frame: a dark oak writing desk with a
+  // beige tower, a CRT monitor showing its desktop, keyboard and mouse, and
+  // a swivel chair facing it. Comes and goes with the trader.
+  function reviewDesk(K) {
+    const B = (a, c, faces, opts) => window.LibraryWorld.box(K, a, c, faces, {light: [1, 0, 0], ...opts});
+    const dark = sides('dark_oak_planks'), wood = sides('spruce_planks');
+    const beige = sides('iron_block', null, null, {tint: srgb([0.86, 0.82, 0.7])});
+    const shade = sides('iron_block', null, null, {tint: srgb([0.62, 0.59, 0.5])});
+    const black = solid([0.08, 0.08, 0.09]);
+    const cloth = sides('white_wool', null, null, {tint: srgb([0.22, 0.25, 0.32])});
+    const steel = sides('iron_block', null, null, {tint: srgb([0.3, 0.3, 0.32])});
+    // The desk.
+    B([0.15, 0.72, 5.25], [1.65, 0.78, 5.85], dark);
+    for (const x of [0.18, 1.56]) for (const z of [5.28, 5.76]) B([x, 0, z], [x + 0.06, 0.72, z + 0.06], dark);
+    B([1.14, 0.3, 5.3], [1.56, 0.72, 5.82], {...wood, north: {tex: 'cabinet_door', uv: [2, 2, 14, 14]}}, {whole: true});
+    B([0.24, 0.36, 5.79], [1.14, 0.72, 5.81], wood);
+    // The tower, its drives and a green light.
+    B([0.24, 0.78, 5.38], [0.44, 1.22, 5.8], beige, {whole: true});
+    for (const y of [1.1, 1.04]) B([0.27, y, 5.374], [0.41, y + 0.03, 5.38], {north: black.north}, {whole: true});
+    B([0.31, 0.86, 5.374], [0.35, 0.9, 5.38], {north: shade.north}, {whole: true});
+    B([0.38, 0.87, 5.372], [0.395, 0.885, 5.38], {north: {tex: 'solid', tint: [0.2, 1, 0.3], emit: 1.4}}, {whole: true});
+    // The monitor on its stand, the screen lit.
+    B([0.78, 0.78, 5.52], [0.94, 0.84, 5.72], shade, {whole: true});
+    B([0.6, 0.84, 5.46], [1.12, 1.3, 5.8], beige, {whole: true});
+    B([0.65, 0.89, 5.455], [1.07, 1.25, 5.455], {north: {tex: 'monitor_screen', uv: [0, 0, 16, 16], emit: 0.9}}, {whole: true});
+    // Keyboard and mouse.
+    B([0.64, 0.78, 5.27], [1.1, 0.8, 5.4], shade, {whole: true});
+    B([0.66, 0.8, 5.29], [1.08, 0.805, 5.38], {up: {tex: 'solid', tint: srgb([0.78, 0.76, 0.68])}}, {whole: true});
+    B([1.16, 0.78, 5.3], [1.21, 0.805, 5.37], beige, {whole: true});
+    // The chair: five-star foot, a column, seat and back.
+    B([0.68, 0.04, 4.69], [1.12, 0.08, 4.75], steel, {whole: true});
+    B([0.87, 0.04, 4.5], [0.93, 0.08, 4.94], steel, {whole: true});
+    for (const [x, z] of [[0.68, 4.69], [1.08, 4.69], [0.87, 4.5], [0.87, 4.9]]) B([x, 0, z], [x + 0.04, 0.04, z + 0.05], black, {whole: true});
+    B([0.88, 0.08, 4.7], [0.92, 0.42, 4.74], steel, {whole: true});
+    B([0.68, 0.42, 4.5], [1.12, 0.5, 4.94], cloth, {whole: true});
+    B([0.88, 0.5, 4.45], [0.92, 0.6, 4.49], steel, {whole: true});
+    B([0.7, 0.58, 4.44], [1.1, 1.02, 4.5], cloth, {whole: true});
   }
 
   // ── Creatures ──────────────────────────────────────────────────────────
@@ -661,6 +707,6 @@
 
   window.LibraryGoods = {
     CATALOG, ITEMS, MODELS, STALL, SHEET, FISH_COLOURS,
-    build, turn, footprint, beam, stall, stallSolids, awning, creature, fish, entitySheet, boxFaces,
+    build, turn, footprint, beam, stall, stallSolids, awning, reviewDesk, creature, fish, entitySheet, boxFaces,
   };
 })();

@@ -104,6 +104,15 @@ uses luma's own pixel lettering (`pixelfont.js`), which it turns into a real
 TTF so the book editor can be a plain contenteditable. The page loads
 three.js from `assets/airline_tycoon/scene/vendor/` rather than a copy.
 
+The hall's basement classroom (`classroom.js`, Nova only) runs on the
+server's classroom tutor (`server/lib/classroom.dart`, model picked on the
+admin dashboard's Assistant tab). Every question and every check is a fresh
+model call carrying only the tutor's instructions and the lesson (country,
+school, year, level, subject, book, chapter, paragraph, topic), plus the
+earlier questions' text to avoid repeats; never a chat history. Keep it that
+way. An account sets its country once; only the Users tab's Actions menu can
+reset it.
+
 **Platform-specific code** uses the suffix convention: `feature_io.dart` (Windows/Android/native), `feature_stub.dart` (unsupported platforms), `feature_web.dart` (web). The main `feature.dart` file exports the right one via conditional imports.
 
 ## Build, Test, and Development Commands

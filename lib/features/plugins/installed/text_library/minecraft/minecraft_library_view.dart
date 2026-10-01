@@ -7,12 +7,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../../../../l10n/app_localizations.dart';
+import '../../../../../settings/settings_scope.dart';
+import '../../../../../sync/sync_scope.dart';
 import '../../../../converter/schematic/textures/texture_downloader.dart';
 import '../../_shared/native_webview.dart';
 import '../../_shared/windows_webview.dart' show windowsAssetPath;
 import '../text_library_models.dart';
 import '../text_library_repository.dart';
 import '../text_library_scope.dart';
+import 'book_review_api.dart';
+import 'classroom_bridge.dart';
 import 'mail_store.dart';
 import 'market_store.dart';
 import 'player_skin.dart';
@@ -42,6 +46,7 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
   StreamSubscription<LibrarySnapshot>? _library;
   LibrarySnapshot? _latest;
   late TextLibraryRepository _repository;
+  late final ClassroomBridge _classroom = ClassroomBridge(send: _send);
   Timer? _timeout;
   bool _ready = false;
   bool _tickerEnabled = true;
@@ -70,6 +75,11 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         _sendLibrary();
       });
     }
+    _classroom.attach(
+      SyncScope.maybeOf(context),
+      context.dependOnInheritedWidgetOfExactType<SettingsScope>()?.notifier,
+      language: Localizations.localeOf(context).languageCode,
+    );
     final enabled = TickerMode.valuesOf(context).enabled;
     if (enabled != _tickerEnabled) {
       _tickerEnabled = enabled;
@@ -165,6 +175,7 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         _send({'type': 'mail', 'state': mail?.toJson()});
         final market = await loadMarket();
         _send({'type': 'market', 'state': market?.toJson()});
+        await _classroom.ready();
         final saved = await loadSavedSkin();
         if (saved != null) _send(saved.toMessage());
       case 'mail':
@@ -173,6 +184,8 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
         } catch (_) {
           // The next change saves it again.
         }
+      case 'classroom':
+        await _classroom.handle(message);
       case 'market':
         try {
           await saveMarket(MarketState.fromJson(message['state']));
@@ -238,6 +251,47 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
       case 'deleteBook':
         final id = _int(message['id']);
         if (id != null) await repository.deleteText(id);
+      case 'reviewBook':
+        await _reviewBook(message);
+    }
+  }
+
+  /// Sends a book from the market's review desk to the reviewer on the luma
+  /// server, and hands its answer back to the page, which files it with the
+  /// post as a letter for the next in-game day. A failure goes back as a
+  /// `failed` reply with a message for the desk's screen.
+  Future<void> _reviewBook(Map<String, Object?> message) async {
+    final t = L.of(context);
+    final id = _int(message['id']);
+    final text = id == null
+        ? null
+        : _latest?.subjects
+              .expand((s) => _latest!.textsOf(s.id))
+              .where((x) => x.id == id)
+              .firstOrNull;
+    if (text == null || text.body.isBlank) {
+      throw BookReviewException(t.textLibraryMcReviewEmpty);
+    }
+    final sync = SyncScope.maybeOf(context);
+    final baseUrl = sync?.serverUrl;
+    if (sync == null || !sync.serverReady || baseUrl == null) {
+      throw BookReviewException(t.textLibraryMcReviewSignIn);
+    }
+    final api = BookReviewApi(baseUrl, token: sync.authToken);
+    try {
+      final result = await api.review(
+        text.title,
+        text.body.plainText,
+        signIn: t.textLibraryMcReviewSignIn,
+        unreachable: t.textLibraryMcReviewUnreachable,
+      );
+      _send({
+        'type': 'reviewed',
+        'request': message['request'],
+        'result': result,
+      });
+    } finally {
+      api.close();
     }
   }
 
@@ -407,6 +461,7 @@ class _MinecraftLibraryViewState extends State<MinecraftLibraryView>
     WidgetsBinding.instance.removeObserver(this);
     _timeout?.cancel();
     unawaited(_library?.cancel());
+    _classroom.dispose();
     super.dispose();
   }
 }

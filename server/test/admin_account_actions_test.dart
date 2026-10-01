@@ -114,6 +114,26 @@ void main() {
     };
   }
 
+  test('book reviewer model test accepts unsaved and default selections',
+      () async {
+    for (final model in ['test-model', '']) {
+      final result = await call('POST', '/admin/ai-routes/test', admin: true,
+          json: {
+            'mode': 'bookreview',
+            'upstream': 'google',
+            'model': model,
+            'reasoningEffort': 'medium',
+          });
+      expect(result['httpStatus'], 200);
+      expect(result['ok'], false);
+      expect(result['model'], model.isEmpty ? 'gemini-flash-latest' : model);
+      expect(result['error'], contains('No API key'));
+    }
+    final saved = await call('POST', '/admin/ai-routes/test',
+        admin: true, json: {'mode': 'bookreview'});
+    expect(saved['httpStatus'], 404);
+  });
+
   test('detector model test accepts unsaved and default selections', () async {
     for (final model in ['test-model', '']) {
       final result = await call('POST', '/admin/ai-routes/test', admin: true,

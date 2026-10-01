@@ -53,7 +53,7 @@
 
   let seq = 0;
   const pending = new Map();
-  function request(message) {
+  function request(message, timeout = 20000) {
     return new Promise((resolve, reject) => {
       const id = ++seq;
       pending.set(id, {resolve, reject});
@@ -62,7 +62,7 @@
         if (!pending.has(id)) return;
         pending.delete(id);
         reject(new Error('timeout'));
-      }, 20000);
+      }, timeout);
     });
   }
 
@@ -92,6 +92,9 @@
         case 'mail': post.load(m.state); break;
         // The trader's clock, the crate and the placed furniture.
         case 'market': market.load(m.state); break;
+        // The classroom's door, the reader's country, the lesson kept, and
+        // the teacher's answers.
+        case 'classroom': classroom.receive(m); break;
         case 'assets':
           onAssets(m).catch(error => {
             console.error('Library assets failed', error);
@@ -106,6 +109,8 @@
           });
           break;
         case 'saved': pending.get(m.request)?.resolve(m.id); pending.delete(m.request); break;
+        // The book reviewer's answer to a book sent from the review desk.
+        case 'reviewed': pending.get(m.request)?.resolve(m.result); pending.delete(m.request); break;
         case 'failed': pending.get(m.request)?.reject(new Error(m.message || 'failed')); pending.delete(m.request); break;
         case 'download': {
           const bar = $('download-progress');
@@ -169,6 +174,22 @@
   // The wandering trader, and the furniture bought from him.
   const Goods = window.LibraryGoods;
   const market = LibraryMarket.create({send, catalog: Goods.CATALOG, reducedMotion: () => S.reducedMotion});
+  // The trader's review desk: send a book, get a letter about it the next
+  // in-game day. The app talks to the reviewer; a review can take a while.
+  const reviewScreen = LibraryDesk.create({
+    gui, post,
+    books: () => S.subjects.map(s => ({
+      name: s.name,
+      books: s.books.map(b => ({id: b.id, title: b.title, body: b.body || '', blank: Book.isBlank(b.body || '')})),
+    })),
+    upload: async book => {
+      try {
+        return await request({type: 'reviewBook', id: book.id}, 150000);
+      } catch (e) {
+        throw new Error(e?.message === 'timeout' ? gui.t('pcTimeout') : e?.message || String(e));
+      }
+    },
+  });
 
   try { S.quality = localStorage.getItem('library.quality') || (/Android/.test(navigator.userAgent) ? 'fast' : 'fancy'); } catch { /* storage blocked */ }
   try { S.timeMode = localStorage.getItem('library.time') || 'cycle'; } catch { /* storage blocked */ }
@@ -184,6 +205,9 @@
   const weather = LibraryWeather.create(T, R);
   weather.reducedFlash = S.reducedMotion;
   const blockMat = R.blockMaterial();
+  // The classroom in the basement: its door, its board and the lesson
+  // screen. The app talks to the teacher.
+  const classroom = LibraryClassroom.create({T, gui, send, scene, W, atlas: () => atlas, mat: blockMat, toast: (a, b) => gui.toast(a, b)});
   const dynMat = R.blockMaterial();
   const heldMat = R.blockMaterial();
   const ghostMat = R.blockMaterial({transparent: true, depthWrite: false});
@@ -952,6 +976,7 @@
     if (blocked(S.px, S.pz)) { S.px = 0; S.pz = built.layout.hallStart - 1.8; }
     buildDoor();
     buildPost();
+    classroom.build(built);
     coins.count = -1;
     buildCoins();
     buildHand();
@@ -1091,7 +1116,7 @@
     return {pos, target: pos.clone().addScaledVector(dir, 6), fov: walkFov()};
   }
   // Where the floor the reader is on lies.
-  const floorY = () => S.built?.layout.bases[S.floor] || 0;
+  const floorY = () => (S.floor < 0 ? S.built?.basement?.base ?? 0 : S.built?.layout.bases[S.floor] || 0);
   // The field of view setting; phones held upright see little of the
   // hall's width, so it is widened for them.
   const walkFov = () => V.fov + (innerWidth < innerHeight ? 8 : 0);
@@ -1377,7 +1402,7 @@
     const seated = S.mode === 'seated';
     $('back').hidden = !(inCase || seated);
     const scope = seated && !!S.seat?.telescope;
-    $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : scope ? 'stepBack' : seated ? 'standUp' : 'back');
+    $('back').textContent = gui.t(S.mode === 'placing' ? 'cancel' : scope ? 'stepBack' : seated && S.seat?.pc ? 'pcLogOff' : seated ? 'standUp' : 'back');
     $('scope').hidden = !scope;
     const others = S.built ? S.built.cases.filter(cs => cs.subject).length : 0;
     // The arrows step between bookcases, so they only show at one.
@@ -1503,7 +1528,7 @@
   // down from the opening.
   function stairBoxes() {
     const st = S.built?.stairs;
-    if (!st) return [];
+    if (!st || S.floor < 0) return [];
     const bases = S.built.layout.bases, b = bases[S.floor];
     const up = S.floor < bases.length - 1, down = S.floor > 0;
     const out = [];
@@ -1534,6 +1559,7 @@
     });
     const t = S.floor === 0 ? boxHit(ray, ...doorBox()) : null;
     if (t != null && t < REACH) consider(t, {kind: 'door'});
+    for (const hit of classroom.pick(ray, S.floor, boxHit, REACH)) consider(hit.t, hit);
     if (S.floor === 0) {
       for (const [kind, spot] of [['mailbox', S.built.mailbox], ['vault', S.built.vault]]) {
         const hit = spot ? boxHit(ray, ...spot.box) : null;
@@ -1542,6 +1568,10 @@
       for (const box of stallBoxes()) {
         const hit = boxHit(ray, ...box);
         if (hit != null && hit < REACH) consider(hit, {kind: 'trader', box});
+      }
+      if (trader.desk?.visible && !(S.seat && S.seat.pc)) {
+        const hit = boxHit(ray, ...trader.deskSeat.box);
+        if (hit != null && hit < REACH) consider(hit, {kind: 'desk', box: trader.deskSeat.box});
       }
     }
     // Furniture that does something: a bed, the swing, the telescope, the
@@ -1610,12 +1640,19 @@
     } else if (h.kind === 'vault') {
       outlineBox(S.built.vault.box);
       gui.tooltip([post.state.hand ? gui.t('vaultPut', post.state.hand) : gui.t('vaultOpen'), {text: gui.t('coins', post.state.vault), cls: 'sub'}], x, y);
+    } else if (h.kind === 'classroom') {
+      outlineBox(h.box);
+      gui.tooltip(h.tip, x, y);
     } else if (h.kind === 'stairs') {
       outlineBox(h.box);
       gui.tooltip([gui.t(h.dir > 0 ? 'upstairs' : 'downstairs')], x, y);
     } else if (h.kind === 'trader') {
       outlineBox(h.box);
       gui.tooltip(traderTooltip(), x, y);
+    } else if (h.kind === 'desk') {
+      outlineBox(h.box);
+      const waiting = post.pendingReview;
+      gui.tooltip([gui.t('pcUse'), {text: waiting ? gui.t('pcWaiting', waiting.letter.title || gui.t('untitled')) : gui.t('pcTitle'), cls: 'sub'}], x, y);
     } else if (h.kind === 'piece') {
       outlineBox(h.box);
       const pc = h.piece;
@@ -1679,6 +1716,8 @@
       await useMailbox();
     } else if (h.kind === 'vault') {
       await useVault();
+    } else if (h.kind === 'desk') {
+      await useDesk();
     } else if (h.kind === 'trader') {
       if (trader.phase === 'open') await openShop();
       else gui.toast(gui.t('traderStall'), traderTooltip()[1].text, traderIcon || post.coin);
@@ -1693,6 +1732,8 @@
         setDrawer(h.c, h.d, true);
         if (i >= 0) await toShelf(i);
       }
+    } else if (h.kind === 'classroom') {
+      await useClassroom(h);
     } else if (h.kind === 'stairs') {
       await climb(h.dir);
     } else if (h.kind === 'slot') {
@@ -1972,13 +2013,13 @@
   function blocked(x, z, floor = S.floor) {
     const b = S.built;
     if (!b) return false;
-    const y = b.layout.bases[floor] || 0;
+    const y = floor < 0 ? b.basement?.base ?? 0 : b.layout.bases[floor] || 0;
     for (const [dx, dz] of [[-BODY, -BODY], [BODY, -BODY], [-BODY, BODY], [BODY, BODY]]) {
       const cx = Math.floor(x + dx), cz = Math.floor(z + dz);
       if (!b.grid.solid(cx, y - 1, cz)) return true;
       if (b.grid.solid(cx, y, cz) || b.grid.solid(cx, y + 1, cz)) return true;
     }
-    for (const list of [b.colliders, floor === 0 ? door.colliders : [], pieces.colliders, floor === 0 ? trader.colliders : []]) {
+    for (const list of [b.colliders, floor === 0 ? door.colliders : [], pieces.colliders, floor === 0 ? trader.colliders : [], classroom.colliders]) {
       for (const [x0, z0, x1, z1, f] of list) {
         if ((f || 0) !== floor) continue;
         if (x > x0 - BODY && x < x1 + BODY && z > z0 - BODY && z < z1 + BODY) return true;
@@ -2057,6 +2098,65 @@
     S.vel = [0, 0];
     setMode('overview');
     rebuildA11y();
+  }
+
+  // ── The basement ───────────────────────────────────────────────────────
+  // The ladder down through the foyer's hatch, the classroom's door (Nova
+  // only), and its desks: sitting at one, or touching the board, brings up
+  // the lesson.
+  async function useClassroom(h) {
+    if (h.what === 'down' || h.what === 'up') return useLadder(h.what === 'down' ? -1 : 1);
+    if (h.what === 'door') {
+      if (classroom.useDoor()) swingArm();
+      rebuildA11y();
+      return;
+    }
+    if (classroom.isOpen) return;
+    if (h.what === 'desk') {
+      await sit(h.seat);
+      if (S.mode !== 'seated') return;
+    }
+    freeMouse();
+    setHover(null);
+    await classroom.open();
+    relock();
+  }
+
+  // Down the ladder into the cellar (dir -1) or back up into the foyer:
+  // onto the ladder facing the wall, down or up it, then a step off into
+  // the room.
+  async function useLadder(dir) {
+    const cellar = S.built?.basement;
+    if (!cellar || S.mode === 'climbing') return;
+    const {hatch} = cellar;
+    const toWall = Math.PI / 2, intoRoom = -Math.PI / 2;
+    const pose = (x, y, z, yaw, pitch = 0) => {
+      const pos = new T.Vector3(x, y + W.HALL.eye, z);
+      const ahead = new T.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+      return {pos, target: pos.clone().addScaledVector(ahead, 4), fov: walkFov()};
+    };
+    const [lx, lz] = hatch.ladder;
+    const [fromY, toY] = dir < 0 ? [0, cellar.base] : [cellar.base, 0];
+    const [endX, endZ] = dir < 0 ? hatch.bottom : hatch.top;
+    S.goal = null;
+    S.vel = [0, 0];
+    S.seat = null;
+    setMode('climbing');
+    const steps = S.reducedMotion
+      ? [[pose(endX, toY, endZ, intoRoom), 0.25]]
+      : [
+          [pose(lx + 0.15, fromY, lz, toWall, dir < 0 ? -0.5 : 0.1), 0.6],
+          [pose(lx + 0.15, toY, lz, toWall, dir < 0 ? -0.15 : 0.35), Math.abs(toY - fromY) * 0.3],
+          [pose(endX, toY, endZ, intoRoom), 0.6],
+        ];
+    for (const [p, duration] of steps) {
+      await flyTo(p, {duration});
+      if (S.mode !== 'climbing') return;
+    }
+    S.floor = dir < 0 ? cellar.floor : 0;
+    S.px = endX; S.pz = endZ;
+    S.yaw = intoRoom; S.pitch = 0;
+    setMode('overview');
   }
 
   // ── The front door ─────────────────────────────────────────────────────
@@ -2359,11 +2459,13 @@
     poseMailbox();
     refreshHud();
     rebuildA11y();
-    if (what === 'arrived') {
-      gui.toast(gui.t('newMail'), gui.t('newMailBody'), post.coin);
+    if (what === 'arrived' || what === 'review') {
+      if (what === 'review') gui.toast(gui.t('reviewArrived'), gui.t('reviewArrivedBody'), post.coin);
+      else gui.toast(gui.t('newMail'), gui.t('newMailBody'), post.coin);
       if (S.built?.mailbox) poof(S.built.mailbox.flag, 6, 0.2);
     }
     if (market.shopOpen) market.refreshShop();
+    if (reviewScreen.isOpen) reviewScreen.refresh();
   });
 
   // The post and the trader count the time the hall is open and on screen.
@@ -2446,7 +2548,7 @@
   // walks off the way he came.
   const STALL = Goods.STALL;
   const WALK = 1.35;
-  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
+  const trader = {group: null, parts: null, llamas: [], leads: null, awning: null, wares: null, desk: null, deskSeat: null, pictures: {}, phase: 'away', open: 0, walkers: [], colliders: []};
   let entityTexture = null, traderIcon = null;
 
   async function applyEntitySheet(files) {
@@ -2477,7 +2579,8 @@
     disposeGroup(trader.awning);
     disposeGroup(trader.wares);
     disposeGroup(trader.leads);
-    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, walkers: [], colliders: []});
+    disposeGroup(trader.desk);
+    Object.assign(trader, {group: null, parts: null, llamas: [], awning: null, wares: null, leads: null, desk: null, deskSeat: null, walkers: [], colliders: []});
     const m = S.built?.market;
     if (!m || !atlas) return;
     const [px, pz] = m.plot;
@@ -2529,6 +2632,17 @@
     trader.leads = new T.LineSegments(new T.BufferGeometry().setFromPoints(points), new T.LineBasicMaterial({color: 0x4a3018}));
     trader.leads.userData.noShadow = true;
     scene.add(trader.leads);
+    // The review desk past the counter, with its chair to sit at.
+    const deskMb = new W.MeshBuilder();
+    Goods.reviewDesk({mb: deskMb, grid: S.built.grid, atlas});
+    trader.desk = new T.Mesh(deskMb.geometry(T), dynMat);
+    trader.desk.position.set(px, 0, pz);
+    scene.add(trader.desk);
+    trader.desk.updateMatrixWorld(true);
+    bakeLight(trader.desk);
+    const D = STALL.desk;
+    const [sx, sy, sz] = D.seat;
+    trader.deskSeat = {pos: [px + sx, sy, pz + sz], yaw: Math.PI, eye: 1.08, pitch: -0.5, pc: true, box: D.box.map(([x, y, z]) => [px + x, y, pz + z])};
     syncMarket();
   }
 
@@ -2544,6 +2658,7 @@
     trader.group.visible = here;
     for (const l of trader.llamas) l.group.visible = here;
     trader.wares.visible = here;
+    trader.desk.visible = here;
     trader.leads.visible = here;
     poseAwning();
     refreshTraderColliders();
@@ -2616,6 +2731,7 @@
     ];
     for (const w of trader.walkers) w.obj.visible = false;
     trader.wares.visible = false;
+    trader.desk.visible = false;
     trader.leads.visible = false;
     poseAwning();
     refreshTraderColliders();
@@ -2658,6 +2774,8 @@
   function refreshTraderColliders() {
     trader.colliders = [];
     if (trader.phase !== 'open' || !S.built?.market) return;
+    const [px, pz] = S.built.market.plot;
+    for (const [x0, z0, x1, z1] of STALL.desk.solids) trader.colliders.push([px + x0, pz + z0, px + x1, pz + z1, 0]);
     const [tx, tz] = plotXZ(...STALL.trader);
     trader.colliders.push([tx - 0.3, tz - 0.3, tx + 0.3, tz + 0.3, 0]);
     for (const [x, z, yaw] of STALL.llamas) {
@@ -2748,6 +2866,8 @@
     const show = trader.phase === 'open' && trader.open > 0.7;
     if (trader.wares.visible !== show) {
       trader.wares.visible = show;
+      trader.desk.visible = show;
+      poof([trader.deskSeat.pos[0], 1, trader.deskSeat.pos[2] + 0.8], 8, 0.4);
       warePoofs();
       shadowDirty = true;
     }
@@ -2767,6 +2887,19 @@
       if (!l.group.visible || trader.walkers.some(w => w.obj === l.group && !w.done)) return;
       l.parts.head.rotation.x = S.reducedMotion ? 0 : Math.sin(time * 0.7 + i * 2.3) * 0.07;
     });
+  }
+
+  // Sits down at the review desk and switches the computer on; logging off
+  // gets up again.
+  async function useDesk() {
+    if (reviewScreen.isOpen || !trader.desk?.visible) return;
+    await sit(trader.deskSeat);
+    if (S.mode !== 'seated') return;
+    freeMouse();
+    setHover(null);
+    await reviewScreen.open();
+    if (S.mode === 'seated' && S.seat?.pc) await standUp();
+    relock();
   }
 
   async function openShop(select) {
@@ -2793,6 +2926,7 @@
       gui.toast(gui.t('traderArrived'), gui.t('traderArrivedBody'), traderIcon || post.coin);
     } else if (what === 'leave') {
       market.closeShop();
+      reviewScreen.close();
       startGoing();
       gui.toast(gui.t('traderGone'), '', traderIcon || post.coin);
     } else if (what === 'warn') {
@@ -3580,7 +3714,12 @@
     b.addEventListener('lostpointercapture', stop);
   }
 
-  $('back').onclick = () => (S.mode === 'placing' ? cancelPlacing() : S.mode === 'seated' ? standUp() : toOverview());
+  $('back').onclick = () => {
+    if (S.mode === 'placing') return cancelPlacing();
+    // At the review desk, logging off the computer gets you up.
+    if (S.mode === 'seated' && S.seat?.pc && reviewScreen.isOpen) return reviewScreen.close();
+    return S.mode === 'seated' ? standUp() : toOverview();
+  };
   // From the hall the arrows walk straight to the first or last bookcase.
   const stepCase = step => {
     if (S.mode === 'overview') {
@@ -3744,11 +3883,13 @@
         else add(gui.t('newCase'), () => newCase());
       });
       for (const s of stairBoxes()) add(gui.t(s.dir > 0 ? 'upstairs' : 'downstairs'), () => climb(s.dir));
+      for (const a of classroom.actions(S.floor)) add(a.label, () => useClassroom(a));
       add(gui.t(door.target ? 'closeDoor' : 'openDoor'), () => { toggleDoor(); rebuildA11y(); });
       if (S.floor === 0) {
         add(`${gui.t('mailbox')} — ${post.state.letters.length ? gui.t('mailWaiting', post.state.letters.length) : mailNext()}`, () => useMailbox());
         add(`${gui.t('vault')} — ${gui.t('coins', post.state.vault)}`, () => useVault());
         if (S.built.market) add(traderTooltip().map(l => l.text ?? l).join(' — '), () => (trader.phase === 'open' ? openShop() : null));
+        if (trader.desk?.visible) add(`${gui.t('pcTitle')} — ${gui.t('pcUse')}`, () => useDesk());
       }
       for (const pc of pieces.list) {
         if (pc.data.floor !== S.floor || !pc.act) continue;
@@ -3948,6 +4089,7 @@
     stepClock();
     stepWalk(dt);
     stepDoor(dt);
+    if (classroom.step(dt)) shadowDirty = true;
     stepDrawers(dt);
     stepCamera(dt, time);
     stepTweens(dt);
@@ -4053,10 +4195,12 @@
             // `?trader` has the wandering trader at his stall from the start.
             if (params.has('trader')) stock = {...(stock || {}), clock: LibraryMarket.ARRIVE};
             emit({type: 'market', state: stock});
+            LibraryClassroom.demo(m, emit);
             break;
           }
           case 'mail': try { localStorage.setItem('library.mail', JSON.stringify(m.state)); } catch { /* storage blocked */ } break;
           case 'market': try { localStorage.setItem('library.market', JSON.stringify(m.state)); } catch { /* storage blocked */ } break;
+          case 'classroom': LibraryClassroom.demo(m, emit); break;
           case 'assetsWanted': {
             const files = {};
             if (mcBase) {
@@ -4105,6 +4249,19 @@
             break;
           }
           case 'deleteBook': { const [s, b] = findBook(m.id); if (s) s.books.splice(s.books.indexOf(b), 1); snapshot(); break; }
+          // A stand-in reviewer for the preview: longer books score higher.
+          case 'reviewBook': {
+            const [, b] = findBook(m.id);
+            const words = (b?.body || '').split(/\s+/).filter(Boolean).length;
+            const score = Math.min(96, 30 + words * 4);
+            const coins = score < 60 ? 0 : Math.max(1, Math.min(50, Math.round(1 + (score - 60) * 49 / 40)));
+            setTimeout(() => emit({type: 'reviewed', request: m.request, result: {
+              score, coins, verdict: score < 60 ? 'A promising start' : 'A lovely little read',
+              praise: 'The opening line pulls you straight in.',
+              tips: ['Add a concrete detail or two so the reader can picture it.', 'Give it an ending that answers the first line.'],
+            }}), 1500);
+            break;
+          }
           case 'downloadVanilla': emit({type: 'downloadFailed', message: 'Preview only'}); break;
           case 'skinName': emit({type: 'skin', data: null, failed: m.name}); break;
           case 'resetSkin': emit({type: 'skin', data: null}); break;
@@ -4143,7 +4300,7 @@
   // Hooks for driving the page from a browser console or a test harness.
   window.__library = {
     S, R, W, V, view, hand, sitter, door, weather, climb, blocked, post, mailbox, vault, coins,
-    market, trader, pieces, building, music, pointer, openShop, startBuilding, stopBuilding, buildClick, canPlace, buildTarget, pickPiece, rayAt,
+    market, trader, pieces, building, music, pointer, reviewScreen, useDesk, openShop, startBuilding, stopBuilding, buildClick, canPlace, buildTarget, pickPiece, rayAt,
     get hover() { return hover; },
     get flight() { return flight; },
     // Steps the simulation without waiting on the display.

@@ -8,6 +8,7 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import 'ai_benchmark_store.dart';
+import 'ai_book_review.dart';
 import 'ai_detector_review.dart';
 import 'ai_image.dart';
 import 'ai_mode_routing.dart';
@@ -20,6 +21,7 @@ import 'preview_render.dart';
 import 'ai_usage_store.dart';
 import 'benchmark_github.dart';
 import 'chat_store.dart';
+import 'classroom.dart';
 import 'cs2_offline_store.dart';
 import 'deploy_console.dart';
 import 'update_check.dart';
@@ -34,6 +36,8 @@ import 'subway_relay.dart';
 import 'subway_store.dart';
 import 'util.dart';
 import 'web_search.dart';
+
+part 'api_classroom.dart';
 
 /// How a newly registered account becomes usable.
 enum ApprovalMode {
@@ -514,6 +518,11 @@ class Api {
       ..post('/api/v1/ai/image', _requireAuth(_aiImage))
       ..post('/api/v1/ai/web-search', _requireAuth(_webSearch))
       ..post('/api/v1/ai/detect', _requireAuth(_aiDetect))
+      ..post('/api/v1/ai/book-review', _requireAuth(_aiBookReview))
+      ..get('/api/v1/classroom', _requireAuth(_classroomState))
+      ..post('/api/v1/classroom/country', _requireAuth(_classroomSetCountry))
+      ..post('/api/v1/classroom/question', _requireAuth(_classroomQuestion))
+      ..post('/api/v1/classroom/review', _requireAuth(_classroomReview))
       ..get('/api/v1/steam/itad/status', _requireAuth(_itadStatus))
       ..get('/api/v1/steam/itad/lookup', _requireAuth(_itadLookupProxy))
       ..get('/api/v1/steam/itad/history', _requireAuth(_itadHistoryProxy))
@@ -625,6 +634,10 @@ class Api {
       ..post('/admin/ai-prices/accept', _requireAdmin(_adminAiPriceAccept))
       ..post('/admin/ai-prices/guard', _requireAdmin(_adminAiPriceGuard))
       ..post('/admin/ai-detector', _requireAdmin(_adminAiDetectorSave))
+      ..post('/admin/ai-book-review', _requireAdmin(_adminAiBookReviewSave))
+      ..post('/admin/ai-classroom', _requireAdmin(_adminAiClassroomSave))
+      ..post('/admin/classroom/country/reset',
+          _requireAdmin(_adminClassroomCountryReset))
       ..post('/admin/ai-image', _requireAdmin(_adminAiImageSave))
       ..post('/admin/benchmark-banners/render',
           _requireAdmin(_adminBannersRender))
@@ -774,7 +787,11 @@ class Api {
       return ('a', _authLimiter);
     }
     if (path.startsWith('api/v1/ai/') &&
-        (path.endsWith('/chat') || path == 'api/v1/ai/detect')) {
+        (path.endsWith('/chat') ||
+            path == 'api/v1/ai/detect' ||
+            path == 'api/v1/ai/book-review' ||
+            path == 'api/v1/classroom/question' ||
+            path == 'api/v1/classroom/review')) {
       return ('ai', _aiChatLimiter);
     }
     if (path == 'api/v1/ai/web-search') {
@@ -2338,6 +2355,8 @@ class Api {
     }
     return switch (mode) {
       'detector' => _aiDetectorRoute(),
+      'bookreview' => _aiBookReviewRoute(),
+      'classroom' => _aiClassroomRoute(),
       'picture' => aiImageConfig.resolve(config.configuredAiUpstreams),
       _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
     };
@@ -2346,6 +2365,8 @@ class Api {
   String _guardedLabel(String mode) {
     final label = switch (aiSelectorOf(mode)) {
       'detector' => 'AI Detector',
+      'bookreview' => 'Book reviewer',
+      'classroom' => 'Classroom tutor',
       'picture' => 'Picture model',
       final selector => aiModeRoutes.displayName(selector),
     };
@@ -2498,7 +2519,7 @@ class Api {
           'picture' => {
               for (final e in kDefaultAiImageModels.entries) e.key.name: e.value,
             },
-          'detector' => {
+          'detector' || 'bookreview' || 'classroom' => {
               for (final upstream in AiUpstream.values)
                 upstream.name: aiModeRoutes
                     .resolve('smarter', config.configuredAiUpstreams)
@@ -2579,6 +2600,27 @@ class Api {
   AiModeRoute? _aiDetectorRoute() {
     final configured = config.configuredAiUpstreams;
     final chosen = aiDetectorConfig.config.route;
+    if (chosen != null && configured.contains(chosen.upstream)) return chosen;
+    return aiModeRoutes.resolve('smarter', configured);
+  }
+
+  /// The Text Library's book reviewer: which model reads the books readers
+  /// upload from the Minecraft hall's market desk, and how it judges them.
+  /// The Text Library classroom's tutor model and instructions, and the
+  /// country each account picked for it (see `api_classroom.dart`).
+  late final ClassroomConfigStore classroomConfig =
+      ClassroomConfigStore(config.dataDir);
+  late final ClassroomCountryStore classroomCountries =
+      ClassroomCountryStore(config.dataDir);
+
+  late final BookReviewConfigStore aiBookReviewConfig =
+      BookReviewConfigStore(config.dataDir);
+
+  /// The route the book reviewer is served by: the operator's pick when its
+  /// provider still has a key, otherwise whatever Nebula runs on.
+  AiModeRoute? _aiBookReviewRoute() {
+    final configured = config.configuredAiUpstreams;
+    final chosen = aiBookReviewConfig.config.route;
     if (chosen != null && configured.contains(chosen.upstream)) return chosen;
     return aiModeRoutes.resolve('smarter', configured);
   }
@@ -2995,9 +3037,15 @@ class Api {
     }
     if (mode == 'picture') return _adminAiImageTest(body);
     if (mode is! String ||
-        (!kAiModeNames.containsKey(mode) && mode != 'detector')) {
+        (!kAiModeNames.containsKey(mode) &&
+            mode != 'detector' &&
+            mode != 'bookreview' &&
+            mode != 'classroom')) {
       return errorResponse(400, 'bad_request', 'Unknown mode.');
     }
+    // The detector and the book reviewer follow Nebula until a model is set.
+    final followsNebula =
+        mode == 'detector' || mode == 'bookreview' || mode == 'classroom';
     AiModeRoute? route;
     // The dashboard can test the current row before saving it. Older callers
     // that send only a mode retain the saved-route behavior.
@@ -3012,13 +3060,13 @@ class Api {
       if (modelInput is! String) {
         return errorResponse(400, 'bad_request', 'Model must be text.');
       }
-      final nebulaRoute = mode == 'detector' && modelInput.trim().isEmpty
+      final nebulaRoute = followsNebula && modelInput.trim().isEmpty
           ? aiModeRoutes.resolve('smarter', config.configuredAiUpstreams)
           : null;
       final upstream = nebulaRoute?.upstream ?? selectedUpstream;
       final model = modelInput.trim().isEmpty
           ? nebulaRoute?.model ??
-              kDefaultAiModeModels[upstream]![mode == 'detector' ? 'smarter' : mode]!
+              kDefaultAiModeModels[upstream]![followsNebula ? 'smarter' : mode]!
           : modelInput.trim();
       if (!isValidAiModelId(model)) {
         return errorResponse(400, 'bad_request', 'Enter a valid model ID.');
@@ -3042,9 +3090,12 @@ class Api {
               reasoningEffort:
                   effort is String && effort.isNotEmpty ? effort : null);
     } else {
-      route = mode == 'detector'
-          ? _aiDetectorRoute()
-          : aiModeRoutes.resolve(mode, config.configuredAiUpstreams);
+      route = switch (mode) {
+        'detector' => _aiDetectorRoute(),
+        'bookreview' => _aiBookReviewRoute(),
+        'classroom' => _aiClassroomRoute(),
+        _ => aiModeRoutes.resolve(mode, config.configuredAiUpstreams),
+      };
     }
     if (route == null) {
       return errorResponse(404, 'not_configured',
@@ -3314,6 +3365,177 @@ class Api {
     await store.logActivity(
         'ai_routes_changed',
         'AI Detector model → ${route?.model ?? 'Nebula default'}'
+            '${preferred.route == null ? '' : ' (if possible ${preferred.route!.model})'}, '
+            '${saved.instructions == null ? 'default' : 'custom'} instructions');
+    return _adminFormResponse(request, '/admin',
+        fragment: 'assistant',
+        json: {
+          'ok': true,
+          ...saved.toJson(),
+          if (preferred.route != null) 'preferred': preferred.route!.toJson(),
+        });
+  }
+
+  /// Sends a book to [route] under the reviewer [instructions]. Returns the
+  /// upstream status, the parsed review (null when the reply was unusable)
+  /// and the tokens the call cost.
+  Future<({int status, BookReview? review, int tokens})> _runBookReview(
+      AiModeRoute route, String instructions, String title, String text,
+      {String? guardKey, StoredUser? user}) async {
+    final upstreamBody = _aiUpstreamBody({
+      'messages': bookReviewMessages(instructions, title, text),
+      'max_tokens': 2000,
+      'temperature': 0.3,
+    }, route);
+    if (guardKey != null) _applyAiMaxPrice(guardKey, route, upstreamBody);
+    final (status, responseBody) = await _callAiUpstream(route, upstreamBody);
+    if (guardKey != null && status == HttpStatus.ok) {
+      await _recordAiPaid(guardKey, route, responseBody);
+    }
+    if (user != null && status == HttpStatus.ok) {
+      await _logAiCall(user, 'Book reviewer', route, responseBody);
+    }
+    var tokens = 0;
+    String? content;
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map) {
+        tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
+        content = decoded['choices']?[0]?['message']?['content'] as String?;
+      }
+    } catch (_) {}
+    final review = status == HttpStatus.ok && content != null
+        ? parseBookReviewReply(content)
+        : null;
+    return (status: status, review: review, tokens: tokens);
+  }
+
+  /// The Text Library's book review: the operator's chosen model reads a
+  /// book the reader uploaded from the Minecraft hall and scores it, with
+  /// praise and tips. The score sets the coins it earns (see
+  /// [bookReviewCoins]); the app only delivers them. Metered against the
+  /// user's Aurora token budget, like a chat turn.
+  Future<Response> _aiBookReview(Request request, StoredUser user) async {
+    final route = _aiBookReviewRoute();
+    if (route == null) {
+      return errorResponse(
+          404, 'not_configured', 'No server-wide Luma AI key is configured.');
+    }
+    Map<String, dynamic> body;
+    try {
+      body = await _readJson(request);
+    } on FormatException {
+      return errorResponse(400, 'bad_request', 'Malformed request.');
+    }
+    final rawTitle = body['title'];
+    final title = rawTitle is String ? rawTitle.trim() : '';
+    final raw = body['text'];
+    final text = raw is String ? raw.trim() : '';
+    if (text.isEmpty) {
+      return errorResponse(400, 'bad_request', 'text is required.');
+    }
+    if (text.length > kBookReviewMaxChars) {
+      return errorResponse(400, 'too_long',
+          'That book is too long for the reviewer — keep it under about 4,000 words.');
+    }
+    const meteredMode = 'normal';
+    final budget = aiTokenBudget(user.planId, meteredMode);
+    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
+                mode: meteredMode) >=
+            budget.fiveHour ||
+        aiUsage.tokensUsed(user.id, const Duration(days: 7),
+                mode: meteredMode) >=
+            budget.weekly) {
+      return errorResponse(
+          429,
+          'usage_limit',
+          "You've hit your Luma AI usage limit for now — it frees up again "
+              'over time.');
+    }
+    final candidates = await _aiCandidates('bookreview', route);
+    if (candidates.isEmpty) {
+      return errorResponse(503, 'model_disabled',
+          'The book reviewer is paused right now. Try again later.');
+    }
+    final shortTitle = title.length > 120 ? title.substring(0, 120) : title;
+    for (final (index, candidate) in candidates.indexed) {
+      final last = index == candidates.length - 1;
+      try {
+        final result = await _runBookReview(candidate.route,
+            aiBookReviewConfig.config.effectiveInstructions, shortTitle, text,
+            guardKey: candidate.key, user: user);
+        if (result.status == HttpStatus.ok) {
+          await aiUsage.recordTokens(
+              user.id, result.tokens > 0 ? result.tokens : 1500,
+              mode: meteredMode);
+        }
+        final review = result.review;
+        if (review != null) return jsonResponse(200, review.toJson());
+        if (last) {
+          return errorResponse(502, 'upstream_error',
+              'The review did not come back in a usable form. Try again.');
+        }
+      } catch (_) {
+        if (last) {
+          return errorResponse(
+              502, 'upstream_error', 'Could not reach the AI service.');
+        }
+      }
+    }
+    return errorResponse(
+        502, 'upstream_error', 'Could not reach the AI service.');
+  }
+
+  /// Saves the Assistant tab's book reviewer card. A blank model falls back
+  /// to Nebula's route; blank or "reset" instructions fall back to the
+  /// built-in ones.
+  Future<Response> _adminAiBookReviewSave(Request request) async {
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(await request.readAsString());
+    } catch (_) {}
+    AiModeRoute? route;
+    final model = (form['bookreview.model'] ?? '').trim();
+    if (model.isNotEmpty) {
+      final upstream = AiUpstream.parse(form['bookreview.upstream']);
+      if (upstream == null) {
+        return errorResponse(
+            400, 'bad_request', 'Unknown provider for the book reviewer.');
+      }
+      if (!isValidAiModelId(model)) {
+        return errorResponse(
+            400, 'bad_request', '"$model" is not a valid model id.');
+      }
+      final effort = form['bookreview.effort'] ?? '';
+      if (!kAiReasoningEfforts.contains(effort)) {
+        return errorResponse(400, 'bad_request',
+            'Unknown reasoning effort for the book reviewer.');
+      }
+      route = AiModeRoute(upstream, model,
+          reasoningEffort: effort.isEmpty ? null : effort);
+    }
+    var instructions = (form['bookreview.instructions'] ?? '')
+        .replaceAll('\r\n', '\n')
+        .trim();
+    if (instructions.length > kBookReviewMaxInstructionChars) {
+      return errorResponse(400, 'bad_request',
+          'Instructions are limited to $kBookReviewMaxInstructionChars characters.');
+    }
+    if (form['bookreview.reset'] == '1' ||
+        instructions == kDefaultBookReviewInstructions.trim()) {
+      instructions = '';
+    }
+    final preferred = _formPreferredRoute(form, 'bookreview');
+    if (preferred.error != null) {
+      return errorResponse(400, 'bad_request', preferred.error!);
+    }
+    final saved = BookReviewConfig(
+        route: route, instructions: instructions.isEmpty ? null : instructions);
+    await aiBookReviewConfig.save(saved);
+    await aiPreferred.save('bookreview', preferred.route);
+    await store.logActivity(
+        'ai_routes_changed',
+        'Book reviewer model → ${route?.model ?? 'Nebula default'}'
             '${preferred.route == null ? '' : ' (if possible ${preferred.route!.model})'}, '
             '${saved.instructions == null ? 'default' : 'custom'} instructions');
     return _adminFormResponse(request, '/admin',
@@ -9672,6 +9894,12 @@ syncToolbar();
               confirm: 'Unblock the ${bannedIps.length} address'
                   '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
         '<div class="menu-sep"></div>',
+        if (classroomCountries.countryOf(u.id) case final country?) ...[
+          item('/admin/classroom/country/reset',
+              'Reset classroom country (${_htmlEscape(country)})',
+              confirm: 'Let $safeEmail pick their classroom country again?'),
+          '<div class="menu-sep"></div>',
+        ],
         item('/admin/account/delete', 'Delete account',
             confirm: 'Permanently delete $safeEmail?\\n\\nThe account, its '
                 'sessions and every synced snapshot are erased from the '
@@ -9750,6 +9978,7 @@ syncToolbar();
       'admin_verified': 'Admin verified',
       'admin_revoked': 'Admin revoked',
       'plan_granted': 'Plan granted',
+      'classroom_country_reset': 'Classroom country reset',
       'ai_routes_changed': 'Assistant models',
       'admin_password_reset': 'Password reset',
       'admin_password_reset_cancelled': 'Password reset cancelled',
@@ -10415,14 +10644,12 @@ syncToolbar();
         '<script type="application/json" id="aiPickerData">$pickerJson</script>'
         '</div>'
         '${_adminAiDetectorCard(configured)}'
+        '${_adminAiBookReviewCard(configured)}'
+        '${_adminAiClassroomCard(configured)}'
         '${_adminAiImageCard(configured)}'
         '</div>';
   }
 
-  /// The Assistant tab's AI Detector card: which model the AI Detector
-  /// plugin's deep check runs on, and the instructions it judges by. Its
-  /// fields use the `detector` mode name so the model browser and the
-  /// provider → suggestions swap work on it unchanged.
   /// The live price, Guard toggle and re-enable button every model selector
   /// on the Assistant tab shares; filled in by the tab's price poller.
   static String _aiPriceBlock(String mode) =>
@@ -10531,11 +10758,74 @@ syncToolbar();
         '</div>';
   }
 
+  /// The Assistant tab's AI Detector card: which model the AI Detector
+  /// plugin's deep check runs on, and the instructions it judges by.
   String _adminAiDetectorCard(Set<AiUpstream> configured) {
-    String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
     final saved = aiDetectorConfig.config;
-    final stored = saved.route;
-    final live = _aiDetectorRoute();
+    return _adminAiReviewerCard(
+      configured,
+      mode: 'detector',
+      title: 'AI Detector model',
+      description: 'The model behind the AI Detector plugin\'s check. It reads '
+          'the user\'s text with the instructions below and answers with an '
+          'overall score plus the exact passages that read AI-generated, and '
+          'why. The answer format is added automatically after your '
+          'instructions, so you only need to describe how to judge. Each '
+          'check counts against the user\'s Aurora usage limit.',
+      action: '/admin/ai-detector',
+      stored: saved.route,
+      live: _aiDetectorRoute(),
+      instructions: saved.instructions,
+      defaultInstructions: kDefaultAiDetectorInstructions,
+      maxInstructionChars: kAiDetectorMaxInstructionChars,
+      saveLabel: 'Save detector',
+    );
+  }
+
+  /// The Assistant tab's book reviewer card: which model reads the books
+  /// readers upload from the Text Library's Minecraft hall, and how it
+  /// judges them.
+  String _adminAiBookReviewCard(Set<AiUpstream> configured) {
+    final saved = aiBookReviewConfig.config;
+    return _adminAiReviewerCard(
+      configured,
+      mode: 'bookreview',
+      title: 'Book reviewer model',
+      description: 'The model behind the Text Library\'s market desk: readers '
+          'upload a book they wrote, this model reads it with the '
+          'instructions below and scores it. A score of '
+          '$kBookReviewPaidFrom or more pays 1–50 coins in a letter the next '
+          'in-game day; below that the letter brings its tips instead. The '
+          'answer format is added automatically after your instructions. '
+          'Each review counts against the user\'s Aurora usage limit.',
+      action: '/admin/ai-book-review',
+      stored: saved.route,
+      live: _aiBookReviewRoute(),
+      instructions: saved.instructions,
+      defaultInstructions: kDefaultBookReviewInstructions,
+      maxInstructionChars: kBookReviewMaxInstructionChars,
+      saveLabel: 'Save book reviewer',
+    );
+  }
+
+  /// A card for a model that reviews text under editable instructions: the
+  /// AI Detector and the book reviewer. Its fields use [mode] as their mode
+  /// name, so the model browser, the test button, the price cell and the
+  /// provider → suggestions swap all work on it unchanged.
+  String _adminAiReviewerCard(
+    Set<AiUpstream> configured, {
+    required String mode,
+    required String title,
+    required String description,
+    required String action,
+    required AiModeRoute? stored,
+    required AiModeRoute? live,
+    required String? instructions,
+    required String defaultInstructions,
+    required int maxInstructionChars,
+    required String saveLabel,
+  }) {
+    String esc(String s) => _htmlEscape(s).replaceAll('"', '&quot;');
     final upstream = stored?.upstream ??
         live?.upstream ??
         (configured.isEmpty ? AiUpstream.google : configured.first);
@@ -10562,56 +10852,51 @@ syncToolbar();
     } else {
       status = '<span class="badge ok">custom</span>';
     }
-    final instructionsBadge = saved.instructions == null
+    final instructionsBadge = instructions == null
         ? '<span class="badge warn">built-in</span>'
         : '<span class="badge ok">custom</span>';
     return '<div class="card" style="margin-top:18px">'
-        '<h2>AI Detector model</h2>'
-        '<div class="maint-desc">The model behind the AI Detector plugin\'s '
-        'check. It reads the user\'s text with the instructions below '
-        'and answers with an overall score plus the exact passages that read '
-        'AI-generated, and why. The answer format is added automatically '
-        'after your instructions, so you only need to describe how to judge. '
-        'Each check counts against the user\'s Aurora usage limit.</div>'
-        '<form method="post" action="/admin/ai-detector" class="ai-routes" '
-        'id="aiDetectorForm">'
+        '<h2>${esc(title)}</h2>'
+        '<div class="maint-desc">${esc(description)}</div>'
+        '<form method="post" action="$action" class="ai-routes ai-reviewer-form" '
+        'data-mode="$mode">'
         '<div class="ai-detector-grid">'
-        '<div><label for="ai-upstream-detector">Provider</label>'
-        '<select name="detector.upstream" id="ai-upstream-detector" '
-        'class="ai-upstream" data-mode="detector">$upstreamOptions</select></div>'
-        '<div><label for="ai-model-detector">Model</label>'
-        '<input type="text" name="detector.model" id="ai-model-detector" '
+        '<div><label for="ai-upstream-$mode">Provider</label>'
+        '<select name="$mode.upstream" id="ai-upstream-$mode" '
+        'class="ai-upstream" data-mode="$mode">$upstreamOptions</select></div>'
+        '<div><label for="ai-model-$mode">Model</label>'
+        '<input type="text" name="$mode.model" id="ai-model-$mode" '
         'list="ai-dl-${upstream.name}" value="${esc(stored?.model ?? '')}" '
         'placeholder="${esc(live?.model ?? 'same as Nebula')}" maxlength="200" '
         'spellcheck="false" autocomplete="off">'
         '<button type="button" class="btn btn-ghost btn-sm ai-browse" '
-        'data-mode="detector">Browse models</button></div>'
-        '<div><label for="ai-effort-detector">Reasoning</label>'
-        '<select name="detector.effort" id="ai-effort-detector">'
+        'data-mode="$mode">Browse models</button></div>'
+        '<div><label for="ai-effort-$mode">Reasoning</label>'
+        '<select name="$mode.effort" id="ai-effort-$mode">'
         '$effortOptions</select></div>'
         '<div><span class="ai-detector-label">Status</span>$status'
         '<div style="margin-top:6px"><button type="button" '
-        'class="btn btn-ghost btn-sm ai-test" data-mode="detector">Test</button>'
-        '<div class="ai-test-out muted" id="ai-test-detector"></div></div>'
-        '<div id="ai-paused-detector"></div></div>'
-        '<div class="ai-price-cell" data-mode="detector">'
+        'class="btn btn-ghost btn-sm ai-test" data-mode="$mode">Test</button>'
+        '<div class="ai-test-out muted" id="ai-test-$mode"></div></div>'
+        '<div id="ai-paused-$mode"></div></div>'
+        '<div class="ai-price-cell" data-mode="$mode">'
         '<span class="ai-detector-label">Price / 1M tokens</span>'
-        '${_aiPriceBlock('detector')}</div>'
+        '${_aiPriceBlock(mode)}</div>'
         '</div>'
-        '${_aiPreferredGrid('detector', configured)}'
+        '${_aiPreferredGrid(mode, configured)}'
         '<div style="display:flex;justify-content:space-between;align-items:center;'
         'gap:8px;margin-bottom:6px"><label class="ai-detector-label" '
-        'for="ai-detector-instructions" style="margin:0">Instructions '
+        'for="ai-$mode-instructions" style="margin:0">Instructions '
         '$instructionsBadge</label>'
-        '<button type="button" class="btn btn-ghost btn-sm" '
-        'id="aiDetectorReset">Restore built-in</button></div>'
-        '<textarea name="detector.instructions" id="ai-detector-instructions" '
-        'maxlength="$kAiDetectorMaxInstructionChars" spellcheck="false">'
-        '${esc(saved.effectiveInstructions)}</textarea>'
-        '<input type="hidden" name="detector.reset" id="ai-detector-reset" value="0">'
-        '<template id="aiDetectorDefault">${esc(kDefaultAiDetectorInstructions)}</template>'
+        '<button type="button" class="btn btn-ghost btn-sm ai-instructions-reset">'
+        'Restore built-in</button></div>'
+        '<textarea name="$mode.instructions" id="ai-$mode-instructions" '
+        'maxlength="$maxInstructionChars" spellcheck="false">'
+        '${esc(instructions ?? defaultInstructions)}</textarea>'
+        '<input type="hidden" name="$mode.reset" value="0">'
+        '<template>${esc(defaultInstructions)}</template>'
         '<div class="maint-actions" style="margin:16px 0 0">'
-        '<button type="submit" class="btn btn-primary">Save detector</button>'
+        '<button type="submit" class="btn btn-primary">${esc(saveLabel)}</button>'
         '<span class="muted" style="font-size:12px">Leave the model blank to follow Nebula.</span>'
         '</div>'
         '</form>'
@@ -10955,17 +11240,15 @@ syncToolbar();
     loadPrices();
     setInterval(function () { if (!document.hidden) loadPrices(); }, 30000);
   }
-  var detectorForm = document.getElementById('aiDetectorForm');
-  if (detectorForm) {
-    var instructions = document.getElementById('ai-detector-instructions');
-    var resetFlag = document.getElementById('ai-detector-reset');
-    document.getElementById('aiDetectorReset').addEventListener('click', function () {
-      instructions.value =
-        document.getElementById('aiDetectorDefault').content.textContent.trim();
+  document.querySelectorAll('.ai-reviewer-form').forEach(function (form) {
+    var instructions = form.querySelector('textarea');
+    var resetFlag = form.querySelector('input[name="' + form.dataset.mode + '.reset"]');
+    form.querySelector('.ai-instructions-reset').addEventListener('click', function () {
+      instructions.value = form.querySelector('template').content.textContent.trim();
       resetFlag.value = '1';
     });
     instructions.addEventListener('input', function () { resetFlag.value = '0'; });
-  }
+  });
 })();
 ''';
 

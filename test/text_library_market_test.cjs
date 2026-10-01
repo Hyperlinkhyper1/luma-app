@@ -132,3 +132,75 @@ test('every piece builds inside its footprint, from textures the atlas has', () 
   const missing = [...used].filter(name => !LibraryTextures.has(name) && name !== 'solid' && name !== 'oak_planks');
   assert.deepEqual(missing, []);
 });
+
+test('a sent book comes back as a letter the next in-game day', () => {
+  const {post} = newMarket();
+  const events = [];
+  post.onChange(what => events.push(what));
+  post.load(null);
+  assert.equal(post.queueReview('7', 'aaaa', 'The Fox', {coins: 30, verdict: 'Lovely', praise: 'Vivid.', tips: ['x']}), true);
+  assert.equal(post.queueReview('8', 'bbbb', 'Other', {coins: 5}), false, 'one book at a time');
+  assert.ok(post.pendingReview);
+  post.tick(1199);
+  assert.equal(post.state.letters.length, 0);
+  post.tick(2);
+  assert.equal(post.pendingReview, null);
+  const letter = post.state.letters.at(-1);
+  assert.equal(letter.kind, 'review');
+  assert.equal(letter.coins, 30);
+  assert.deepEqual([...letter.tips], [], 'a paid letter brings no tips');
+  assert.ok(events.includes('review'));
+  assert.equal(post.takeLetter(), 30);
+  assert.equal(post.state.hand, 30);
+});
+
+test('a book is paid once for its best review; unpaid reviews bring the tips', () => {
+  const {post} = newMarket();
+  post.load(null);
+  post.queueReview('7', 'v1', 'Fox', {coins: 0, tips: ['Add a scene.', 'Name the fox.']});
+  post.tick(1201);
+  let letter = post.state.letters.at(-1);
+  assert.equal(letter.coins, 0);
+  assert.equal(letter.tips.length, 2);
+  assert.ok(post.wasReviewed('7', 'v1'));
+  assert.equal(post.wasReviewed('7', 'v2'), false);
+  post.queueReview('7', 'v2', 'Fox', {coins: 20});
+  post.tick(1201);
+  assert.equal(post.state.letters.at(-1).coins, 20);
+  post.queueReview('7', 'v3', 'Fox', {coins: 12, tips: ['Tighten the middle.']});
+  post.tick(1201);
+  letter = post.state.letters.at(-1);
+  assert.equal(letter.coins, 0, 'not better than before: nothing more');
+  assert.equal(letter.good, true);
+  assert.equal(letter.tips.length, 1);
+  post.queueReview('7', 'v4', 'Fox', {coins: 35});
+  post.tick(1201);
+  assert.equal(post.state.letters.at(-1).coins, 15, 'only what the better score adds');
+});
+
+test('saved post state keeps review letters and drops nonsense', () => {
+  const {post, sent} = newMarket();
+  post.load({
+    letters: [12, {kind: 'review', title: 'Fox', coins: 80, tips: ['a', '', 3]}, {kind: 'bogus'}, -4],
+    reviews: [{wait: 99999, letter: {kind: 'review', title: 'Owl', coins: 3}}],
+    reviewed: {'7': {h: 'abcd', paid: 9}, x: {h: 'zz'}},
+  });
+  assert.equal(post.state.letters.length, 2);
+  assert.equal(post.state.letters[1].coins, 50);
+  assert.deepEqual([...post.state.letters[1].tips], ['a']);
+  assert.equal(post.pendingReview.wait, 1200);
+  assert.deepEqual(Object.keys(post.state.reviewed), ['7']);
+  post.save();
+  const saved = sent.filter(m => m.type === 'mail').at(-1).state;
+  assert.equal(saved.reviews[0].letter.title, 'Owl');
+});
+
+test('the review desk sits inside the stall plot and builds', () => {
+  const atlas = {index: new Proxy({}, {get: () => ({cell: 0, frames: 1, frameTime: 1})})};
+  const [w, d] = Goods.STALL.size;
+  for (const [x0, z0, x1, z1] of Goods.STALL.desk.solids) assert.ok(x0 >= 0 && z0 >= 0 && x1 <= w && z1 <= d);
+  const mb = new context.window.LibraryWorld.MeshBuilder();
+  Goods.reviewDesk({mb, grid: {sample: () => [1, 0, 0]}, atlas});
+  assert.ok(mb.count > 0);
+  assert.equal(LibraryTextures.has('monitor_screen'), true);
+});

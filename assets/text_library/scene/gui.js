@@ -69,6 +69,19 @@
     putBack: 'Back in your crate', putBackBody: "{0} didn't fit any more",
     lieDown: 'Lie down', playMusic: 'Play a tune', stopMusic: 'Stop the music', lookThrough: 'Look through the telescope',
     stepBack: 'Step back', scopeHint: 'Move the mouse to look around · Shift or Space to step back',
+    pcTitle: 'Library Review Desk', pcUse: 'Use the computer',
+    pcIntro: 'Send a book you wrote to the reviewer. A good book earns 1 to 50 coins; otherwise the letter brings tips to make it better.',
+    pcPick: 'Pick a book to send:', pcNoBooks: 'No books to send yet. Write one first.', pcSend: 'Send for review',
+    pcSending: 'Sending…', pcSent: 'Your book has been sent!',
+    pcSentBody: 'It will be evaluated. Expect a letter in your mailbox tomorrow, in about {0} min.',
+    pcWaiting: 'Waiting for the review of "{0}"',
+    pcWaitingBody: 'The letter arrives in about {0} min. The reviewer reads one book at a time.',
+    pcSame: 'This version was already reviewed. Change the book to send it again.',
+    pcFailed: 'It could not be sent', pcTimeout: 'The reviewer took too long. Try again later.', pcLogOff: 'Log off',
+    reviewArrived: 'Your book review came in', reviewArrivedBody: 'The letter is in the mailbox',
+    reviewTitle: 'A review of "{0}"', reviewTips: 'To make it better:',
+    reviewNoBetter: "It reads well, but it isn't better than last time, so there are no new coins.",
+    reviewSign: '— The Library Review Desk', reviewThanks: 'Thanks',
   };
 
   const MC_COLORS = [
@@ -268,7 +281,7 @@
     },
 
     isModalOpen() {
-      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden || !$('letter').hidden || !$('vault').hidden || !$('shop').hidden;
+      return !$('dialog').hidden || !$('settings').hidden || !$('video').hidden || !$('letter').hidden || !$('vault').hidden || !$('shop').hidden || !$('pc').hidden || !!$('classroom') && !$('classroom').hidden;
     },
   };
 

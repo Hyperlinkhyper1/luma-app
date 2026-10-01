@@ -2000,4 +2000,276 @@ class LFr extends L {
   @override
   String get textLibraryMcScopeHint =>
       'Bougez la souris pour regarder autour · Maj ou Espace pour reculer';
+
+  @override
+  String get textLibraryMcPcTitle => 'Bureau des critiques';
+
+  @override
+  String get textLibraryMcPcUse => 'Utiliser l’ordinateur';
+
+  @override
+  String get textLibraryMcPcIntro =>
+      'Envoyez un livre que vous avez écrit au critique. Un bon livre rapporte de 1 à 50 pièces ; sinon, la lettre apporte des conseils pour l’améliorer.';
+
+  @override
+  String get textLibraryMcPcPick => 'Choisissez un livre à envoyer :';
+
+  @override
+  String get textLibraryMcPcNoBooks =>
+      'Aucun livre à envoyer pour l’instant. Écrivez-en un d’abord.';
+
+  @override
+  String get textLibraryMcPcSend => 'Envoyer au critique';
+
+  @override
+  String get textLibraryMcPcSending => 'Envoi…';
+
+  @override
+  String get textLibraryMcPcSent => 'Votre livre a été envoyé !';
+
+  @override
+  String textLibraryMcPcSentBody(String minutes) {
+    return 'Il va être évalué. Une lettre arrivera dans votre boîte demain, dans environ $minutes min.';
+  }
+
+  @override
+  String textLibraryMcPcWaiting(String title) {
+    return 'En attente de la critique de « $title »';
+  }
+
+  @override
+  String textLibraryMcPcWaitingBody(String minutes) {
+    return 'La lettre arrive dans environ $minutes min. Le critique lit un livre à la fois.';
+  }
+
+  @override
+  String get textLibraryMcPcSame =>
+      'Cette version a déjà été critiquée. Modifiez le livre pour l’envoyer à nouveau.';
+
+  @override
+  String get textLibraryMcPcFailed => 'Impossible de l’envoyer';
+
+  @override
+  String get textLibraryMcPcTimeout =>
+      'Le critique a mis trop de temps. Réessayez plus tard.';
+
+  @override
+  String get textLibraryMcPcLogOff => 'Se déconnecter';
+
+  @override
+  String get textLibraryMcReviewArrived => 'Votre critique est arrivée';
+
+  @override
+  String get textLibraryMcReviewArrivedBody =>
+      'La lettre est dans la boîte aux lettres';
+
+  @override
+  String textLibraryMcReviewTitle(String title) {
+    return 'Une critique de « $title »';
+  }
+
+  @override
+  String get textLibraryMcReviewTips => 'Pour l’améliorer :';
+
+  @override
+  String get textLibraryMcReviewNoBetter =>
+      'Il se lit bien, mais il n’est pas meilleur que la dernière fois : pas de nouvelles pièces.';
+
+  @override
+  String get textLibraryMcReviewSign => '— Le bureau des critiques';
+
+  @override
+  String get textLibraryMcReviewThanks => 'Merci';
+
+  @override
+  String get textLibraryMcReviewEmpty => 'Ce livre est vide.';
+
+  @override
+  String get textLibraryMcReviewSignIn =>
+      'Connectez-vous à un compte luma approuvé pour envoyer des livres au critique.';
+
+  @override
+  String get textLibraryMcReviewUnreachable =>
+      'Impossible de joindre le serveur luma. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get textLibraryMcClassroom => 'Salle de classe';
+
+  @override
+  String get textLibraryMcClassLocked => 'Fermée à clé';
+
+  @override
+  String get textLibraryMcClassLockedNova =>
+      'La salle de classe fait partie de Nova';
+
+  @override
+  String get textLibraryMcClassLockedSignin =>
+      'Connecte-toi à un compte luma pour l’ouvrir';
+
+  @override
+  String get textLibraryMcClassLockedOffline =>
+      'Le serveur luma est injoignable pour le moment';
+
+  @override
+  String get textLibraryMcClassDown => 'Descendre à la cave';
+
+  @override
+  String get textLibraryMcClassUp => 'Monter à l’échelle';
+
+  @override
+  String get textLibraryMcClassSit => 'S’asseoir pour un cours';
+
+  @override
+  String get textLibraryMcClassBoard => 'Tableau noir';
+
+  @override
+  String get textLibraryMcClassCountryTitle =>
+      'Dans quel pays vas-tu à l’école ?';
+
+  @override
+  String get textLibraryMcClassCountryNote =>
+      'Tu ne peux le choisir qu’une seule fois.';
+
+  @override
+  String get textLibraryMcClassCountryOther => 'Ailleurs';
+
+  @override
+  String get textLibraryMcClassCountryName => 'Pays';
+
+  @override
+  String get textLibraryMcClassCountrySet => 'Choisir le pays';
+
+  @override
+  String textLibraryMcClassCountryConfirm(String name) {
+    return 'Choisir $name comme pays ? Tu ne pourras plus le changer.';
+  }
+
+  @override
+  String textLibraryMcClassCountryIs(String name) {
+    return 'Pays : $name';
+  }
+
+  @override
+  String get textLibraryMcClassSchool => 'École';
+
+  @override
+  String get textLibraryMcClassYear => 'Classe';
+
+  @override
+  String get textLibraryMcClassLevel => 'Filière';
+
+  @override
+  String get textLibraryMcClassSubject => 'Matière';
+
+  @override
+  String get textLibraryMcClassPublisher => 'Manuel (éditeur)';
+
+  @override
+  String get textLibraryMcClassChapter => 'Chapitre';
+
+  @override
+  String get textLibraryMcClassParagraph => 'Section';
+
+  @override
+  String get textLibraryMcClassTopic => 'De quoi parle la section ?';
+
+  @override
+  String get textLibraryMcClassTopicHint => 'ex. le théorème de Pythagore';
+
+  @override
+  String get textLibraryMcClassStart => 'Commencer le cours';
+
+  @override
+  String get textLibraryMcClassNeedAll =>
+      'Remplis tous les champs pour commencer.';
+
+  @override
+  String get textLibraryMcClassAsking => 'Le professeur écrit une question…';
+
+  @override
+  String textLibraryMcClassQuestion(String number) {
+    return 'Question $number';
+  }
+
+  @override
+  String get textLibraryMcClassAnswerHint => 'Ta réponse';
+
+  @override
+  String get textLibraryMcClassNext => 'Question suivante';
+
+  @override
+  String get textLibraryMcClassPrev => 'Précédente';
+
+  @override
+  String get textLibraryMcClassSkip => 'Passer';
+
+  @override
+  String get textLibraryMcClassHandIn => 'Rendre';
+
+  @override
+  String get textLibraryMcClassLeave => 'Partir';
+
+  @override
+  String get textLibraryMcClassSkipped => 'Passée';
+
+  @override
+  String get textLibraryMcClassChecking => 'Le professeur corrige ton travail…';
+
+  @override
+  String get textLibraryMcClassNothing =>
+      'Réponds d’abord à au moins une question.';
+
+  @override
+  String textLibraryMcClassHandInConfirm(String count) {
+    return 'Rendre $count réponses ? Les questions passées ne sont pas corrigées.';
+  }
+
+  @override
+  String get textLibraryMcClassLast =>
+      'C’était la dernière question de ce cours.';
+
+  @override
+  String get textLibraryMcClassCorrect => 'Juste';
+
+  @override
+  String get textLibraryMcClassPartly => 'En partie juste';
+
+  @override
+  String get textLibraryMcClassWrong => 'Pas juste';
+
+  @override
+  String get textLibraryMcClassUnchecked => 'Non corrigée';
+
+  @override
+  String textLibraryMcClassScore(String right, String partly, String wrong) {
+    return '$right justes, $partly en partie, $wrong fausses';
+  }
+
+  @override
+  String get textLibraryMcClassYourAnswer => 'Toi';
+
+  @override
+  String get textLibraryMcClassModel => 'Réponse';
+
+  @override
+  String get textLibraryMcClassAgain => 'Même section encore';
+
+  @override
+  String get textLibraryMcClassNew => 'Nouveau cours';
+
+  @override
+  String get textLibraryMcClassFailed => 'Ça n’a pas marché';
+
+  @override
+  String get textLibraryMcClassRetry => 'Réessayer';
+
+  @override
+  String get textLibraryMcClassTimeout =>
+      'Le professeur a mis trop de temps. Réessaie.';
+
+  @override
+  String get textLibraryMcClassCancel => 'Annuler';
+
+  @override
+  String get textLibraryMcClassOk => 'OK';
 }

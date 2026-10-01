@@ -751,7 +751,88 @@
     }
   }
 
+  // ── The basement ───────────────────────────────────────────────────────
+  // The cellar under the foyer and the classroom behind it. Everything in
+  // the classroom faces the blackboard at -z.
+  const METAL = sides('iron_block', null, null, {tint: [0.2, 0.21, 0.23]});
+
+  // A two-seat school desk: an oak top on dark steel legs with a shelf for
+  // bags under it, and a notebook and pencil at each place. `o` is its
+  // north-west corner on the floor; it is two blocks along x, 12 px deep.
+  function schoolDesk(K, o, seed) {
+    const oak = sides('oak_planks');
+    const pale = sides('oak_planks', null, null, {tint: [0.84, 0.82, 0.78]});
+    b(K, o, [0, 11.5, 0], [32, 12.5, 12], oak);
+    for (const x of [1, 29.5]) for (const z of [0.75, 9.75]) b(K, o, [x, 0, z], [x + 1.5, 11.5, z + 1.5], METAL);
+    for (const x of [1, 29.5]) b(K, o, [x + 0.25, 2, 2.25], [x + 1.25, 3, 9.75], METAL);
+    b(K, o, [2.5, 7, 1.25], [29.5, 7.75, 10.75], pale);
+    b(K, o, [2.5, 7.75, 0.5], [29.5, 11.5, 1.25], pale);
+    const r = window.LibraryTextures.rng('desk' + seed);
+    for (const x0 of [3, 19]) {
+      const dx = Math.floor(r() * 3);
+      b(K, o, [x0 + dx, 12.5, 2.5], [x0 + dx + 8, 12.7, 8.5], {up: {tex: 'book_page'}, north: {tex: 'white_wool'}, south: {tex: 'white_wool'}, east: {tex: 'white_wool'}, west: {tex: 'white_wool'}});
+      if (r() < 0.7) b(K, o, [x0 + dx + 9, 12.5, 3], [x0 + dx + 9.6, 13.1, 8], sides('yellow_wool'));
+    }
+  }
+
+  // A school chair facing -z: a steel frame with an oak seat and back.
+  // `o` is the middle of its seat on the floor.
+  const SCHOOL_SEAT = 8 / 16;
+  function schoolChair(K, o) {
+    const at = [o[0] - 0.5, o[1], o[2] - 0.5];
+    const oak = sides('oak_planks');
+    for (const [x, z] of [[3, 3], [11.5, 3], [3, 11.5], [11.5, 11.5]]) b(K, at, [x, 0, z], [x + 1.5, 7, z + 1.5], METAL);
+    b(K, at, [2.5, 7, 2.5], [13.5, 8, 13], oak);
+    for (const x of [3, 11.5]) b(K, at, [x, 8, 12], [x + 1.5, 17, 13.5], METAL);
+    b(K, at, [2.5, 13, 12.25], [13.5, 18, 13.25], oak);
+  }
+
+  // A blackboard on the wall whose face is at `z` (the room lies toward
+  // +z), from x0 to x1 and y0 to y1: dark green slate in an oak frame, with
+  // a chalk tray under it. The page writes on the slate a hair in front.
+  const BOARD_SLATE = 0.06;
+  function blackboard(K, x0, x1, y0, y1, z) {
+    const oak = sides('dark_oak_planks');
+    box(K, [x0, y0, z], [x1, y1, z + BOARD_SLATE], {south: {tex: 'solid', tint: [0.035, 0.07, 0.05]}});
+    const t = 0.09, d = 0.1;
+    box(K, [x0 - t, y1, z], [x1 + t, y1 + t, z + d], oak);
+    box(K, [x0 - t, y0 - t, z], [x1 + t, y0, z + d], oak);
+    box(K, [x0 - t, y0, z], [x0, y1, z + d], oak);
+    box(K, [x1, y0, z], [x1 + t, y1, z + d], oak);
+    box(K, [x0 - t, y0 - t - 0.05, z], [x1 + t, y0 - t, z + 0.24], oak);
+    const chalk = sides('white_wool');
+    for (const [x, w] of [[x0 + 0.4, 0.16], [x0 + 0.62, 0.12], [x1 - 0.9, 0.16]]) box(K, [x, y0 - t, z + 0.08], [x + w, y0 - t + 0.035, z + 0.12], chalk);
+    box(K, [x1 - 0.6, y0 - t, z + 0.06], [x1 - 0.3, y0 - t + 0.08, z + 0.2], sides('yellow_wool', null, null, {tint: [0.8, 0.72, 0.5]}));
+  }
+
+  // A wooden ladder on the face of the wall west of cell (x, ·, z), from
+  // y0 up to y1.
+  function wallLadder(K, x, z, y0, y1) {
+    for (let y = y0; y < y1; y++) b(K, [x, y, z], [0, 0, 0], [0.8, 16, 16], {east: {tex: 'ladder', double: true}});
+  }
+
+  // A cellar hatch thrown open against the west wall beside its hole in
+  // the floor at cell (x, y, z).
+  function hatch(K, x, y, z) {
+    const lid = {tex: 'cabinet_door'};
+    b(K, [x, y, z], [0, 0, 0], [3, 16, 16], {east: lid, west: lid, north: {tex: 'spruce_planks'}, south: {tex: 'spruce_planks'}, up: {tex: 'spruce_planks'}});
+    for (const zz of [2, 12]) b(K, [x, y, z], [3, 1, zz], [3.6, 5, zz + 2], METAL);
+    b(K, [x, y, z], [3, 10, 7], [3.8, 11, 9], brass);
+  }
+
+  // A padlock through a hasp, hung on the classroom door's cellar side.
+  // `o` is the hasp's middle on the door's face; it stands out toward +z.
+  function padlock(K, o, light) {
+    const steel = sides('iron_block', null, null, {tint: [0.55, 0.56, 0.6]});
+    b(K, o, [-3, -1, 0], [3, 1, 0.6], METAL, {light});
+    b(K, o, [-1.5, -5.5, 0.6], [1.5, -1.5, 2], sides('gold_block', null, null, {tint: [0.85, 0.7, 0.4]}), {light});
+    for (const x of [-1.25, 0.75]) b(K, o, [x, -1.5, 0.95], [x + 0.5, 0.5, 1.6], steel, {light});
+    b(K, o, [-1.25, 0.5, 0.95], [1.25, 1, 1.6], steel, {light});
+    b(K, o, [-0.3, -4.3, 2], [0.3, -3.2, 2.05], {south: {tex: 'solid', tint: [0.05, 0.04, 0.03]}}, {light});
+  }
+
   window.LibraryFurniture = {
+    schoolDesk, schoolChair, SCHOOL_SEAT, blackboard, BOARD_SLATE, wallLadder, hatch, padlock,
     mailbox, mailFlag, mailLetter, MAIL_FLAG, MAIL_BOX, vault, vaultDoor, goldPile, coinStack, VAULT, vaultOpening,
     armchair, windowSeat, desk, sideTable, teacup, bookStack, globe, floorLamp, pot, barrel, stool, postDecor,
     coatStand, clock, hangingPlant, rug, ladder, mantel,

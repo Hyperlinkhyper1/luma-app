@@ -42,6 +42,12 @@
   // The spiral stair between floors: a post in the middle of a 3×3 well by
   // the foyer's east wall, two turns of sixteen shallow treads per storey.
   const STAIR = {x0: 2, z0: 1, cx: 3, cz: 2};
+  // The basement under the hall: a stone cellar under the foyer, reached
+  // by a ladder through a hatch in the floor, and behind a door in its back
+  // wall the classroom. `base` is its walking surface; cells x0..x1 across,
+  // the cellar's z from `divide` + 1 to `front`, the classroom's from `back`
+  // to `divide` - 1. The hatch is the floor cell above the ladder.
+  const BASEMENT = {base: -6, x0: -5, x1: 4, front: 5, divide: -1, back: -13, hatch: [-5, 3]};
   const BOARD = 1.5 / 16;  // shelf board thickness
   const DEPTH = 15 / 16;   // front of a bookcase to its back panel
   const SIDE = 1 / 16;     // outer uprights
@@ -278,6 +284,8 @@
   block('beam_x', {east: 'dark_oak_log_top', west: 'dark_oak_log_top', side: 'dark_oak_log'}, {rotFaces: ['north', 'south', 'up', 'down']});
   block('beam_z', {north: 'dark_oak_log_top', south: 'dark_oak_log_top', side: 'dark_oak_log'}, {rotFaces: ['east', 'west']});
   block('oak_log', {top: 'spruce_log_top', bottom: 'spruce_log_top', side: 'oak_log'});
+  block('oak_planks', {all: 'oak_planks'});
+  block('bookshelf', {top: 'oak_planks', bottom: 'oak_planks', side: 'bookshelf'});
   // Built-in bookcases: solid for light, drawn by builtInCase.
   block('case', {all: 'spruce_planks'}, {custom: true});
 
@@ -1140,6 +1148,9 @@
     });
     later.push(() => Fu.rug(K, -1, E + 7, 1, 0, 'red'));
 
+    // Under the foyer, the cellar; behind it, the classroom.
+    const cellar = basement(K, {light, solidBox, lamps, later});
+
     // ── The outside of the house ────────────────────────────────────────
     // A little roof over the door with a lantern either side, ivy up the
     // stone end, and a rain barrel at the corner.
@@ -1289,14 +1300,17 @@
       trees: outside.trees,
       campfire: outside.campfire,
       market: outside.market,
+      basement: cellar,
       // Plants loose on the grass, [x, z, texture, size], for the page to
       // draw round whatever furniture stands there.
       foliage: outside.foliage,
       // Floor that bought furniture may never be put on: the doorway, the
-      // stair well and the way onto it, the hearth, and the trader's plot.
+      // stair well and the way onto it, the hearth, the cellar hatch and the
+      // trader's plot.
       keepClear: [
         [-2, F - 2, 2, F + 2.5, 0],
         [-1.6, fz + 1, 1.6, fz + 2.3, 0],
+        [BASEMENT.hatch[0], BASEMENT.hatch[1] - 0.5, BASEMENT.hatch[0] + 1.8, BASEMENT.hatch[1] + 1.5, 0],
         ...(hasStairs ? L.bases.map((_, f) => [STAIR.x0 - 0.5, STAIR.z0 - 0.5, STAIR.x0 + 3.5, STAIR.z0 + 4.5, f]) : []),
         ...(outside.market ? [[...outside.market.clear, 0]] : []),
       ],
@@ -1307,6 +1321,117 @@
       bounds: {min: [-W - 1, -1, E], max: [W + 1, TOP + 2, F + 1]},
       hall: {x0: -W, x1: W, z0: E + 1, z1: F},
       shadowBounds: {min: [isle.x0 + 2, -4, isle.z0 + 2], max: [isle.x1 - 2, chimney.top + 1, isle.z1 - 2]},
+    };
+  }
+
+  // ── The basement ───────────────────────────────────────────────────────
+  // A stone cellar under the foyer with a ladder down from a hatch in the
+  // floor, barrels and the harvest stored along its walls, and a door in
+  // its back wall to the classroom: plastered walls, a blackboard, the
+  // teacher's desk and three rows of school desks facing it.
+  function basement(K, {light, solidBox, lamps, later}) {
+    const {grid} = K, Fu = window.LibraryFurniture;
+    const {base: y0, x0, x1, front, divide, back, hatch: [hx, hz]} = BASEMENT;
+    const top = -2, floor = -1;
+    const box2 = (ax, az, bx, bz) => solidBox(ax, az, bx, bz, floor);
+    const stone = (x, y, z) => (cellHash(x, y + 300, z) < 0.16 ? B.mossy_stone_bricks : B.stone_bricks);
+
+    // The shell: stone all round, then hollowed out; the hall's floor above
+    // is its ceiling.
+    for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= top; y++) for (let z = back - 1; z <= front + 1; z++) grid.set(x, y, z, stone(x, y, z));
+    grid.fill([x0, y0, back], [x1, top, front], AIR);
+    for (let x = x0; x <= x1; x++) for (let z = divide + 1; z <= front; z++) grid.set(x, y0 - 1, z, cellHash(x, 301, z) < 0.2 ? B.mossy_cobblestone : B.cobblestone);
+    grid.fill([x0, y0 - 1, back], [x1, y0 - 1, divide - 1], B.oak_planks);
+    // The classroom's walls are plastered over an oak skirting.
+    for (let y = y0; y <= top; y++) {
+      const b = y === y0 ? B.dark_oak_planks : B.plaster;
+      for (let z = back; z < divide; z++) { grid.set(x0 - 1, y, z, b); grid.set(x1 + 1, y, z, b); }
+      for (let x = x0 - 1; x <= x1 + 1; x++) grid.set(x, y, back - 1, b);
+    }
+    // The wall between, with a doorway framed in dark oak.
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= top; y++) grid.set(x, y, divide, stone(x, y, divide));
+    for (const x of [-1, 0]) for (let y = y0; y < y0 + 3; y++) grid.set(x, y, divide, AIR);
+    for (const x of [-2, 1]) for (let y = y0; y < y0 + 3; y++) grid.set(x, y, divide, B.post);
+    for (let x = -2; x <= 1; x++) grid.set(x, y0 + 3, divide, B.beam_x);
+    // Beams across under the floor boards.
+    for (const z of [1, back + 3, back + 8]) for (let x = x0; x <= x1; x++) grid.set(x, top, z, B.beam_x);
+    // The hatch: a hole in the foyer floor, the ladder against the wall.
+    grid.set(hx, -1, hz, AIR);
+    box2(hx, hz, hx + 0.3, hz + 1);
+    later.push(() => {
+      Fu.wallLadder(K, hx, hz, y0, 0);
+      Fu.hatch(K, hx, 0, hz);
+    });
+
+    // The cellar: barrels, the harvest, a lantern.
+    const barrels = [[x1 - 1, 0], [x1, 0], [x1, 1], [-3, front], [-2, front]];
+    for (const [x, z] of barrels) box2(x + 0.1, z + 0.1, x + 0.9, z + 0.9);
+    for (const [x, z] of [[x1, front], [x1, front - 1], [x1 - 1, front]]) grid.set(x, y0, z, B.hay);
+    grid.set(x1, y0 + 1, front, B.hay);
+    for (const [x, z] of [[x1 - 1, front - 1], [x1 - 2, front]]) grid.set(x, y0, z, B.pumpkin);
+    later.push(() => {
+      for (const [x, z] of barrels) Fu.barrel(K, [x, y0, z]);
+      Fu.barrel(K, [x1, y0 + 14 / 16, 0]);
+      Fu.barrel(K, [-3, y0 + 14 / 16, front]);
+      Fu.bookStack(K, [-2, y0 + 14 / 16, front], 3, 'cellar', 0.5);
+    });
+    const hang = (cx, cz, y = y0 + 2.9) => {
+      lamps.push({cell: [cx - 1, y, cz - 0.5], hanging: true, top: -1});
+      light(cx, y, cz, 15);
+    };
+    hang(0.5, 2.5);
+    light(-0.5, y0 + 1, divide + 1, 9);
+
+    // The classroom.
+    const zb = back, BOARD = {x0: -3, x1: 3, y0: y0 + 1.15, y1: y0 + 2.95, z: zb};
+    later.push(() => Fu.blackboard(K, BOARD.x0, BOARD.x1, BOARD.y0, BOARD.y1, BOARD.z));
+    // The teacher's desk in front of it, a stool behind, a globe and books.
+    box2(-1.06, zb + 1, 1.06, zb + 2.06);
+    box2(-0.4, zb + 0.15, 0.4, zb + 0.9);
+    box2(x1 - 0.75, zb + 0.25, x1 - 0.25, zb + 0.75);
+    later.push(() => {
+      Fu.desk(K, [-1, y0, zb + 1]);
+      Fu.stool(K, [-0.5, y0, zb + 0.1]);
+      Fu.globe(K, [x1 - 1, y0, zb]);
+    });
+    for (const x of [x0, x1]) for (let z = zb; z < zb + 2; z++) for (let y = y0; y < y0 + 2; y++) grid.set(x, y, z, B.bookshelf);
+    // Plants by the door.
+    for (const [x, kind] of [[x0, 'azalea'], [x1, 'fern']]) {
+      box2(x + 0.2, divide - 0.8, x + 0.8, divide - 0.2);
+      later.push(() => Fu.pot(K, [x, y0, divide - 1], kind, true));
+    }
+    // Two blocks of two-seat desks either side of the aisle, three rows
+    // deep, each place with its chair: sitting at one starts a lesson.
+    const desks = [];
+    for (const zf of [zb + 3.5, zb + 6, zb + 8.5]) {
+      for (const dx of [x0 + 1, 1]) {
+        box2(dx, zf, dx + 2, zf + 0.75);
+        later.push(() => Fu.schoolDesk(K, [dx, y0, zf], dx * 7 + zf));
+        for (const cx of [dx + 0.5, dx + 1.5]) {
+          const cz = zf + 1.05;
+          box2(cx - 0.34, cz - 0.34, cx + 0.34, cz + 0.42);
+          later.push(() => Fu.schoolChair(K, [cx, y0, cz]));
+          desks.push({pos: [cx, y0 + Fu.SCHOOL_SEAT, cz - 0.04], yaw: 0, pitch: 0.08, box: [[cx - 0.42, y0, cz - 0.42], [cx + 0.42, y0 + 1.15, cz + 0.42]]});
+        }
+      }
+    }
+    for (const [cx, cz] of [[-2.5, zb + 5.5], [2.5, zb + 5.5], [-2.5, zb + 10], [2.5, zb + 10], [0.5, zb + 1.5]]) hang(cx, cz);
+
+    return {
+      base: y0, floor,
+      // Click boxes for the way down (from the foyer) and up (from the
+      // cellar), and where the climber stands at the top and the bottom.
+      hatch: {
+        down: [[hx, -0.2, hz], [hx + 1, 0.35, hz + 1]],
+        up: [[hx, y0, hz], [hx + 0.45, y0 + 2.4, hz + 1]],
+        top: [hx + 1.35, hz + 0.5], bottom: [hx + 1.3, hz + 0.5],
+        ladder: [hx + 0.38, hz + 0.5],
+      },
+      door: {z: divide, hinges: [[-1, 1], [1, -1]], height: 3, base: y0},
+      board: BOARD,
+      desks,
+      cellar: {x0, z0: divide + 1, x1: x1 + 1, z1: front + 1},
+      classroom: {x0, z0: back, x1: x1 + 1, z1: divide},
     };
   }
 
@@ -1980,7 +2105,7 @@
   }
 
   window.LibraryWorld = {
-    HALL, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH, PROFILES, CASES_PER_FLOOR, STAIR, floorBase, ceilingOf,
+    HALL, BASEMENT, SLOTS, SLOT_COLS, SLOT_ROWS, DYES, RECESS, BOARD, DEPTH, PROFILES, CASES_PER_FLOOR, STAIR, floorBase, ceilingOf,
     MeshBuilder, Grid, FACES, B, AIR,
     addBox, box, frame, addBook, addBookAt, bookCenter, bookDims, bookBoxes, builtInCase, coverRgb, coverTint,
     build, slotGeometry, layout, drawer, drawerBox, drawerSlot, drawerOf, drawerCount, isDrawerSlot, DRAWER_SLOTS, DRAWER_PULL, caseSlots, lantern, chain, candle, cross, campfire, sides, all, itemSprite, hash, uvCorners,

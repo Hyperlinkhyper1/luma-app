@@ -1931,4 +1931,259 @@ class LZh extends L {
 
   @override
   String get textLibraryMcScopeHint => '移动鼠标环顾四周 · 按 Shift 或空格键退后';
+
+  @override
+  String get textLibraryMcPcTitle => '图书评审台';
+
+  @override
+  String get textLibraryMcPcUse => '使用电脑';
+
+  @override
+  String get textLibraryMcPcIntro => '把你写的书寄给评审员。好书能赚 1 到 50 枚金币；否则信里会附上改进建议。';
+
+  @override
+  String get textLibraryMcPcPick => '选一本书寄出：';
+
+  @override
+  String get textLibraryMcPcNoBooks => '还没有可以寄出的书。先写一本吧。';
+
+  @override
+  String get textLibraryMcPcSend => '寄出评审';
+
+  @override
+  String get textLibraryMcPcSending => '正在寄出…';
+
+  @override
+  String get textLibraryMcPcSent => '你的书已经寄出！';
+
+  @override
+  String textLibraryMcPcSentBody(String minutes) {
+    return '它将接受评审。明天你的信箱里会收到一封信，大约 $minutes 分钟后。';
+  }
+
+  @override
+  String textLibraryMcPcWaiting(String title) {
+    return '正在等待《$title》的评审';
+  }
+
+  @override
+  String textLibraryMcPcWaitingBody(String minutes) {
+    return '信大约 $minutes 分钟后送到。评审员一次只读一本书。';
+  }
+
+  @override
+  String get textLibraryMcPcSame => '这个版本已经评审过了。修改这本书后才能再次寄出。';
+
+  @override
+  String get textLibraryMcPcFailed => '没能寄出';
+
+  @override
+  String get textLibraryMcPcTimeout => '评审员花的时间太长了。请稍后再试。';
+
+  @override
+  String get textLibraryMcPcLogOff => '注销';
+
+  @override
+  String get textLibraryMcReviewArrived => '你的书评到了';
+
+  @override
+  String get textLibraryMcReviewArrivedBody => '信在信箱里';
+
+  @override
+  String textLibraryMcReviewTitle(String title) {
+    return '《$title》的书评';
+  }
+
+  @override
+  String get textLibraryMcReviewTips => '改进建议：';
+
+  @override
+  String get textLibraryMcReviewNoBetter => '读起来不错，但没有比上次更好，所以这次没有新的金币。';
+
+  @override
+  String get textLibraryMcReviewSign => '— 图书评审台';
+
+  @override
+  String get textLibraryMcReviewThanks => '谢谢';
+
+  @override
+  String get textLibraryMcReviewEmpty => '那本书是空的。';
+
+  @override
+  String get textLibraryMcReviewSignIn => '登录已获批准的 luma 账户后才能寄书评审。';
+
+  @override
+  String get textLibraryMcReviewUnreachable => '无法连接 luma 服务器。请检查网络后重试。';
+
+  @override
+  String get textLibraryMcClassroom => '教室';
+
+  @override
+  String get textLibraryMcClassLocked => '已上锁';
+
+  @override
+  String get textLibraryMcClassLockedNova => '教室是 Nova 的一部分';
+
+  @override
+  String get textLibraryMcClassLockedSignin => '登录 luma 账户即可打开';
+
+  @override
+  String get textLibraryMcClassLockedOffline => '暂时无法连接 luma 服务器';
+
+  @override
+  String get textLibraryMcClassDown => '爬下地窖';
+
+  @override
+  String get textLibraryMcClassUp => '爬上梯子';
+
+  @override
+  String get textLibraryMcClassSit => '坐下上课';
+
+  @override
+  String get textLibraryMcClassBoard => '黑板';
+
+  @override
+  String get textLibraryMcClassCountryTitle => '你在哪个国家上学？';
+
+  @override
+  String get textLibraryMcClassCountryNote => '此项只能设置一次。';
+
+  @override
+  String get textLibraryMcClassCountryOther => '其他地方';
+
+  @override
+  String get textLibraryMcClassCountryName => '国家';
+
+  @override
+  String get textLibraryMcClassCountrySet => '设置国家';
+
+  @override
+  String textLibraryMcClassCountryConfirm(String name) {
+    return '将 $name 设为你的国家？之后无法更改。';
+  }
+
+  @override
+  String textLibraryMcClassCountryIs(String name) {
+    return '国家：$name';
+  }
+
+  @override
+  String get textLibraryMcClassSchool => '学校';
+
+  @override
+  String get textLibraryMcClassYear => '年级';
+
+  @override
+  String get textLibraryMcClassLevel => '层次';
+
+  @override
+  String get textLibraryMcClassSubject => '科目';
+
+  @override
+  String get textLibraryMcClassPublisher => '教材（出版社）';
+
+  @override
+  String get textLibraryMcClassChapter => '章';
+
+  @override
+  String get textLibraryMcClassParagraph => '节';
+
+  @override
+  String get textLibraryMcClassTopic => '这一节讲什么？';
+
+  @override
+  String get textLibraryMcClassTopicHint => '例如：勾股定理';
+
+  @override
+  String get textLibraryMcClassStart => '开始上课';
+
+  @override
+  String get textLibraryMcClassNeedAll => '请填写所有字段后再开始。';
+
+  @override
+  String get textLibraryMcClassAsking => '老师正在写题目…';
+
+  @override
+  String textLibraryMcClassQuestion(String number) {
+    return '第 $number 题';
+  }
+
+  @override
+  String get textLibraryMcClassAnswerHint => '你的答案';
+
+  @override
+  String get textLibraryMcClassNext => '下一题';
+
+  @override
+  String get textLibraryMcClassPrev => '上一题';
+
+  @override
+  String get textLibraryMcClassSkip => '跳过';
+
+  @override
+  String get textLibraryMcClassHandIn => '交卷';
+
+  @override
+  String get textLibraryMcClassLeave => '离开';
+
+  @override
+  String get textLibraryMcClassSkipped => '已跳过';
+
+  @override
+  String get textLibraryMcClassChecking => '老师正在批改…';
+
+  @override
+  String get textLibraryMcClassNothing => '请先至少回答一道题。';
+
+  @override
+  String textLibraryMcClassHandInConfirm(String count) {
+    return '交 $count 个答案？跳过的题目不会批改。';
+  }
+
+  @override
+  String get textLibraryMcClassLast => '这是本节课的最后一题。';
+
+  @override
+  String get textLibraryMcClassCorrect => '正确';
+
+  @override
+  String get textLibraryMcClassPartly => '部分正确';
+
+  @override
+  String get textLibraryMcClassWrong => '不正确';
+
+  @override
+  String get textLibraryMcClassUnchecked => '未批改';
+
+  @override
+  String textLibraryMcClassScore(String right, String partly, String wrong) {
+    return '$right 题正确，$partly 题部分正确，$wrong 题错误';
+  }
+
+  @override
+  String get textLibraryMcClassYourAnswer => '你';
+
+  @override
+  String get textLibraryMcClassModel => '答案';
+
+  @override
+  String get textLibraryMcClassAgain => '再练这一节';
+
+  @override
+  String get textLibraryMcClassNew => '新课';
+
+  @override
+  String get textLibraryMcClassFailed => '操作失败';
+
+  @override
+  String get textLibraryMcClassRetry => '重试';
+
+  @override
+  String get textLibraryMcClassTimeout => '老师用时太长，请重试。';
+
+  @override
+  String get textLibraryMcClassCancel => '取消';
+
+  @override
+  String get textLibraryMcClassOk => '确定';
 }

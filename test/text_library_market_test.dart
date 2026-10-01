@@ -32,13 +32,22 @@ void main() {
     expect(state.clock, MarketState.cycle - 1);
     expect(state.crate, {'bed': 4, 'swing': MarketState.maxStack});
     expect(state.placed, hasLength(1));
-    expect(state.placed.single.toJson(), {'id': 'bed', 'x': 2, 'z': -3, 'floor': 0, 'rot': 3});
+    expect(state.placed.single.toJson(), {
+      'id': 'bed',
+      'x': 2,
+      'z': -3,
+      'floor': 0,
+      'rot': 3,
+    });
     expect(state.warned, isFalse);
   });
 
   test('no more than the most pieces the page keeps', () {
     final state = MarketState.fromJson({
-      'placed': [for (var i = 0; i < 300; i++) {'id': 'candelabra', 'x': i % 100, 'z': i ~/ 100}],
+      'placed': [
+        for (var i = 0; i < 300; i++)
+          {'id': 'candelabra', 'x': i % 100, 'z': i ~/ 100},
+      ],
     });
     expect(state.placed, hasLength(MarketState.maxPieces));
   });

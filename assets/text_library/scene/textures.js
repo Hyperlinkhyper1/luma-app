@@ -769,6 +769,22 @@
     });
   }
 
+  // The review desk's monitor: a blue desktop with the review window open,
+  // a book on it and lines of text, over a grey taskbar.
+  function monitorScreen() {
+    return paint(16, 16, (x, y) => {
+      if (y === 15) return x < 3 ? [70, 150, 70, 255] : [176, 176, 176, 255];
+      if (x >= 2 && x <= 13 && y >= 2 && y <= 12) {
+        if (y === 2) return x >= 11 ? [220, 60, 50, 255] : [32, 52, 140, 255];
+        if (x >= 3 && x <= 5 && y >= 4 && y <= 8) return x === 3 ? [110, 60, 30, 255] : [150, 84, 40, 255];
+        if (x >= 7 && x <= 12 && (y === 4 || y === 6 || y === 8) && !(y === 8 && x > 10)) return [90, 90, 96, 255];
+        if (x >= 8 && x <= 12 && y >= 10 && y <= 11) return [60, 120, 210, 255];
+        return [214, 214, 210, 255];
+      }
+      return (x + y) % 7 === 0 ? [52, 104, 192, 255] : [42, 92, 176, 255];
+    });
+  }
+
   function mossyCobble() {
     const base = pixels(cobble('mossy_cobblestone', [124, 124, 120]));
     const r = rng('mossy_cobble');
@@ -926,6 +942,7 @@
     teacup,
     quilt,
     awning,
+    monitor_screen: monitorScreen,
   };
 
   const PAINTERS = {

@@ -6,10 +6,10 @@ import 'ai_mode_routing.dart';
 import 'util.dart';
 
 /// Every model selector on the Assistant tab: the three chat modes, the AI
-/// Detector and the picture model. Each has a main model and can name an
-/// "if possible" model in front of it.
-final kAiModelSelectors =
-    List<String>.unmodifiable([...kAiModeNames.keys, 'detector', 'picture']);
+/// Detector, the book reviewer, the classroom tutor and the picture model.
+/// Each has a main model and can name an "if possible" model in front of it.
+final kAiModelSelectors = List<String>.unmodifiable(
+    [...kAiModeNames.keys, 'detector', 'bookreview', 'classroom', 'picture']);
 
 const _preferredSuffix = '.preferred';
 

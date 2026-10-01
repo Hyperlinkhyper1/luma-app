@@ -3642,6 +3642,480 @@ abstract class L {
   /// In en, this message translates to:
   /// **'Move the mouse to look around · Shift or Space to step back'**
   String get textLibraryMcScopeHint;
+
+  /// No description provided for @textLibraryMcPcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Library Review Desk'**
+  String get textLibraryMcPcTitle;
+
+  /// No description provided for @textLibraryMcPcUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the computer'**
+  String get textLibraryMcPcUse;
+
+  /// No description provided for @textLibraryMcPcIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a book you wrote to the reviewer. A good book earns 1 to 50 coins; otherwise the letter brings tips to make it better.'**
+  String get textLibraryMcPcIntro;
+
+  /// No description provided for @textLibraryMcPcPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a book to send:'**
+  String get textLibraryMcPcPick;
+
+  /// No description provided for @textLibraryMcPcNoBooks.
+  ///
+  /// In en, this message translates to:
+  /// **'No books to send yet. Write one first.'**
+  String get textLibraryMcPcNoBooks;
+
+  /// No description provided for @textLibraryMcPcSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send for review'**
+  String get textLibraryMcPcSend;
+
+  /// No description provided for @textLibraryMcPcSending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending…'**
+  String get textLibraryMcPcSending;
+
+  /// No description provided for @textLibraryMcPcSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your book has been sent!'**
+  String get textLibraryMcPcSent;
+
+  /// No description provided for @textLibraryMcPcSentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It will be evaluated. Expect a letter in your mailbox tomorrow, in about {minutes} min.'**
+  String textLibraryMcPcSentBody(String minutes);
+
+  /// No description provided for @textLibraryMcPcWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the review of \"{title}\"'**
+  String textLibraryMcPcWaiting(String title);
+
+  /// No description provided for @textLibraryMcPcWaitingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The letter arrives in about {minutes} min. The reviewer reads one book at a time.'**
+  String textLibraryMcPcWaitingBody(String minutes);
+
+  /// No description provided for @textLibraryMcPcSame.
+  ///
+  /// In en, this message translates to:
+  /// **'This version was already reviewed. Change the book to send it again.'**
+  String get textLibraryMcPcSame;
+
+  /// No description provided for @textLibraryMcPcFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'It could not be sent'**
+  String get textLibraryMcPcFailed;
+
+  /// No description provided for @textLibraryMcPcTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The reviewer took too long. Try again later.'**
+  String get textLibraryMcPcTimeout;
+
+  /// No description provided for @textLibraryMcPcLogOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Log off'**
+  String get textLibraryMcPcLogOff;
+
+  /// No description provided for @textLibraryMcReviewArrived.
+  ///
+  /// In en, this message translates to:
+  /// **'Your book review came in'**
+  String get textLibraryMcReviewArrived;
+
+  /// No description provided for @textLibraryMcReviewArrivedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The letter is in the mailbox'**
+  String get textLibraryMcReviewArrivedBody;
+
+  /// No description provided for @textLibraryMcReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'A review of \"{title}\"'**
+  String textLibraryMcReviewTitle(String title);
+
+  /// No description provided for @textLibraryMcReviewTips.
+  ///
+  /// In en, this message translates to:
+  /// **'To make it better:'**
+  String get textLibraryMcReviewTips;
+
+  /// No description provided for @textLibraryMcReviewNoBetter.
+  ///
+  /// In en, this message translates to:
+  /// **'It reads well, but it isn\'t better than last time, so there are no new coins.'**
+  String get textLibraryMcReviewNoBetter;
+
+  /// No description provided for @textLibraryMcReviewSign.
+  ///
+  /// In en, this message translates to:
+  /// **'— The Library Review Desk'**
+  String get textLibraryMcReviewSign;
+
+  /// No description provided for @textLibraryMcReviewThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks'**
+  String get textLibraryMcReviewThanks;
+
+  /// No description provided for @textLibraryMcReviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'That book is empty.'**
+  String get textLibraryMcReviewEmpty;
+
+  /// No description provided for @textLibraryMcReviewSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to an approved luma account to send books for review.'**
+  String get textLibraryMcReviewSignIn;
+
+  /// No description provided for @textLibraryMcReviewUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the luma server. Check your connection and try again.'**
+  String get textLibraryMcReviewUnreachable;
+
+  /// No description provided for @textLibraryMcClassroom.
+  ///
+  /// In en, this message translates to:
+  /// **'Classroom'**
+  String get textLibraryMcClassroom;
+
+  /// No description provided for @textLibraryMcClassLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get textLibraryMcClassLocked;
+
+  /// No description provided for @textLibraryMcClassLockedNova.
+  ///
+  /// In en, this message translates to:
+  /// **'The classroom is part of Nova'**
+  String get textLibraryMcClassLockedNova;
+
+  /// No description provided for @textLibraryMcClassLockedSignin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to a luma account to open it'**
+  String get textLibraryMcClassLockedSignin;
+
+  /// No description provided for @textLibraryMcClassLockedOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the luma server right now'**
+  String get textLibraryMcClassLockedOffline;
+
+  /// No description provided for @textLibraryMcClassDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Climb down to the cellar'**
+  String get textLibraryMcClassDown;
+
+  /// No description provided for @textLibraryMcClassUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Climb up the ladder'**
+  String get textLibraryMcClassUp;
+
+  /// No description provided for @textLibraryMcClassSit.
+  ///
+  /// In en, this message translates to:
+  /// **'Sit down for a lesson'**
+  String get textLibraryMcClassSit;
+
+  /// No description provided for @textLibraryMcClassBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Blackboard'**
+  String get textLibraryMcClassBoard;
+
+  /// No description provided for @textLibraryMcClassCountryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which country do you go to school in?'**
+  String get textLibraryMcClassCountryTitle;
+
+  /// No description provided for @textLibraryMcClassCountryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only set this once.'**
+  String get textLibraryMcClassCountryNote;
+
+  /// No description provided for @textLibraryMcClassCountryOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Somewhere else'**
+  String get textLibraryMcClassCountryOther;
+
+  /// No description provided for @textLibraryMcClassCountryName.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get textLibraryMcClassCountryName;
+
+  /// No description provided for @textLibraryMcClassCountrySet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set country'**
+  String get textLibraryMcClassCountrySet;
+
+  /// No description provided for @textLibraryMcClassCountryConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Set {name} as your country? You can\'t change it later.'**
+  String textLibraryMcClassCountryConfirm(String name);
+
+  /// No description provided for @textLibraryMcClassCountryIs.
+  ///
+  /// In en, this message translates to:
+  /// **'Country: {name}'**
+  String textLibraryMcClassCountryIs(String name);
+
+  /// No description provided for @textLibraryMcClassSchool.
+  ///
+  /// In en, this message translates to:
+  /// **'School'**
+  String get textLibraryMcClassSchool;
+
+  /// No description provided for @textLibraryMcClassYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get textLibraryMcClassYear;
+
+  /// No description provided for @textLibraryMcClassLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get textLibraryMcClassLevel;
+
+  /// No description provided for @textLibraryMcClassSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject'**
+  String get textLibraryMcClassSubject;
+
+  /// No description provided for @textLibraryMcClassPublisher.
+  ///
+  /// In en, this message translates to:
+  /// **'Book (publisher)'**
+  String get textLibraryMcClassPublisher;
+
+  /// No description provided for @textLibraryMcClassChapter.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapter'**
+  String get textLibraryMcClassChapter;
+
+  /// No description provided for @textLibraryMcClassParagraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Paragraph'**
+  String get textLibraryMcClassParagraph;
+
+  /// No description provided for @textLibraryMcClassTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'What is the paragraph about?'**
+  String get textLibraryMcClassTopic;
+
+  /// No description provided for @textLibraryMcClassTopicHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Pythagoras\' theorem'**
+  String get textLibraryMcClassTopicHint;
+
+  /// No description provided for @textLibraryMcClassStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the lesson'**
+  String get textLibraryMcClassStart;
+
+  /// No description provided for @textLibraryMcClassNeedAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in every field to start.'**
+  String get textLibraryMcClassNeedAll;
+
+  /// No description provided for @textLibraryMcClassAsking.
+  ///
+  /// In en, this message translates to:
+  /// **'The teacher is writing a question…'**
+  String get textLibraryMcClassAsking;
+
+  /// No description provided for @textLibraryMcClassQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Question {number}'**
+  String textLibraryMcClassQuestion(String number);
+
+  /// No description provided for @textLibraryMcClassAnswerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your answer'**
+  String get textLibraryMcClassAnswerHint;
+
+  /// No description provided for @textLibraryMcClassNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next question'**
+  String get textLibraryMcClassNext;
+
+  /// No description provided for @textLibraryMcClassPrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous'**
+  String get textLibraryMcClassPrev;
+
+  /// No description provided for @textLibraryMcClassSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get textLibraryMcClassSkip;
+
+  /// No description provided for @textLibraryMcClassHandIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand in'**
+  String get textLibraryMcClassHandIn;
+
+  /// No description provided for @textLibraryMcClassLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get textLibraryMcClassLeave;
+
+  /// No description provided for @textLibraryMcClassSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get textLibraryMcClassSkipped;
+
+  /// No description provided for @textLibraryMcClassChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'The teacher is checking your work…'**
+  String get textLibraryMcClassChecking;
+
+  /// No description provided for @textLibraryMcClassNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer at least one question first.'**
+  String get textLibraryMcClassNothing;
+
+  /// No description provided for @textLibraryMcClassHandInConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand in {count} answers? Skipped questions are not checked.'**
+  String textLibraryMcClassHandInConfirm(String count);
+
+  /// No description provided for @textLibraryMcClassLast.
+  ///
+  /// In en, this message translates to:
+  /// **'That is the last question for this lesson.'**
+  String get textLibraryMcClassLast;
+
+  /// No description provided for @textLibraryMcClassCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get textLibraryMcClassCorrect;
+
+  /// No description provided for @textLibraryMcClassPartly.
+  ///
+  /// In en, this message translates to:
+  /// **'Partly right'**
+  String get textLibraryMcClassPartly;
+
+  /// No description provided for @textLibraryMcClassWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not right'**
+  String get textLibraryMcClassWrong;
+
+  /// No description provided for @textLibraryMcClassUnchecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Not checked'**
+  String get textLibraryMcClassUnchecked;
+
+  /// No description provided for @textLibraryMcClassScore.
+  ///
+  /// In en, this message translates to:
+  /// **'{right} right, {partly} partly, {wrong} not'**
+  String textLibraryMcClassScore(String right, String partly, String wrong);
+
+  /// No description provided for @textLibraryMcClassYourAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get textLibraryMcClassYourAnswer;
+
+  /// No description provided for @textLibraryMcClassModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer'**
+  String get textLibraryMcClassModel;
+
+  /// No description provided for @textLibraryMcClassAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Same paragraph again'**
+  String get textLibraryMcClassAgain;
+
+  /// No description provided for @textLibraryMcClassNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New lesson'**
+  String get textLibraryMcClassNew;
+
+  /// No description provided for @textLibraryMcClassFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work'**
+  String get textLibraryMcClassFailed;
+
+  /// No description provided for @textLibraryMcClassRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get textLibraryMcClassRetry;
+
+  /// No description provided for @textLibraryMcClassTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The teacher took too long. Try again.'**
+  String get textLibraryMcClassTimeout;
+
+  /// No description provided for @textLibraryMcClassCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get textLibraryMcClassCancel;
+
+  /// No description provided for @textLibraryMcClassOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get textLibraryMcClassOk;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

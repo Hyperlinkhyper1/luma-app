@@ -2001,4 +2001,271 @@ class LNl extends L {
   @override
   String get textLibraryMcScopeHint =>
       'Beweeg de muis om rond te kijken · Shift of spatie om terug te stappen';
+
+  @override
+  String get textLibraryMcPcTitle => 'Recensiebalie van de bibliotheek';
+
+  @override
+  String get textLibraryMcPcUse => 'De computer gebruiken';
+
+  @override
+  String get textLibraryMcPcIntro =>
+      'Stuur een boek dat je schreef naar de recensent. Een goed boek levert 1 tot 50 munten op; anders brengt de brief tips om het beter te maken.';
+
+  @override
+  String get textLibraryMcPcPick => 'Kies een boek om te sturen:';
+
+  @override
+  String get textLibraryMcPcNoBooks =>
+      'Nog geen boeken om te sturen. Schrijf er eerst een.';
+
+  @override
+  String get textLibraryMcPcSend => 'Ter recensie sturen';
+
+  @override
+  String get textLibraryMcPcSending => 'Versturen…';
+
+  @override
+  String get textLibraryMcPcSent => 'Je boek is verstuurd!';
+
+  @override
+  String textLibraryMcPcSentBody(String minutes) {
+    return 'Het wordt beoordeeld. Morgen ligt er een brief in je brievenbus, over ongeveer $minutes min.';
+  }
+
+  @override
+  String textLibraryMcPcWaiting(String title) {
+    return 'Wachten op de recensie van \"$title\"';
+  }
+
+  @override
+  String textLibraryMcPcWaitingBody(String minutes) {
+    return 'De brief komt over ongeveer $minutes min. De recensent leest één boek tegelijk.';
+  }
+
+  @override
+  String get textLibraryMcPcSame =>
+      'Deze versie is al beoordeeld. Pas het boek aan om het opnieuw te sturen.';
+
+  @override
+  String get textLibraryMcPcFailed => 'Het kon niet worden verstuurd';
+
+  @override
+  String get textLibraryMcPcTimeout =>
+      'De recensent deed er te lang over. Probeer het later opnieuw.';
+
+  @override
+  String get textLibraryMcPcLogOff => 'Afmelden';
+
+  @override
+  String get textLibraryMcReviewArrived => 'Je boekrecensie is binnen';
+
+  @override
+  String get textLibraryMcReviewArrivedBody => 'De brief ligt in de brievenbus';
+
+  @override
+  String textLibraryMcReviewTitle(String title) {
+    return 'Een recensie van \"$title\"';
+  }
+
+  @override
+  String get textLibraryMcReviewTips => 'Om het beter te maken:';
+
+  @override
+  String get textLibraryMcReviewNoBetter =>
+      'Het leest goed, maar het is niet beter dan de vorige keer, dus er zijn geen nieuwe munten.';
+
+  @override
+  String get textLibraryMcReviewSign => '— De recensiebalie van de bibliotheek';
+
+  @override
+  String get textLibraryMcReviewThanks => 'Bedankt';
+
+  @override
+  String get textLibraryMcReviewEmpty => 'Dat boek is leeg.';
+
+  @override
+  String get textLibraryMcReviewSignIn =>
+      'Meld je aan bij een goedgekeurd luma-account om boeken ter recensie te sturen.';
+
+  @override
+  String get textLibraryMcReviewUnreachable =>
+      'Kon de luma-server niet bereiken. Controleer je verbinding en probeer het opnieuw.';
+
+  @override
+  String get textLibraryMcClassroom => 'Klaslokaal';
+
+  @override
+  String get textLibraryMcClassLocked => 'Op slot';
+
+  @override
+  String get textLibraryMcClassLockedNova => 'Het klaslokaal hoort bij Nova';
+
+  @override
+  String get textLibraryMcClassLockedSignin =>
+      'Meld je aan bij een luma-account om hem te openen';
+
+  @override
+  String get textLibraryMcClassLockedOffline =>
+      'De luma-server is nu niet bereikbaar';
+
+  @override
+  String get textLibraryMcClassDown => 'Naar de kelder klimmen';
+
+  @override
+  String get textLibraryMcClassUp => 'De ladder op klimmen';
+
+  @override
+  String get textLibraryMcClassSit => 'Ga zitten voor een les';
+
+  @override
+  String get textLibraryMcClassBoard => 'Schoolbord';
+
+  @override
+  String get textLibraryMcClassCountryTitle => 'In welk land zit je op school?';
+
+  @override
+  String get textLibraryMcClassCountryNote =>
+      'Dit kun je maar één keer instellen.';
+
+  @override
+  String get textLibraryMcClassCountryOther => 'Ergens anders';
+
+  @override
+  String get textLibraryMcClassCountryName => 'Land';
+
+  @override
+  String get textLibraryMcClassCountrySet => 'Land instellen';
+
+  @override
+  String textLibraryMcClassCountryConfirm(String name) {
+    return '$name instellen als je land? Je kunt dit later niet meer wijzigen.';
+  }
+
+  @override
+  String textLibraryMcClassCountryIs(String name) {
+    return 'Land: $name';
+  }
+
+  @override
+  String get textLibraryMcClassSchool => 'School';
+
+  @override
+  String get textLibraryMcClassYear => 'Leerjaar';
+
+  @override
+  String get textLibraryMcClassLevel => 'Niveau';
+
+  @override
+  String get textLibraryMcClassSubject => 'Vak';
+
+  @override
+  String get textLibraryMcClassPublisher => 'Methode (uitgever)';
+
+  @override
+  String get textLibraryMcClassChapter => 'Hoofdstuk';
+
+  @override
+  String get textLibraryMcClassParagraph => 'Paragraaf';
+
+  @override
+  String get textLibraryMcClassTopic => 'Waar gaat de paragraaf over?';
+
+  @override
+  String get textLibraryMcClassTopicHint => 'bijv. de stelling van Pythagoras';
+
+  @override
+  String get textLibraryMcClassStart => 'Begin de les';
+
+  @override
+  String get textLibraryMcClassNeedAll => 'Vul alle velden in om te beginnen.';
+
+  @override
+  String get textLibraryMcClassAsking => 'De leraar schrijft een vraag op…';
+
+  @override
+  String textLibraryMcClassQuestion(String number) {
+    return 'Vraag $number';
+  }
+
+  @override
+  String get textLibraryMcClassAnswerHint => 'Je antwoord';
+
+  @override
+  String get textLibraryMcClassNext => 'Volgende vraag';
+
+  @override
+  String get textLibraryMcClassPrev => 'Vorige';
+
+  @override
+  String get textLibraryMcClassSkip => 'Overslaan';
+
+  @override
+  String get textLibraryMcClassHandIn => 'Inleveren';
+
+  @override
+  String get textLibraryMcClassLeave => 'Weggaan';
+
+  @override
+  String get textLibraryMcClassSkipped => 'Overgeslagen';
+
+  @override
+  String get textLibraryMcClassChecking => 'De leraar kijkt je werk na…';
+
+  @override
+  String get textLibraryMcClassNothing =>
+      'Beantwoord eerst minstens één vraag.';
+
+  @override
+  String textLibraryMcClassHandInConfirm(String count) {
+    return '$count antwoorden inleveren? Overgeslagen vragen worden niet nagekeken.';
+  }
+
+  @override
+  String get textLibraryMcClassLast => 'Dat was de laatste vraag van deze les.';
+
+  @override
+  String get textLibraryMcClassCorrect => 'Goed';
+
+  @override
+  String get textLibraryMcClassPartly => 'Deels goed';
+
+  @override
+  String get textLibraryMcClassWrong => 'Niet goed';
+
+  @override
+  String get textLibraryMcClassUnchecked => 'Niet nagekeken';
+
+  @override
+  String textLibraryMcClassScore(String right, String partly, String wrong) {
+    return '$right goed, $partly deels, $wrong fout';
+  }
+
+  @override
+  String get textLibraryMcClassYourAnswer => 'Jij';
+
+  @override
+  String get textLibraryMcClassModel => 'Antwoord';
+
+  @override
+  String get textLibraryMcClassAgain => 'Zelfde paragraaf nog eens';
+
+  @override
+  String get textLibraryMcClassNew => 'Nieuwe les';
+
+  @override
+  String get textLibraryMcClassFailed => 'Dat lukte niet';
+
+  @override
+  String get textLibraryMcClassRetry => 'Opnieuw proberen';
+
+  @override
+  String get textLibraryMcClassTimeout =>
+      'De leraar deed er te lang over. Probeer het opnieuw.';
+
+  @override
+  String get textLibraryMcClassCancel => 'Annuleren';
+
+  @override
+  String get textLibraryMcClassOk => 'OK';
 }

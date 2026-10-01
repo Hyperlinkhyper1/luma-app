@@ -1986,4 +1986,270 @@ class LEn extends L {
   @override
   String get textLibraryMcScopeHint =>
       'Move the mouse to look around · Shift or Space to step back';
+
+  @override
+  String get textLibraryMcPcTitle => 'Library Review Desk';
+
+  @override
+  String get textLibraryMcPcUse => 'Use the computer';
+
+  @override
+  String get textLibraryMcPcIntro =>
+      'Send a book you wrote to the reviewer. A good book earns 1 to 50 coins; otherwise the letter brings tips to make it better.';
+
+  @override
+  String get textLibraryMcPcPick => 'Pick a book to send:';
+
+  @override
+  String get textLibraryMcPcNoBooks => 'No books to send yet. Write one first.';
+
+  @override
+  String get textLibraryMcPcSend => 'Send for review';
+
+  @override
+  String get textLibraryMcPcSending => 'Sending…';
+
+  @override
+  String get textLibraryMcPcSent => 'Your book has been sent!';
+
+  @override
+  String textLibraryMcPcSentBody(String minutes) {
+    return 'It will be evaluated. Expect a letter in your mailbox tomorrow, in about $minutes min.';
+  }
+
+  @override
+  String textLibraryMcPcWaiting(String title) {
+    return 'Waiting for the review of \"$title\"';
+  }
+
+  @override
+  String textLibraryMcPcWaitingBody(String minutes) {
+    return 'The letter arrives in about $minutes min. The reviewer reads one book at a time.';
+  }
+
+  @override
+  String get textLibraryMcPcSame =>
+      'This version was already reviewed. Change the book to send it again.';
+
+  @override
+  String get textLibraryMcPcFailed => 'It could not be sent';
+
+  @override
+  String get textLibraryMcPcTimeout =>
+      'The reviewer took too long. Try again later.';
+
+  @override
+  String get textLibraryMcPcLogOff => 'Log off';
+
+  @override
+  String get textLibraryMcReviewArrived => 'Your book review came in';
+
+  @override
+  String get textLibraryMcReviewArrivedBody => 'The letter is in the mailbox';
+
+  @override
+  String textLibraryMcReviewTitle(String title) {
+    return 'A review of \"$title\"';
+  }
+
+  @override
+  String get textLibraryMcReviewTips => 'To make it better:';
+
+  @override
+  String get textLibraryMcReviewNoBetter =>
+      'It reads well, but it isn\'t better than last time, so there are no new coins.';
+
+  @override
+  String get textLibraryMcReviewSign => '— The Library Review Desk';
+
+  @override
+  String get textLibraryMcReviewThanks => 'Thanks';
+
+  @override
+  String get textLibraryMcReviewEmpty => 'That book is empty.';
+
+  @override
+  String get textLibraryMcReviewSignIn =>
+      'Sign in to an approved luma account to send books for review.';
+
+  @override
+  String get textLibraryMcReviewUnreachable =>
+      'Could not reach the luma server. Check your connection and try again.';
+
+  @override
+  String get textLibraryMcClassroom => 'Classroom';
+
+  @override
+  String get textLibraryMcClassLocked => 'Locked';
+
+  @override
+  String get textLibraryMcClassLockedNova => 'The classroom is part of Nova';
+
+  @override
+  String get textLibraryMcClassLockedSignin =>
+      'Sign in to a luma account to open it';
+
+  @override
+  String get textLibraryMcClassLockedOffline =>
+      'Can\'t reach the luma server right now';
+
+  @override
+  String get textLibraryMcClassDown => 'Climb down to the cellar';
+
+  @override
+  String get textLibraryMcClassUp => 'Climb up the ladder';
+
+  @override
+  String get textLibraryMcClassSit => 'Sit down for a lesson';
+
+  @override
+  String get textLibraryMcClassBoard => 'Blackboard';
+
+  @override
+  String get textLibraryMcClassCountryTitle =>
+      'Which country do you go to school in?';
+
+  @override
+  String get textLibraryMcClassCountryNote => 'You can only set this once.';
+
+  @override
+  String get textLibraryMcClassCountryOther => 'Somewhere else';
+
+  @override
+  String get textLibraryMcClassCountryName => 'Country';
+
+  @override
+  String get textLibraryMcClassCountrySet => 'Set country';
+
+  @override
+  String textLibraryMcClassCountryConfirm(String name) {
+    return 'Set $name as your country? You can\'t change it later.';
+  }
+
+  @override
+  String textLibraryMcClassCountryIs(String name) {
+    return 'Country: $name';
+  }
+
+  @override
+  String get textLibraryMcClassSchool => 'School';
+
+  @override
+  String get textLibraryMcClassYear => 'Year';
+
+  @override
+  String get textLibraryMcClassLevel => 'Level';
+
+  @override
+  String get textLibraryMcClassSubject => 'Subject';
+
+  @override
+  String get textLibraryMcClassPublisher => 'Book (publisher)';
+
+  @override
+  String get textLibraryMcClassChapter => 'Chapter';
+
+  @override
+  String get textLibraryMcClassParagraph => 'Paragraph';
+
+  @override
+  String get textLibraryMcClassTopic => 'What is the paragraph about?';
+
+  @override
+  String get textLibraryMcClassTopicHint => 'e.g. Pythagoras\' theorem';
+
+  @override
+  String get textLibraryMcClassStart => 'Start the lesson';
+
+  @override
+  String get textLibraryMcClassNeedAll => 'Fill in every field to start.';
+
+  @override
+  String get textLibraryMcClassAsking => 'The teacher is writing a question…';
+
+  @override
+  String textLibraryMcClassQuestion(String number) {
+    return 'Question $number';
+  }
+
+  @override
+  String get textLibraryMcClassAnswerHint => 'Your answer';
+
+  @override
+  String get textLibraryMcClassNext => 'Next question';
+
+  @override
+  String get textLibraryMcClassPrev => 'Previous';
+
+  @override
+  String get textLibraryMcClassSkip => 'Skip';
+
+  @override
+  String get textLibraryMcClassHandIn => 'Hand in';
+
+  @override
+  String get textLibraryMcClassLeave => 'Leave';
+
+  @override
+  String get textLibraryMcClassSkipped => 'Skipped';
+
+  @override
+  String get textLibraryMcClassChecking => 'The teacher is checking your work…';
+
+  @override
+  String get textLibraryMcClassNothing => 'Answer at least one question first.';
+
+  @override
+  String textLibraryMcClassHandInConfirm(String count) {
+    return 'Hand in $count answers? Skipped questions are not checked.';
+  }
+
+  @override
+  String get textLibraryMcClassLast =>
+      'That is the last question for this lesson.';
+
+  @override
+  String get textLibraryMcClassCorrect => 'Correct';
+
+  @override
+  String get textLibraryMcClassPartly => 'Partly right';
+
+  @override
+  String get textLibraryMcClassWrong => 'Not right';
+
+  @override
+  String get textLibraryMcClassUnchecked => 'Not checked';
+
+  @override
+  String textLibraryMcClassScore(String right, String partly, String wrong) {
+    return '$right right, $partly partly, $wrong not';
+  }
+
+  @override
+  String get textLibraryMcClassYourAnswer => 'You';
+
+  @override
+  String get textLibraryMcClassModel => 'Answer';
+
+  @override
+  String get textLibraryMcClassAgain => 'Same paragraph again';
+
+  @override
+  String get textLibraryMcClassNew => 'New lesson';
+
+  @override
+  String get textLibraryMcClassFailed => 'That didn\'t work';
+
+  @override
+  String get textLibraryMcClassRetry => 'Try again';
+
+  @override
+  String get textLibraryMcClassTimeout =>
+      'The teacher took too long. Try again.';
+
+  @override
+  String get textLibraryMcClassCancel => 'Cancel';
+
+  @override
+  String get textLibraryMcClassOk => 'OK';
 }

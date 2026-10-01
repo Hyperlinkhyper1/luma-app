@@ -946,5 +946,153 @@
   "textLibraryMcStopMusic": "Stop the music",
   "textLibraryMcLookThrough": "Look through the telescope",
   "textLibraryMcStepBack": "Step back",
-  "textLibraryMcScopeHint": "Move the mouse to look around · Shift or Space to step back"
+  "textLibraryMcScopeHint": "Move the mouse to look around · Shift or Space to step back",
+  "textLibraryMcPcTitle": "Library Review Desk",
+  "textLibraryMcPcUse": "Use the computer",
+  "textLibraryMcPcIntro": "Send a book you wrote to the reviewer. A good book earns 1 to 50 coins; otherwise the letter brings tips to make it better.",
+  "textLibraryMcPcPick": "Pick a book to send:",
+  "textLibraryMcPcNoBooks": "No books to send yet. Write one first.",
+  "textLibraryMcPcSend": "Send for review",
+  "textLibraryMcPcSending": "Sending…",
+  "textLibraryMcPcSent": "Your book has been sent!",
+  "textLibraryMcPcSentBody": "It will be evaluated. Expect a letter in your mailbox tomorrow, in about {minutes} min.",
+  "@textLibraryMcPcSentBody": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcPcWaiting": "Waiting for the review of \"{title}\"",
+  "@textLibraryMcPcWaiting": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcPcWaitingBody": "The letter arrives in about {minutes} min. The reviewer reads one book at a time.",
+  "@textLibraryMcPcWaitingBody": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcPcSame": "This version was already reviewed. Change the book to send it again.",
+  "textLibraryMcPcFailed": "It could not be sent",
+  "textLibraryMcPcTimeout": "The reviewer took too long. Try again later.",
+  "textLibraryMcPcLogOff": "Log off",
+  "textLibraryMcReviewArrived": "Your book review came in",
+  "textLibraryMcReviewArrivedBody": "The letter is in the mailbox",
+  "textLibraryMcReviewTitle": "A review of \"{title}\"",
+  "@textLibraryMcReviewTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcReviewTips": "To make it better:",
+  "textLibraryMcReviewNoBetter": "It reads well, but it isn't better than last time, so there are no new coins.",
+  "textLibraryMcReviewSign": "— The Library Review Desk",
+  "textLibraryMcReviewThanks": "Thanks",
+  "textLibraryMcReviewEmpty": "That book is empty.",
+  "textLibraryMcReviewSignIn": "Sign in to an approved luma account to send books for review.",
+  "textLibraryMcReviewUnreachable": "Could not reach the luma server. Check your connection and try again.",
+  "textLibraryMcClassroom": "Classroom",
+  "textLibraryMcClassLocked": "Locked",
+  "textLibraryMcClassLockedNova": "The classroom is part of Nova",
+  "textLibraryMcClassLockedSignin": "Sign in to a luma account to open it",
+  "textLibraryMcClassLockedOffline": "Can't reach the luma server right now",
+  "textLibraryMcClassDown": "Climb down to the cellar",
+  "textLibraryMcClassUp": "Climb up the ladder",
+  "textLibraryMcClassSit": "Sit down for a lesson",
+  "textLibraryMcClassBoard": "Blackboard",
+  "textLibraryMcClassCountryTitle": "Which country do you go to school in?",
+  "textLibraryMcClassCountryNote": "You can only set this once.",
+  "textLibraryMcClassCountryOther": "Somewhere else",
+  "textLibraryMcClassCountryName": "Country",
+  "textLibraryMcClassCountrySet": "Set country",
+  "textLibraryMcClassCountryConfirm": "Set {name} as your country? You can't change it later.",
+  "@textLibraryMcClassCountryConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcClassCountryIs": "Country: {name}",
+  "@textLibraryMcClassCountryIs": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcClassSchool": "School",
+  "textLibraryMcClassYear": "Year",
+  "textLibraryMcClassLevel": "Level",
+  "textLibraryMcClassSubject": "Subject",
+  "textLibraryMcClassPublisher": "Book (publisher)",
+  "textLibraryMcClassChapter": "Chapter",
+  "textLibraryMcClassParagraph": "Paragraph",
+  "textLibraryMcClassTopic": "What is the paragraph about?",
+  "textLibraryMcClassTopicHint": "e.g. Pythagoras' theorem",
+  "textLibraryMcClassStart": "Start the lesson",
+  "textLibraryMcClassNeedAll": "Fill in every field to start.",
+  "textLibraryMcClassAsking": "The teacher is writing a question…",
+  "textLibraryMcClassQuestion": "Question {number}",
+  "@textLibraryMcClassQuestion": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcClassAnswerHint": "Your answer",
+  "textLibraryMcClassNext": "Next question",
+  "textLibraryMcClassPrev": "Previous",
+  "textLibraryMcClassSkip": "Skip",
+  "textLibraryMcClassHandIn": "Hand in",
+  "textLibraryMcClassLeave": "Leave",
+  "textLibraryMcClassSkipped": "Skipped",
+  "textLibraryMcClassChecking": "The teacher is checking your work…",
+  "textLibraryMcClassNothing": "Answer at least one question first.",
+  "textLibraryMcClassHandInConfirm": "Hand in {count} answers? Skipped questions are not checked.",
+  "@textLibraryMcClassHandInConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcClassLast": "That is the last question for this lesson.",
+  "textLibraryMcClassCorrect": "Correct",
+  "textLibraryMcClassPartly": "Partly right",
+  "textLibraryMcClassWrong": "Not right",
+  "textLibraryMcClassUnchecked": "Not checked",
+  "textLibraryMcClassScore": "{right} right, {partly} partly, {wrong} not",
+  "@textLibraryMcClassScore": {
+    "placeholders": {
+      "right": {
+        "type": "String"
+      },
+      "partly": {
+        "type": "String"
+      },
+      "wrong": {
+        "type": "String"
+      }
+    }
+  },
+  "textLibraryMcClassYourAnswer": "You",
+  "textLibraryMcClassModel": "Answer",
+  "textLibraryMcClassAgain": "Same paragraph again",
+  "textLibraryMcClassNew": "New lesson",
+  "textLibraryMcClassFailed": "That didn't work",
+  "textLibraryMcClassRetry": "Try again",
+  "textLibraryMcClassTimeout": "The teacher took too long. Try again.",
+  "textLibraryMcClassCancel": "Cancel",
+  "textLibraryMcClassOk": "OK"
 }
