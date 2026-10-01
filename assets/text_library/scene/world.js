@@ -42,7 +42,7 @@
   // The spiral stair between floors: a post in the middle of a 3×3 well by
   // the foyer's east wall, two turns of sixteen shallow treads per storey.
   const STAIR = {x0: 2, z0: 1, cx: 3, cz: 2};
-  // The basement under the hall: a stone cellar under the foyer, reached
+  // The basement under the hall: a snug little hall under the foyer, reached
   // by a ladder through a hatch in the floor, and behind a door in its back
   // wall the classroom. `base` is its walking surface; cells x0..x1 across,
   // the cellar's z from `divide` + 1 to `front`, the classroom's from `back`
@@ -1325,36 +1325,42 @@
   }
 
   // ── The basement ───────────────────────────────────────────────────────
-  // A stone cellar under the foyer with a ladder down from a hatch in the
-  // floor, barrels and the harvest stored along its walls, and a door in
-  // its back wall to the classroom: plastered walls, a blackboard, the
-  // teacher's desk and three rows of school desks facing it.
+  // Finished like the rooms upstairs: limewashed walls over a dark oak
+  // skirting, the timber frame showing, plank floors. Under the foyer a
+  // snug little hall at the foot of the ladder from the hatch, with a rug,
+  // a reading chair under a lamp, shelves and the autumn's pumpkins; behind
+  // a door in its back wall the classroom: a blackboard, the teacher's desk
+  // and three rows of school desks facing it.
   function basement(K, {light, solidBox, lamps, later}) {
     const {grid} = K, Fu = window.LibraryFurniture;
     const {base: y0, x0, x1, front, divide, back, hatch: [hx, hz]} = BASEMENT;
     const top = -2, floor = -1;
     const box2 = (ax, az, bx, bz) => solidBox(ax, az, bx, bz, floor);
-    const stone = (x, y, z) => (cellHash(x, y + 300, z) < 0.16 ? B.mossy_stone_bricks : B.stone_bricks);
 
-    // The shell: stone all round, then hollowed out; the hall's floor above
-    // is its ceiling.
-    for (let x = x0 - 1; x <= x1 + 1; x++) for (let y = y0 - 1; y <= top; y++) for (let z = back - 1; z <= front + 1; z++) grid.set(x, y, z, stone(x, y, z));
+    // The shell, stone out of sight in the island, hollowed out; the hall's
+    // floor above is its ceiling.
+    grid.fill([x0 - 1, y0 - 1, back - 1], [x1 + 1, top, front + 1], B.stone_bricks);
     grid.fill([x0, y0, back], [x1, top, front], AIR);
-    for (let x = x0; x <= x1; x++) for (let z = divide + 1; z <= front; z++) grid.set(x, y0 - 1, z, cellHash(x, 301, z) < 0.2 ? B.mossy_cobblestone : B.cobblestone);
     grid.fill([x0, y0 - 1, back], [x1, y0 - 1, divide - 1], B.oak_planks);
-    // The classroom's walls are plastered over an oak skirting.
+    grid.fill([x0, y0 - 1, divide + 1], [x1, y0 - 1, front], B.spruce_planks);
+    for (const x of [-1, 0]) grid.set(x, y0 - 1, divide, B.dark_oak_planks);
+    // Every wall, the one between the rooms too, limewashed over a skirting.
     for (let y = y0; y <= top; y++) {
       const b = y === y0 ? B.dark_oak_planks : B.plaster;
-      for (let z = back; z < divide; z++) { grid.set(x0 - 1, y, z, b); grid.set(x1 + 1, y, z, b); }
-      for (let x = x0 - 1; x <= x1 + 1; x++) grid.set(x, y, back - 1, b);
+      for (let z = back; z <= front; z++) { grid.set(x0 - 1, y, z, b); grid.set(x1 + 1, y, z, b); }
+      for (let x = x0 - 1; x <= x1 + 1; x++) { grid.set(x, y, back - 1, b); grid.set(x, y, front + 1, b); grid.set(x, y, divide, b); }
     }
-    // The wall between, with a doorway framed in dark oak.
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= top; y++) grid.set(x, y, divide, stone(x, y, divide));
+    // The doorway between, framed in dark oak.
     for (const x of [-1, 0]) for (let y = y0; y < y0 + 3; y++) grid.set(x, y, divide, AIR);
     for (const x of [-2, 1]) for (let y = y0; y < y0 + 3; y++) grid.set(x, y, divide, B.post);
     for (let x = -2; x <= 1; x++) grid.set(x, y0 + 3, divide, B.beam_x);
-    // Beams across under the floor boards.
-    for (const z of [1, back + 3, back + 8]) for (let x = x0; x <= x1; x++) grid.set(x, top, z, B.beam_x);
+    // Beams across under the floor boards, each on a post in either wall,
+    // and posts in the corners: the house's own frame carried down.
+    for (const z of [1, back + 3, back + 8]) {
+      for (let x = x0; x <= x1; x++) grid.set(x, top, z, B.beam_x);
+      for (const x of [x0 - 1, x1 + 1]) for (let y = y0; y <= top; y++) grid.set(x, y, z, B.post);
+    }
+    for (const x of [x0 - 1, x1 + 1]) for (const z of [back - 1, divide, front + 1]) for (let y = y0; y <= top; y++) grid.set(x, y, z, B.post);
     // The hatch: a hole in the foyer floor, the ladder against the wall.
     grid.set(hx, -1, hz, AIR);
     box2(hx, hz, hx + 0.3, hz + 1);
@@ -1363,24 +1369,48 @@
       Fu.hatch(K, hx, 0, hz);
     });
 
-    // The cellar: barrels, the harvest, a lantern.
-    const barrels = [[x1 - 1, 0], [x1, 0], [x1, 1], [-3, front], [-2, front]];
+    // The little hall. Bookshelves against the wall east of the door, a
+    // potted azalea and a pumpkin west of it.
+    for (let x = 2; x <= x1; x++) for (let y = y0; y < y0 + 2; y++) grid.set(x, y, divide + 1, B.bookshelf);
+    grid.set(x0 + 1, y0, divide + 1, B.pumpkin);
+    box2(x0 + 2.2, divide + 1.2, x0 + 2.8, divide + 1.8);
+    // A reading corner: an armchair turned to the room, a lamp and a table.
+    const chairYaw = -Math.PI / 2;
+    box2(x1 - 1.05, 3.05, x1 + 0.05, 3.95);
+    box2(x1 - 0.8, 1.9, x1 - 0.2, 2.5);
+    box2(x1 - 0.75, 4.3, x1 - 0.1, 5.05);
+    light(x1 - 0.5, y0 + 1.5, 2.2, 14);
+    // Barrels and the harvest along the front wall.
+    const barrels = [[-3, front], [-2, front]];
     for (const [x, z] of barrels) box2(x + 0.1, z + 0.1, x + 0.9, z + 0.9);
-    for (const [x, z] of [[x1, front], [x1, front - 1], [x1 - 1, front]]) grid.set(x, y0, z, B.hay);
-    grid.set(x1, y0 + 1, front, B.hay);
-    for (const [x, z] of [[x1 - 1, front - 1], [x1 - 2, front]]) grid.set(x, y0, z, B.pumpkin);
+    for (const x of [-4, 0]) grid.set(x, y0, front, B.pumpkin);
     later.push(() => {
+      Fu.rug(K, -3, 1, 2, 5, 'rust', y0);
+      Fu.pot(K, [x0 + 2, y0, divide + 1], 'azalea', true);
+      Fu.armchair(K, [x1 - 1, y0, 3], chairYaw, 'green_wool');
+      Fu.throwBlanket(K, [x1 - 1, y0, 3], chairYaw, 'red');
+      Fu.floorLamp(K, [x1 - 1, y0, 1.7]);
+      Fu.sideTable(K, [x1 - 1, y0, 4.2], 'tea');
       for (const [x, z] of barrels) Fu.barrel(K, [x, y0, z]);
-      Fu.barrel(K, [x1, y0 + 14 / 16, 0]);
       Fu.barrel(K, [-3, y0 + 14 / 16, front]);
       Fu.bookStack(K, [-2, y0 + 14 / 16, front], 3, 'cellar', 0.5);
+      // A landscape over the barrels, framed like the one over the hearth.
+      const wall = front + 1, py = y0 + 1.5;
+      box(K, [0, py, wall - 0.04], [1, py + 1, wall], {north: {tex: 'painting_left', uv: [0, 0, 16, 16]}});
+      box(K, [-1, py, wall - 0.04], [0, py + 1, wall], {north: {tex: 'painting_right', uv: [0, 0, 16, 16]}});
+      const fr = sides('dark_oak_planks');
+      box(K, [-1.1, py - 0.1, wall - 0.1], [1.1, py, wall], fr);
+      box(K, [-1.1, py + 1, wall - 0.1], [1.1, py + 1.1, wall], fr);
+      box(K, [-1.1, py, wall - 0.1], [-1, py + 1, wall], fr);
+      box(K, [1, py, wall - 0.1], [1.1, py + 1, wall], fr);
     });
     const hang = (cx, cz, y = y0 + 2.9) => {
       lamps.push({cell: [cx - 1, y, cz - 0.5], hanging: true, top: -1});
       light(cx, y, cz, 15);
     };
     hang(0.5, 2.5);
-    light(-0.5, y0 + 1, divide + 1, 9);
+    hang(-2.5, 4.5);
+    light(-0.5, y0 + 1, divide + 1, 12);
 
     // The classroom.
     const zb = back, BOARD = {x0: -3, x1: 3, y0: y0 + 1.15, y1: y0 + 2.95, z: zb};
