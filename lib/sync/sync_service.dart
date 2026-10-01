@@ -1150,6 +1150,30 @@ class SyncService extends ChangeNotifier {
     if (serverReady) unawaited(syncNow(silent: true));
   }
 
+  /// Turns on every collection this plan allows (up to its slot limit) and
+  /// runs a single sync. Returns how many were newly enabled.
+  Future<int> enableAllCollections() async {
+    final s = _state;
+    if (s == null) return 0;
+    final limit = syncCollectionLimit?.call();
+    var enabledNow = 0;
+    for (final collection in collections) {
+      if (isAutomaticSyncCollection(collection.id)) continue;
+      if (!_planAllows(collection)) continue;
+      final st = s.collection(collection.id);
+      if (st.enabled) continue;
+      if (limit != null && enabledSyncCollectionCount >= limit) break;
+      st.enabled = true;
+      enabledNow++;
+    }
+    if (enabledNow > 0) {
+      await s.save();
+      notifyListeners();
+    }
+    if (serverReady) await syncNow();
+    return enabledNow;
+  }
+
   /// Turns syncing off. With [removeRemote], the server's copy is deleted
   /// too (other devices that still sync this collection may re-upload it).
   Future<void> disableCollection(String id, {bool removeRemote = false}) async {
@@ -1706,7 +1730,27 @@ class AiServerStatus {
     this.modeVersions = const {},
     this.pictureConfigured = false,
     this.pictureWeeklyPct,
+    this.aiCheckUsed = 0,
+    this.aiCheckLimit = 0,
+    this.aiCheckExchangePct = 0,
+    this.creditBalance = 0,
   });
+
+  /// Purchased extra AI tokens still unspent. Used only once the plan's own
+  /// budget is gone.
+  final int creditBalance;
+
+  /// AI Detector reviews this plan includes per rolling week, and how many
+  /// of them this account has used.
+  final int aiCheckUsed;
+  final int aiCheckLimit;
+
+  /// Share of the weekly Luma AI limit one review costs once the included
+  /// ones are used up.
+  final int aiCheckExchangePct;
+
+  int get aiCheckRemaining =>
+      (aiCheckLimit - aiCheckUsed).clamp(0, aiCheckLimit);
 
   /// Whether the operator configured a shared Luma Support (Mistral) key.
   final bool mistralConfigured;
@@ -1748,7 +1792,9 @@ class AiServerStatus {
     final usage = json['usage'] as Map<String, dynamic>? ?? const {};
     final picture = json['picture'] is Map ? json['picture'] as Map : const {};
     int intOf(Object? v, [int fallback = 0]) => v is num ? v.toInt() : fallback;
+    final credits = json['credits'] is Map ? json['credits'] as Map : const {};
     return AiServerStatus(
+      creditBalance: intOf(credits['balance']),
       pictureConfigured: picture['configured'] == true,
       pictureWeeklyPct: picture['weeklyPct'] is num
           ? (picture['weeklyPct'] as num).toInt()
@@ -1761,6 +1807,9 @@ class AiServerStatus {
       supportLimit: intOf(usage['supportLimit'], 15),
       webSearchUsed: intOf(usage['webSearchUsed']),
       webSearchLimit: intOf(usage['webSearchLimit']),
+      aiCheckUsed: intOf(usage['aiCheckUsed']),
+      aiCheckLimit: intOf(usage['aiCheckLimit']),
+      aiCheckExchangePct: intOf(usage['aiCheckExchangePct']),
       modeVersions: {
         if (json['modeVersions'] case final Map rawVersions)
           for (final entry in rawVersions.entries)

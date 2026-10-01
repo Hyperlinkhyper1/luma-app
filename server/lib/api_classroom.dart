@@ -21,17 +21,12 @@ extension ClassroomApi on Api {
           403, 'plan_required', 'The classroom is part of the Nova plan.');
     }
     final budget = aiTokenBudget(user.planId, _meteredMode);
-    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
-                mode: _meteredMode) >=
-            budget.fiveHour ||
-        aiUsage.tokensUsed(user.id, const Duration(days: 7),
-                mode: _meteredMode) >=
-            budget.weekly) {
+    if (!aiUsage.canSpend(user.id, _meteredMode, budget)) {
       return errorResponse(
           429,
           'usage_limit',
           "You've hit your Luma AI usage limit for now — it frees up again "
-              'over time.');
+              'over time, or buy extra credits.');
     }
     return null;
   }
@@ -124,8 +119,8 @@ extension ClassroomApi on Api {
             content = decoded['choices']?[0]?['message']?['content'] as String?;
           }
         } catch (_) {}
-        await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 800,
-            mode: _meteredMode);
+        await aiUsage.charge(user.id, tokens > 0 ? tokens : 800, _meteredMode,
+            aiTokenBudget(user.planId, _meteredMode));
         final parsed = content == null ? null : parse(content);
         if (parsed != null) return parsed;
       } catch (_) {

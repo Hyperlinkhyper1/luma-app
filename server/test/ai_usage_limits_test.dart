@@ -21,6 +21,75 @@ void main() {
     }
   });
 
+  test('AI checks: plans include weekly reviews, extras cost a weekly share',
+      () async {
+    expect(aiCheckerWeeklyChecksForPlan('core'), 0);
+    expect(aiCheckerWeeklyChecksForPlan('orbit'), 10);
+    expect(aiCheckerWeeklyChecksForPlan('nova'), 30);
+    expect(aiCheckerWeeklyChecksForPlan(null), 0);
+    expect(aiCheckerExchangePercentForPlan('core'), 10);
+    expect(aiCheckerExchangePercentForPlan('orbit'), 4);
+    expect(aiCheckerExchangePercentForPlan('nova'), 2);
+    for (final plan in ['core', 'orbit', 'nova']) {
+      final budget = aiTokenBudget(plan, 'normal');
+      expect(budget.weekly * aiCheckerExchangePercentForPlan(plan) ~/ 100,
+          lessThanOrEqualTo(budget.fiveHour));
+    }
+
+    final dir = await Directory.systemTemp.createTemp('ai_checks_');
+    addTearDown(() => dir.delete(recursive: true));
+    final store = await AiUsageStore.open(dir.path);
+    expect(store.aiChecksUsed('u'), 0);
+    await store.recordAiCheck('u');
+    await store.recordAiCheck('u');
+    expect(store.aiChecksUsed('u'), 2);
+    expect(store.aiChecksUsed('someone-else'), 0);
+    final reopened = await AiUsageStore.open(dir.path);
+    expect(reopened.aiChecksUsed('u'), 2);
+  });
+
+  test('credit packs are priced as listed', () {
+    expect([for (final p in kAiCreditPacks) (p.tokens, p.priceCents)], [
+      (1000000, 200),
+      (2500000, 400),
+      (5000000, 750),
+      (10000000, 1400),
+    ]);
+    expect(aiCreditPackById('credits_5m')?.priceCents, 750);
+    expect(aiCreditPackById('nope'), isNull);
+  });
+
+  test('credits are only spent once the plan budget is used up', () async {
+    final dir = await Directory.systemTemp.createTemp('ai_credits_');
+    addTearDown(() => dir.delete(recursive: true));
+    final store = await AiUsageStore.open(dir.path);
+    final budget = aiTokenBudget('core', 'normal');
+    await store.addCredits('u', 1000000);
+    expect(store.creditBalance('u'), 1000000);
+
+    await store.charge('u', 500, 'normal', budget);
+    expect(store.creditBalance('u'), 1000000);
+    expect(store.tokensUsed('u', const Duration(days: 7), mode: 'normal'), 500);
+
+    await store.recordTokens('u', budget.weekly, mode: 'normal');
+    expect(store.canSpend('u', 'normal', budget), isTrue);
+    await store.charge('u', 4000, 'normal', budget);
+    expect(store.creditBalance('u'), 996000);
+
+    await store.charge('someone', 10, 'normal', budget);
+    expect(store.canSpend('someone', 'normal', budget), isTrue);
+    await store.recordTokens('someone', budget.weekly, mode: 'normal');
+    expect(store.canSpend('someone', 'normal', budget), isFalse);
+    expect(store.canAfford('someone', 'normal', budget, 100), isFalse);
+    await store.addCredits('someone', 100);
+    expect(store.canAfford('someone', 'normal', budget, 100), isTrue);
+    await store.chargeFlat('someone', 100, 'normal', budget);
+    expect(store.creditBalance('someone'), 0);
+
+    final reopened = await AiUsageStore.open(dir.path);
+    expect(reopened.creditBalance('u'), 996000);
+  });
+
   test('usage events are isolated by mode and survive reopening', () async {
     final dir = await Directory.systemTemp.createTemp('ai_usage_limits_');
     addTearDown(() => dir.delete(recursive: true));

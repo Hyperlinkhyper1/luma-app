@@ -63,13 +63,14 @@ const kPlans = <Plan>[
       'Take up to 3 things with you to the server',
       'Starter plugins included',
       'Room for 4 in your family',
+      'AI Detector reviews: exchange 10% of your weekly AI limit each',
     ],
   ),
   Plan(
     id: 'orbit',
     name: 'Orbit',
     shortName: 'Orbit',
-    priceLabel: '\$2 / month',
+    priceLabel: '\$3 / month',
     blurb: 'A bit more room, and your stuff syncs first.',
     storageMb: 15,
     maxSyncCollections: 5,
@@ -82,13 +83,14 @@ const kPlans = <Plan>[
       'Make your own colours',
       'The Coffee theme',
       'Room for 6 in your family',
+      '10 AI Detector reviews a week, then 4% of your weekly AI limit each',
     ],
   ),
   Plan(
     id: 'nova',
     name: 'Nova',
     shortName: 'Nova',
-    priceLabel: '\$5 / month',
+    priceLabel: '\$6 / month',
     blurb: 'The biggest luma, synced the fastest.',
     storageMb: 30,
     maxSyncCollections: null,
@@ -101,6 +103,7 @@ const kPlans = <Plan>[
       'The Coffee theme',
       'Try new stuff first',
       'Room for 12 in your family',
+      '30 AI Detector reviews a week, then 2% of your weekly AI limit each',
     ],
   ),
 ];
@@ -123,3 +126,34 @@ int planTierIndex(String? id) => switch (id) {
 /// thing is free, so every plan clears it; Nova clears everything Orbit does.
 bool planAtLeast(String? planId, String? minPlanId) =>
     minPlanId == null || planTierIndex(planId) >= planTierIndex(minPlanId);
+
+/// A one-time pack of extra Luma AI tokens. Credits never expire and are only
+/// used once the plan's own 5-hour or weekly budget runs out. The server
+/// (kAiCreditPacks in server/lib/ai_usage_store.dart) is the source of truth
+/// for what each pack grants; keep the two lists in step.
+class AiCreditPack {
+  const AiCreditPack({
+    required this.id,
+    required this.tokens,
+    required this.priceCents,
+  });
+
+  final String id;
+  final int tokens;
+  final int priceCents;
+
+  String get tokensLabel => tokens % 1000000 == 0
+      ? '${tokens ~/ 1000000}M'
+      : '${tokens / 1000000}M';
+
+  String get priceLabel => priceCents % 100 == 0
+      ? '\$${priceCents ~/ 100}'
+      : '\$${(priceCents / 100).toStringAsFixed(2)}';
+}
+
+const kAiCreditPacks = <AiCreditPack>[
+  AiCreditPack(id: 'credits_1m', tokens: 1000000, priceCents: 200),
+  AiCreditPack(id: 'credits_2_5m', tokens: 2500000, priceCents: 400),
+  AiCreditPack(id: 'credits_5m', tokens: 5000000, priceCents: 750),
+  AiCreditPack(id: 'credits_10m', tokens: 10000000, priceCents: 1400),
+];

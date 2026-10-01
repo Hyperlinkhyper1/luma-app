@@ -6,6 +6,7 @@ import '../account/login_page.dart';
 import '../account/plan_selection_page.dart';
 import '../app/widgets.dart';
 import '../storage/storage_guard.dart';
+import 'settings_scope.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_scope.dart';
 import '../sync/sync_service.dart';
@@ -350,6 +351,16 @@ class _SignedInBody extends StatelessWidget {
                     : () => sync.syncNow(),
               ),
               const SizedBox(width: 14),
+              if (SettingsScope.of(context).selectedPlanId == 'nova') ...[
+                LumaGhostButton(
+                  label: 'Sync all',
+                  icon: Icons.cloud_sync_rounded,
+                  onTap: sync.status == SyncStatus.syncing
+                      ? null
+                      : () => sync.enableAllCollections(),
+                ),
+                const SizedBox(width: 14),
+              ],
               Expanded(child: _StatusText(sync: sync)),
             ],
           ),

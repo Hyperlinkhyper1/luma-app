@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app/widgets.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_scope.dart';
+import '../sync/sync_scope.dart';
 import '../theme/luma_theme.dart';
 import 'plan.dart';
 import 'plan_code_dialog.dart';
@@ -117,7 +118,7 @@ class PlanSelectionPage extends StatelessWidget {
                           children: [
                             _PlanGrid(),
                             SizedBox(height: 32),
-                            _AddOnsSection(),
+                            _AiCreditsSection(),
                           ],
                         ),
                       ),
@@ -208,22 +209,53 @@ class _PlanGrid extends StatelessWidget {
 
 // ---------------------------------------------------------------------------
 
-/// One-time purchases that stand apart from the recurring plans above — no
-/// billing exists yet, so the buy button is a placeholder (see
-/// AiDetectorPage's matching upsell card).
-class _AddOnsSection extends StatelessWidget {
-  const _AddOnsSection();
+/// One-time packs of extra AI tokens, spent only after the plan's own budget
+/// is used up. No payment provider is wired in yet, so the buttons say so
+/// rather than pretending to charge; the operator records paid packs from the
+/// admin dashboard's Products tab.
+class _AiCreditsSection extends StatefulWidget {
+  const _AiCreditsSection();
+
+  @override
+  State<_AiCreditsSection> createState() => _AiCreditsSectionState();
+}
+
+class _AiCreditsSectionState extends State<_AiCreditsSection> {
+  int? _balance;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final status = await SyncScope.maybeOf(context)?.aiStatus();
+      if (mounted && status != null) {
+        setState(() => _balance = status.creditBalance);
+      }
+    });
+  }
+
+  void _buy(AiCreditPack pack) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Buying credits isn\'t open yet — ${pack.tokensLabel} tokens for '
+          '${pack.priceLabel} will be available once payments are set up.',
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final balance = _balance;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 14),
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
-            'ONE-TIME ADD-ONS',
+            'ONE-TIME AI CREDITS',
             style: TextStyle(
               color: luma.textMuted,
               fontSize: 11,
@@ -232,75 +264,58 @@ class _AddOnsSection extends StatelessWidget {
             ),
           ),
         ),
-        LumaCard(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final icon = LumaIconBadge(
-                icon: Icons.all_inclusive_rounded,
-                color: luma.accent,
-                size: 44,
-              );
-              final copy = Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'AI Detector — unlimited checks',
-                    style: TextStyle(
-                      color: luma.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'One-time unlock — no more daily check limit, on any plan.',
-                    style: TextStyle(color: luma.textMuted, fontSize: 12.5),
-                  ),
-                ],
-              );
-              final button = LumaPrimaryButton(
-                label: '\$1 · Buy',
-                icon: Icons.lock_open_rounded,
-                onTap: () {},
-              );
-              // Below ~460px the row can't fit icon + copy + button without
-              // squeezing the price into a two-word column.
-              if (constraints.maxWidth < 460) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        icon,
-                        const SizedBox(width: 16),
-                        Expanded(child: copy),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    button,
-                  ],
-                );
-              }
-              return Row(
-                children: [
-                  icon,
-                  const SizedBox(width: 16),
-                  Expanded(child: copy),
-                  const SizedBox(width: 12),
-                  button,
-                ],
-              );
-            },
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 14),
+          child: Text(
+            balance != null && balance > 0
+                ? 'Extra tokens for when your plan\'s AI limit runs out. '
+                    'You have ${_tokens(balance)} left. They never expire.'
+                : 'Extra tokens for when your plan\'s AI limit runs out. '
+                    'They never expire.',
+            style: TextStyle(color: luma.textMuted, fontSize: 12.5),
           ),
+        ),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final pack in kAiCreditPacks)
+              SizedBox(
+                width: 220,
+                child: LumaCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '${pack.tokensLabel} tokens',
+                        style: TextStyle(
+                          color: luma.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      LumaPrimaryButton(
+                        label: '${pack.priceLabel} · Buy',
+                        icon: Icons.bolt_rounded,
+                        onTap: () => _buy(pack),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ],
     );
   }
+
+  static String _tokens(int n) => n >= 1000000
+      ? '${(n / 1000000).toStringAsFixed(n % 1000000 == 0 ? 0 : 2)}M tokens'
+      : '${(n / 1000).round()}K tokens';
 }
 
 // ---------------------------------------------------------------------------
-
 class _PlanCard extends StatefulWidget {
   const _PlanCard({
     required this.plan,

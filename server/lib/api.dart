@@ -623,6 +623,7 @@ class Api {
       ..post('/admin/deletion-requests/decide',
           _requireAdmin(_adminDecideDeletionRequest))
       ..post('/admin/plan', _requireAdmin(_adminSetPlan))
+      ..post('/admin/credits', _requireAdmin(_adminGrantCredits))
       ..post('/admin/groceries/sync', _requireAdmin(_adminGroceriesSync))
       ..post('/admin/groceries/reload', _requireAdmin(_adminGroceriesReload))
       ..get('/admin/groceries/status', _requireAdmin(_adminGroceriesStatus))
@@ -2284,6 +2285,20 @@ class Api {
         'supportLimit': kSupportMessagesPerDay,
         'webSearchUsed': aiUsage.webSearchesUsed(user.id),
         'webSearchLimit': webSearchWeeklyLimitForPlan(user.planId),
+        'aiCheckUsed': aiUsage.aiChecksUsed(user.id),
+        'aiCheckLimit': aiCheckerWeeklyChecksForPlan(user.planId),
+        'aiCheckExchangePct': aiCheckerExchangePercentForPlan(user.planId),
+      },
+      'credits': {
+        'balance': aiUsage.creditBalance(user.id),
+        'packs': [
+          for (final pack in kAiCreditPacks)
+            {
+              'id': pack.id,
+              'tokens': pack.tokens,
+              'priceCents': pack.priceCents,
+            },
+        ],
       },
       'picture': {
         'configured':
@@ -2843,24 +2858,24 @@ class Api {
     final meteredMode = kAiModeNames.containsKey(mode) ? mode : 'normal';
     if (mode == 'smartest' && user.planId != 'nova') {
       return errorResponse(
-          403, 'plan_required', 'Pulsar requires a Nova (\$5/month) plan.');
+          403, 'plan_required', 'Pulsar requires a Nova (\$6/month) plan.');
     }
     final budget = aiTokenBudget(user.planId, meteredMode);
-    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
-            mode: meteredMode) >= budget.fiveHour) {
-      return errorResponse(
-          429,
-          'usage_limit',
-          "You've hit your assistant usage limit for now — it frees up again "
-              'over the next few hours.');
-    }
-    if (aiUsage.tokensUsed(user.id, const Duration(days: 7),
-            mode: meteredMode) >= budget.weekly) {
+    if (!aiUsage.canSpend(user.id, meteredMode, budget)) {
+      if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
+              mode: meteredMode) >=
+          budget.fiveHour) {
+        return errorResponse(
+            429,
+            'usage_limit',
+            "You've hit your assistant usage limit for now — it frees up "
+                'again over the next few hours, or buy extra credits.');
+      }
       return errorResponse(
           429,
           'usage_limit',
           "You've hit your weekly assistant usage limit — it frees up again "
-              'over the coming days.');
+              'over the coming days, or buy extra credits.');
     }
 
     final candidates = await _aiCandidates(meteredMode,
@@ -2913,8 +2928,8 @@ class Api {
       } catch (_) {}
       // If the upstream somehow omits usage, charge a conservative flat
       // amount so metering can't be sidestepped by malformed responses.
-      await aiUsage.recordTokens(user.id, tokens > 0 ? tokens : 500,
-          mode: meteredMode);
+      await aiUsage.charge(
+          user.id, tokens > 0 ? tokens : 500, meteredMode, budget);
       return Response(status,
           body: responseBody, headers: {'Content-Type': 'application/json'});
     }
@@ -3279,19 +3294,23 @@ class Api {
       return errorResponse(400, 'too_long',
           'That text is too long for a deep check — keep it under about 3,000 words.');
     }
+    // Each plan includes a number of reviews a week. Past those, a review is
+    // paid for with a flat share of the weekly Luma AI limit instead.
     const meteredMode = 'normal';
+    final included = aiCheckerWeeklyChecksForPlan(user.planId);
+    final used = aiUsage.aiChecksUsed(user.id);
+    final exchange = used >= included;
+    final exchangePct = aiCheckerExchangePercentForPlan(user.planId);
     final budget = aiTokenBudget(user.planId, meteredMode);
-    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
-                mode: meteredMode) >=
-            budget.fiveHour ||
-        aiUsage.tokensUsed(user.id, const Duration(days: 7),
-                mode: meteredMode) >=
-            budget.weekly) {
+    final exchangeCost = budget.weekly * exchangePct ~/ 100;
+    if (exchange &&
+        !aiUsage.canAfford(user.id, meteredMode, budget, exchangeCost)) {
       return errorResponse(
           429,
           'usage_limit',
-          "You've hit your Luma AI usage limit for now — it frees up again "
-              'over time.');
+          "You've used this week's checks and there isn't enough of your "
+              'weekly limit left to exchange for another. It frees up again '
+              'over the coming days, or buy extra credits.');
     }
     final candidates = await _aiCandidates('detector', route);
     if (candidates.isEmpty) {
@@ -3306,13 +3325,24 @@ class Api {
         final result = await _runAiDetector(candidate.route,
             aiDetectorConfig.config.effectiveInstructions, text,
             guardKey: candidate.key, user: user);
-        if (result.status == HttpStatus.ok) {
-          await aiUsage.recordTokens(
-              user.id, result.tokens > 0 ? result.tokens : 1500,
-              mode: meteredMode);
-        }
         final verdict = result.verdict;
-        if (verdict != null) return jsonResponse(200, verdict.toJson());
+        if (verdict != null) {
+          if (exchange) {
+            await aiUsage.chargeFlat(
+                user.id, exchangeCost, meteredMode, budget);
+          } else {
+            await aiUsage.recordAiCheck(user.id);
+          }
+          return jsonResponse(200, {
+            ...verdict.toJson(),
+            'checks': {
+              'included': included,
+              'used': exchange ? used : used + 1,
+              'exchanged': exchange,
+              'exchangePct': exchangePct,
+            },
+          });
+        }
         if (last) {
           return errorResponse(502, 'upstream_error',
               'The AI review did not come back in a usable form. Try again.');
@@ -3453,17 +3483,12 @@ class Api {
     }
     const meteredMode = 'normal';
     final budget = aiTokenBudget(user.planId, meteredMode);
-    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
-                mode: meteredMode) >=
-            budget.fiveHour ||
-        aiUsage.tokensUsed(user.id, const Duration(days: 7),
-                mode: meteredMode) >=
-            budget.weekly) {
+    if (!aiUsage.canSpend(user.id, meteredMode, budget)) {
       return errorResponse(
           429,
           'usage_limit',
           "You've hit your Luma AI usage limit for now — it frees up again "
-              'over time.');
+              'over time, or buy extra credits.');
     }
     final candidates = await _aiCandidates('bookreview', route);
     if (candidates.isEmpty) {
@@ -3478,9 +3503,8 @@ class Api {
             aiBookReviewConfig.config.effectiveInstructions, shortTitle, text,
             guardKey: candidate.key, user: user);
         if (result.status == HttpStatus.ok) {
-          await aiUsage.recordTokens(
-              user.id, result.tokens > 0 ? result.tokens : 1500,
-              mode: meteredMode);
+          await aiUsage.charge(user.id,
+              result.tokens > 0 ? result.tokens : 1500, meteredMode, budget);
         }
         final review = result.review;
         if (review != null) return jsonResponse(200, review.toJson());
@@ -3572,7 +3596,7 @@ class Api {
     final pct = aiImageWeeklyPercentForPlan(user.planId);
     if (pct == null) {
       return errorResponse(
-          403, 'plan_required', 'Picture mode requires a Nova (\$5/month) plan.');
+          403, 'plan_required', 'Picture mode requires a Nova (\$6/month) plan.');
     }
     final route = aiImageConfig.resolve(config.configuredAiUpstreams);
     if (route == null) {
@@ -3601,19 +3625,10 @@ class Api {
 
     final budget = aiTokenBudget(user.planId, mode);
     final cost = budget.weekly * pct ~/ 100;
-    if (aiUsage.tokensUsed(user.id, const Duration(days: 7), mode: mode) +
-            cost >
-        budget.weekly) {
+    if (!aiUsage.canAfford(user.id, mode, budget, cost)) {
       return errorResponse(429, 'usage_limit',
-          "There isn't enough of your weekly limit left for a picture — it "
-              'frees up again over the coming days.');
-    }
-    if (aiUsage.tokensUsed(user.id, const Duration(hours: 5), mode: mode) +
-            cost >
-        budget.fiveHour) {
-      return errorResponse(429, 'usage_limit',
-          "There isn't enough of your usage limit left for a picture right "
-              'now — it frees up again over the next few hours.');
+          "There isn't enough of your usage limit left for a picture — it "
+              'frees up again over time, or buy extra credits.');
     }
 
     Response paused() => errorResponse(503, 'model_disabled',
@@ -3668,7 +3683,7 @@ class Api {
         return errorResponse(502, 'no_image',
             'The picture model answered without a picture. Try rewording it.');
       }
-      await aiUsage.recordTokens(user.id, cost, mode: mode);
+      await aiUsage.chargeFlat(user.id, cost, mode, budget);
       return jsonResponse(200, {
         'image': image.base64,
         'mimeType': image.mimeType,
@@ -6863,6 +6878,39 @@ class Api {
     });
   }
 
+  /// Adds a purchased pack of extra AI tokens to an account — the "Grant AI
+  /// credits" card on the Products tab. There is no payment provider yet, so
+  /// the operator records a sale here once it has been paid.
+  Future<Response> _adminGrantCredits(Request request) async {
+    final raw = await request.readAsString();
+    Map<String, String> form = const {};
+    try {
+      form = Uri.splitQueryString(raw);
+    } catch (_) {}
+    final email = form['email']?.trim().toLowerCase();
+    final pack = aiCreditPackById(form['packId']);
+    if (email == null || email.isEmpty) {
+      return errorResponse(400, 'bad_request', 'email is required.');
+    }
+    if (pack == null) {
+      return errorResponse(400, 'bad_pack',
+          'packId must be one of: ${kAiCreditPacks.map((p) => p.id).join(', ')}.');
+    }
+    final userId = store.userIdByEmail[email];
+    if (userId == null || store.usersById[userId] == null) {
+      return errorResponse(404, 'not_found', 'No account with that email.');
+    }
+    await aiUsage.addCredits(userId, pack.tokens);
+    await store.logActivity('credits_granted',
+        '$email was granted ${pack.tokens} AI credit tokens (${pack.id})');
+    return _adminFormResponse(request, '/admin',
+        fragment: 'products',
+        json: {
+          'ok': true,
+          'balance': aiUsage.creditBalance(userId),
+        });
+  }
+
   /// Proxies a "reload the groceries database" click to the supermarket-db
   /// API's own admin endpoint. Keeping this server in the middle means the
   /// groceries admin key stays in this process's environment — the dashboard
@@ -9813,8 +9861,8 @@ syncToolbar();
 
     const planLabels = {
       'core': 'Core (Free)',
-      'orbit': 'Orbit (\$2/mo)',
-      'nova': 'Nova (\$5/mo)',
+      'orbit': 'Orbit (\$3/mo)',
+      'nova': 'Nova (\$6/mo)',
     };
 
     String fmtCount(int n) => n
@@ -9975,6 +10023,15 @@ syncToolbar();
       return '<option value="$id"$selected>${_htmlEscape(planLabels[id] ?? id)}</option>';
     }).join();
 
+    final creditPackOptions = kAiCreditPacks.map((p) {
+      final tokens = p.tokens % 1000000 == 0
+          ? '${p.tokens ~/ 1000000}M'
+          : '${p.tokens / 1000000}M';
+      final price = (p.priceCents / 100)
+          .toStringAsFixed(p.priceCents % 100 == 0 ? 0 : 2);
+      return '<option value="${p.id}">$tokens tokens · \$$price</option>';
+    }).join();
+
     final activityCutoff = DateTime.now().millisecondsSinceEpoch -
         const Duration(hours: 24).inMilliseconds;
     final recentActivity = store.activity
@@ -9991,6 +10048,7 @@ syncToolbar();
       'admin_verified': 'Admin verified',
       'admin_revoked': 'Admin revoked',
       'plan_granted': 'Plan granted',
+      'credits_granted': 'AI credits granted',
       'classroom_country_reset': 'Classroom country reset',
       'ai_routes_changed': 'Assistant models',
       'admin_password_reset': 'Password reset',
@@ -10175,6 +10233,16 @@ syncToolbar();
         '<h2>Grant a plan</h2>'
         '<form class="product-form" method="post" action="/admin/plan">'
         '<select name="planId">$planOptions</select>'
+        '<input type="email" name="email" placeholder="user@example.com" required>'
+        '<button type="submit" class="btn btn-primary">Grant</button>'
+        '</form>'
+        '</div>'
+        '<div class="card">'
+        '<h2>Grant AI credits</h2>'
+        '<p class="muted">Record a paid credit pack. Credits are only used '
+        'once an account\'s plan budget runs out.</p>'
+        '<form class="product-form" method="post" action="/admin/credits">'
+        '<select name="packId">$creditPackOptions</select>'
         '<input type="email" name="email" placeholder="user@example.com" required>'
         '<button type="submit" class="btn btn-primary">Grant</button>'
         '</form>'

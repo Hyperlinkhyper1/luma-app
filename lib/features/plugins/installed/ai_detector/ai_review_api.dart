@@ -43,6 +43,33 @@ class AiReviewPassage {
   }
 }
 
+/// How a review was paid for: one of the plan's weekly included checks, or
+/// an exchange for a share of the weekly Luma AI limit.
+class AiReviewCharge {
+  const AiReviewCharge({
+    required this.included,
+    required this.used,
+    required this.exchanged,
+    required this.exchangePct,
+  });
+
+  final int included;
+  final int used;
+  final bool exchanged;
+  final int exchangePct;
+
+  static AiReviewCharge? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    int value(String key) => raw[key] is num ? (raw[key] as num).toInt() : 0;
+    return AiReviewCharge(
+      included: value('included'),
+      used: value('used'),
+      exchanged: raw['exchanged'] == true,
+      exchangePct: value('exchangePct'),
+    );
+  }
+}
+
 /// The reviewer model's judgement of a whole text.
 class AiReview {
   const AiReview({
@@ -50,7 +77,11 @@ class AiReview {
     required this.verdict,
     required this.summary,
     required this.passages,
+    this.charge,
   });
+
+  /// What this review cost; null when the server did not say.
+  final AiReviewCharge? charge;
 
   /// 0..100 — higher reads more AI-generated.
   final int score;
@@ -64,6 +95,7 @@ class AiReview {
         score: (json['score'] as num?)?.round().clamp(0, 100) ?? 0,
         verdict: json['verdict'] is String ? json['verdict'] as String : '',
         summary: json['summary'] is String ? json['summary'] as String : '',
+        charge: AiReviewCharge.fromJson(json['checks']),
         passages: [
           if (json['passages'] case final List list)
             for (final p in list) ?AiReviewPassage.fromJson(p),

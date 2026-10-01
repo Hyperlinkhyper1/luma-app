@@ -10,6 +10,51 @@ const Map<String, int> kWebSearchWeeklyLimits = {
 int webSearchWeeklyLimitForPlan(String? planId) =>
     kWebSearchWeeklyLimits[planId] ?? kWebSearchWeeklyLimits['core']!;
 
+/// AI Detector reviews each plan includes per rolling week.
+const Map<String, int> kAiCheckerWeeklyChecks = {
+  'core': 0,
+  'orbit': 10,
+  'nova': 30,
+};
+
+/// Share of the weekly Luma AI limit one review costs once the included
+/// checks are used up. Pricier plans pay less per extra check.
+const Map<String, int> kAiCheckerExchangePercent = {
+  'core': 10,
+  'orbit': 4,
+  'nova': 2,
+};
+
+int aiCheckerWeeklyChecksForPlan(String? planId) =>
+    kAiCheckerWeeklyChecks[planId] ?? kAiCheckerWeeklyChecks['core']!;
+
+int aiCheckerExchangePercentForPlan(String? planId) =>
+    kAiCheckerExchangePercent[planId] ?? kAiCheckerExchangePercent['core']!;
+
+/// A one-time pack of extra Luma AI tokens. Credits never expire and are only
+/// drawn on once the plan's rolling 5-hour or weekly budget is used up.
+class AiCreditPack {
+  const AiCreditPack(this.id, this.tokens, this.priceCents);
+
+  final String id;
+  final int tokens;
+  final int priceCents;
+}
+
+const List<AiCreditPack> kAiCreditPacks = [
+  AiCreditPack('credits_1m', 1000000, 200),
+  AiCreditPack('credits_2_5m', 2500000, 400),
+  AiCreditPack('credits_5m', 5000000, 750),
+  AiCreditPack('credits_10m', 10000000, 1400),
+];
+
+AiCreditPack? aiCreditPackById(String? id) {
+  for (final pack in kAiCreditPacks) {
+    if (pack.id == id) return pack;
+  }
+  return null;
+}
+
 class AiTokenBudget {
   const AiTokenBudget(this.weekly);
 
@@ -64,6 +109,7 @@ class AiUsageStore {
   static const _tokenWindow = Duration(days: 7);
   static const _supportWindow = Duration(days: 1);
   static const _webSearchWindow = Duration(days: 7);
+  static const _aiCheckWindow = Duration(days: 7);
 
   static Future<AiUsageStore> open(String dataDir) async {
     Future<(File, Map<String, dynamic>)> load(String name) async {
@@ -141,6 +187,29 @@ class AiUsageStore {
 
   int webSearchesUsed(String userId) => _webSearchEvents(userId).length;
 
+  List<int> _aiCheckEvents(String userId) {
+    final raw = _entry(userId)['aiChecks'] as List? ?? const [];
+    final cutoff = DateTime.now().subtract(_aiCheckWindow).millisecondsSinceEpoch;
+    return [
+      for (final e in raw)
+        if (e is num && e.toInt() > cutoff) e.toInt(),
+    ];
+  }
+
+  /// Included AI Detector reviews this user used within the trailing week.
+  /// Reviews paid for out of the weekly limit are not counted here.
+  int aiChecksUsed(String userId) => _aiCheckEvents(userId).length;
+
+  Future<void> recordAiCheck(String userId) async {
+    final entry = Map<String, dynamic>.from(_entry(userId));
+    entry['aiChecks'] = [
+      ..._aiCheckEvents(userId),
+      DateTime.now().millisecondsSinceEpoch,
+    ];
+    _data[userId] = entry;
+    await _save();
+  }
+
   /// Reserves one search before calling SearXNG. This check and mutation happen
   /// before the first await, so concurrent requests in this isolate cannot
   /// exceed the user's plan allowance.
@@ -167,6 +236,70 @@ class AiUsageStore {
     ];
     _data[userId] = entry;
     await _save();
+  }
+
+  /// Purchased extra tokens still unspent.
+  int creditBalance(String userId) {
+    final v = _entry(userId)['credits'];
+    return v is num && v > 0 ? v.toInt() : 0;
+  }
+
+  Future<void> addCredits(String userId, int tokens) async {
+    if (tokens <= 0) return;
+    final entry = Map<String, dynamic>.from(_entry(userId));
+    entry['credits'] = creditBalance(userId) + tokens;
+    _data[userId] = entry;
+    await _save();
+  }
+
+  Future<void> _spendCredits(String userId, int tokens) async {
+    final entry = Map<String, dynamic>.from(_entry(userId));
+    final left = creditBalance(userId) - tokens;
+    entry['credits'] = left > 0 ? left : 0;
+    _data[userId] = entry;
+    await _save();
+  }
+
+  bool _windowsOpen(String userId, String mode, AiTokenBudget budget) =>
+      tokensUsed(userId, const Duration(hours: 5), mode: mode) <
+          budget.fiveHour &&
+      tokensUsed(userId, const Duration(days: 7), mode: mode) < budget.weekly;
+
+  bool _windowsFit(
+          String userId, String mode, AiTokenBudget budget, int cost) =>
+      tokensUsed(userId, const Duration(hours: 5), mode: mode) + cost <=
+          budget.fiveHour &&
+      tokensUsed(userId, const Duration(days: 7), mode: mode) + cost <=
+          budget.weekly;
+
+  /// Whether a request may start: the plan's budget has room, or purchased
+  /// credits can cover it.
+  bool canSpend(String userId, String mode, AiTokenBudget budget) =>
+      _windowsOpen(userId, mode, budget) || creditBalance(userId) > 0;
+
+  /// Whether a flat-priced action costing [cost] tokens can be paid for.
+  bool canAfford(
+          String userId, String mode, AiTokenBudget budget, int cost) =>
+      _windowsFit(userId, mode, budget, cost) || creditBalance(userId) >= cost;
+
+  /// Charges [tokens] to the plan's budget while it has room, and to
+  /// purchased credits once it does not.
+  Future<void> charge(String userId, int tokens, String mode,
+      AiTokenBudget budget) async {
+    if (_windowsOpen(userId, mode, budget) || creditBalance(userId) <= 0) {
+      return recordTokens(userId, tokens, mode: mode);
+    }
+    return _spendCredits(userId, tokens);
+  }
+
+  /// Like [charge] for a flat [cost] that must fit whole in the budget.
+  Future<void> chargeFlat(String userId, int cost, String mode,
+      AiTokenBudget budget) async {
+    if (_windowsFit(userId, mode, budget, cost) ||
+        creditBalance(userId) < cost) {
+      return recordTokens(userId, cost, mode: mode);
+    }
+    return _spendCredits(userId, cost);
   }
 
   Future<void> recordSupportMessage(String userId) async {

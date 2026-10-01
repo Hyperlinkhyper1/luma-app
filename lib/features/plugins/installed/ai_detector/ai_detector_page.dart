@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../app/widgets.dart';
-import '../../../../settings/settings_controller.dart';
-import '../../../../settings/settings_scope.dart';
 import '../../../../sync/sync_scope.dart';
+import '../../../../sync/sync_service.dart';
 import '../../../../theme/luma_theme.dart';
 import 'ai_detector_engine.dart';
 import 'ai_review_api.dart';
@@ -41,6 +40,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   AiReview? _aiReview;
   String? _aiError;
   bool _aiBusy = false;
+  AiServerStatus? _status;
 
   /// Bumped whenever the reviewed text changes, so a deep check that comes
   /// back after a new Review or Clear is dropped instead of shown.
@@ -50,6 +50,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   void initState() {
     super.initState();
     _controller.addListener(_onTextChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStatus());
   }
 
   @override
@@ -84,14 +85,6 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   void _analyze() {
     final text = _controller.text.trim();
     if (_countWords(text) < _minWords) return;
-    final settings = SettingsScope.of(context);
-    if (!settings.canRunAiCheckerCheck) {
-      setState(() => _error =
-          'You\'ve used today\'s ${SettingsController.aiCheckerDailyCheckLimit} '
-          'free checks — come back tomorrow, or go unlimited below.');
-      return;
-    }
-    settings.recordAiCheckerCheck();
     setState(() {
       _analysed = text;
       _report = AiDetectorEngine.analyze(text);
@@ -99,7 +92,25 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
       _error = null;
       _resetDeepCheck();
     });
-    if (SyncScope.maybeOf(context)?.serverReady ?? false) _deepCheck();
+    _reviewIfIncluded();
+  }
+
+  /// Runs the AI model review on its own while the plan still has an
+  /// included check this week. Once those are gone a review costs a share of
+  /// the weekly limit, so it waits for an explicit tap on the card instead.
+  Future<void> _reviewIfIncluded() async {
+    final run = _aiRun;
+    final status = await _loadStatus();
+    if (!mounted || run != _aiRun) return;
+    if (status != null && status.aiCheckRemaining > 0) _deepCheck();
+  }
+
+  Future<AiServerStatus?> _loadStatus() async {
+    final sync = SyncScope.maybeOf(context);
+    if (sync == null || !sync.serverReady) return null;
+    final status = await sync.aiStatus();
+    if (mounted) setState(() => _status = status);
+    return status;
   }
 
   void _clear() {
@@ -147,6 +158,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
       _aiReview = review;
       _aiError = error;
     });
+    _loadStatus();
   }
 
   static int _countWords(String text) => RegExp(r'\S+').allMatches(text).length;
@@ -159,6 +171,7 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
           busy: _aiBusy,
           review: _aiReview,
           error: _aiError,
+          status: _status,
           onRun: _deepCheck,
         );
     if (sync == null) return card();
@@ -169,8 +182,6 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
   Widget build(BuildContext context) {
     final luma = context.luma;
     final report = _report;
-    final settings = SettingsScope.of(context);
-    final remaining = settings.aiCheckerChecksRemainingToday;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SingleChildScrollView(
@@ -186,16 +197,11 @@ class _AiDetectorPageState extends State<AiDetectorPage> {
                   words: _words,
                   minWords: _minWords,
                   error: _error,
-                  checksRemaining: remaining,
+                  status: _status,
                   onPaste: _paste,
                   onClear: _clear,
-                  onAnalyze:
-                      _words >= _minWords && remaining > 0 ? _analyze : null,
+                  onAnalyze: _words >= _minWords ? _analyze : null,
                 ),
-                if (remaining <= 0) ...[
-                  const SizedBox(height: 16),
-                  const _UnlimitedUpsellCard(),
-                ],
                 if (report != null && _analysed != null) ...[
                   const SizedBox(height: 16),
                   _RevealOnce(
@@ -291,7 +297,7 @@ class _InputCard extends StatelessWidget {
     required this.words,
     required this.minWords,
     required this.error,
-    required this.checksRemaining,
+    required this.status,
     required this.onPaste,
     required this.onClear,
     required this.onAnalyze,
@@ -301,7 +307,7 @@ class _InputCard extends StatelessWidget {
   final int words;
   final int minWords;
   final String? error;
-  final int checksRemaining;
+  final AiServerStatus? status;
   final VoidCallback onPaste;
   final VoidCallback onClear;
   final VoidCallback? onAnalyze;
@@ -360,16 +366,20 @@ class _InputCard extends StatelessWidget {
                     label: 'On device',
                     color: luma.success,
                   ),
-                  const SizedBox(height: 6),
-                  _Chip(
-                    icon: Icons.bolt_rounded,
-                    label: checksRemaining > 0
-                        ? '$checksRemaining/'
-                            '${SettingsController.aiCheckerDailyCheckLimit} '
-                            'checks left'
-                        : 'No checks left today',
-                    color: checksRemaining > 0 ? luma.accent : luma.warning,
-                  ),
+                  if (status case final status?) ...[
+                    const SizedBox(height: 6),
+                    _Chip(
+                      icon: Icons.bolt_rounded,
+                      label: status.aiCheckRemaining > 0
+                          ? '${status.aiCheckRemaining}/${status.aiCheckLimit} '
+                              'AI reviews left this week'
+                          : 'Reviews cost ${status.aiCheckExchangePct}% '
+                              'of your weekly limit',
+                      color: status.aiCheckRemaining > 0
+                          ? luma.accent
+                          : luma.warning,
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -450,57 +460,6 @@ class _InputCard extends StatelessWidget {
                 onTap: onAnalyze,
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shown once the day's free checks are used up. The button is a
-/// not-yet-wired placeholder — luma has no billing yet, so tapping it does
-/// nothing.
-class _UnlimitedUpsellCard extends StatelessWidget {
-  const _UnlimitedUpsellCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final luma = context.luma;
-    return LumaCard(
-      child: Row(
-        children: [
-          LumaIconBadge(
-            icon: Icons.all_inclusive_rounded,
-            color: luma.accent,
-            size: 38,
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Go unlimited',
-                  style: TextStyle(
-                    color: luma.textPrimary,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'One-time \$1 unlock — no more daily check limit.',
-                  style: TextStyle(color: luma.textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          LumaPrimaryButton(
-            label: '\$1 · Unlock',
-            icon: Icons.lock_open_rounded,
-            onTap: () {},
           ),
         ],
       ),
@@ -793,6 +752,7 @@ class _DeepCheckCard extends StatelessWidget {
     required this.busy,
     required this.review,
     required this.error,
+    required this.status,
     required this.onRun,
   });
 
@@ -801,6 +761,7 @@ class _DeepCheckCard extends StatelessWidget {
   final bool busy;
   final AiReview? review;
   final String? error;
+  final AiServerStatus? status;
   final VoidCallback onRun;
 
   @override
@@ -840,8 +801,17 @@ class _DeepCheckCard extends StatelessWidget {
                               'on-device analysis.'
                           : busy
                               ? 'The AI model is reading the text…'
-                              : 'Where and how the text reads AI-generated, '
-                                  'according to the AI model.',
+                              : review != null
+                                  ? _chargeNote(review.charge)
+                                  : status != null &&
+                                          status!.aiCheckRemaining <= 0
+                                      ? 'No included reviews left this week. '
+                                          'Exchange ${status!.aiCheckExchangePct}% '
+                                          'of your weekly Luma AI limit to run '
+                                          'one more.'
+                                      : 'Where and how the text reads '
+                                          'AI-generated, according to the AI '
+                                          'model.',
                       style: TextStyle(
                         color: luma.textMuted,
                         fontSize: 12,
@@ -862,6 +832,14 @@ class _DeepCheckCard extends StatelessWidget {
                 LumaGhostButton(
                   label: 'Try again',
                   icon: Icons.refresh_rounded,
+                  onTap: onRun,
+                )
+              else if (available && review == null && status != null)
+                LumaPrimaryButton(
+                  label: status!.aiCheckRemaining > 0
+                      ? 'Run AI review'
+                      : 'Exchange ${status!.aiCheckExchangePct}% of weekly',
+                  icon: Icons.psychology_alt_rounded,
                   onTap: onRun,
                 ),
             ],
@@ -889,6 +867,17 @@ class _DeepCheckCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _chargeNote(AiReviewCharge? charge) {
+  const base = 'Where and how the text reads AI-generated, according to the '
+      'AI model.';
+  if (charge == null) return base;
+  if (charge.exchanged) {
+    return '$base Exchanged ${charge.exchangePct}% of your weekly limit.';
+  }
+  return '$base ${charge.used} of ${charge.included} included reviews used '
+      'this week.';
 }
 
 Color _likelihoodColor(BuildContext context, int likelihood) {
