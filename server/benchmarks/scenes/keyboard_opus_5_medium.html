@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NOVA65 — Mechanical Keyboard Showcase</title>
+<style>
+  :root{
+    --hue: 200;
+    --rgb-on: 1;
+    --bg1:#0b0e14;
+    --bg2:#141a26;
+    font-synthesis: none;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:
+      radial-gradient(1200px 700px at 50% 12%, #1d2636 0%, #0d1119 55%, #06080c 100%);
+    color:#e8edf5;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    user-select:none;
+  }
+  #vignette{position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(circle at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,.65) 100%);
+    z-index:5;}
+
+  header{
+    position:fixed;top:0;left:0;right:0;z-index:10;
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:18px 22px;pointer-events:none;
+  }
+  .brand{pointer-events:auto}
+  .brand h1{
+    margin:0;font-size:15px;letter-spacing:.42em;font-weight:600;text-transform:uppercase;
+    color:#f0f4fa;
+  }
+  .brand p{margin:6px 0 0;font-size:11.5px;letter-spacing:.16em;color:#8ea0bb;text-transform:uppercase}
+  .badge{
+    pointer-events:auto;text-align:right;font-size:11px;letter-spacing:.14em;color:#7f8fa8;
+    line-height:1.7;text-transform:uppercase;
+  }
+  .badge b{color:#e07b39;font-weight:600}
+
+  #stageWrap{position:absolute;inset:0;display:grid;place-items:center;}
+  #scene{
+    perspective: 1700px;
+    perspective-origin: 50% 46%;
+    width:1100px;height:620px;
+    transform-origin:50% 50%;
+    cursor:grab;
+  }
+  #scene.dragging{cursor:grabbing}
+  #world{
+    position:absolute;inset:0;
+    transform-style:preserve-3d;
+    transform: rotateX(58deg) rotateZ(-14deg);
+    transition: transform .25s ease-out;
+  }
+  .board{
+    position:absolute;left:50%;top:50%;
+    transform-style:preserve-3d;
+    transform:translate(-50%,-50%);
+    width:0;height:0;
+  }
+  .box{position:absolute;transform-style:preserve-3d;}
+  .face{position:absolute;overflow:hidden;backface-visibility:hidden;}
+  .legend{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:lowercase;
+    color:rgba(25,30,38,.75);
+    text-shadow:0 1px 0 rgba(255,255,255,.25);
+  }
+  .legend.light{color:rgba(232,238,248,.82);text-shadow:0 1px 1px rgba(0,0,0,.5)}
+  .legend.tiny{font-size:9.5px;letter-spacing:.14em}
+  .shadow{
+    position:absolute;left:50%;top:50%;
+    width:1000px;height:360px;margin:-180px 0 0 -500px;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,.72) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,0) 72%);
+    filter:blur(18px);
+    transform:translateZ(-34px);
+  }
+  .underglow{
+    position:absolute;left:50%;top:50%;
+    width:960px;height:330px;margin:-165px 0 0 -480px;
+    border-radius:50%;
+    background:radial-gradient(ellipse at center, hsla(var(--hue),95%,58%,.55) 0%, hsla(calc(var(--hue) + 50),95%,55%,.22) 48%, rgba(0,0,0,0) 72%);
+    filter:blur(26px);
+    transform:translateZ(-28px);
+    opacity:calc(var(--rgb-on) * .95);
+    transition:opacity .4s ease;
+  }
+  .led{
+    position:absolute;border-radius:50%;
+    background:hsl(var(--h,200) 95% 62%);
+    box-shadow:0 0 10px 4px hsla(var(--h,200),95%,60%,.75);
+    opacity:calc(var(--rgb-on) * .9);
+    transition:opacity .35s ease;
+  }
+  .plateTex{
+    position:absolute;inset:0;
+    background-image:linear-gradient(90deg, rgba(255,255,255,.055) 1px, transparent 1px),
+                     linear-gradient(0deg, rgba(0,0,0,.09) 1px, transparent 1px);
+    background-size:27px 27px;
+  }
+  .pcbTex{
+    position:absolute;inset:0;opacity:.55;
+    background-image:
+      radial-gradient(circle at 12px 12px, rgba(220,230,160,.22) 1.4px, transparent 1.6px),
+      linear-gradient(90deg, rgba(190,220,180,.10) 1px, transparent 1px);
+    background-size:54px 54px, 18px 18px;
+  }
+  .foamTex{
+    position:absolute;inset:0;opacity:.45;
+    background-image:radial-gradient(circle at 3px 3px, rgba(0,0,0,.35) 1.1px, transparent 1.3px);
+    background-size:7px 7px;
+  }
+  .brush{
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(97deg, rgba(255,255,255,.055) 0 1px, rgba(0,0,0,.05) 1px 3px);
+  }
+  .capTop{
+    position:absolute;inset:0;
+    background:linear-gradient(170deg, rgba(255,255,255,.26), rgba(255,255,255,0) 42%, rgba(0,0,0,.14));
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 -3px 6px rgba(0,0,0,.14);
+    border-radius:4px;
+  }
+
+  /* ---------- UI ---------- */
+  #controls{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    z-index:12;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;
+    padding:10px 12px;border-radius:16px;
+    background:rgba(13,18,27,.72);backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.09);
+    box-shadow:0 18px 40px rgba(0,0,0,.5);
+  }
+  .btn{
+    appearance:none;border:1px solid rgba(255,255,255,.12);
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+    color:#dbe4f0;font:inherit;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    padding:9px 15px;border-radius:10px;cursor:pointer;display:flex;gap:8px;align-items:center;
+    transition:.18s ease;white-space:nowrap;
+  }
+  .btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn.accent{border-color:rgba(224,123,57,.55);color:#ffc89a;background:linear-gradient(180deg, rgba(224,123,57,.26), rgba(224,123,57,.08))}
+  .btn.off{opacity:.5}
+  .sep{width:1px;height:26px;background:rgba(255,255,255,.12)}
+  .slider{display:flex;align-items:center;gap:9px;font-size:11px;letter-spacing:.12em;color:#8ea0bb;text-transform:uppercase}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:92px;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,hsl(0 85% 55%),hsl(60 85% 55%),hsl(120 85% 50%),hsl(200 90% 55%),hsl(280 85% 60%),hsl(340 85% 58%));
+    outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #0b0e14;box-shadow:0 0 8px rgba(255,255,255,.5)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border:2px solid #0b0e14;border-radius:50%;background:#fff}
+
+  #status{
+    position:fixed;left:50%;bottom:92px;transform:translateX(-50%);
+    z-index:12;font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:#93a4c0;
+    background:rgba(10,14,22,.6);padding:7px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.08);
+    transition:opacity .4s ease;pointer-events:none;
+  }
+  #hint{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+    z-index:14;padding:14px 22px;border-radius:14px;
+    background:rgba(224,123,57,.14);border:1px solid rgba(224,123,57,.45);
+    color:#ffd3ae;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  #hint.hide{opacity:0;transform:translate(-50%,-60%);pointer-events:none}
+  .hud{
+    position:fixed;right:22px;bottom:22px;z-index:12;text-align:right;
+    font-size:11px;letter-spacing:.14em;color:#6f7f99;text-transform:uppercase;line-height:1.8;
+  }
+  .hud b{color:#cfdaea;font-weight:600}
+  @media (max-width:760px){
+    .badge{display:none}
+    #controls{gap:7px;padding:8px}
+    .btn{padding:8px 11px;font-size:11px}
+    .hud{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>Nova&nbsp;65</h1>
+    <p>Gasket Mount · Aluminium · Lubed Linears</p>
+  </div>
+  <div class="badge">
+    Layout <b>65%</b><br/>Encoder <b>Yes</b><br/>Plate <b>FR4 / Alu</b>
+  </div>
+</header>
+
+<div id="stageWrap">
+  <div id="scene">
+    <div id="world"></div>
+  </div>
+</div>
+
+<div id="status">Assembling…</div>
+
+<div id="controls">
+  <button class="btn accent" id="replayBtn">⟲ Replay build</button>
+  <div class="sep"></div>
+  <button class="btn" id="muteBtn">🔊 Sound on</button>
+  <button class="btn" id="rgbBtn">✦ RGB on</button>
+  <div class="sep"></div>
+  <div class="slider"><span>Hue</span><input type="range" id="hueSlider" min="0" max="360" value="200" /></div>
+</div>
+
+<div class="hud">Drag to orbit · Type to test keys<br/>Scroll the knob to shift colour</div>
+<div id="hint">Click anywhere to enable sound</div>
+<div id="vignette"></div>
+
+<script>
+(() => {
+"use strict";
+
+const U = 54;                 // 1 unit
+const GAP = 3.4;              // gap between caps
+const ROWS_N = 5;
+const COLS_U = 16;
+const INNER_W = COLS_U * U;   // 864
+const INNER_H = ROWS_N * U;   // 270
+const BEZEL = 13;
+const CASE_W = INNER_W + BEZEL * 2;
+const CASE_H = INNER_H + BEZEL * 2 + 10;
+
+const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------------- palette ---------------- */
+const C = {
+  caseTop:  "linear-gradient(145deg,#2d3542,#1b212b)",
+  caseSide: "linear-gradient(180deg,#242b36,#12161d)",
+  caseSideL:"linear-gradient(180deg,#39424f,#1d232c)",
+  caseBot:  "#0b0e13",
+  pcb:      "linear-gradient(140deg,#123c3a,#0b2724)",
+  pcbSide:  "#0a2320",
+  foam:     "linear-gradient(140deg,#3b2d3b,#2a1f2a)",
+  foamSide: "#241a24",
+  plate:    "linear-gradient(145deg,#8e97a4,#5c6673)",
+  plateSide:"#4a515c",
+  swBody:   "linear-gradient(150deg,#2a2e36,#171a20)",
+  swSide:   "#14171c",
+  swTopH:   "linear-gradient(150deg,#e8e9ee,#b9bdc7)",
+  stem:     "#e07b39",
+  alphaTop: "linear-gradient(170deg,#efece2,#d6d2c5)",
+  alphaSide:"linear-gradient(180deg,#d9d5c8,#b3afa2)",
+  alphaSideD:"linear-gradient(180deg,#bdb9ac,#939084)",
+  modTop:   "linear-gradient(170deg,#44546b,#303d4e)",
+  modSide:  "linear-gradient(180deg,#364355,#242e3b)",
+  modSideD: "linear-gradient(180deg,#2a3542,#19202a)",
+  accTop:   "linear-gradient(170deg,#ef8c42,#d1662a)",
+  accSide:  "linear-gradient(180deg,#d3702c,#a9521c)",
+  accSideD: "linear-gradient(180deg,#b35e24,#8a4316)"
+};
+
+/* ---------------- geometry helpers ---------------- */
+function box(w, h, t, col){
+  const b = document.createElement("div");
+  b.className = "box";
+  b.style.width = w + "px"; b.style.height = h + "px";
+  const mk = (fw, fh, left, top, tr, bg, cls) => {
+    const f = document.createElement("div");
+    f.className = "face" + (cls ? " " + cls : "");
+    f.style.width = fw + "px"; f.style.height = fh + "px";
+    f.style.left = left + "px"; f.style.top = top + "px";
+    f.style.transform = tr; f.style.background = bg;
+    b.appendChild(f); return f;
+  };
+  b.topFace = mk(w, h, 0, 0, `translateZ(${t/2}px)`, col.top, "ftop");
+  mk(w, h, 0, 0, `translateZ(${-t/2}px) rotateX(180deg)`, col.bot || col.side, "fbot");
+  mk(w, t, 0, (h-t)/2, `rotateX(90deg) translateZ(${h/2}px)`,  col.n || col.side, "fn");   // far edge
+  mk(w, t, 0, (h-t)/2, `rotateX(-90deg) translateZ(${h/2}px)`, col.s || col.sideD || col.side, "fs"); // near edge
+  mk(t, h, (w-t)/2, 0, `rotateY(90deg) translateZ(${w/2}px)`,  col.e || col.sideD || col.side, "fe");
+  mk(t, h, (w-t)/2, 0, `rotateY(-90deg) translateZ(${w/2}px)`, col.w || col.side, "fw");
+  return b;
+}
+function place(el, cx, cy, z){
+  el.style.position = "absolute";
+  el.style.left = (cx - parseFloat(el.style.width)/2) + "px";
+  el.style.top  = (cy - parseFloat(el.style.height)/2) + "px";
+  el.dataset.z = z;
+  el.style.transform = `translateZ(${z}px)`;
+  return el;
+}
+
+/* ---------------- layout ---------------- */
+const K = (code,label,w,group,style) => ({code,label,w:w||1,group:group||"alpha",style:style||"alpha"});
+const A = (code,label) => K(code,label,1,"alpha","alpha");
+
+const ROWS = [
+  [ K("Escape","esc",1,"mod","acc"), A("Digit1","1"),A("Digit2","2"),A("Digit3","3"),A("Digit4","4"),
+    A("Digit5","5"),A("Digit6","6"),A("Digit7","7"),A("Digit8","8"),A("Digit9","9"),A("Digit0","0"),
+    A("Minus","–"),A("Equal","="), K("Backspace","⌫",2,"backspace","mod") ],
+  [ K("Tab","tab",1.5,"mod","mod"), A("KeyQ","q"),A("KeyW","w"),A("KeyE","e"),A("KeyR","r"),A("KeyT","t"),
+    A("KeyY","y"),A("KeyU","u"),A("KeyI","i"),A("KeyO","o"),A("KeyP","p"),A("BracketLeft","["),
+    A("BracketRight","]"), K("Backslash","\\",1.5,"mod","mod"), K("Delete","del",1,"nav","mod") ],
+  [ K("CapsLock","caps",1.75,"mod","mod"), A("KeyA","a"),A("KeyS","s"),A("KeyD","d"),A("KeyF","f"),
+    A("KeyG","g"),A("KeyH","h"),A("KeyJ","j"),A("KeyK","k"),A("KeyL","l"),A("Semicolon",";"),
+    A("Quote","'"), K("Enter","enter",2.25,"enter","acc"), K("Home","home",1,"nav","mod") ],
+  [ K("ShiftLeft","shift",2.25,"mod","mod"), A("KeyZ","z"),A("KeyX","x"),A("KeyC","c"),A("KeyV","v"),
+    A("KeyB","b"),A("KeyN","n"),A("KeyM","m"),A("Comma",","),A("Period","."),A("Slash","/"),
+    K("ShiftRight","shift",1.75,"mod","mod"), K("ArrowUp","↑",1,"nav","mod"), K("End","end",1,"nav","mod") ],
+  [ K("ControlLeft","ctrl",1.25,"mod","mod"), K("MetaLeft","cmd",1.25,"mod","mod"), K("AltLeft","alt",1.25,"mod","mod"),
+    K("Space","",6.25,"space","alpha"), K("AltRight","alt",1,"mod","mod"), K("Fn","fn",1,"mod","mod"),
+    K("ControlRight","ctrl",1,"mod","mod"), K("ArrowLeft","←",1,"nav","mod"), K("ArrowDown","↓",1,"nav","mod"),
+    K("ArrowRight","→",1,"nav","mod") ]
+];
+
+/* z-levels (board frame, +Z = up) */
+const Z = {
+  caseBody: -16, caseBodyT: 26,     // -29 .. 3
+  wall: -3,      wallT: 50,         // -28 .. 22
+  pcb: 6,        pcbT: 5,           // 3.5 .. 8.5
+  foam: 12,      foamT: 8,          // 8 .. 16
+  plate: 18.5,   plateT: 5,         // 16 .. 21
+  swBody: 13,    swBodyT: 16,
+  swTop: 24,     swTopT: 7,
+  cap: 33.5,     capT: 13
+};
+
+const world = document.getElementById("world");
+let board, caseGrp, pcb, foam, plate, switchGrp, capGrp, knobGrp, glow;
+const keys = [];          // {el, def, cx, cy, baseZ, led}
+const keyByCode = new Map();
+let knobAngle = 0;
+
+function buildScene(){
+  world.innerHTML = "";
+  keys.length = 0; keyByCode.clear();
+
+  board = document.createElement("div");
+  board.className = "board";
+  world.appendChild(board);
+
+  const shadow = document.createElement("div");
+  shadow.className = "shadow";
+  board.appendChild(shadow);
+
+  glow = document.createElement("div");
+  glow.className = "underglow";
+  board.appendChild(glow);
+
+  /* ---- CASE (tray + 4 walls) ---- */
+  caseGrp = document.createElement("div");
+  caseGrp.className = "box";
+  caseGrp.style.width = "0px"; caseGrp.style.height = "0px";
+  caseGrp.style.position = "absolute"; caseGrp.style.left = "0px"; caseGrp.style.top = "0px";
+  board.appendChild(caseGrp);
+
+  const tray = box(CASE_W, CASE_H, Z.caseBodyT, {
+    top: "linear-gradient(140deg,#20262f,#171c24)", side: C.caseSide,
+    sideD: C.caseSideL, bot: C.caseBot, n: C.caseSide
+  });
+  place(tray, 0, 0, Z.caseBody);
+  caseGrp.appendChild(tray);
+  tray.topFace.appendChild(Object.assign(document.createElement("div"), {className:"brush"}));
+
+  const wallSpecs = [
+    [CASE_W, BEZEL+6, 0, -(INNER_H/2 + (BEZEL+6)/2)],                 // far
+    [CASE_W, BEZEL+12, 0,  (INNER_H/2 + (BEZEL+12)/2)],               // near
+    [BEZEL+6, INNER_H, -(INNER_W/2 + (BEZEL+6)/2), 0],                // left
+    [BEZEL+6, INNER_H,  (INNER_W/2 + (BEZEL+6)/2), 0]                 // right
+  ];
+  wallSpecs.forEach(([w,h,x,y]) => {
+    const wl = box(w, h, Z.wallT, {
+      top: C.caseTop, side: C.caseSide, sideD: C.caseSideL, bot: C.caseBot,
+      n: "linear-gradient(180deg,#2b333f,#161b22)"
+    });
+    place(wl, x, y, Z.wall);
+    wl.topFace.appendChild(Object.assign(document.createElement("div"), {className:"brush"}));
+    caseGrp.appendChild(wl);
+  });
+  // chamfer accent strip on near wall
+  const strip = box(CASE_W - 40, 4, 3, { top:"linear-gradient(90deg,#e07b39,#f0a567)", side:"#a9521c" });
+  place(strip, 0, INNER_H/2 + BEZEL + 9, 18);
+  caseGrp.appendChild(strip);
+
+  /* ---- PCB ---- */
+  pcb = box(INNER_W - 6, INNER_H - 6, Z.pcbT, { top: C.pcb, side: C.pcbSide, sideD:"#071b19" });
+  place(pcb, 0, 0, Z.pcb);
+  pcb.topFace.appendChild(Object.assign(document.createElement("div"), {className:"pcbTex"}));
+  board.appendChild(pcb);
+
+  /* ---- FOAM ---- */
+  foam = box(INNER_W - 12, INNER_H - 12, Z.foamT, { top: C.foam, side: C.foamSide, sideD:"#1b131b" });
+  place(foam, 0, 0, Z.foam);
+  foam.topFace.appendChild(Object.assign(document.createElement("div"), {className:"foamTex"}));
+  board.appendChild(foam);
+
+  /* ---- PLATE ---- */
+  plate = box(INNER_W - 4, INNER_H - 4, Z.plateT, { top: C.plate, side: C.plateSide, sideD:"#3c424b" });
+  place(plate, 0, 0, Z.plate);
+  plate.topFace.appendChild(Object.assign(document.createElement("div"), {className:"plateTex"}));
+  board.appendChild(plate);
+
+  switchGrp = document.createElement("div"); switchGrp.className = "box";
+  switchGrp.style.cssText = "position:absolute;left:0;top:0;width:0;height:0";
+  board.appendChild(switchGrp);
+  capGrp = document.createElement("div"); capGrp.className = "box";
+  capGrp.style.cssText = "position:absolute;left:0;top:0;width:0;height:0";
+  board.appendChild(capGrp);
+
+  /* ---- keys ---- */
+  const ox = -INNER_W/2, oy = -INNER_H/2;
+  ROWS.forEach((row, r) => {
+    let x = 0;
+    row.forEach(def => {
+      const w = def.w * U, cx = ox + x + w/2, cy = oy + r*U + U/2;
+      makeKey(def, cx, cy, w);
+      x += w;
+    });
+  });
+
+  /* ---- rotary knob (top-right cell of row 1) ---- */
+  buildKnob(ox + 15.5*U, oy + U/2);
+
+  layoutResponsive();
+}
+
+function makeKey(def, cx, cy, w){
+  const capW = w - GAP, capH = U - GAP;
+
+  /* switch: housing + top + stem cross + LED */
+  const sw = document.createElement("div");
+  sw.className = "box";
+  sw.style.cssText = `position:absolute;left:${cx-9}px;top:${cy-9}px;width:18px;height:18px`;
+  const bodyW = Math.min(30, Math.max(18, 18));
+  const bodyBox = box(bodyW, 18, Z.swBodyT, { top:"#1c2027", side:C.swSide, sideD:"#0e1115", bot:"#0a0c10" });
+  bodyBox.style.position = "absolute";
+  bodyBox.style.left = (9 - bodyW/2) + "px"; bodyBox.style.top = "0px";
+  bodyBox.style.transform = `translateZ(${Z.swBody}px)`;
+  sw.appendChild(bodyBox);
+
+  const topH = box(16, 16, Z.swTopT, { top:C.swTopH, side:"#9ea3ad", sideD:"#80858f" });
+  topH.style.position="absolute"; topH.style.left="1px"; topH.style.top="1px";
+  topH.style.transform = `translateZ(${Z.swTop}px)`;
+  sw.appendChild(topH);
+
+  const led = document.createElement("div");
+  led.className = "led";
+  led.style.cssText = "width:5px;height:5px;left:5.5px;top:-1px;transform:translateZ(" + (Z.swTop + 4) + "px)";
+  led.style.setProperty("--h", "200");
+  sw.appendChild(led);
+
+  const s1 = box(9, 2.6, 5, { top:C.stem, side:"#b3581f" });
+  s1.style.position="absolute"; s1.style.left="4.5px"; s1.style.top="7.7px";
+  s1.style.transform = `translateZ(${Z.swTop + 5}px)`;
+  const s2 = box(2.6, 9, 5, { top:C.stem, side:"#b3581f" });
+  s2.style.position="absolute"; s2.style.left="7.7px"; s2.style.top="4.5px";
+  s2.style.transform = `translateZ(${Z.swTop + 5}px)`;
+  sw.appendChild(s1); sw.appendChild(s2);
+  switchGrp.appendChild(sw);
+
+  /* stabilizer dummies for wide keys */
+  if (def.w >= 2) {
+    const off = (def.w >= 6 ? 2.9 : def.w/2 - 0.55) * U;
+    [-off, off].forEach(dx => {
+      const st = box(13, 13, 11, { top:"#20242b", side:"#12151a" });
+      place(st, cx + dx, cy, Z.swBody + 2);
+      switchGrp.appendChild(st);
+    });
+  }
+
+  /* keycap */
+  const st = def.style;
+  const col = st === "alpha" ? { top:C.alphaTop, side:C.alphaSide, sideD:C.alphaSideD, bot:"#8d8a7e" }
+            : st === "mod"   ? { top:C.modTop, side:C.modSide, sideD:C.modSideD, bot:"#161c25" }
+                             : { top:C.accTop, side:C.accSide, sideD:C.accSideD, bot:"#7d3c13" };
+  const cap = box(capW, capH, Z.capT, col);
+  place(cap, cx, cy, Z.cap);
+  cap.style.cursor = "pointer";
+  const dish = document.createElement("div"); dish.className = "capTop";
+  cap.topFace.appendChild(dish);
+  const lg = document.createElement("div");
+  lg.className = "legend" + (st === "alpha" ? "" : " light") + (def.label.length > 2 ? " tiny" : "");
+  lg.textContent = def.label;
+  cap.topFace.appendChild(lg);
+  if (def.group === "space") {
+    const line = document.createElement("div");
+    line.style.cssText = "position:absolute;left:14%;right:14%;top:50%;height:1px;background:rgba(0,0,0,.08)";
+    cap.topFace.appendChild(line);
+  }
+  capGrp.appendChild(cap);
+
+  const rec = { def, cap, sw, led, cx, cy, baseZ: Z.cap, pressed:false };
+  keys.push(rec);
+  keyByCode.set(def.code, rec);
+
+  cap.addEventListener("pointerdown", e => {
+    if (dragState.moved) return;
+    e.stopPropagation();
+    pressKey(rec, true);
+    const up = () => { releaseKey(rec); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointerup", up);
+  });
+}
+
+function buildKnob(cx, cy){
+  knobGrp = document.createElement("div");
+  knobGrp.className = "box";
+  knobGrp.style.cssText = `position:absolute;left:${cx}px;top:${cy}px;width:0;height:0`;
+  knobGrp.style.transform = `translateZ(${Z.cap - 2}px) rotateZ(0deg)`;
+  board.appendChild(knobGrp);
+
+  const R = 21, SEG = 20, H = 22;
+  const segW = 2 * Math.PI * R / SEG + 1.2;
+  for (let i = 0; i < SEG; i++){
+    const a = (360/SEG) * i;
+    const f = document.createElement("div");
+    f.className = "face";
+    f.style.cssText = `width:${segW}px;height:${H}px;left:${-segW/2}px;top:${-H/2}px;`;
+    const shade = 0.55 + 0.45 * Math.cos((a - 215) * Math.PI/180);
+    f.style.background = `linear-gradient(180deg, rgba(${Math.round(150*shade+40)},${Math.round(156*shade+42)},${Math.round(168*shade+46)},1), rgba(${Math.round(70*shade+18)},${Math.round(74*shade+20)},${Math.round(82*shade+24)},1))`;
+    f.style.transform = `rotateX(90deg) rotateY(${a}deg) translateZ(${R}px)`;
+    knobGrp.appendChild(f);
+  }
+  const top = document.createElement("div");
+  top.className = "face";
+  top.style.cssText = `width:${R*2}px;height:${R*2}px;left:${-R}px;top:${-R}px;border-radius:50%;
+    background:radial-gradient(circle at 36% 30%, #cfd6e0, #79818e 62%, #4a515c);
+    transform:translateZ(${H/2}px);`;
+  const mark = document.createElement("div");
+  mark.style.cssText = "position:absolute;left:50%;top:5px;width:3px;height:9px;margin-left:-1.5px;border-radius:2px;background:#e07b39;box-shadow:0 0 6px rgba(224,123,57,.9)";
+  top.appendChild(mark);
+  knobGrp.appendChild(top);
+
+  knobGrp.style.cursor = "ns-resize";
+  knobGrp.addEventListener("wheel", e => { e.preventDefault(); turnKnob(e.deltaY > 0 ? 1 : -1); }, {passive:false});
+  knobGrp.addEventListener("pointerdown", e => { e.stopPropagation(); turnKnob(1); });
+}
+
+function turnKnob(dir){
+  knobAngle += dir * 18;
+  knobGrp.style.transition = "transform .25s cubic-bezier(.3,1.4,.5,1)";
+  knobGrp.style.transform = `translateZ(${Z.cap - 2}px) rotateZ(${knobAngle}deg)`;
+  hue = (hue + dir * 14 + 360) % 360;
+  hueSlider.value = Math.round(hue);
+  applyHue();
+  audio.knob();
+}
+
+/* ---------------- responsive scale ---------------- */
+function layoutResponsive(){
+  const vw = innerWidth, vh = innerHeight;
+  const s = Math.max(0.33, Math.min(1.12, Math.min((vw - 50) / 1050, (vh - 230) / 520)));
+  document.getElementById("scene").style.transform = `scale(${s})`;
+}
+addEventListener("resize", layoutResponsive);
+
+/* ---------------- assembly animation ---------------- */
+let timers = [];
+function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+function later(fn, ms){ timers.push(setTimeout(fn, ms)); }
+
+function fly(el, finalT, startT, delay, dur, ease){
+  el.style.visibility = "hidden";
+  el.style.transition = "none";
+  el.style.transform = startT;
+  later(() => {
+    el.style.visibility = "visible";
+    el.style.transition = `transform ${dur}ms ${ease || "cubic-bezier(.22,.9,.26,1)"}`;
+    // force reflow so the start transform is committed before transition
+    void el.offsetWidth;
+    el.style.transform = finalT;
+  }, delay);
+}
+
+const statusEl = document.getElementById("status");
+function setStatus(txt){ statusEl.textContent = txt; statusEl.style.opacity = txt ? "1" : "0"; }
+
+function assemble(){
+  clearTimers();
+  const sorted = keys.slice().sort((a,b) => (a.cx - b.cx) || (a.cy - b.cy));
+
+  if (reduced){
+    [caseGrp, pcb, foam, plate].forEach(el => {
+      el.style.transition = "none";
+      el.style.visibility = "visible";
+      el.style.transform = el === caseGrp ? "translateZ(0px)" : `translateZ(${el.dataset.z}px)`;
+    });
+    keys.forEach(k => {
+      k.sw.style.transition="none"; k.cap.style.transition="none";
+      k.sw.style.visibility="visible"; k.cap.style.visibility="visible";
+      k.sw.style.transform = "translateZ(0px)";
+      k.cap.style.transform = `translateZ(${k.baseZ}px)`;
+    });
+    knobGrp.style.visibility="visible";
+    knobGrp.style.transform = `translateZ(${Z.cap-2}px) rotateZ(${knobAngle}deg)`;
+    setStatus("Ready · click or type");
+    later(()=>setStatus(""), 2600);
+    return;
+  }
+
+  setStatus("01 · PCB");
+
+  // case
+  fly(caseGrp, "translateZ(0px)", "translateZ(520px) rotateX(26deg) rotateZ(14deg)", 120, 1250);
+  // pcb
+  fly(pcb, `translateZ(${Z.pcb}px)`, `translate3d(-620px, 190px, 300px) rotateY(42deg) rotateZ(-16deg)`, 900, 1400);
+  // foam
+  later(() => setStatus("02 · Poron foam"), 2250);
+  fly(foam, `translateZ(${Z.foam}px)`, `translate3d(640px, -210px, 330px) rotateX(-34deg) rotateZ(12deg)`, 2250, 1300);
+  // plate
+  later(() => setStatus("03 · Plate"), 3500);
+  fly(plate, `translateZ(${Z.plate}px)`, `translate3d(0px, -520px, 420px) rotateX(-52deg)`, 3500, 1250);
+
+  // switches L→R
+  const SW_START = 4750, SW_STEP = 34, SW_DUR = 480;
+  later(() => setStatus("04 · Installing switches"), SW_START - 120);
+  sorted.forEach((k, i) => {
+    const d = SW_START + i * SW_STEP;
+    fly(k.sw, "translateZ(0px)",
+        `translate3d(${(i%2?-1:1) * 60}px, -330px, 330px) rotateX(-40deg) rotateZ(${(i%2?-1:1)*25}deg)`,
+        d, SW_DUR, "cubic-bezier(.3,1.25,.4,1)");
+  });
+
+  const CAP_START = SW_START + sorted.length * SW_STEP + 520;
+  later(() => setStatus("05 · Seating keycaps"), CAP_START - 150);
+  sorted.forEach((k, i) => {
+    const d = CAP_START + i * SW_STEP;
+    fly(k.cap, `translateZ(${k.baseZ}px)`,
+        `translate3d(${(i%3-1) * 90}px, ${-260 - (i%4)*30}px, 300px) rotateX(-48deg) rotateY(${(i%2?22:-22)}deg)`,
+        d, 560, "cubic-bezier(.26,1.2,.4,1)");
+  });
+
+  const KNOB_T = CAP_START + sorted.length * SW_STEP + 180;
+  fly(knobGrp, `translateZ(${Z.cap-2}px) rotateZ(${knobAngle}deg)`,
+      `translate3d(220px,-240px,360px) rotateZ(${knobAngle-200}deg)`, KNOB_T, 850);
+
+  later(() => {
+    setStatus("Ready · click a key or type");
+    world.style.transform = "rotateX(54deg) rotateZ(-14deg)";
+    rx = 54; rz = -14;
+  }, KNOB_T + 900);
+  later(() => setStatus(""), KNOB_T + 4200);
+}
+
+/* ---------------- press / release ---------------- */
+function pressKey(rec, fromPointer){
+  if (rec.pressed) return;
+  rec.pressed = true;
+  rec.cap.style.transition = "transform 55ms ease-out";
+  rec.cap.style.transform = `translateZ(${rec.baseZ - 9}px)`;
+  audio.press(rec.def.group);
+  rec.led.style.filter = "brightness(2.2)";
+}
+function releaseKey(rec){
+  if (!rec.pressed) return;
+  rec.pressed = false;
+  rec.cap.style.transition = "transform 150ms cubic-bezier(.2,1.5,.4,1)";
+  rec.cap.style.transform = `translateZ(${rec.baseZ}px)`;
+  audio.release(rec.def.group);
+  rec.led.style.filter = "";
+}
+
+const PREVENT = new Set(["Space","Tab","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Backspace","Enter","Slash","Quote"]);
+addEventListener("keydown", e => {
+  const rec = keyByCode.get(e.code);
+  if (PREVENT.has(e.code)) e.preventDefault();
+  unlockAudio();
+  if (!rec || e.repeat) return;
+  pressKey(rec);
+});
+addEventListener("keyup", e => {
+  const rec = keyByCode.get(e.code);
+  if (rec) releaseKey(rec);
+});
+
+/* ---------------- audio ---------------- */
+const audio = (() => {
+  let ctx = null, master = null, noiseBuf = null, muted = false;
+
+  const PROFILES = {
+    alpha:     { thock: 182, click: 2450, dur: .085, g: .55, q: 2.2 },
+    space:     { thock:  88, click: 1250, dur: .20,  g: .95, q: 1.3 },
+    enter:     { thock: 138, click: 2050, dur: .13,  g: .75, q: 1.8 },
+    backspace: { thock: 158, click: 2950, dur: .11,  g: .68, q: 2.6 },
+    mod:       { thock: 212, click: 1850, dur: .095, g: .60, q: 1.9 },
+    nav:       { thock: 248, click: 3250, dur: .07,  g: .48, q: 2.8 }
+  };
+
+  function init(){
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    master = ctx.createGain();
+    master.gain.value = 0.55;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -16; comp.ratio.value = 4;
+    master.connect(comp); comp.connect(ctx.destination);
+    const len = Math.floor(ctx.sampleRate * 0.25);
+    noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2 - 1) * (1 - i/len);
+    return ctx;
+  }
+
+  function burst(p, up){
+    if (!ctx || muted) return;
+    const t = ctx.currentTime;
+    const amp = up ? 0.42 : 1;
+    // click (filtered noise)
+    const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = p.click * (up ? 1.35 : 1) * (0.94 + Math.random()*0.12);
+    bp.Q.value = p.q;
+    const g1 = ctx.createGain();
+    g1.gain.setValueAtTime(0.0001, t);
+    g1.gain.exponentialRampToValueAtTime(0.5 * p.g * amp, t + 0.003);
+    g1.gain.exponentialRampToValueAtTime(0.0001, t + (up ? 0.045 : 0.07));
+    src.connect(bp); bp.connect(g1); g1.connect(master);
+    src.start(t); src.stop(t + 0.3);
+
+    // body thock
+    const o = ctx.createOscillator();
+    o.type = up ? "sine" : "triangle";
+    const f0 = p.thock * (up ? 1.6 : 1) * (0.97 + Math.random()*0.06);
+    o.frequency.setValueAtTime(f0 * 1.9, t);
+    o.frequency.exponentialRampToValueAtTime(f0, t + 0.035);
+    const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400;
+    const g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.exponentialRampToValueAtTime(0.42 * p.g * amp, t + 0.006);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + p.dur * (up ? 0.7 : 1));
+    o.connect(lp); lp.connect(g2); g2.connect(master);
+    o.start(t); o.stop(t + p.dur * 1.6 + 0.05);
+  }
+
+  return {
+    init,
+    get ctx(){ return ctx; },
+    setMuted(v){ muted = v; if (master) master.gain.value = v ? 0 : 0.55; },
+    isMuted(){ return muted; },
+    press(group){ init(); burst(PROFILES[group] || PROFILES.alpha, false); },
+    release(group){ init(); burst(PROFILES[group] || PROFILES.alpha, true); },
+    knob(){
+      init(); if (!ctx || muted) return;
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type = "square"; o.frequency.value = 1750;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.06);
+    }
+  };
+})();
+
+const hintEl = document.getElementById("hint");
+let audioReady = false;
+function unlockAudio(){
+  const c = audio.init();
+  if (c && c.state === "suspended") c.resume();
+  if (!audioReady && c){
+    audioReady = true;
+    hintEl.classList.add("hide");
+    setTimeout(() => hintEl.remove(), 800);
+  }
+}
+["pointerdown","keydown","touchstart"].forEach(ev =>
+  window.addEventListener(ev, unlockAudio, { once:false, passive:true }));
+
+/* ---------------- RGB ---------------- */
+let hue = 200, rgbOn = true, rafId = null;
+const hueSlider = document.getElementById("hueSlider");
+function applyHue(){
+  document.documentElement.style.setProperty("--hue", hue.toFixed(0));
+  keys.forEach(k => {
+    const h = (hue + (k.cx + INNER_W/2) * 0.16 + (k.cy + INNER_H/2) * 0.1) % 360;
+    k.led.style.setProperty("--h", h.toFixed(0));
+  });
+}
+function rgbLoop(){
+  if (!rgbOn) return;
+  hue = (hue + 0.18) % 360;
+  hueSlider.value = Math.round(hue);
+  applyHue();
+  rafId = requestAnimationFrame(rgbLoop);
+}
+hueSlider.addEventListener("input", () => {
+  hue = +hueSlider.value;
+  applyHue();
+});
+
+/* ---------------- orbit ---------------- */
+let rx = 58, rz = -14;
+const dragState = { active:false, moved:false, x:0, y:0 };
+const scene = document.getElementById("scene");
+scene.addEventListener("pointerdown", e => {
+  dragState.active = true; dragState.moved = false;
+  dragState.x = e.clientX; dragState.y = e.clientY;
+  scene.classList.add("dragging");
+});
+addEventListener("pointermove", e => {
+  if (!dragState.active) return;
+  const dx = e.clientX - dragState.x, dy = e.clientY - dragState.y;
+  if (Math.abs(dx) + Math.abs(dy) > 4) dragState.moved = true;
+  dragState.x = e.clientX; dragState.y = e.clientY;
+  rx = Math.max(12, Math.min(84, rx + dy * 0.28));
+  rz = Math.max(-70, Math.min(70, rz - dx * 0.28));
+  world.style.transition = "none";
+  world.style.transform = `rotateX(${rx}deg) rotateZ(${rz}deg)`;
+});
+addEventListener("pointerup", () => {
+  dragState.active = false;
+  scene.classList.remove("dragging");
+  setTimeout(() => dragState.moved = false, 30);
+});
+
+/* ---------------- controls ---------------- */
+const muteBtn = document.getElementById("muteBtn");
+muteBtn.addEventListener("click", () => {
+  const m = !audio.isMuted();
+  audio.setMuted(m);
+  muteBtn.textContent = m ? "🔇 Muted" : "🔊 Sound on";
+  muteBtn.classList.toggle("off", m);
+});
+const rgbBtn = document.getElementById("rgbBtn");
+rgbBtn.addEventListener("click", () => {
+  rgbOn = !rgbOn;
+  document.documentElement.style.setProperty("--rgb-on", rgbOn ? "1" : "0");
+  rgbBtn.textContent = rgbOn ? "✦ RGB on" : "✦ RGB off";
+  rgbBtn.classList.toggle("off", !rgbOn);
+  if (rgbOn && !reduced) rgbLoop();
+  else cancelAnimationFrame(rafId);
+});
+document.getElementById("replayBtn").addEventListener("click", () => {
+  world.style.transition = "transform .6s ease";
+  rx = 58; rz = -14;
+  world.style.transform = `rotateX(${rx}deg) rotateZ(${rz}deg)`;
+  assemble();
+});
+
+/* ---------------- go ---------------- */
+buildScene();
+applyHue();
+if (!reduced) rgbLoop(); else document.documentElement.style.setProperty("--hue", hue);
+assemble();
+})();
+</script>
+</body>
+</html>
