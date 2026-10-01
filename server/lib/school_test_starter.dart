@@ -1,11 +1,11 @@
 part of 'school_test.dart';
 
 /// The cases a fresh server starts with, until the operator writes their
-/// own on the Tests tab: about eighty havo/vwo cases over five difficulty
-/// levels. Level 1 is onderbouw recall; level 5 is the multi-step
-/// calculations, werkwoordspelling and half-right answers where cheap models
-/// slip. Every number here was worked out by hand; keep it that way when
-/// adding one.
+/// own on the Tests tab: about a hundred havo/vwo cases over six difficulty
+/// levels. Level 1 is onderbouw recall; level 5 the vwo 6 traps where
+/// cheap models slip; level 6 central-exam style chains of several steps
+/// where one wrong step loses the answer. Every number here was worked out
+/// by hand; keep it that way when adding one.
 final String kStarterSchoolTestSuite =
     const JsonEncoder.withIndent('  ').convert({
   'language': 'nl',
@@ -340,6 +340,79 @@ final String kStarterSchoolTestSuite =
         'Los op: |2x − 3| = x + 6',
         '2x − 3 = x + 6 geeft x = 9, en 2x − 3 = −x − 6 geeft x = −1. Dus x = 9 of x = −1.',
         'correct'),
+
+    // Level 6 — central-exam style: several steps chained, one slip and the
+    // final number is gone.
+    _answer('wi-oppervlakte-tussen', 6, _integreren,
+        'Gegeven f(x) = x² en g(x) = 2x + 3. Bereken de oppervlakte van het vlakdeel dat door de grafieken van f en g wordt ingesloten. Geef het antwoord als decimaal getal, afgerond op drie decimalen.',
+        number: 10.667, tolerance: 0.001),
+    _answer('wi-omwentelingslichaam', 6, _integreren,
+        'Het vlakdeel ingesloten door de grafiek van f(x) = √x, de x-as en de lijn x = 4 wentelt om de x-as. Bereken de inhoud van het omwentelingslichaam, afgerond op twee decimalen.',
+        number: 25.13, tolerance: 0.005),
+    _answer('wi-raaklijn', 6, _differentieren,
+        'Gegeven f(x) = x³ − 3x. De lijn k raakt de grafiek van f in het punt met x = 2. Stel een vergelijking op van k en geef het snijpunt van k met de y-as (alleen de y-waarde).',
+        number: -16),
+    _answer('wi-verdubbeling', 6, _exponentieel,
+        'Een populatie groeit volgens N(t) = 500 · e^(0,04t), met t in jaren. Na hoeveel jaar is de populatie verdubbeld? Rond af op één decimaal.',
+        number: 17.3, tolerance: 0.05),
+    _answer('wi-binomiaal', 6, _statistiek,
+        'Bij een meerkeuzetoets met 10 vragen is de kans dat een leerling een vraag goed gokt 0,3, onafhankelijk per vraag. Bereken de kans dat hij er precies 2 goed gokt, afgerond op drie decimalen.',
+        number: 0.233, tolerance: 0.0005),
+    _answer('wi-normaal', 6, _statistiek,
+        'De lengte van volwassen mannen is normaal verdeeld met een gemiddelde van 170 cm en een standaardafwijking van 8 cm. Hoeveel procent is langer dan 186 cm? Rond af op één decimaal.',
+        number: 2.3, tolerance: 0.05),
+    _answer('na-horizontale-worp', 6, _krachten,
+        'Een bal wordt vanaf 20 m hoogte horizontaal weggegooid met 15 m/s (g = 9,81 m/s², geen luchtweerstand). Op welke horizontale afstand van het beginpunt komt de bal op de grond? Rond af op één decimaal, in m.',
+        number: 30.3, tolerance: 0.1),
+    _answer('na-helling', 6, _energie,
+        'Een blokje glijdt vanuit stilstand wrijvingsloos een helling af en daalt daarbij 1,8 m in hoogte (g = 9,81 m/s²). Bereken de snelheid onderaan de helling in m/s, afgerond op één decimaal.',
+        number: 5.9, tolerance: 0.05),
+    _answer('na-foton', 6, _quantum,
+        'Bereken de energie van een foton met een golflengte van 500 nm in eV. (h = 6,626 × 10⁻³⁴ J·s, c = 2,998 × 10⁸ m/s, e = 1,602 × 10⁻¹⁹ C) Rond af op twee decimalen.',
+        number: 2.48, tolerance: 0.01),
+    _answer('sk-buffer', 6, _zurenBasen,
+        'Een bufferoplossing bevat 0,10 M ethaanzuur en 0,20 M natriumethanoaat (Kz = 1,8 × 10⁻⁵). Bereken de pH, afgerond op twee decimalen.',
+        number: 5.05, tolerance: 0.01),
+    _answer('sk-titratie', 6, _molrekenen,
+        'Voor de titratie van 25,0 mL zoutzuur is 20,0 mL 0,150 M natronloog nodig tot het equivalentiepunt. Bereken de molariteit van het zoutzuur in mol/L.',
+        number: 0.12, tolerance: 0.001),
+    _answer('sk-ontleding', 6, _molrekenen,
+        'Bij sterk verhitten ontleedt 10,0 g calciumcarbonaat (M = 100,1 g/mol) volledig in calciumoxide (M = 56,08 g/mol) en koolstofdioxide. Hoeveel gram calciumoxide ontstaat er? Rond af op twee decimalen.',
+        number: 5.6, tolerance: 0.01),
+    _answer('ec-break-even', 6, _bedrijf,
+        'Een bedrijf heeft €12.000 constante kosten per maand. Het product wordt verkocht voor €25 per stuk en de variabele kosten zijn €10 per stuk. Bij welke afzet per maand is de winst precies nul?',
+        number: 800),
+    _answer('bi-hardy-weinberg', 6, _populatiegenetica,
+        'In een populatie in Hardy-Weinbergevenwicht vertoont 16% het recessieve fenotype. Welk percentage van de populatie is heterozygoot?',
+        number: 48, tolerance: 0.1),
+    _grade(
+        'grade-negatieve-oppervlakte',
+        6,
+        _integreren,
+        'Bereken de oppervlakte van het vlakdeel ingesloten door f(x) = x² en g(x) = 2x + 3.',
+        'Snijpunten x = −1 en x = 3. De integraal van −1 tot 3 van (x² − 2x − 3) dx = −32/3, dus de oppervlakte is −32/3.',
+        'partly'),
+    _grade(
+        'grade-binomiaal-coefficient',
+        6,
+        _statistiek,
+        'Bij 10 gokvragen met elk een kans van 0,3 op goed: bereken de kans op precies 2 goed.',
+        'P = 0,3² · 0,7⁸ ≈ 0,0052',
+        'partly'),
+    _grade(
+        'grade-hardy-weinberg-fout',
+        6,
+        _populatiegenetica,
+        'In een populatie in Hardy-Weinbergevenwicht vertoont 16% het recessieve fenotype. Welk percentage is heterozygoot?',
+        '16% is aa, dus de overige 84% is drager.',
+        'wrong'),
+    _grade(
+        'grade-worp-goed',
+        6,
+        _krachten,
+        'Een bal wordt vanaf 20 m hoogte horizontaal weggegooid met 15 m/s (g = 9,81 m/s²). Op welke horizontale afstand komt hij neer?',
+        't = √(2h/g) = √(40/9,81) = 2,02 s, dus x = 15 · 2,02 ≈ 30 m.',
+        'correct'),
   ],
 });
 
@@ -513,3 +586,23 @@ final _naamvallen = _lesson('Duits', 'leerjaar 4', 'vwo', 'Neue Kontakte', '3',
     '3.2', 'Naamvallen: Dativ en Akkusativ, voorzetsels');
 final _passeCompose = _lesson('Frans', 'leerjaar 4', 'havo', 'Grandes Lignes',
     '2', '2.3', 'Passé composé met être');
+final _statistiek = _lesson('Wiskunde A', 'leerjaar 6', 'vwo', 'Getal & Ruimte',
+    '10', '10.3', 'Binomiale en normale verdeling');
+final _quantum = _lesson(
+    'Natuurkunde',
+    'leerjaar 6',
+    'vwo',
+    'Systematische Natuurkunde',
+    '15',
+    '15.1',
+    'Fotonen en het foto-elektrisch effect');
+final _bedrijf = _lesson(
+    'Economie',
+    'leerjaar 5',
+    'havo',
+    'Praktische Economie',
+    '6',
+    '6.2',
+    'Kosten, opbrengsten en break-evenafzet');
+final _populatiegenetica = _lesson('Biologie', 'leerjaar 6', 'vwo',
+    'Biologie voor jou', '14', '14.2', 'Populatiegenetica en Hardy-Weinberg');

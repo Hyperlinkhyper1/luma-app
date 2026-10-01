@@ -118,7 +118,7 @@ void main() {
                 ]
               })),
           fails('twice'));
-      for (final bad in [0, 6, 2.5, 'hard']) {
+      for (final bad in [0, 7, 2.5, 'hard']) {
         expect(
             () => SchoolTestSuite.parse(
                 one({'kind': 'question', 'difficulty': bad})),
@@ -181,6 +181,32 @@ void main() {
       expect(scoreSchoolTestCase(c, _answer('(b) Koolstofdioxide')).score, 1);
       expect(scoreSchoolTestCase(c, _answer('koolstofdioxide')).score, 1);
       expect(scoreSchoolTestCase(c, _answer('A')).score, 0);
+    });
+
+    test('a bare answer without the JSON wrapper still counts', () {
+      final c = _case({
+        'kind': 'answer',
+        'question': 'Som?',
+        'expect': {'number': 1320},
+      });
+      for (final said in [
+        '1320',
+        '<think>12·11·10</think>1320',
+        '```\n1320\n```'
+      ]) {
+        final r = scoreSchoolTestCase(c, said);
+        expect(r.score, 1, reason: said);
+        expect(r.error, isNull, reason: said);
+      }
+      expect(scoreSchoolTestCase(c, '  ').error, 'Empty reply.');
+      final grade = _case({
+        'kind': 'grade',
+        'question': 'q',
+        'studentAnswer': 'a',
+        'expect': {'result': 'correct'},
+      });
+      expect(scoreSchoolTestCase(grade, 'correct').error, isNotNull,
+          reason: 'the classroom app needs JSON from the grader');
     });
 
     test('a phrase must contain an accepted one as whole words', () {

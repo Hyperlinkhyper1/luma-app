@@ -32,7 +32,7 @@ const kSchoolTestKinds = ['answer', 'grade', 'question'];
 
 const kSchoolTestMaxCases = 500;
 
-const kSchoolTestMaxDifficulty = 5;
+const kSchoolTestMaxDifficulty = 6;
 
 const kSchoolTestMaxSuiteChars = 400000;
 
@@ -86,7 +86,7 @@ class SchoolTestCase {
   /// `correct`, `partly` or `wrong`, only for `grade`.
   final String? expectResult;
 
-  /// 1 (onderbouw basics) to 5 (exam traps). A case counts this many
+  /// 1 (onderbouw basics) to 6 (central-exam style). A case counts this many
   /// times towards a run's score, so the hard cases decide it.
   final int difficulty;
 
@@ -314,6 +314,20 @@ String? _answerField(String content) {
   return null;
 }
 
+/// The answer in [content]: the JSON `answer` field when there is one,
+/// otherwise the bare reply without reasoning tags or a code fence. Many
+/// models answer "8" instead of `{"answer": "8"}`; the server checks the
+/// answer itself, so the wrapper must not decide the score. Null only for
+/// an empty reply.
+String? answerOf(String content) {
+  if (_answerField(content) case final field?) return field;
+  final bare = content
+      .replaceAll(RegExp(r'<think>[\s\S]*?</think>'), '')
+      .replaceAll(RegExp(r'```[a-zA-Z]*'), '')
+      .trim();
+  return bare.isEmpty ? null : bare;
+}
+
 const _superscripts = {
   '⁰': '0',
   '¹': '1',
@@ -491,10 +505,8 @@ SchoolTestCaseResult scoreSchoolTestCase(SchoolTestCase c, String? content,
               ? question.question
               : '${question.question} [${question.choices.join(' | ')}]');
     default:
-      final answer = _answerField(content);
-      if (answer == null) {
-        return result(0, content, error: 'Not the expected JSON shape.');
-      }
+      final answer = answerOf(content);
+      if (answer == null) return result(0, content, error: 'Empty reply.');
       if (c.expectNumber != null) {
         final allowed = math.max(c.tolerance, 1e-9 * c.expectNumber!.abs());
         final ok = numberReadings(answer)

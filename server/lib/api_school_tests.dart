@@ -275,7 +275,7 @@ extension SchoolTestsApi on Api {
         'server, not by the model; grading cases compare the model\'s '
         'verdict with yours (half a point when it is one step off), and '
         '"harsh" counts right answers it marked wrong. Every case has a '
-        'difficulty from 1 to 5 and counts that many times, so the hard cases '
+        'difficulty from 1 to 6 and counts that many times, so the hard cases '
         'decide the score. Grading and question '
         'cases use the classroom tutor\'s live instructions from the '
         'Assistant tab. Paste an API key to run a model on a key the server '
