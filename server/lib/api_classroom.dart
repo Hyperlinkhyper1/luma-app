@@ -14,6 +14,10 @@ extension ClassroomApi on Api {
 
   static const _meteredMode = 'normal';
 
+  /// Room for a reasoning model's thinking, which counts as output, on top
+  /// of the short JSON reply. Only what the model uses is charged.
+  static const _maxTokens = 4096;
+
   /// Why [user] can't use the classroom right now, or null when they can.
   Response? _classroomRefusal(StoredUser user) {
     if (user.planId != kClassroomMinPlan) {
@@ -126,11 +130,13 @@ extension ClassroomApi on Api {
         await _logAiCall(user, 'Classroom', candidate.route, responseBody);
         var tokens = 0;
         String? content;
+        String? finish;
         try {
           final decoded = jsonDecode(responseBody);
           if (decoded is Map) {
             tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
             content = decoded['choices']?[0]?['message']?['content'] as String?;
+            finish = decoded['choices']?[0]?['finish_reason'] as String?;
           }
         } catch (_) {}
         await aiUsage.charge(user.id, tokens > 0 ? tokens : 800, _meteredMode,
@@ -138,7 +144,8 @@ extension ClassroomApi on Api {
         final parsed = content == null ? null : parse(content);
         if (parsed != null) return parsed;
         stderr.writeln('[luma] classroom tutor: $model sent an unusable '
-            'reply: ${snippet(content ?? responseBody)}');
+            'reply${finish == 'length' ? ' (cut off at max_tokens)' : ''}: '
+            '${snippet(content ?? responseBody)}');
       } catch (e) {
         stderr.writeln('[luma] classroom tutor: $model failed: $e');
       }
@@ -178,7 +185,7 @@ extension ClassroomApi on Api {
           classroomConfig.config.effectiveInstructions, lesson,
           asked: asked, number: number.clamp(1, 999), language: language),
       parseClassroomQuestion,
-      maxTokens: 1500,
+      maxTokens: _maxTokens,
       temperature: 0.8,
     );
     // 503, not 502: Cloudflare swaps an origin 502/504 for its own page,
@@ -231,7 +238,7 @@ extension ClassroomApi on Api {
               classroomReviewMessages(instructions, lesson, item,
                   language: language),
               parseClassroomReview,
-              maxTokens: 1200,
+              maxTokens: _maxTokens,
               temperature: 0.2,
             ).then((review) => results[i] = review),
       ]);
