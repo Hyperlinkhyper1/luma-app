@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 
 /// The record cipher, and the worker isolates that run it for file chunks.
+/// Shared by the two device-to-device channels: the SFTP plugin's Host tab
+/// and LAN peer sync.
 ///
 /// ChaCha20-Poly1305 rather than AES-GCM: the transfer runs in pure Dart, and
 /// there GCM's GHASH made AES-GCM the whole bottleneck — around 15 MB/s to
@@ -16,13 +18,14 @@ import 'package:cryptography/cryptography.dart';
 ///
 /// Chunks are sealed and opened on a small pool of isolates, several at once.
 /// That is safe because a record's nonce is fixed by its counter when the
-/// record is *queued*, not when the work finishes — see [HostSecureChannel].
+/// record is *queued*, not when the work finishes — see `HostSecureChannel`
+/// and `PeerSecureChannel`.
 /// Callers keep the wire order; the pool only makes the work concurrent and
 /// keeps it off the UI isolate, which used to stall for every chunk.
-class HostCipherPool {
-  HostCipherPool._();
+class RecordCipherPool {
+  RecordCipherPool._();
 
-  static final HostCipherPool instance = HostCipherPool._();
+  static final RecordCipherPool instance = RecordCipherPool._();
 
   static final Cipher cipher = Chacha20.poly1305Aead();
 
@@ -159,7 +162,7 @@ class HostCipherPool {
         await Isolate.spawn(
           _workerMain,
           replies.sendPort,
-          debugName: 'luma host cipher $i',
+          debugName: 'luma record cipher $i',
         );
         _workers.add(_Worker(await portReady.future));
       } catch (_) {
@@ -198,8 +201,8 @@ void _workerMain(SendPort replies) {
       final nonce = job[3] as Uint8List;
       final data = (job[4] as TransferableTypedData).materialize().asUint8List();
       final out = seal
-          ? await HostCipherPool.sealInline(key, nonce, data)
-          : await HostCipherPool.openInline(key, nonce, data);
+          ? await RecordCipherPool.sealInline(key, nonce, data)
+          : await RecordCipherPool.openInline(key, nonce, data);
       replies.send([id, TransferableTypedData.fromList([out])]);
     } catch (e) {
       replies.send([id, '$e']);

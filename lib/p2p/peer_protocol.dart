@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'peer_crypto.dart';
+
 /// Wire protocol for luma peer-to-peer sync.
 ///
 /// Every unit on the wire is a length-prefixed frame:
 ///
 ///     [ 4-byte big-endian length ][ payload bytes ]
 ///
-/// A payload is either a JSON control message (always decodes to a
-/// `Map<String, dynamic>` with a `type` field) or — for a `blob` frame — the
-/// raw sealed snapshot bytes that follow the `blob` control message that
-/// announced them. See [PeerLink] for the read state machine.
+/// The first two frames each way are the handshake, in the clear: a `hello`
+/// and a `proof` (see peer_crypto.dart). Every frame after that is a record
+/// sealed by [PeerSecureChannel], and what it opens to is either a JSON
+/// control message (a `Map<String, dynamic>` with a `type` field) or — right
+/// after a `blob` or `share-chunk` message announcing it — that message's
+/// raw bytes. See [PeerLink] for the read state machine.
 ///
 /// Control messages share a small, fixed vocabulary so unknown keys can be
 /// ignored gracefully (forward compatibility).
@@ -22,6 +26,10 @@ const String kLumaPeerServiceType = '_luma-sync._tcp';
 /// plenty for the largest collection (the password vault, finance DB, etc.)
 /// while still bounding a hostile or buggy peer's memory blow-up.
 const int kMaxFrameBytes = 8 * 1024 * 1024;
+
+/// The largest frame accepted off the wire: a [kMaxFrameBytes] payload plus
+/// the tag sealing adds to it.
+const int kMaxWireFrameBytes = kMaxFrameBytes + kPeerSealOverhead;
 
 /// How much of a shared file travels in one `share-chunk` frame. Small
 /// enough that progress moves visibly and neither side buffers much, large
@@ -148,7 +156,7 @@ class SharedChunkHeader {
   }
 }
 
-/// Per-collection state advertised in `hello`/`welcome`.
+/// Per-collection state advertised in the sealed `state` message.
 ///
 /// - [cloudVersion] is the last server version this device agrees it has seen
 ///   (0 if never cloud-synced). Both devices comparing this can tell whether
@@ -177,14 +185,25 @@ class PeerCollectionState {
   }
 }
 
-/// Identity + proof exchanged during the handshake.
+/// Who a device is, in two parts.
+///
+/// The `hello` ([helloJson]) is the only thing sent in the clear, and holds
+/// only what the handshake needs: the device id (already public in its mDNS
+/// record), a fresh [nonce] and a one-time X25519 [publicKey]. The account
+/// key never crosses the wire — an earlier version sent a fixed token here,
+/// which anyone on the network could read and then present themselves.
+///
+/// Everything else — the name, the platform and which collections are
+/// enabled — is the `state` ([stateJson]), sent as the first sealed message
+/// once both sides have proved themselves.
 class PeerHello {
   const PeerHello({
     required this.deviceId,
     required this.deviceName,
     required this.platform,
-    required this.token,
+    required this.nonce,
     required this.collections,
+    this.publicKey = '',
   });
 
   /// Stable random id for this device (so two devices can recognize each
@@ -197,46 +216,78 @@ class PeerHello {
   /// "android" / "windows" / etc. — informational only.
   final String platform;
 
-  /// HMAC of the account encryption key. Must match locally or the peer is
-  /// dropped before any payload is exchanged.
-  final String token;
+  /// Random per-connection challenge, hex. See [newPeerNonce].
+  final String nonce;
+
+  /// This connection's one-time X25519 public key, base64. Filled in by
+  /// [PeerLink], which owns the private half.
+  final String publicKey;
 
   /// The peer's currently enabled collections + their state.
   final Map<String, PeerCollectionState> collections;
 
-  Map<String, Object?> toJson() => {
+  PeerHello withPublicKey(String publicKey) => PeerHello(
+        deviceId: deviceId,
+        deviceName: deviceName,
+        platform: platform,
+        nonce: nonce,
+        collections: collections,
+        publicKey: publicKey,
+      );
+
+  Map<String, Object?> helloJson() => {
         'type': 'hello',
+        'v': kPeerProtocolVersion,
         'deviceId': deviceId,
+        'nonce': nonce,
+        'epk': publicKey,
+      };
+
+  Map<String, Object?> stateJson() => {
+        'type': 'state',
         'name': deviceName,
         'platform': platform,
-        'token': token,
         'collections': collections.map((k, v) => MapEntry(k, v.toJson())),
       };
 
-  static PeerHello fromJson(Map<String, dynamic> j) {
+  static PeerHello fromHelloJson(Map<String, dynamic> j) => PeerHello(
+        deviceId: j['deviceId'] as String? ?? '',
+        deviceName: 'Unknown device',
+        platform: '',
+        nonce: j['nonce'] as String? ?? '',
+        publicKey: j['epk'] as String? ?? '',
+        collections: const {},
+      );
+
+  /// This hello completed by the peer's sealed `state` message.
+  PeerHello withState(Map<String, dynamic> j) {
     final cols = <String, PeerCollectionState>{};
     final raw = j['collections'];
     if (raw is Map<String, dynamic>) {
       raw.forEach((id, v) => cols[id] = PeerCollectionState.fromJson(v));
     }
     return PeerHello(
-      deviceId: j['deviceId'] as String? ?? '',
+      deviceId: deviceId,
       deviceName: j['name'] as String? ?? 'Unknown device',
       platform: j['platform'] as String? ?? '',
-      token: j['token'] as String? ?? '',
+      nonce: nonce,
+      publicKey: publicKey,
       collections: cols,
     );
   }
 }
 
-/// Encode a JSON control message as a length-prefixed frame.
-Uint8List encodeFrame(Map<String, Object?> message) {
-  final payload = Uint8List.fromList(utf8.encode(jsonEncode(message)));
+/// [payload] as a length-prefixed frame, exactly as it goes on the wire.
+Uint8List encodeRawFrame(List<int> payload) {
   final out = Uint8List(payload.length + 4);
   out.buffer.asByteData().setUint32(0, payload.length, Endian.big);
   out.setRange(4, 4 + payload.length, payload);
   return out;
 }
+
+/// Encode a JSON control message as a length-prefixed frame.
+Uint8List encodeFrame(Map<String, Object?> message) =>
+    encodeRawFrame(utf8.encode(jsonEncode(message)));
 
 /// Read a single length-prefixed frame from [pending] (bytes already
 /// received but not yet consumed). Returns:
@@ -255,7 +306,7 @@ Uint8List encodeFrame(Map<String, Object?> message) {
   // after it. `ByteData.sublistView` correctly accounts for `pending`'s own
   // offsetInBytes.
   final length = ByteData.sublistView(pending, 0, 4).getUint32(0, Endian.big);
-  if (length == 0 || length > kMaxFrameBytes) {
+  if (length == 0 || length > kMaxWireFrameBytes) {
     throw PeerProtocolException('Invalid frame length: $length');
   }
   if (pending.length < 4 + length) return null;

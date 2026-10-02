@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import 'peer_crypto.dart';
 import 'peer_debug_log.dart';
 import 'peer_protocol.dart';
 import 'peer_share.dart';
@@ -37,14 +38,28 @@ typedef PeerShareChunkHandler = Future<void> Function(
 /// unreadable) so the requester stops waiting for it.
 typedef PeerShareErrorHandler = void Function(String path, String reason);
 
-/// Which kind of raw payload the read loop is currently absorbing. Both a
-/// sealed collection snapshot and a shared-file chunk arrive the same way —
-/// a control frame announcing a byte count, then that many raw bytes — so
-/// they share the state machine and differ only in where they're delivered.
-enum _BinaryKind { snapshot, shareChunk }
+/// The raw payload the next record carries, as announced by the `blob` or
+/// `share-chunk` message just before it. Both a sealed collection snapshot
+/// and a shared-file chunk arrive this way, and differ only in where they
+/// are delivered.
+class _ExpectedPayload {
+  const _ExpectedPayload.snapshot(this.collection, this.savedAtMs, this.length)
+      : chunk = null;
+
+  _ExpectedPayload.shareChunk(SharedChunkHeader this.chunk)
+      : collection = null,
+        savedAtMs = 0,
+        length = chunk.length;
+
+  final String? collection;
+  final int savedAtMs;
+  final SharedChunkHeader? chunk;
+  final int length;
+}
 
 /// One end of a connected peer link. Owns the socket, performs the same-
-/// account handshake, then exchanges control messages + sealed blobs.
+/// account handshake (peer_crypto.dart), then exchanges sealed control
+/// messages, snapshots and shared-file chunks.
 ///
 /// The link is transport-only: it does NOT decide what to sync. The
 /// controller wires up [onSnapshot] / [provideSnapshot] and the link calls
@@ -55,7 +70,8 @@ class PeerLink implements PeerShareChannel {
   PeerLink({
     required this.socket,
     required this.localHello,
-    required this.expectedToken,
+    required this.handshakeKey,
+    required this.isInitiator,
     required this.onReady,
     required this.onSnapshot,
     required this.provideSnapshot,
@@ -80,15 +96,24 @@ class PeerLink implements PeerShareChannel {
       },
       cancelOnError: true,
     );
-    _sendHello();
+    // Every incoming frame waits behind this, so none is looked at before
+    // our own hello — and the key pair the peer's is answered with — exists.
+    _inbound = _sendHello();
   }
 
   final Socket socket;
   final PeerHello localHello;
-  final String expectedToken;
 
-  /// Invoked once, after the peer's `hello`/`welcome` verifies. Hands over
-  /// the peer's identity + advertised collection state.
+  /// The same-account secret both sides prove they hold. Never sent; it only
+  /// feeds the key schedule in [derivePeerSession].
+  final String handshakeKey;
+
+  /// Whether this side opened the connection. Part of what each proof
+  /// covers, so the two directions' proofs can never be swapped.
+  final bool isInitiator;
+
+  /// Invoked once, after the peer's proof verifies. Hands over the peer's
+  /// identity + advertised collection state.
   final void Function(PeerHello peer) onReady;
 
   /// Invoked when the peer sends us a sealed snapshot. Return true if applied
@@ -98,8 +123,8 @@ class PeerLink implements PeerShareChannel {
   /// Invoked when the peer asks us for a snapshot.
   final PeerSnapshotProvider provideSnapshot;
 
-  /// Invoked when the link ends for any reason (clean close, error, token
-  /// mismatch). Always fires exactly once.
+  /// Invoked when the link ends for any reason (clean close, error, failed
+  /// handshake). Always fires exactly once.
   final void Function(String? error) onClose;
 
   /// Shared-folder callbacks. Null until the share repository registers
@@ -114,28 +139,55 @@ class PeerLink implements PeerShareChannel {
   PeerLinkState _state = PeerLinkState.connecting;
   PeerLinkState get state => _state;
 
+  /// The peer, once it has proved it holds [handshakeKey]. Null until then.
   PeerHello? peer;
-  bool _sentWelcome = false;
+
+  /// The peer's hello while its proof is still outstanding.
+  PeerHello? _claimedPeer;
   bool _closed = false;
+
+  PeerKeyPair? _keyPair;
+  Uint8List? _ownHelloBytes;
+
+  /// Keys and expected proof, from the moment the peer's hello is answered.
+  PeerSession? _session;
+
+  /// Set once the peer's proof verifies. From then on every frame either way
+  /// is sealed with it.
+  PeerSecureChannel? _channel;
 
   late final StreamSubscription<Uint8List> _subscription;
   // Bytes received but not yet consumed by a complete frame.
   final BytesBuilder _pending = BytesBuilder(copy: false);
 
-  // While reading a raw payload: how many bytes we still expect, what kind
-  // of payload it is, and the metadata from the frame that announced it.
-  int _blobBytesRemaining = 0;
-  _BinaryKind _binaryKind = _BinaryKind.snapshot;
-  String? _blobCollection;
-  int _blobSavedAtMs = 0;
-  SharedChunkHeader? _chunkHeader;
-  final BytesBuilder _blobBuffer = BytesBuilder(copy: false);
+  /// Incoming frames, handled one at a time and in arrival order: opening a
+  /// record is asynchronous, and the counter in its nonce means record N+1
+  /// must not be opened before record N.
+  late Future<void> _inbound;
+
+  /// Received but not yet handled. Reading pauses while this is high, so a
+  /// fast sender cannot pile up records faster than they can be opened.
+  int _queuedBytes = 0;
+  bool _pausedForBackpressure = false;
+  static const int _maxQueuedBytes = 3 * kMaxWireFrameBytes;
+
+  _ExpectedPayload? _expecting;
 
   // ---- Outgoing ------------------------------------------------------------
 
-  void _sendHello() {
+  Future<void> _sendHello() async {
     _state = PeerLinkState.handshaking;
-    _writeJson(localHello.toJson());
+    try {
+      final keyPair = await PeerKeyPair.generate();
+      if (_closed) return;
+      _keyPair = keyPair;
+      final bytes = Uint8List.fromList(utf8.encode(
+          jsonEncode(localHello.withPublicKey(keyPair.publicKey).helloJson())));
+      _ownHelloBytes = bytes;
+      _writePlain(encodeRawFrame(bytes));
+    } catch (e) {
+      _fail('Could not start the handshake: $e');
+    }
   }
 
   /// Ask the peer for its snapshot of [collectionId]. The reply arrives
@@ -151,16 +203,15 @@ class PeerLink implements PeerShareChannel {
     if (_state != PeerLinkState.ready) return;
     final snap = await provideSnapshot(collectionId);
     if (snap == null) return;
-    await _enqueueWrite(() async {
-      socket.add(encodeFrame({
+    await _writeSealed([
+      _jsonBytes({
         'type': 'blob',
         'collection': collectionId,
         'savedAtMs': snap.savedAtMs,
         'length': snap.sealed.length,
-      }));
-      socket.add(snap.sealed);
-      await socket.flush();
-    });
+      }),
+      snap.sealed,
+    ], flush: true);
   }
 
   /// Advertise the whole contents of our shared folder, tombstones included.
@@ -192,26 +243,60 @@ class PeerLink implements PeerShareChannel {
     _writeJson({'type': 'share-error', 'path': path, 'reason': reason});
   }
 
-  /// Push one chunk of a shared file: its header, then the raw bytes.
+  /// Push one chunk of a shared file: its header, then the raw bytes, each
+  /// sealed as its own record.
   ///
   /// Awaits the socket flush, so a fast disk can't outrun a slow network —
   /// the returned future is the sender's backpressure.
   @override
   Future<void> sendShareChunk(SharedChunkHeader header, Uint8List bytes) async {
     if (_state != PeerLinkState.ready) return;
-    await _enqueueWrite(() async {
-      socket.add(encodeFrame(header.toJson()));
-      socket.add(bytes);
-      await socket.flush();
-    });
+    await _writeSealed([
+      _jsonBytes(header.toJson()),
+      // An empty file is the header alone; the receiver expects no record.
+      if (header.length > 0) bytes,
+    ], flush: true);
   }
 
   /// Politely close the link.
   Future<void> close() async => _fail(null);
 
   void _writeJson(Map<String, Object?> message) {
-    unawaited(_enqueueWrite(() => socket.add(encodeFrame(message))));
+    unawaited(_writeSealed([_jsonBytes(message)]).catchError((Object e) {
+      _fail('Could not send to the other device: $e');
+    }));
   }
+
+  /// Seals [payloads] and puts them on the wire back to back.
+  ///
+  /// They are sealed here, synchronously in call order, which is what fixes
+  /// each record's nonce; the write queue then puts them on the wire in that
+  /// same order however long each seal takes.
+  Future<void> _writeSealed(List<List<int>> payloads, {bool flush = false}) {
+    final channel = _channel;
+    if (channel == null || _closed) return Future.value();
+    final sealed = [for (final p in payloads) channel.seal(p)];
+    for (final record in sealed) {
+      record.ignore();
+    }
+    return _enqueueWrite(() async {
+      for (final record in sealed) {
+        socket.add(encodeRawFrame(await record));
+      }
+      if (flush) await socket.flush();
+    });
+  }
+
+  /// The two handshake frames, which go out before there is a key to seal
+  /// them with.
+  void _writePlain(Uint8List frame) {
+    unawaited(_enqueueWrite(() => socket.add(frame)).catchError((Object e) {
+      _fail('Could not send to the other device: $e');
+    }));
+  }
+
+  static List<int> _jsonBytes(Map<String, Object?> message) =>
+      utf8.encode(jsonEncode(message));
 
   // All socket writes — control frames and the header+bytes+flush of a blob
   // push — go through this single FIFO queue. Without it, two overlapping
@@ -229,28 +314,18 @@ class PeerLink implements PeerShareChannel {
   // ---- Incoming ------------------------------------------------------------
 
   void _onData(Uint8List chunk) {
-    if (_blobBytesRemaining > 0) {
-      // We are mid-blob: this chunk is raw sealed bytes, not a frame.
-      _absorbBlob(chunk);
-      return;
-    }
-    _absorbControl(chunk);
-  }
-
-  void _absorbControl(Uint8List chunk) {
+    if (_closed) return;
     _pending.add(chunk);
-    final assembled = _pending.takeBytes();
-    var remaining = Uint8List.fromList(assembled);
+    var remaining = _pending.takeBytes();
     while (true) {
       ({Uint8List payload, int consumed})? frame;
       try {
         frame = decodeFrame(remaining);
       } on PeerProtocolException catch (e) {
-        // Previously uncaught: a synchronous throw here escapes the
-        // socket's onData callback entirely (Stream.listen's onError only
-        // covers errors from the source stream, not exceptions thrown by
-        // the data handler itself), so the link never ran onClose and the
-        // controller kept treating it as connected. Fail it cleanly instead.
+        // A synchronous throw here would escape the socket's onData
+        // callback entirely (Stream.listen's onError only covers errors from
+        // the source stream), so the link would never run onClose. Fail it
+        // cleanly instead.
         final msg = 'PeerLink: $e (${remaining.length} bytes pending, '
             'state=$_state, peer=${peer?.deviceId ?? "pre-handshake"})';
         debugPrint(msg);
@@ -258,127 +333,95 @@ class PeerLink implements PeerShareChannel {
         _fail('Invalid frame: $e');
         return;
       }
-      if (frame == null) {
-        // Stash the unconsumed tail for the next chunk.
-        if (remaining.isNotEmpty) {
-          _pending.add(remaining);
-        }
-        return;
-      }
-      logP2pDebug('PeerLink: frame consumed=${frame.consumed} '
-          'payloadLength=${frame.payload.length} '
-          'ofRemaining=${remaining.length} '
-          'peer=${peer?.deviceId ?? "pre-handshake"} '
-          'preview=${_utf8Preview(frame.payload)}');
-      _handlePayload(frame.payload);
-      if (_closed) return;
+      if (frame == null) break;
+      _enqueueInbound(frame.payload);
       remaining = Uint8List.sublistView(remaining, frame.consumed);
-      if (_blobBytesRemaining > 0) {
-        // Next byte stream is a blob, not a frame.
-        if (remaining.isNotEmpty) _absorbBlob(remaining);
-        return;
+    }
+    // Stash the unconsumed tail for the next chunk.
+    if (remaining.isNotEmpty) _pending.add(remaining);
+  }
+
+  void _enqueueInbound(Uint8List payload) {
+    _queuedBytes += payload.length;
+    if (_queuedBytes > _maxQueuedBytes && !_pausedForBackpressure) {
+      _pausedForBackpressure = true;
+      _subscription.pause();
+    }
+    _inbound = _inbound.then((_) async {
+      try {
+        if (!_closed) await _handleFrame(payload);
+      } catch (e) {
+        logP2pDebug('PeerLink: handling a frame failed: $e');
+        _fail('Connection error: $e');
+      } finally {
+        _queuedBytes -= payload.length;
+        if (_pausedForBackpressure &&
+            !_closed &&
+            _queuedBytes <= _maxQueuedBytes ~/ 2) {
+          _pausedForBackpressure = false;
+          _subscription.resume();
+        }
       }
-    }
+    });
   }
 
-  void _absorbBlob(Uint8List chunk) {
-    final take = chunk.length <= _blobBytesRemaining
-        ? chunk.length
-        : _blobBytesRemaining;
-    _blobBuffer.add(Uint8List.sublistView(chunk, 0, take));
-    _blobBytesRemaining -= take;
+  Future<void> _handleFrame(Uint8List payload) async {
+    final channel = _channel;
+    if (channel == null) return _handleHandshakeFrame(payload);
 
-    if (_blobBytesRemaining > 0) {
-      // Any bytes beyond the blob are the start of the next control frame.
-      if (take < chunk.length) {
-        final tail = Uint8List.sublistView(chunk, take);
-        _blobBytesRemaining = 0; // guard satisfied; re-enter control mode
-        _absorbControl(tail);
-      }
-      return;
-    }
-
-    // Payload complete.
-    final payload = _blobBuffer.takeBytes();
-    if (_binaryKind == _BinaryKind.shareChunk) {
-      final header = _chunkHeader;
-      _chunkHeader = null;
-      _binaryKind = _BinaryKind.snapshot;
-      // Written to disk asynchronously, off the read loop, exactly like a
-      // snapshot apply below.
-      if (header != null) unawaited(_deliverShareChunk(header, payload));
-    } else {
-      final collection = _blobCollection!;
-      final savedAtMs = _blobSavedAtMs;
-      _blobCollection = null;
-      _blobSavedAtMs = 0;
-
-      // Apply + ack asynchronously (this may await real DB I/O) without
-      // blocking the read loop.
-      unawaited(_deliverBlob(collection, payload, savedAtMs));
-    }
-
-    // Any trailing bytes from the same chunk start the next control frame.
-    // This MUST happen synchronously, right now — not deferred behind the
-    // async apply above. A later socket chunk can otherwise race ahead of
-    // these already-received bytes (arriving via a fresh `_onData` call
-    // while `_deliverBlob` is still awaiting), which desyncs the frame
-    // boundary and corrupts every message after it ("Malformed control
-    // message").
-    if (take < chunk.length) {
-      _absorbControl(Uint8List.sublistView(chunk, take));
-    }
-  }
-
-  Future<void> _deliverShareChunk(
-      SharedChunkHeader header, Uint8List bytes) async {
-    final handler = onShareChunk;
-    if (handler == null) return;
+    final Uint8List clear;
     try {
-      await handler(header, bytes);
-    } catch (e) {
-      logP2pDebug('PeerLink: share chunk for ${header.path} failed: $e');
-    }
-  }
-
-  Future<void> _deliverBlob(
-      String collection, Uint8List sealed, int savedAtMs) async {
-    bool applied;
-    try {
-      applied = await onSnapshot(collection, sealed, savedAtMs);
+      clear = await channel.open(payload);
     } catch (_) {
-      applied = false;
+      logP2pDebug('PeerLink: a record failed to open (${payload.length} B)');
+      _fail('A frame failed its authenticity check; the connection was '
+          'closed.');
+      return;
     }
-    if (!_closed && _state == PeerLinkState.ready) {
-      _writeJson({
-        'type': applied ? 'ack' : 'nack',
-        'collection': collection,
-      });
+    if (_closed) return;
+
+    final expecting = _expecting;
+    if (expecting != null) {
+      _expecting = null;
+      _deliverPayload(expecting, clear);
+      return;
+    }
+    final j = _decodeControl(clear);
+    if (j == null) return;
+    if (peer == null) {
+      _onPeerState(j);
+    } else {
+      _handleControl(j);
     }
   }
 
-  void _handlePayload(Uint8List payload) {
-    Object? decoded;
-    try {
-      decoded = jsonDecode(utf8.decode(payload));
-    } catch (e) {
-      _debugDumpMalformed(payload, e);
-      _fail('Malformed control message.');
-      return;
+  /// Before the peer has proved itself it gets the handshake and nothing
+  /// else. Anything more — above all a `blob`, whose sealed bytes would
+  /// otherwise be applied — ends the link.
+  Future<void> _handleHandshakeFrame(Uint8List payload) async {
+    final j = _decodeControl(payload);
+    if (j == null) return;
+    switch (j['type']) {
+      case 'hello':
+        await _onPeerHello(j, payload);
+      case 'proof':
+        _onPeerProof(j);
+      case 'bye':
+        _fail(null);
+      default:
+        logP2pDebug('PeerLink: "${j['type']}" before the handshake finished');
+        _fail('Handshake failed: unexpected message.');
     }
-    final j = decoded is Map<String, dynamic> ? decoded : null;
-    if (j == null) {
-      _debugDumpMalformed(payload, 'decoded to ${decoded.runtimeType}, not a Map');
-      _fail('Malformed control message.');
-      return;
-    }
+  }
+
+  void _handleControl(Map<String, dynamic> j) {
     final type = j['type'] as String?;
+    logP2pDebug('PeerLink: "$type" from ${peer?.deviceId}');
     switch (type) {
       case 'hello':
-        _onPeerHello(j);
-      case 'welcome':
-        // Peer accepted us; if we haven't seen its hello yet, treat as one.
-        _onPeerHello(j);
+      case 'proof':
+      case 'state':
+        _fail('Handshake failed: unexpected message.');
       case 'request':
         final c = j['collection'] as String?;
         if (c != null) unawaited(sendCollection(c));
@@ -390,10 +433,7 @@ class PeerLink implements PeerShareChannel {
           _fail('Malformed blob header.');
           return;
         }
-        _blobCollection = c;
-        _blobSavedAtMs = savedAt;
-        _binaryKind = _BinaryKind.snapshot;
-        _blobBytesRemaining = len;
+        _expecting = _ExpectedPayload.snapshot(c, savedAt, len);
       case 'share-index':
         final handler = onShareIndex;
         if (handler == null) break;
@@ -423,14 +463,11 @@ class PeerLink implements PeerShareChannel {
           return;
         }
         if (header.length == 0) {
-          // An empty file: nothing follows the header, so deliver it here
-          // and stay in control mode rather than waiting for zero bytes.
+          // An empty file: no record follows the header, so deliver it here.
           unawaited(_deliverShareChunk(header, Uint8List(0)));
           break;
         }
-        _chunkHeader = header;
-        _binaryKind = _BinaryKind.shareChunk;
-        _blobBytesRemaining = header.length;
+        _expecting = _ExpectedPayload.shareChunk(header);
       case 'ack':
       case 'nack':
         // Outcome of a push; nothing to do at the link layer. The controller
@@ -444,55 +481,177 @@ class PeerLink implements PeerShareChannel {
     }
   }
 
-  void _onPeerHello(Map<String, dynamic> j) {
-    if (peer != null) return; // Already saw the peer's hello.
-    final hello = PeerHello.fromJson(j);
-    logP2pDebug('PeerLink: received ${j['type']} from ${hello.deviceId} '
-        '(${hello.collections.length} collections advertised)');
-    if (hello.token != expectedToken) {
-      logP2pDebug('PeerLink: token mismatch from ${hello.deviceId}');
+  void _deliverPayload(_ExpectedPayload expected, Uint8List bytes) {
+    if (bytes.length != expected.length) {
+      _fail('Payload length did not match its header.');
+      return;
+    }
+    // Applied / written off the read loop, so a slow database or disk never
+    // holds up the frames queued behind this one.
+    final chunk = expected.chunk;
+    if (chunk != null) {
+      unawaited(_deliverShareChunk(chunk, bytes));
+    } else {
+      unawaited(_deliverBlob(expected.collection!, bytes, expected.savedAtMs));
+    }
+  }
+
+  Future<void> _deliverShareChunk(
+      SharedChunkHeader header, Uint8List bytes) async {
+    final handler = onShareChunk;
+    if (handler == null) return;
+    try {
+      await handler(header, bytes);
+    } catch (e) {
+      logP2pDebug('PeerLink: share chunk failed: $e');
+    }
+  }
+
+  Future<void> _deliverBlob(
+      String collection, Uint8List sealed, int savedAtMs) async {
+    bool applied;
+    try {
+      applied = await onSnapshot(collection, sealed, savedAtMs);
+    } catch (_) {
+      applied = false;
+    }
+    if (!_closed && _state == PeerLinkState.ready) {
+      _writeJson({
+        'type': applied ? 'ack' : 'nack',
+        'collection': collection,
+      });
+    }
+  }
+
+  Map<String, dynamic>? _decodeControl(Uint8List payload) {
+    Object? decoded;
+    try {
+      decoded = jsonDecode(utf8.decode(payload));
+    } catch (e) {
+      _debugDumpMalformed(payload, e);
+      _fail('Malformed control message.');
+      return null;
+    }
+    if (decoded is! Map<String, dynamic>) {
+      _debugDumpMalformed(
+          payload, 'decoded to ${decoded.runtimeType}, not a Map');
+      _fail('Malformed control message.');
+      return null;
+    }
+    return decoded;
+  }
+
+  // ---- Handshake -----------------------------------------------------------
+
+  /// The peer's half of the handshake: who it says it is, its nonce and its
+  /// one-time key. Answered with our proof; the peer is not trusted until its
+  /// own proof arrives in [_onPeerProof].
+  Future<void> _onPeerHello(Map<String, dynamic> j, Uint8List raw) async {
+    if (handshakeKey.isEmpty) {
+      // No account key yet, and an empty one is a key everybody holds.
+      _fail('Handshake failed: this device is not signed in.');
+      return;
+    }
+    if (_claimedPeer != null) {
+      _fail('Handshake failed: unexpected message.');
+      return;
+    }
+    if (j['v'] != kPeerProtocolVersion) {
+      logP2pDebug('PeerLink: peer speaks protocol ${j['v']}');
+      _fail('Handshake failed: update luma on both devices.');
+      return;
+    }
+    final hello = PeerHello.fromHelloJson(j);
+    logP2pDebug('PeerLink: received hello from ${hello.deviceId}');
+    final peerPublicKey = decodePeerPublicKey(hello.publicKey);
+    final ownHello = _ownHelloBytes;
+    final keyPair = _keyPair;
+    if (peerPublicKey == null ||
+        ownHello == null ||
+        keyPair == null ||
+        !isValidPeerNonce(hello.nonce) ||
+        hello.nonce == localHello.nonce ||
+        hello.deviceId.isEmpty ||
+        hello.deviceId == localHello.deviceId) {
+      // Our own id coming back is what a reflection looks like: someone
+      // relaying this device's handshake to itself to borrow its proof.
+      _fail('Handshake failed: invalid hello.');
+      return;
+    }
+    _claimedPeer = hello;
+
+    final PeerSession session;
+    try {
+      session = await derivePeerSession(
+        key: handshakeKey,
+        isInitiator: isInitiator,
+        ownKeyPair: keyPair,
+        peerPublicKey: peerPublicKey,
+        initiatorHello: isInitiator ? ownHello : raw,
+        responderHello: isInitiator ? raw : ownHello,
+      );
+    } catch (e) {
+      logP2pDebug('PeerLink: key exchange failed: $e');
+      _fail('Handshake failed: invalid hello.');
+      return;
+    }
+    if (_closed) return;
+    _session = session;
+    _writePlain(encodeFrame({'type': 'proof', 'mac': session.ownProof}));
+  }
+
+  /// The peer proved it holds the account key. From here on everything is
+  /// sealed, starting with our own `state`.
+  void _onPeerProof(Map<String, dynamic> j) {
+    final claimed = _claimedPeer;
+    final session = _session;
+    final mac = j['mac'];
+    if (claimed == null ||
+        session == null ||
+        _channel != null ||
+        mac is! String) {
+      _fail('Handshake failed: unexpected message.');
+      return;
+    }
+    if (!constantTimeStringEquals(mac, session.expectedPeerProof)) {
+      logP2pDebug('PeerLink: proof mismatch from ${claimed.deviceId}');
       _fail('Handshake failed: not the same account.');
       return;
     }
-    peer = hello;
+    _channel = session.channel;
+    logP2pDebug('PeerLink: verified ${claimed.deviceId}');
+    _writeJson(localHello.stateJson());
+  }
 
-    if (!_sentWelcome) {
-      _sentWelcome = true;
-      // Reply with our own hello so the peer (which may be the "server" side
-      // of the socket) gets our identity too.
-      final welcome = Map<String, Object?>.from(localHello.toJson())
-        ..['type'] = 'welcome';
-      _writeJson(welcome);
+  /// The peer's first sealed message, completing its identity. Only now is
+  /// the link handed to the controller.
+  void _onPeerState(Map<String, dynamic> j) {
+    final claimed = _claimedPeer;
+    if (claimed == null || j['type'] != 'state') {
+      _fail('Handshake failed: unexpected message.');
+      return;
     }
-
+    final ready = claimed.withState(j);
+    peer = ready;
     _state = PeerLinkState.ready;
-    logP2pDebug('PeerLink: ready with ${hello.deviceId}');
-    onReady(hello);
+    logP2pDebug('PeerLink: ready with ${ready.deviceId} '
+        '(${ready.collections.length} collections advertised)');
+    onReady(ready);
   }
 
   void _fail(String? error) {
     if (_closed) return;
     _closed = true;
     _state = PeerLinkState.closed;
+    _expecting = null;
     _subscription.cancel().catchError((_) {});
     socket.destroy();
     onClose(error);
   }
 
-  /// Best-effort readable preview of a payload for tracing — never throws.
-  String _utf8Preview(Uint8List payload) {
-    try {
-      final s = utf8.decode(payload.take(48).toList(), allowMalformed: true);
-      return payload.length > 48 ? '$s…' : s;
-    } catch (_) {
-      return '<undecodable>';
-    }
-  }
-
-  /// Logs forensic detail for a control-frame parse failure: whether we'd
-  /// just been mid-blob (a hint this is the trailing-bytes desync class of
-  /// bug), the payload length, and a hex preview. Printed rather than shown
-  /// in the UI so it doesn't clutter the error message, but visible in
+  /// Logs forensic detail for a control-message parse failure: the payload
+  /// length and a hex preview of its start. Printed rather than shown in the
+  /// UI so it doesn't clutter the error message, but visible in
   /// `flutter run`/`adb logcat` output if this needs diagnosing again.
   void _debugDumpMalformed(Uint8List payload, Object error) {
     final preview = payload
@@ -501,7 +660,6 @@ class PeerLink implements PeerShareChannel {
         .join(' ');
     final msg = 'PeerLink: malformed control message ($error). '
         'state=$_state peer=${peer?.deviceId ?? "pre-handshake"} '
-        'blobBytesRemaining=$_blobBytesRemaining '
         'payloadLength=${payload.length} bytes=[$preview]';
     debugPrint(msg);
     logP2pDebug(msg);

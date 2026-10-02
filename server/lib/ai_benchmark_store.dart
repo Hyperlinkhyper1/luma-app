@@ -30,8 +30,8 @@ class AiBenchmarkEntry {
   /// the client caches the download under.
   final String id;
 
-  /// `pagoda`, `engine`, `pc`, `cathedral` or `keyboard` — which test this
-  /// scene implements.
+  /// `pagoda`, `engine`, `pc`, `cathedral`, `keyboard` or `rack` — which test
+  /// this scene implements.
   final String kind;
 
   /// Display name of the benchmarked model, e.g. `Haiku 4.5`.
@@ -94,7 +94,14 @@ class AiBenchmarkStore {
 
   /// Every test a scene can implement. A scene's id always starts with its
   /// kind and an underscore.
-  static const kinds = ['pagoda', 'engine', 'pc', 'cathedral', 'keyboard'];
+  static const kinds = [
+    'pagoda',
+    'engine',
+    'pc',
+    'cathedral',
+    'keyboard',
+    'rack',
+  ];
 
   static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');
 
@@ -495,7 +502,8 @@ class AiBenchmarkStore {
           id.startsWith('engine_') ||
           id.startsWith('pc_') ||
           id.startsWith('cathedral_') ||
-          id.startsWith('keyboard_'));
+          id.startsWith('keyboard_') ||
+          id.startsWith('rack_'));
 
   Future<File?> _sceneFile(String id) async {
     final ext = _extOf(id);
@@ -609,6 +617,7 @@ class AiBenchmarkStore {
     if (id.startsWith('pc_')) return 'pc';
     if (id.startsWith('cathedral_')) return 'cathedral';
     if (id.startsWith('keyboard_')) return 'keyboard';
+    if (id.startsWith('rack_')) return 'rack';
     return 'pagoda';
   }
 
@@ -625,7 +634,9 @@ class AiBenchmarkStore {
                     ? id.substring('cathedral_'.length)
                     : id.startsWith('keyboard_')
                         ? id.substring('keyboard_'.length)
-                        : id;
+                        : id.startsWith('rack_')
+                            ? id.substring('rack_'.length)
+                            : id;
     return stem
         .split('_')
         .where((p) => p.isNotEmpty)

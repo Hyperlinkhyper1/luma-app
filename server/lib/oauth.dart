@@ -295,9 +295,11 @@ class OAuthClient {
       throw OAuthException('Google did not return an email address.');
     }
     // email_verified comes back as a bool from the OIDC endpoint, but has
-    // historically been a string on some Google surfaces.
+    // historically been a string on some Google surfaces. Anything other than
+    // an explicit yes is refused: this address is what links the sign-in to
+    // an existing account, so a missing field must not count as verified.
     final verified = json['email_verified'];
-    if (verified == false || verified == 'false') {
+    if (verified != true && verified != 'true') {
       throw OAuthException(
           'That Google address is not verified. Verify it with Google first.');
     }

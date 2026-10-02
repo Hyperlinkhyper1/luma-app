@@ -11,3 +11,7 @@ data/
 
 # Banner render tool dependencies (npm install in tool/)
 tool/node_modules/
+
+# A second local data dir some runs have used (LUMA_DATA_DIR=-server-local).
+# Same rule as data/: server secrets and account databases, never committed.
+/-server-local/

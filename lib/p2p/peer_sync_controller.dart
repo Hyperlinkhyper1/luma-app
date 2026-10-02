@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 import '../sync/sync_service.dart';
+import 'peer_crypto.dart';
 import 'peer_debug_log.dart';
 import 'peer_discovery.dart';
 import 'peer_link.dart';
@@ -171,7 +172,7 @@ class PeerSyncController extends ChangeNotifier {
       await _discovery.start(
         instanceName: _state.deviceId,
         port: port,
-        tokenPrefix: token.substring(0, 16),
+        tokenPrefix: peerDiscoveryTag(token),
       );
     } catch (e) {
       _lastError = 'Could not start discovery: $e';
@@ -304,7 +305,7 @@ class PeerSyncController extends ChangeNotifier {
       deviceId: _state.deviceId,
       deviceName: _state.deviceName,
       platform: _platform(),
-      token: token,
+      nonce: newPeerNonce(),
       collections: _sync
           .peerState()
           .map((k, v) => MapEntry(
@@ -317,7 +318,8 @@ class PeerSyncController extends ChangeNotifier {
     final link = PeerLink(
       socket: socket,
       localHello: localHello,
-      expectedToken: token,
+      handshakeKey: token,
+      isInitiator: isOutgoing,
       onReady: (peerHello) => _onLinkReady(socket, isOutgoing, peerHello),
       onSnapshot: (collectionId, sealed, savedAtMs) =>
           _onPeerSnapshot(socket, collectionId, sealed, savedAtMs),
