@@ -36,6 +36,12 @@ class LNl extends L {
   String get navPlugins => 'Plugins';
 
   @override
+  String get tabClose => 'Tabblad sluiten';
+
+  @override
+  String get tabOpenPlugin => 'Andere plugin openen';
+
+  @override
   String get navSettings => 'Instellingen';
 
   @override
@@ -2277,4 +2283,11 @@ class LNl extends L {
 
   @override
   String get textLibraryMcClassOk => 'OK';
+
+  @override
+  String get pluginAddToHomeScreen => 'Toevoegen aan startscherm';
+
+  @override
+  String get pluginAddToHomeScreenUnsupported =>
+      'Je launcher kan geen widgets vanuit apps toevoegen. Houd je startscherm ingedrukt, open Widgets en kies luma.';
 }

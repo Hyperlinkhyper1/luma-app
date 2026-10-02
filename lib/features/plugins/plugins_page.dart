@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../app/home_widgets.dart';
 import '../../app/update/app_version.dart';
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/luma_theme.dart';
 import 'plugin_catalog_service.dart';
 import 'plugin_icons.dart';
@@ -995,6 +997,16 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
   bool _actionBusy = false;
   String? _error;
 
+  Future<void> _addToHomeScreen() async {
+    final widgets = PluginHomeWidgets.instance;
+    final pinned =
+        await widgets.canPin() && await widgets.pin(widget.entry.id);
+    if (pinned || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(L.of(context).pluginAddToHomeScreenUnsupported)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
@@ -1037,11 +1049,25 @@ class _PluginDetailViewState extends State<_PluginDetailView> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final narrow = constraints.maxWidth < 420;
-                  final openButton = LumaGhostButton(
+                  final openOnly = LumaGhostButton(
                     label: 'Open',
                     icon: Icons.open_in_new_rounded,
                     onTap: widget.onOpen,
                   );
+                  final openButton = installed && PluginHomeWidgets.supported
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            openOnly,
+                            const SizedBox(height: 8),
+                            LumaGhostButton(
+                              label: L.of(context).pluginAddToHomeScreen,
+                              icon: Icons.add_to_home_screen_rounded,
+                              onTap: _addToHomeScreen,
+                            ),
+                          ],
+                        )
+                      : openOnly;
                   final installButton = (!installed || hasUpdate || _actionBusy)
                       ? _PluginActionButton(
                           entry: entry,

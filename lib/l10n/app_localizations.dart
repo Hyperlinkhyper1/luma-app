@@ -157,6 +157,18 @@ abstract class L {
   /// **'Plugins'**
   String get navPlugins;
 
+  /// No description provided for @tabClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close tab'**
+  String get tabClose;
+
+  /// No description provided for @tabOpenPlugin.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another plugin'**
+  String get tabOpenPlugin;
+
   /// No description provided for @navSettings.
   ///
   /// In en, this message translates to:
@@ -4134,6 +4146,18 @@ abstract class L {
   /// In en, this message translates to:
   /// **'OK'**
   String get textLibraryMcClassOk;
+
+  /// No description provided for @pluginAddToHomeScreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to home screen'**
+  String get pluginAddToHomeScreen;
+
+  /// No description provided for @pluginAddToHomeScreenUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Your launcher can\'t add widgets from apps. Long-press your home screen, open Widgets and pick luma instead.'**
+  String get pluginAddToHomeScreenUnsupported;
 }
 
 class _LDelegate extends LocalizationsDelegate<L> {

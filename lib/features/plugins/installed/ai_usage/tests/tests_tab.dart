@@ -12,6 +12,7 @@ import 'hero_tile.dart';
 import 'keyboard_test_page.dart';
 import 'pagoda_test_page.dart';
 import 'pc_test_page.dart';
+import 'server_rack_test_page.dart';
 
 /// The plugin's **Tests** section: a board of hero tiles, one per experiment,
 /// each opening its own screen.
@@ -173,6 +174,16 @@ class _TestsTabState extends State<TestsTab> {
           width: width,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const KeyboardTestPage()),
+          ),
+        ),
+        LumaHeroTile(
+          title: 'Server Rack Test',
+          subtitle: 'New · Open the test screen',
+          imageFile: null,
+          fallbackIcon: Icons.dns_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const ServerRackTestPage()),
           ),
         ),
       ];

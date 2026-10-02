@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plugin_widget_label">luma 插件</string>
+    <string name="plugin_widget_description">轻点一下即可打开你的 luma 插件。</string>
+    <string name="plugin_widget_pick_title">选择插件</string>
+    <string name="plugin_widget_none">尚未安装插件。请先在 luma 中安装一个，然后重新添加此小部件。</string>
+</resources>

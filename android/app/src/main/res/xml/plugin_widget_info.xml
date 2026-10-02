@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One home-screen cell. configuration_optional skips the picker when the
+     widget is placed from inside luma (the plugin is already known);
+     reconfigurable lets a long-press point it at another plugin. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:resizeMode="none"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/plugin_widget"
+    android:previewLayout="@layout/plugin_widget"
+    android:previewImage="@mipmap/launcher_icon"
+    android:description="@string/plugin_widget_description"
+    android:configure="com.example.luma.PluginWidgetConfigActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    android:widgetCategory="home_screen" />

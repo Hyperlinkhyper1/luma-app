@@ -28,6 +28,10 @@ class MainActivity : FlutterActivity() {
     private var pendingStorage: MethodChannel.Result? = null
     private var displayOverride = 0
     private var displayInfoCallback: Any? = null
+    private var homeWidgetChannel: MethodChannel? = null
+
+    /** A plugin to open once Dart asks, from a widget tap that started luma. */
+    private var launchPlugin: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -35,7 +39,48 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler(::handleCall)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, STORAGE_CHANNEL)
             .setMethodCallHandler(::handleStorageCall)
+        homeWidgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HOME_WIDGET_CHANNEL)
+            .apply { setMethodCallHandler(::handleHomeWidgetCall) }
+        launchPlugin = takePluginId(intent)
         startDisplayInfoListener()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val pluginId = takePluginId(intent) ?: return
+        val channel = homeWidgetChannel
+        if (channel == null) launchPlugin = pluginId else channel.invokeMethod("openPlugin", pluginId)
+    }
+
+    /** The plugin a home-screen widget tap asked for, removed from the
+     *  intent so a recreated activity doesn't open it a second time. */
+    private fun takePluginId(intent: Intent?): String? {
+        if (intent?.action != PluginWidgetProvider.ACTION_OPEN_PLUGIN) return null
+        val pluginId = intent.getStringExtra(PluginWidgetProvider.EXTRA_PLUGIN_ID)
+        intent.removeExtra(PluginWidgetProvider.EXTRA_PLUGIN_ID)
+        return pluginId
+    }
+
+    private fun handleHomeWidgetCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "sync" -> {
+                val entries = (call.arguments as? List<*>)?.filterIsInstance<Map<*, *>>().orEmpty()
+                PluginWidgetStore.save(this, entries)
+                PluginWidgetProvider.updateAll(this)
+                result.success(null)
+            }
+            "canPin" -> result.success(PluginWidgetProvider.canPin(this))
+            "pin" -> {
+                val pluginId = call.arguments as? String
+                result.success(pluginId != null && PluginWidgetProvider.requestPin(this, pluginId))
+            }
+            "takeLaunchPlugin" -> {
+                result.success(launchPlugin)
+                launchPlugin = null
+            }
+            else -> result.notImplemented()
+        }
     }
 
     override fun onResume() {
@@ -285,6 +330,7 @@ class MainActivity : FlutterActivity() {
         const val PERMISSION_REQUEST_CODE = 4711
         const val STORAGE_REQUEST_CODE = 4712
         const val STORAGE_CHANNEL = "luma/storage_access"
+        const val HOME_WIDGET_CHANNEL = "luma/home_widgets"
         const val UNKNOWN_SSID = "<unknown ssid>"
     }
 }

@@ -36,6 +36,12 @@ class LZh extends L {
   String get navPlugins => '插件';
 
   @override
+  String get tabClose => '关闭标签页';
+
+  @override
+  String get tabOpenPlugin => '打开其他插件';
+
+  @override
   String get navSettings => '设置';
 
   @override
@@ -2195,4 +2201,11 @@ class LZh extends L {
 
   @override
   String get textLibraryMcClassOk => '确定';
+
+  @override
+  String get pluginAddToHomeScreen => '添加到主屏幕';
+
+  @override
+  String get pluginAddToHomeScreenUnsupported =>
+      '你的启动器不支持从应用添加小部件。请长按主屏幕，打开“小部件”并选择 luma。';
 }

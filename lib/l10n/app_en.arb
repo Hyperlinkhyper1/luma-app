@@ -9,6 +9,8 @@
   "navNotes": "Notes",
   "navAssistant": "Assistant",
   "navPlugins": "Plugins",
+  "tabClose": "Close tab",
+  "tabOpenPlugin": "Open another plugin",
   "navSettings": "Settings",
   "navAccount": "Account",
   "navConvert": "Convert",
@@ -1097,5 +1099,7 @@
   "textLibraryMcClassRetry": "Try again",
   "textLibraryMcClassTimeout": "The teacher took too long. Try again.",
   "textLibraryMcClassCancel": "Cancel",
-  "textLibraryMcClassOk": "OK"
+  "textLibraryMcClassOk": "OK",
+  "pluginAddToHomeScreen": "Add to home screen",
+  "pluginAddToHomeScreenUnsupported": "Your launcher can't add widgets from apps. Long-press your home screen, open Widgets and pick luma instead."
 }

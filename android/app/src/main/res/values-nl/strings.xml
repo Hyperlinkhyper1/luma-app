@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plugin_widget_label">luma-plugin</string>
+    <string name="plugin_widget_description">Open een van je luma-plugins met één tik.</string>
+    <string name="plugin_widget_pick_title">Kies een plugin</string>
+    <string name="plugin_widget_none">Nog geen plugins geïnstalleerd. Installeer er een in luma en voeg deze widget daarna opnieuw toe.</string>
+</resources>

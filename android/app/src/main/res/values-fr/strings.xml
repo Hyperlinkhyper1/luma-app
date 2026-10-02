@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="plugin_widget_label">Plugin luma</string>
+    <string name="plugin_widget_description">Ouvrez l\'un de vos plugins luma d\'un seul geste.</string>
+    <string name="plugin_widget_pick_title">Choisir un plugin</string>
+    <string name="plugin_widget_none">Aucun plugin installé. Installez-en un dans luma, puis ajoutez de nouveau ce widget.</string>
+</resources>

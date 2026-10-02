@@ -36,6 +36,12 @@ class LEs extends L {
   String get navPlugins => 'Plugins';
 
   @override
+  String get tabClose => 'Cerrar pestaña';
+
+  @override
+  String get tabOpenPlugin => 'Abrir otro plugin';
+
+  @override
   String get navSettings => 'Ajustes';
 
   @override
@@ -2276,4 +2282,11 @@ class LEs extends L {
 
   @override
   String get textLibraryMcClassOk => 'Aceptar';
+
+  @override
+  String get pluginAddToHomeScreen => 'Añadir a la pantalla de inicio';
+
+  @override
+  String get pluginAddToHomeScreenUnsupported =>
+      'Tu launcher no permite añadir widgets desde apps. Mantén pulsada la pantalla de inicio, abre Widgets y elige luma.';
 }

@@ -9,6 +9,8 @@
   "navNotes": "笔记",
   "navAssistant": "助手",
   "navPlugins": "插件",
+  "tabClose": "关闭标签页",
+  "tabOpenPlugin": "打开其他插件",
   "navSettings": "设置",
   "navAccount": "账户",
   "navConvert": "转换",
@@ -472,5 +474,7 @@
   "textLibraryMcClassRetry": "重试",
   "textLibraryMcClassTimeout": "老师用时太长，请重试。",
   "textLibraryMcClassCancel": "取消",
-  "textLibraryMcClassOk": "确定"
+  "textLibraryMcClassOk": "确定",
+  "pluginAddToHomeScreen": "添加到主屏幕",
+  "pluginAddToHomeScreenUnsupported": "你的启动器不支持从应用添加小部件。请长按主屏幕，打开“小部件”并选择 luma。"
 }

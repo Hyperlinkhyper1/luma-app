@@ -36,6 +36,12 @@ class LFr extends L {
   String get navPlugins => 'Plugins';
 
   @override
+  String get tabClose => 'Fermer l\'onglet';
+
+  @override
+  String get tabOpenPlugin => 'Ouvrir un autre plugin';
+
+  @override
   String get navSettings => 'Paramètres';
 
   @override
@@ -2281,4 +2287,11 @@ class LFr extends L {
 
   @override
   String get textLibraryMcClassOk => 'OK';
+
+  @override
+  String get pluginAddToHomeScreen => 'Ajouter à l\'écran d\'accueil';
+
+  @override
+  String get pluginAddToHomeScreenUnsupported =>
+      'Votre lanceur ne peut pas ajouter de widgets depuis une app. Appuyez longuement sur l\'écran d\'accueil, ouvrez Widgets et choisissez luma.';
 }

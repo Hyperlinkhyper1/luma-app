@@ -100,6 +100,31 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- 1x1 home-screen widget that opens one plugin (PluginWidgets.kt).
+             Placed from a plugin's page in luma, or from the launcher's
+             widget list, which opens the picker below. -->
+        <receiver
+            android:name=".PluginWidgetProvider"
+            android:label="@string/plugin_widget_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/plugin_widget_info" />
+        </receiver>
+        <activity
+            android:name=".PluginWidgetConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="@string/plugin_widget_pick_title"
+            android:theme="@style/PluginWidgetPickerTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

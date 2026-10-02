@@ -9,6 +9,8 @@
   "navNotes": "Notities",
   "navAssistant": "Assistent",
   "navPlugins": "Plugins",
+  "tabClose": "Tabblad sluiten",
+  "tabOpenPlugin": "Andere plugin openen",
   "navSettings": "Instellingen",
   "navAccount": "Account",
   "navConvert": "Omzetten",
@@ -702,5 +704,7 @@
   "textLibraryMcClassRetry": "Opnieuw proberen",
   "textLibraryMcClassTimeout": "De leraar deed er te lang over. Probeer het opnieuw.",
   "textLibraryMcClassCancel": "Annuleren",
-  "textLibraryMcClassOk": "OK"
+  "textLibraryMcClassOk": "OK",
+  "pluginAddToHomeScreen": "Toevoegen aan startscherm",
+  "pluginAddToHomeScreenUnsupported": "Je launcher kan geen widgets vanuit apps toevoegen. Houd je startscherm ingedrukt, open Widgets en kies luma."
 }

@@ -14,6 +14,8 @@ lib/
     server_account_gate.dart Placeholder page shown instead of a server-only plugin
     update/                  Self-update via GitHub Releases (check → download → silent Inno installer on Windows)
     widgets.dart             Shared UI primitives (cards, pills, StreamData…)
+    home_widgets.dart        Android 1x1 home-screen widget per plugin: paints each plugin's icon on
+                             the accent and syncs it to the native provider (PluginWidgets.kt)
   account/                   Account + plan UI (plan.dart holds kPlans: storage, sync and family limits)
     stats_section.dart       Account's Stats tab: lifetime money totals + the travel map card
     travel/                  World travel map (bundled outline in assets/world/, picked countries in SettingsController)

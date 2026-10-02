@@ -36,6 +36,12 @@ class LEn extends L {
   String get navPlugins => 'Plugins';
 
   @override
+  String get tabClose => 'Close tab';
+
+  @override
+  String get tabOpenPlugin => 'Open another plugin';
+
+  @override
   String get navSettings => 'Settings';
 
   @override
@@ -2261,4 +2267,11 @@ class LEn extends L {
 
   @override
   String get textLibraryMcClassOk => 'OK';
+
+  @override
+  String get pluginAddToHomeScreen => 'Add to home screen';
+
+  @override
+  String get pluginAddToHomeScreenUnsupported =>
+      'Your launcher can\'t add widgets from apps. Long-press your home screen, open Widgets and pick luma instead.';
 }

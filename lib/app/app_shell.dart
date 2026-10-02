@@ -80,7 +80,9 @@ import '../settings/settings_scope.dart';
 import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import 'bottom_nav.dart';
+import 'home_widgets.dart';
 import 'nav_rail.dart';
+import 'plugin_tab_bar.dart';
 import 'widgets.dart';
 import 'window_title_bar.dart';
 import 'window_controls.dart';
@@ -121,6 +123,10 @@ class _AppShellState extends State<AppShell> {
   // priority over [_selectedIndex].
   String? _selectedPluginId;
 
+  // Plugins open as tabs along the top, in tab order. Each stays mounted
+  // (state, scroll, running games) until its tab is closed.
+  final List<String> _openTabs = [];
+
   PetRepository? _petRepository;
   AutoClickerRepository? _autoClickerRepository;
   WindowController? _petWindow;
@@ -129,6 +135,23 @@ class _AppShellState extends State<AppShell> {
   bool _openingPetWindow = false;
   bool _petWindowFailed = false;
   bool _channelRegistered = false;
+  StreamSubscription<String>? _widgetLaunches;
+
+  @override
+  void initState() {
+    super.initState();
+    if (PluginHomeWidgets.supported) {
+      final widgets = PluginHomeWidgets.instance;
+      _widgetLaunches = widgets.launches.listen(_openFromHomeWidget);
+      unawaited(widgets.takeLaunchPlugin().then((id) {
+        if (id != null) _openFromHomeWidget(id);
+      }));
+    }
+  }
+
+  void _openFromHomeWidget(String pluginId) {
+    if (mounted) _selectPlugin(pluginId);
+  }
 
   @override
   void didChangeDependencies() {
@@ -150,6 +173,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    unawaited(_widgetLaunches?.cancel());
     _petRepository?.removeListener(_onPetChanged);
     if (_channelRegistered) {
       unawaited(petMainChannel.setMethodCallHandler(null));
@@ -197,10 +221,7 @@ class _AppShellState extends State<AppShell> {
       final controller = await WindowController.create(
         WindowConfiguration(
           hiddenAtLaunch: true,
-          arguments: jsonEncode({
-            'kind': petWindowKind,
-            ...snapshot,
-          }),
+          arguments: jsonEncode({'kind': petWindowKind, ...snapshot}),
         ),
       );
       _petWindow = controller;
@@ -395,6 +416,31 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       _pushHistory();
       _selectedPluginId = id;
+      if (!_openTabs.contains(id)) _openTabs.add(id);
+    });
+  }
+
+  // Closing the active tab moves to its neighbour, like a browser; closing
+  // the last one falls back to wherever the user was before plugins.
+  void _closeTab(String id) {
+    final i = _openTabs.indexOf(id);
+    if (i < 0) return;
+    setState(() {
+      _openTabs.removeAt(i);
+      _history.removeWhere((e) => e.pluginId == id);
+      if (_selectedPluginId != id) return;
+      if (_openTabs.isNotEmpty) {
+        _selectedPluginId = _openTabs[i.clamp(0, _openTabs.length - 1)];
+        return;
+      }
+      _selectedPluginId = null;
+      while (_history.isNotEmpty) {
+        final prev = _history.removeLast();
+        if (prev.pluginId == null) {
+          _selectedIndex = prev.index;
+          break;
+        }
+      }
     });
   }
 
@@ -405,6 +451,8 @@ class _AppShellState extends State<AppShell> {
     setState(() {
       _selectedIndex = prev.index;
       _selectedPluginId = prev.pluginId;
+      final id = prev.pluginId;
+      if (id != null && !_openTabs.contains(id)) _openTabs.add(id);
     });
     return true;
   }
@@ -444,6 +492,13 @@ class _AppShellState extends State<AppShell> {
       builder: (context, snapshot) {
         final installed = snapshot.data ?? const <InstalledPluginRecord>[];
         _latestPetTargets = _petTargets(t, installed);
+        if (PluginHomeWidgets.supported && snapshot.hasData) {
+          unawaited(PluginHomeWidgets.instance.sync(
+            installed,
+            background: luma.accent,
+            foreground: luma.onAccent,
+          ));
+        }
         if (pet.visible &&
             hasCustomTitleBar &&
             !_petWindowVisible &&
@@ -462,6 +517,17 @@ class _AppShellState extends State<AppShell> {
           }
         }
         final showingPlugin = activePlugin != null;
+        // Filtered rather than pruned: the install list is briefly empty
+        // before the first stream event, and an uninstalled plugin simply
+        // drops out of the strip.
+        final tabs = [
+          for (final id in _openTabs)
+            for (final p in installed)
+              if (p.pluginId == id) p,
+        ];
+        final activeTab = showingPlugin
+            ? tabs.indexWhere((p) => p.pluginId == activePlugin!.pluginId)
+            : -1;
         final title = showingPlugin ? activePlugin.name : titles[index];
         final isPhone = shellSize.width < _phoneBreakpoint;
         // A phone-sized device in *either* orientation. Landscape widens the
@@ -476,9 +542,12 @@ class _AppShellState extends State<AppShell> {
         final content = Container(
           color: luma.background,
           child: StyleBackdrop(
-            child: showingPlugin
-                ? _pluginPageFor(activePlugin.pluginId, t)
-                : IndexedStack(
+            child: IndexedStack(
+              index: activeTab + 1,
+              children: [
+                TickerMode(
+                  enabled: activeTab < 0,
+                  child: IndexedStack(
                     index: index,
                     children: [
                       HomePage(
@@ -526,6 +595,15 @@ class _AppShellState extends State<AppShell> {
                       const AccountPage(),
                     ],
                   ),
+                ),
+                for (var i = 0; i < tabs.length; i++)
+                  TickerMode(
+                    key: ValueKey('tab:${tabs[i].pluginId}'),
+                    enabled: i == activeTab,
+                    child: _pluginPageFor(tabs[i].pluginId, t),
+                  ),
+              ],
+            ),
           ),
         );
 
@@ -539,6 +617,14 @@ class _AppShellState extends State<AppShell> {
                     mainAxisSize: MainAxisSize.min,
                     children: [PetSummonButton(), InboxButton()],
                   ),
+                ),
+              if (!immersive && tabs.isNotEmpty)
+                PluginTabBar(
+                  tabs: tabs,
+                  activePluginId: showingPlugin ? activePlugin.pluginId : null,
+                  onSelect: _selectPlugin,
+                  onClose: _closeTab,
+                  onAdd: () => _selectFixed(6),
                 ),
               Expanded(
                 child: immersive
