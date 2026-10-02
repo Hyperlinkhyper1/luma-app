@@ -40,6 +40,9 @@ class ToolCallParser {
       null => _parseBare(content),
       ToolCallFormat.json => _parseBare(content),
       ToolCallFormat.pythonic => _parsePythonic(content, lenient: false),
+      // A small model sometimes drops the `<tool_call>` wrapper.
+      ToolCallFormat.qwenXml when !content.contains('<tool_call>') =>
+        _parseQwenXml(content),
       final f => _parseDelimited(content, f),
     };
 
@@ -94,7 +97,49 @@ class ToolCallParser {
     // tool, so malformed-but-recoverable syntax is worth salvaging. Outside one,
     // leniency would invent calls out of prose.
     if (format.isPythonic) return _parsePythonic(payload, lenient: true);
+    if (payload.contains(ToolCallFormat.qwenXmlFunctionOpener)) {
+      return _parseQwenXml(payload);
+    }
     return _parseJson(payload);
+  }
+
+  /// `<function=fn><parameter=a>value</parameter></function>`, as Qwen3.5
+  /// writes inside `<tool_call>`.
+  ///
+  /// Values are raw text with no types attached, so they stay strings unless
+  /// they are a JSON object or array; the caller holds the schema and can
+  /// coerce the rest. A missing `</parameter>` or `</function>` (the model ran
+  /// out of tokens, or skipped it) is tolerated.
+  static List<LLMToolCall> _parseQwenXml(String payload) {
+    final calls = <LLMToolCall>[];
+    final functions = RegExp(
+      r'<function=([^>\s]+)\s*>([\s\S]*?)(?:</function>|(?=<function=)|$)',
+    );
+    final parameters = RegExp(
+      r'<parameter=([^>\s]+)\s*>\n?([\s\S]*?)\n?(?:</parameter>|(?=<parameter=)|(?=</function>)|$)',
+    );
+    for (final function in functions.allMatches(payload)) {
+      final arguments = <String, dynamic>{};
+      for (final parameter in parameters.allMatches(function.group(2)!)) {
+        final raw = parameter.group(2)!;
+        final trimmed = raw.trim();
+        dynamic value = raw;
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try {
+            value = json.decode(trimmed);
+          } catch (_) {}
+        }
+        arguments[parameter.group(1)!] = value;
+      }
+      calls.add(
+        LLMToolCall(
+          id: '',
+          name: function.group(1)!,
+          arguments: json.encode(arguments),
+        ),
+      );
+    }
+    return calls;
   }
 
   static List<LLMToolCall> _parsePythonic(

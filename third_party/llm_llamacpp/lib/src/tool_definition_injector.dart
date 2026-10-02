@@ -32,17 +32,52 @@ List<IsolateMessage> injectToolDefinitions(
 
   final instruction = formatToolDefinitions(schemas, format);
   if (instruction == null) return messages;
+  if (format == ToolCallFormat.qwenXml) {
+    messages = _qwenToolResponses(messages);
+  }
 
   final systemIndex = messages.indexWhere((m) => m.role == 'system');
   if (systemIndex >= 0) {
     final existing = messages[systemIndex].content;
     final updated = List<IsolateMessage>.from(messages);
+    // Qwen's template puts the tool list ahead of the system prompt.
     updated[systemIndex] = IsolateMessage(
       role: 'system',
-      content: existing.isEmpty ? instruction : '$existing\n$instruction',
+      content: existing.isEmpty
+          ? instruction
+          : format == ToolCallFormat.qwenXml
+          ? '$instruction\n\n$existing'
+          : '$existing\n$instruction',
     );
     return updated;
   }
 
   return [IsolateMessage(role: 'system', content: instruction), ...messages];
+}
+
+/// Rewrites `tool` messages the way Qwen's template renders them: one `user`
+/// turn per run of results, each wrapped in `<tool_response>` tags.
+/// `llama_chat_apply_template` would otherwise emit a `tool` role the model
+/// never saw in training.
+List<IsolateMessage> _qwenToolResponses(List<IsolateMessage> messages) {
+  final rewritten = <IsolateMessage>[];
+  for (final message in messages) {
+    if (message.role != 'tool') {
+      rewritten.add(message);
+      continue;
+    }
+    final response = '<tool_response>\n${message.content}\n</tool_response>';
+    final previous = rewritten.isEmpty ? null : rewritten.last;
+    if (previous != null &&
+        previous.role == 'user' &&
+        previous.content.endsWith('</tool_response>')) {
+      rewritten.last = IsolateMessage(
+        role: 'user',
+        content: '${previous.content}\n$response',
+      );
+    } else {
+      rewritten.add(IsolateMessage(role: 'user', content: response));
+    }
+  }
+  return rewritten;
 }

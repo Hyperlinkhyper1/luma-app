@@ -48,9 +48,9 @@ class LocalQwenClient implements AiClient {
 
   static int? _androidThreads() {
     try {
-      final cores = Directory('/sys/devices/system/cpu')
-          .listSync()
-          .where((entry) => RegExp(r'/cpu\d+$').hasMatch(entry.path));
+      final cores = Directory(
+        '/sys/devices/system/cpu',
+      ).listSync().where((entry) => RegExp(r'/cpu\d+$').hasMatch(entry.path));
       final capacities = <int>[];
       final frequencies = <int>[];
       for (final core in cores) {
@@ -86,13 +86,65 @@ class LocalQwenClient implements AiClient {
     return fast > 0 ? fast : coreSpeeds.length.clamp(1, 8);
   }
 
+  /// Without a repeat penalty a 0.8B model easily locks onto one sentence
+  /// and writes it until the output budget runs out. 1.1 over the last 64
+  /// tokens breaks those loops without bending normal prose.
   static const _options = LLMChatOptions(
     toolAttempts: 5,
     maxOutputTokens: 512,
     temperature: 0.7,
     topP: 0.8,
     topK: 20,
+    backendOptions: {'repeatPenalty': 1.1},
   );
+
+  /// Qwen3.5 writes every argument as raw text between `<parameter>` tags,
+  /// so `7` arrives as the string "7". Converts each one to the type its
+  /// schema declares; values that don't convert are left alone.
+  @visibleForTesting
+  static Map<String, dynamic> coerceArguments(
+    Map<String, dynamic> schema,
+    Map<String, dynamic> args,
+  ) {
+    final properties = schema['properties'];
+    if (properties is! Map) return args;
+    return {
+      for (final entry in args.entries)
+        entry.key: _coerce(properties[entry.key], entry.value),
+    };
+  }
+
+  static dynamic _coerce(dynamic schema, dynamic value) {
+    if (schema is! Map) return value;
+    final type = schema['type'];
+    if (value is String) {
+      final text = value.trim();
+      return switch (type) {
+        'integer' =>
+          int.tryParse(text) ?? double.tryParse(text)?.round() ?? value,
+        'number' => num.tryParse(text) ?? value,
+        'boolean' => switch (text.toLowerCase()) {
+          'true' => true,
+          'false' => false,
+          _ => value,
+        },
+        'array' || 'object' => _decodeJson(text) ?? value,
+        _ => value,
+      };
+    }
+    if (type == 'string' && (value is num || value is bool)) {
+      return value.toString();
+    }
+    return value;
+  }
+
+  static dynamic _decodeJson(String text) {
+    try {
+      return jsonDecode(text);
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Qwen3.5 opens every reply with a `<think>…</think>` block (usually
   /// empty). Drops it, and anything after an unclosed `<think>` that ran out
@@ -295,7 +347,7 @@ class _LumaLocalTool extends LLMTool {
 
   @override
   Future<dynamic> execute(Map<String, dynamic> args, {dynamic extra}) =>
-      run(name, args);
+      run(name, LocalQwenClient.coerceArguments(definition.parameters, args));
 
   LLMToolParam _parameter(
     String name,

@@ -36,12 +36,23 @@ A copy of [llm_llamacpp 0.7.0](https://pub.dev/packages/llm_llamacpp)
 - `streamChat` maps `LLMChatOptions` (`maxOutputTokens`, `temperature`,
   `topP`, `topK`) onto `GenerationOptions`. Upstream passed
   `const GenerationOptions()`, silently ignoring them (2048-token cap).
+  `backendOptions['repeatPenalty']` maps onto `repeatPenalty`, since
+  `LLMChatOptions` has no field for it. Frequency and presence penalties are
+  left unmapped: upstream's conversion turns a positive OpenAI-style value
+  into a negative llama.cpp one, which rewards repetition.
 - A request with `nGpuLayers == 0` loads the model with an empty
   `llama_model_params.devices` list (`src/inference_isolate_handler.dart`).
   Otherwise llama.cpp still offloads large prompt batches to any registered
   GPU backend, and the Android arm64 bundle ships `libggml-vulkan.so`, which
   the loader registers — so a phone that asked for the CPU ran Vulkan anyway,
   and a mobile driver fault killed the app on its first prompt.
+- A `qwenXml` tool-call format (`src/tool_calls/`) for Qwen3.5, whose
+  template wants `<tool_call><function=fn><parameter=a>…` rather than
+  Hermes JSON. Upstream matched it as Hermes on the `<tool_call>` tag, so
+  it prompted for JSON and parsed only JSON, and every call the model wrote
+  was dropped. The tool list is written verbatim from the template, ahead of
+  the system prompt, and tool results go back as `<tool_response>` user
+  turns; the conversation snapshot skips those to land on the real user turn.
 - `pubspec.yaml`: `resolution: workspace` and `dev_dependencies` removed so it
   resolves as a path dependency.
 

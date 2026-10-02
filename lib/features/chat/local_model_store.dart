@@ -14,13 +14,29 @@ class LocalModelStore extends ChangeNotifier {
   static final LocalModelStore instance = LocalModelStore._();
 
   static const modelRepository = 'ggml-org/Qwen3.5-0.8B-GGUF';
-  static const modelFileName = 'Qwen3.5-0.8B-Q4_0.gguf';
   static const _modelRevision = '9447f74101aeb4e93621884dfa36ee8effb8831b';
-  static const modelSizeLabel = '563 MB';
-  static const _minimumModelBytes = 500 * 1024 * 1024;
-  // SHA-256 published by ggml-org for this exact Q4_0 GGUF.
-  static const _modelSha256 =
-      '57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf';
+
+  /// Q8_0 on desktop, where the extra 250 MB is nothing and a 0.8B model
+  /// loses noticeably less to quantization. Phones keep Q4_0: they run on
+  /// the CPU, where generation speed tracks bytes read per token, and
+  /// llama.cpp repacks Q4_0 into its fastest ARM kernels.
+  static _ModelFile get _file => Platform.isAndroid ? _q4 : _q8;
+
+  // Sizes and SHA-256s published by ggml-org for these files at
+  // [_modelRevision].
+  static const _q4 = _ModelFile(
+    name: 'Qwen3.5-0.8B-Q4_0.gguf',
+    bytes: 563036064,
+    sha256: '57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf',
+  );
+  static const _q8 = _ModelFile(
+    name: 'Qwen3.5-0.8B-Q8_0.gguf',
+    bytes: 811843488,
+    sha256: '75526add2fec8543a78d412a5546dd1c13dcf1ade237b245915d0f12dd43bb3d',
+  );
+
+  static String get modelFileName => _file.name;
+  static String get modelSizeLabel => '${(_file.bytes / 1e6).round()} MB';
 
   /// False on iOS: llama.cpp is not bundled there (the upstream iOS build is
   /// unusable — see third_party/llm_llamacpp/LUMA_PATCH.md), so the model
@@ -44,7 +60,7 @@ class LocalModelStore extends ChangeNotifier {
     return '${support.path}${Platform.pathSeparator}ai${Platform.pathSeparator}models';
   }
 
-  /// Share the one-time 563 MB integrity check across chat, settings and
+  /// Share the one-time integrity check across chat, settings and
   /// warm-up callers. A new download or removal invalidates this result.
   Future<String?> modelPath() => _modelPathCheck ??= _checkModelPath();
 
@@ -54,12 +70,12 @@ class LocalModelStore extends ChangeNotifier {
     final file = File(path);
     if (!await file.exists()) return null;
     final stat = await file.stat();
-    if (stat.size < _minimumModelBytes) {
+    if (stat.size != _file.bytes) {
       await file.delete();
       return null;
     }
     final digest = await sha256.bind(file.openRead()).first;
-    if (digest.toString() != _modelSha256) {
+    if (digest.toString() != _file.sha256) {
       await file.delete();
       _error = 'The model file was incomplete or damaged. Download it again.';
       notifyListeners();
@@ -102,6 +118,7 @@ class LocalModelStore extends ChangeNotifier {
       if (await modelPath() == null) {
         throw StateError('The model download did not produce a valid file.');
       }
+      await _deleteOtherQuantizations();
     } catch (error) {
       _error = error.toString();
       final partial = File(
@@ -114,11 +131,42 @@ class LocalModelStore extends ChangeNotifier {
     }
   }
 
+  /// Removes the quantization this platform no longer uses, e.g. the Q4_0
+  /// a desktop downloaded before it switched to Q8_0.
+  Future<void> _deleteOtherQuantizations() async {
+    final directory = await _modelDirectory();
+    for (final file in [_q4, _q8]) {
+      if (file.name == modelFileName) continue;
+      final stale = File('$directory${Platform.pathSeparator}${file.name}');
+      try {
+        if (!await stale.exists()) continue;
+        // Windows won't delete a file that is still memory-mapped.
+        await LocalQwenClient.release();
+        await stale.delete();
+      } catch (error) {
+        debugPrint('Could not delete ${file.name}: $error');
+      }
+    }
+  }
+
   Future<void> remove() async {
     await LocalQwenClient.release();
     final path = await modelPath();
     if (path != null) await File(path).delete();
+    await _deleteOtherQuantizations();
     _modelPathCheck = null;
     notifyListeners();
   }
+}
+
+class _ModelFile {
+  const _ModelFile({
+    required this.name,
+    required this.bytes,
+    required this.sha256,
+  });
+
+  final String name;
+  final int bytes;
+  final String sha256;
 }

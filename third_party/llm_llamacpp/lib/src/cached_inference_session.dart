@@ -161,7 +161,13 @@ int _conversationPrefixLength(
   ffi.Pointer<ffi.Int32> tokens,
   int nTokens,
 ) {
-  final marker = prompt.lastIndexOf('<|im_start|>user');
+  // Qwen tool results come back as `user` turns; the snapshot belongs before
+  // the real user turn, which the next request will share.
+  var marker = prompt.lastIndexOf('<|im_start|>user');
+  while (marker > 0 &&
+      prompt.startsWith('<|im_start|>user\n<tool_response>', marker)) {
+    marker = prompt.lastIndexOf('<|im_start|>user', marker - 1);
+  }
   if (marker <= 0) return 0;
   final prefixPtr = prompt.substring(0, marker).toNativeUtf8();
   final prefixBytes = prefixPtr.length;

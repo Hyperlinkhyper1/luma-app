@@ -26,6 +26,15 @@ enum ToolCallFormat {
   /// per call.
   hermes,
 
+  /// Qwen3-Coder / Qwen3.5: the Hermes `<tool_call>` wrapper around XML-ish
+  /// function blocks instead of JSON.
+  ///
+  /// `<tool_call><function=fn><parameter=a>1</parameter></function></tool_call>`
+  ///
+  /// Shares Hermes' delimiters, so it is not in [delimited]; it is told apart
+  /// by the `<function=` that follows.
+  qwenXml,
+
   /// Mistral / Mixtral.
   ///
   /// `[TOOL_CALLS][{"name": "fn", "arguments": {...}}]`
@@ -50,12 +59,15 @@ enum ToolCallFormat {
   /// An empty close means the payload runs to the end of the output.
   (String open, String close)? get delimiters => switch (this) {
     lfm2 => ('<|tool_call_start|>', '<|tool_call_end|>'),
-    hermes => ('<tool_call>', '</tool_call>'),
+    hermes || qwenXml => ('<tool_call>', '</tool_call>'),
     mistral => ('[TOOL_CALLS]', ''),
     llama3Pythonic => ('<|python_tag|>', ''),
     pythonic => null,
     json => null,
   };
+
+  /// What opens a function block inside a [qwenXml] call.
+  static const qwenXmlFunctionOpener = '<function=';
 
   /// Whether the payload inside the delimiters is Pythonic rather than JSON.
   bool get isPythonic =>
@@ -83,6 +95,7 @@ enum ToolCallFormat {
   /// nothing matches, in which case callers fall back to content detection.
   static ToolCallFormat? detectFromChatTemplate(String? template) {
     if (template == null || template.isEmpty) return null;
+    if (template.contains(qwenXmlFunctionOpener)) return qwenXml;
 
     // Match on emitted delimiters rather than model names: templates get copied
     // between fine-tunes, but a template that writes `<|tool_call_start|>` is by
@@ -104,6 +117,7 @@ enum ToolCallFormat {
   /// Used when no chat template was available, and as a cross-check: a model can
   /// emit its native format even when the prompt asked for something else.
   static ToolCallFormat? detectFromContent(String content) {
+    if (content.contains(qwenXmlFunctionOpener)) return qwenXml;
     for (final format in delimited) {
       if (content.contains(format.delimiters!.$1)) return format;
     }

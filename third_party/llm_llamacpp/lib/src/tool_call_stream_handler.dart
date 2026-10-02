@@ -61,6 +61,7 @@ class ToolCallStreamHandler {
   /// undelimited JSON or Pythonic calls because the prompt asked them to.
   static final List<String> _openers = [
     ...ToolCallFormat.openingDelimiters,
+    ToolCallFormat.qwenXmlFunctionOpener,
     '{',
     '[',
   ];
@@ -167,6 +168,9 @@ class ToolCallStreamHandler {
       // No closing delimiter to wait for: settle up at end of stream instead.
       if (close.isEmpty) return false;
       return buffer.contains(close);
+    }
+    if (buffer.startsWith(ToolCallFormat.qwenXmlFunctionOpener)) {
+      return buffer.contains('</function>');
     }
 
     // Bare `{...}` or `[...]`.

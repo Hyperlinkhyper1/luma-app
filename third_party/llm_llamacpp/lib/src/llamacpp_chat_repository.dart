@@ -202,11 +202,15 @@ class LlamaCppChatRepository extends LLMChatRepository {
       options: options,
       // luma patch: upstream passed `const GenerationOptions()` here, so the
       // caller's output cap and sampling settings were silently ignored.
+      // LLMChatOptions has no repeat-penalty field, so it travels in
+      // backendOptions['repeatPenalty'].
       generationOptions: GenerationOptions(
         temperature: options?.temperature ?? 0.7,
         topP: options?.topP ?? 0.9,
         topK: options?.topK ?? 40,
         maxTokens: options?.maxOutputTokens ?? 2048,
+        repeatPenalty: (options?.backendOptions['repeatPenalty'] as num?)
+            ?.toDouble(),
       ),
     );
   }
