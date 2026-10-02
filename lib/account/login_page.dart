@@ -115,6 +115,7 @@ class _LoginPageState extends State<LoginPage> {
   final _passphrase = TextEditingController();
   final _passphraseConfirm = TextEditingController();
   final _code = TextEditingController();
+  final _recovery = TextEditingController();
 
   late int _mode = widget.initialMode;
 
@@ -163,6 +164,7 @@ class _LoginPageState extends State<LoginPage> {
     _passphrase.dispose();
     _passphraseConfirm.dispose();
     _code.dispose();
+    _recovery.dispose();
     super.dispose();
   }
 
@@ -372,7 +374,9 @@ class _LoginPageState extends State<LoginPage> {
         email: email,
         code: code,
         newPassword: _password.text,
+        recoveryKey: _recovery.text,
       );
+      _recovery.clear();
       try {
         await widget.sync.signIn(
           serverUrl: _server.text,
@@ -553,7 +557,10 @@ class _LoginPageState extends State<LoginPage> {
 
   static String _describe(Object error) {
     final text = error.toString();
-    return text.startsWith('Exception: ') ? text.substring(11) : text;
+    for (final prefix in const ['Exception: ', 'Bad state: ']) {
+      if (text.startsWith(prefix)) return text.substring(prefix.length);
+    }
+    return text;
   }
 
   void _finish() {
@@ -1194,6 +1201,14 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 12),
         _LoginField(
+          controller: _recovery,
+          label: 'Recovery key (keeps your synced data)',
+          icon: Icons.key_rounded,
+          enabled: !_busy,
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+        _LoginField(
           controller: _password,
           label: 'New password',
           icon: Icons.lock_outline_rounded,
@@ -1221,7 +1236,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         _MessageBlock(error: _error, info: _info),
         const SizedBox(height: 12),
-        const _ResetWarning(),
+        _ResetWarning(withRecoveryKey: _recovery.text.trim().isNotEmpty),
         const SizedBox(height: 12),
         Wrap(
           alignment: WrapAlignment.center,
@@ -1925,28 +1940,45 @@ class _KeyWarning extends StatelessWidget {
 
 /// What a forgotten-password reset costs, shown before the user commits.
 class _ResetWarning extends StatelessWidget {
-  const _ResetWarning();
+  const _ResetWarning({required this.withRecoveryKey});
+
+  /// Whether the user has typed a recovery key, which turns the warning
+  /// into a reassurance.
+  final bool withRecoveryKey;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
+    final color = withRecoveryKey ? luma.accent : luma.warning;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: luma.warning.withValues(alpha: 0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.warning_amber_rounded, size: 16, color: luma.warning),
+          Icon(
+            withRecoveryKey
+                ? Icons.verified_user_rounded
+                : Icons.warning_amber_rounded,
+            size: 16,
+            color: color,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Your synced data is locked with your old password, so a reset '
-              'erases the copies on the server and signs out every device. '
-              'Whatever is still on your devices uploads again once they sign '
-              'in with the new password.',
+              withRecoveryKey
+                  ? 'Your recovery key unlocks your synced data, so it stays '
+                        'on the server and is re-encrypted under your new '
+                        'password. Every device is signed out and picks it '
+                        'up again with the new password.'
+                  : 'Your synced data is locked with your old password. '
+                        'Without your recovery key, a reset erases the copies '
+                        'on the server and signs out every device. Whatever '
+                        'is still on your devices uploads again once they '
+                        'sign in with the new password.',
               style: TextStyle(
                 color: luma.textSecondary,
                 fontSize: 11.5,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../account/plan.dart';
@@ -405,6 +406,7 @@ class _SignedInBody extends StatelessWidget {
               ),
             ],
           ),
+          _RecoveryKeyRow(sync: sync),
           _DeletionRequestStatus(sync: sync),
         ] else ...[
           const SizedBox(height: 4),
@@ -863,6 +865,215 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             loading: _busy,
             onTap: _busy ? null : _submit),
       ],
+    );
+  }
+}
+
+/// Whether the account has a recovery key, and the way to make one. Loud
+/// while there is none, because then a forgotten password erases the synced
+/// data.
+class _RecoveryKeyRow extends StatelessWidget {
+  const _RecoveryKeyRow({required this.sync});
+  final SyncService sync;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final has = sync.hasRecoveryKey;
+    final color = has ? luma.accent : luma.warning;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(has ? Icons.verified_user_rounded : Icons.key_off_rounded,
+              size: 18, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              has
+                  ? 'Recovery key set up — forgetting your password will not '
+                      'cost you your synced data.'
+                  : 'No recovery key. If you forget your password, resetting '
+                      'it erases your synced data on the server.',
+              style: TextStyle(color: luma.textSecondary, fontSize: 12),
+            ),
+          ),
+          TextButton(
+            onPressed: () => showDialog<void>(
+              context: context,
+              builder: (_) => _RecoveryKeyDialog(sync: sync),
+            ),
+            child: Text(has ? 'Manage…' : 'Set up…',
+                style: TextStyle(color: color, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Creates, replaces or removes the recovery key, and shows a new key the
+/// one time it can be shown.
+class _RecoveryKeyDialog extends StatefulWidget {
+  const _RecoveryKeyDialog({required this.sync});
+  final SyncService sync;
+
+  @override
+  State<_RecoveryKeyDialog> createState() => _RecoveryKeyDialogState();
+}
+
+class _RecoveryKeyDialogState extends State<_RecoveryKeyDialog> {
+  bool _busy = false;
+  String? _error;
+  String? _newKey;
+
+  Future<void> _act(Future<void> Function() action) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await action();
+      if (mounted) setState(() => _busy = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = e.toString();
+        });
+      }
+    }
+  }
+
+  Future<void> _create() => _act(() async {
+        final key = await widget.sync.createRecoveryKey();
+        _newKey = key;
+      });
+
+  Future<void> _remove() => _act(() async {
+        await widget.sync.removeRecoveryKey();
+        if (mounted) Navigator.of(context).pop();
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final has = widget.sync.hasRecoveryKey;
+    final key = _newKey;
+    final body = TextStyle(color: luma.textSecondary, fontSize: 13, height: 1.4);
+
+    final List<Widget> content;
+    final List<Widget> actions;
+    if (key != null) {
+      content = [
+        Text(
+          'Write this down or keep it in a password manager. luma does not '
+          'keep a copy and cannot show it again.',
+          style: body,
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: luma.surfaceHover,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: luma.border),
+          ),
+          child: SelectableText(
+            key,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: luma.textPrimary,
+              fontSize: 15,
+              fontFamily: 'monospace',
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'If you forget your password, enter this key on the reset screen '
+          'and your synced data stays.',
+          style: TextStyle(color: luma.textMuted, fontSize: 12),
+        ),
+      ];
+      actions = [
+        TextButton(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: key));
+            if (context.mounted) {
+              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                const SnackBar(content: Text('Recovery key copied.')),
+              );
+            }
+          },
+          child: Text('Copy', style: TextStyle(color: luma.textSecondary)),
+        ),
+        LumaPrimaryButton(
+          label: 'I saved it',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ];
+    } else {
+      content = [
+        Text(
+          has
+              ? 'This account has a recovery key. If you lost it, make a new '
+                  'one — the old key stops working the moment you do.'
+              : 'Your synced data is encrypted with a key that comes from your '
+                  'password, so nobody — not even the server — can read it. '
+                  'That also means a forgotten password normally erases it.\n\n'
+                  'A recovery key is a second way in. Keep it somewhere safe, '
+                  'and a password reset keeps all your synced data.',
+          style: body,
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          Text(_error!,
+              style: TextStyle(color: Colors.red.shade400, fontSize: 12)),
+        ],
+      ];
+      actions = [
+        if (has)
+          TextButton(
+            onPressed: _busy ? null : _remove,
+            child: Text('Remove',
+                style: TextStyle(color: Colors.red.shade400)),
+          ),
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text('Cancel', style: TextStyle(color: luma.textSecondary)),
+        ),
+        LumaPrimaryButton(
+          label: has ? 'Make a new key' : 'Create recovery key',
+          loading: _busy,
+          onTap: _busy ? null : _create,
+        ),
+      ];
+    }
+
+    return AlertDialog(
+      backgroundColor: luma.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: luma.border),
+      ),
+      title: Text(key != null ? 'Your recovery key' : 'Recovery key',
+          style: TextStyle(color: luma.textPrimary)),
+      content: SizedBox(
+        width: lumaDialogWidth(context, 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: content,
+        ),
+      ),
+      actions: actions,
     );
   }
 }

@@ -71,6 +71,7 @@ class RemoteAccount {
     this.linkedProviders = const [],
     this.passwordResetRequired = false,
     this.deletionRequest,
+    this.recoveryKeyBox,
   });
 
   final String email;
@@ -110,6 +111,12 @@ class RemoteAccount {
   /// by the operator shows up on the sync the app was doing anyway.
   final DataDeletionRequest? deletionRequest;
 
+  /// The account's recovery key sealed under its encryption key, or null
+  /// when no recovery key is set up (see SyncService.createRecoveryKey).
+  final Uint8List? recoveryKeyBox;
+
+  bool get hasRecoveryKey => recoveryKeyBox != null;
+
   factory RemoteAccount.fromJson(Map<String, dynamic> j) {
     final collections = <String, RemoteCollectionMeta>{};
     for (final raw in (j['collections'] as List<dynamic>? ?? const [])) {
@@ -131,9 +138,27 @@ class RemoteAccount {
           : DataDeletionRequest.fromJson(
               j['deletionRequest'] as Map<String, dynamic>,
             ),
+      recoveryKeyBox: switch (j['recoveryKeyBox']) {
+        final String box => base64Decode(box),
+        _ => null,
+      },
       collections: collections,
     );
   }
+}
+
+/// The account's recovery envelope and key box, both sealed on this device
+/// (see RecoveryKey), as a password change sends them.
+class RecoveryPair {
+  const RecoveryPair({required this.envelope, required this.keyBox});
+
+  final Uint8List envelope;
+  final Uint8List keyBox;
+
+  Map<String, String> toJson() => {
+    'recoveryEnvelope': base64Encode(envelope),
+    'recoveryKeyBox': base64Encode(keyBox),
+  };
 }
 
 /// A request to have every trace of this account deleted from the server,
@@ -591,15 +616,38 @@ class SyncApi {
         'If that email has a luma account, we just sent it a reset code.';
   }
 
-  /// Sets a new password using the code from [requestPasswordResetCode]. The
-  /// server wipes the account's synced snapshots (they were sealed under the
-  /// old key) and revokes every session; the caller signs in afterwards.
+  /// The account's recovery envelope, for a reset code from
+  /// [requestPasswordResetCode] — the encryption key sealed under the
+  /// recovery key. Does not spend the code. Null when the account has no
+  /// recovery key set up.
+  Future<Uint8List?> recoveryEnvelope({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final body = await _postJson('/auth/recovery-envelope', {
+        'email': email,
+        'code': code,
+      });
+      return base64Decode(body['recoveryEnvelope'] as String);
+    } on SyncApiException catch (e) {
+      if (e.code == 'no_recovery_key') return null;
+      rethrow;
+    }
+  }
+
+  /// Sets a new password using the code from [requestPasswordResetCode] and
+  /// revokes every session; the caller signs in afterwards. With [keepData]
+  /// the synced snapshots stay, for a caller that holds the old encryption
+  /// key (from the recovery envelope) and re-seals them. Without it the
+  /// server wipes them, since nobody could read them under the new password.
   Future<void> resetPasswordWithCode({
     required String email,
     required String code,
     required Uint8List newAuthKey,
     required Uint8List newKdfSalt,
     required int newKdfIterations,
+    bool keepData = false,
   }) async {
     await _postJson('/auth/reset-with-code', {
       'email': email,
@@ -607,6 +655,17 @@ class SyncApi {
       'newAuthKey': base64Encode(newAuthKey),
       'newKdfSalt': base64Encode(newKdfSalt),
       'newKdfIterations': newKdfIterations,
+      if (keepData) 'keepData': true,
+    });
+  }
+
+  /// Stores (or, with both null, removes) the account's recovery envelope
+  /// and key box. Both are sealed on this device; the server cannot open
+  /// either.
+  Future<void> setRecovery({Uint8List? envelope, Uint8List? keyBox}) async {
+    await _postJson('/account/recovery', {
+      'recoveryEnvelope': envelope == null ? null : base64Encode(envelope),
+      'recoveryKeyBox': keyBox == null ? null : base64Encode(keyBox),
     });
   }
 
@@ -637,12 +696,14 @@ class SyncApi {
     required Uint8List newAuthKey,
     required Uint8List newKdfSalt,
     required int newKdfIterations,
+    RecoveryPair? recovery,
   }) async {
     await _postJson('/auth/change', {
       'currentAuthKey': base64Encode(currentAuthKey),
       'newAuthKey': base64Encode(newAuthKey),
       'newKdfSalt': base64Encode(newKdfSalt),
       'newKdfIterations': newKdfIterations,
+      ...?recovery?.toJson(),
     });
   }
 
@@ -653,11 +714,13 @@ class SyncApi {
     required Uint8List newAuthKey,
     required Uint8List newKdfSalt,
     required int newKdfIterations,
+    RecoveryPair? recovery,
   }) async {
     await _postJson('/auth/reset', {
       'newAuthKey': base64Encode(newAuthKey),
       'newKdfSalt': base64Encode(newKdfSalt),
       'newKdfIterations': newKdfIterations,
+      ...?recovery?.toJson(),
     });
   }
 

@@ -12,6 +12,7 @@ import 'package:luma_sync_server/recipe_store.dart';
 import 'package:luma_sync_server/store.dart';
 import 'package:luma_sync_server/subway_store.dart';
 import 'package:shelf/shelf.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
 /// Stands in for Resend: records the reset codes handed to it.
@@ -245,6 +246,198 @@ void main() {
       final user = store.usersById.values.single;
       expect(user.verificationTokenHash, isNull);
       expect(user.passwordResetCodeHash, isNotNull);
+    });
+
+    group('with a recovery key', () {
+      final envelope = base64Encode(List<int>.filled(60, 5));
+      final keyBox = base64Encode(List<int>.filled(52, 6));
+
+      Future<String> signedIn(String email) async {
+        await register(email);
+        final result = await login(email, 1);
+        return result['token'] as String;
+      }
+
+      Future<Map<String, dynamic>> authed(
+          String path, String token, Object body) async {
+        final response = await handler(Request(
+          'POST',
+          Uri.parse('http://localhost$path'),
+          body: jsonEncode(body),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ));
+        final raw = await response.readAsString();
+        final decoded = raw.isEmpty ? const {} : jsonDecode(raw);
+        return {
+          if (decoded is Map<String, dynamic>) ...decoded,
+          'httpStatus': response.statusCode,
+        };
+      }
+
+      Future<void> setUpRecovery(String token) async {
+        final result = await authed('/api/v1/account/recovery', token,
+            {'recoveryEnvelope': envelope, 'recoveryKeyBox': keyBox});
+        expect(result['httpStatus'], 200);
+      }
+
+      test('is stored on disk and reaches signed-in devices', () async {
+        final token = await signedIn('hana@example.com');
+        await setUpRecovery(token);
+
+        final db = sqlite3.open('${dir.path}/accounts/accounts.sqlite');
+        try {
+          final row = db
+              .select('SELECT recoveryEnvelope, recoveryKeyBox FROM users')
+              .single;
+          expect(row['recoveryEnvelope'], envelope);
+          expect(row['recoveryKeyBox'], keyBox);
+          expect(db.select('PRAGMA user_version').single.values.single, 2);
+        } finally {
+          db.close();
+        }
+
+        final account = await handler(Request(
+          'GET',
+          Uri.parse('http://localhost/api/v1/account'),
+          headers: {'Authorization': 'Bearer $token'},
+        ));
+        final body = jsonDecode(await account.readAsString()) as Map;
+        expect(body['recoveryKeyBox'], keyBox);
+        expect(body.containsKey('recoveryEnvelope'), isFalse);
+      });
+
+      test('the envelope needs the emailed code and does not spend it',
+          () async {
+        await setUpRecovery(await signedIn('ivan@example.com'));
+        await call(
+            '/api/v1/auth/forgot-password', {'email': 'ivan@example.com'});
+        final code = mailer.lastCode!;
+        final wrong = code == '000000' ? '111111' : '000000';
+
+        final refused = await call('/api/v1/auth/recovery-envelope',
+            {'email': 'ivan@example.com', 'code': wrong});
+        expect(refused['httpStatus'], 400);
+        expect(refused.containsKey('recoveryEnvelope'), isFalse);
+
+        final granted = await call('/api/v1/auth/recovery-envelope',
+            {'email': 'ivan@example.com', 'code': code});
+        expect(granted['httpStatus'], 200);
+        expect(granted['recoveryEnvelope'], envelope);
+        expect(
+            store.usersById.values.single.passwordResetCodeHash, isNotNull);
+      });
+
+      test('keepData resets the password but keeps the synced data',
+          () async {
+        await setUpRecovery(await signedIn('jules@example.com'));
+        final user = store.usersById.values.single;
+        await store.writeBlob(user.id, 'notes', [1, 2, 3]);
+
+        await call(
+            '/api/v1/auth/forgot-password', {'email': 'jules@example.com'});
+        final result = await call('/api/v1/auth/reset-with-code', {
+          'email': 'jules@example.com',
+          'code': mailer.lastCode!,
+          'newAuthKey': authKey(2),
+          'newKdfSalt': kdfSalt(9),
+          'newKdfIterations': 200000,
+          'keepData': true,
+        });
+        expect(result['httpStatus'], 200);
+        expect(result['keptData'], isTrue);
+
+        expect(await store.readBlob(user.id, 'notes'), [1, 2, 3]);
+        expect(user.recoveryEnvelope, envelope,
+            reason: 'it still opens to the key the data is sealed with');
+        expect(
+            store.sessionsByTokenHash.values.where((s) => s.userId == user.id),
+            isEmpty);
+        expect((await login('jules@example.com', 2))['httpStatus'], 200);
+      });
+
+      test('keepData without a recovery key changes nothing', () async {
+        await register('kim@example.com');
+        final user = store.usersById.values.single;
+        await store.writeBlob(user.id, 'notes', [1, 2, 3]);
+        await call(
+            '/api/v1/auth/forgot-password', {'email': 'kim@example.com'});
+        final code = mailer.lastCode!;
+
+        final envelopeResult = await call('/api/v1/auth/recovery-envelope',
+            {'email': 'kim@example.com', 'code': code});
+        expect(envelopeResult['httpStatus'], 404);
+        expect(envelopeResult['error'], 'no_recovery_key');
+
+        final result = await call('/api/v1/auth/reset-with-code', {
+          'email': 'kim@example.com',
+          'code': code,
+          'newAuthKey': authKey(2),
+          'newKdfSalt': kdfSalt(9),
+          'newKdfIterations': 200000,
+          'keepData': true,
+        });
+        expect(result['httpStatus'], 409);
+        expect(result['error'], 'no_recovery_key');
+        expect(await store.readBlob(user.id, 'notes'), [1, 2, 3]);
+        expect((await login('kim@example.com', 1))['httpStatus'], 200);
+        expect(user.passwordResetCodeHash, isNotNull);
+      });
+
+      test('a reset without it erases the data and the envelope', () async {
+        await setUpRecovery(await signedIn('lena@example.com'));
+        final user = store.usersById.values.single;
+        await store.writeBlob(user.id, 'notes', [1, 2, 3]);
+
+        await call(
+            '/api/v1/auth/forgot-password', {'email': 'lena@example.com'});
+        final result = await reset('lena@example.com', mailer.lastCode!);
+        expect(result['httpStatus'], 200);
+        expect(await store.readBlob(user.id, 'notes'), isNull);
+        expect(user.recoveryEnvelope, isNull);
+        expect(user.recoveryKeyBox, isNull);
+      });
+
+      test('a password change replaces the pair, or drops a stale one',
+          () async {
+        final token = await signedIn('max@example.com');
+        await setUpRecovery(token);
+        final user = store.usersById.values.single;
+        final newEnvelope = base64Encode(List<int>.filled(60, 8));
+        final newBox = base64Encode(List<int>.filled(52, 9));
+
+        final changed = await authed('/api/v1/auth/change', token, {
+          'currentAuthKey': authKey(1),
+          'newAuthKey': authKey(2),
+          'newKdfSalt': kdfSalt(9),
+          'newKdfIterations': 200000,
+          'recoveryEnvelope': newEnvelope,
+          'recoveryKeyBox': newBox,
+        });
+        expect(changed['httpStatus'], 200);
+        expect(user.recoveryEnvelope, newEnvelope);
+        expect(user.recoveryKeyBox, newBox);
+
+        final again = await authed('/api/v1/auth/change', token, {
+          'currentAuthKey': authKey(2),
+          'newAuthKey': authKey(3),
+          'newKdfSalt': kdfSalt(9),
+          'newKdfIterations': 200000,
+        });
+        expect(again['httpStatus'], 200);
+        expect(user.recoveryEnvelope, isNull);
+        expect(user.recoveryKeyBox, isNull);
+      });
+
+      test('half a pair is refused', () async {
+        final token = await signedIn('nora@example.com');
+        final result = await authed('/api/v1/account/recovery', token,
+            {'recoveryEnvelope': envelope});
+        expect(result['httpStatus'], 400);
+        expect(store.usersById.values.single.recoveryEnvelope, isNull);
+      });
     });
   });
 }

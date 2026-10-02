@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../account/plan.dart';
 import '../security/secure_secret_store.dart';
+import 'recovery_key.dart';
 import 'server_access.dart';
 import 'sync_api.dart';
 import 'sync_collections.dart';
@@ -211,6 +212,16 @@ class SyncService extends ChangeNotifier {
   /// re-seal the synced snapshots under the new password.
   bool get passwordResetRequired => _account?.passwordResetRequired ?? false;
 
+  /// Whether the account has a recovery key, which lets a forgotten
+  /// password be reset without erasing the synced data (see RecoveryKey).
+  bool get hasRecoveryKey => _account?.hasRecoveryKey ?? false;
+
+  /// The encryption key a recovery-key reset just got back, waiting for the
+  /// sign-in that follows it to re-seal the server's snapshots under the new
+  /// password. Kept only in memory; the key is also in the rotation history
+  /// (see [_retainRotationKey]), so reads keep working if that never comes.
+  _PendingReseal? _pendingReseal;
+
   bool isEnabled(String collectionId) =>
       _state?.collection(collectionId).enabled ?? false;
 
@@ -349,6 +360,13 @@ class SyncService extends ChangeNotifier {
       await s.save();
       _applyServerAccess();
       notifyListeners();
+      final reseal = _pendingReseal;
+      if (reseal != null &&
+          reseal.serverUrl == api.baseUrl &&
+          reseal.email == normalizedEmail) {
+        _pendingReseal = null;
+        await _finishRecoveryReset(reseal);
+      }
       unawaited(syncNow(silent: true));
     } catch (_) {
       if (api != _api) api.close();
@@ -704,37 +722,183 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Sets [newPassword] on the account using the emailed [code]. Does not
-  /// sign in — call [signIn] with the new password afterwards.
+  /// sign in — call [signIn] with the new password afterwards. Every device
+  /// is signed out either way.
   ///
-  /// Nobody holds the old encryption key here, so the server cannot keep the
-  /// synced snapshots readable: it deletes them and signs every device out.
-  /// Signing in afterwards re-uploads this device's local data; the other
-  /// devices do the same once they sign in with the new password.
+  /// With the account's [recoveryKey] the synced data survives: the key is
+  /// checked against the server's recovery envelope *before* anything
+  /// changes, which hands back the old encryption key, and the [signIn] that
+  /// follows re-seals every snapshot under the new password. A wrong
+  /// recovery key throws and leaves the account untouched.
+  ///
+  /// Without one, nobody holds the old encryption key, so the server cannot
+  /// keep the snapshots readable: it deletes them. Signing in afterwards
+  /// re-uploads this device's local data; the other devices do the same once
+  /// they sign in with the new password.
   Future<void> resetPasswordWithCode({
     required String serverUrl,
     required String email,
     required String code,
     required String newPassword,
+    String? recoveryKey,
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
-    final newSalt = SyncCrypto.randomBytes(16);
-    const newIterations = SyncCrypto.defaultKdfIterations;
-    final newKeys = await SyncCrypto.deriveKeys(
-      password: newPassword,
-      kdfSalt: newSalt,
-      iterations: newIterations,
-    );
+    final typedRecovery = recoveryKey?.trim() ?? '';
+    Uint8List? recoveryBytes;
+    if (typedRecovery.isNotEmpty) {
+      recoveryBytes = RecoveryKey.parse(typedRecovery);
+      if (recoveryBytes == null) {
+        throw StateError(
+          'That recovery key is not complete. It is 8 groups of 4 letters '
+          'and digits.',
+        );
+      }
+    }
     final api = SyncApi(serverUrl);
     try {
+      Uint8List? oldKey;
+      if (recoveryBytes != null) {
+        final envelope = await api.recoveryEnvelope(
+          email: normalizedEmail,
+          code: code,
+        );
+        if (envelope == null) {
+          throw StateError(
+            'This account has no recovery key. Leave the field empty to '
+            'reset anyway — the synced copies on the server are erased.',
+          );
+        }
+        try {
+          oldKey = RecoveryKey.openEnvelope(envelope, recoveryBytes);
+        } on SyncCryptoException {
+          throw StateError(
+            'That recovery key does not belong to this account. Nothing was '
+            'changed.',
+          );
+        }
+      }
+
+      final newSalt = SyncCrypto.randomBytes(16);
+      const newIterations = SyncCrypto.defaultKdfIterations;
+      final newKeys = await SyncCrypto.deriveKeys(
+        password: newPassword,
+        kdfSalt: newSalt,
+        iterations: newIterations,
+      );
+      if (oldKey != null) {
+        // Before the reset commits: if this device stops halfway, it can
+        // still read whatever was not re-sealed yet.
+        await _retainRotationKey(
+          serverUrl: api.baseUrl,
+          email: normalizedEmail,
+          key: oldKey,
+        );
+      }
       await api.resetPasswordWithCode(
         email: normalizedEmail,
         code: code,
         newAuthKey: newKeys.authKey,
         newKdfSalt: newSalt,
         newKdfIterations: newIterations,
+        keepData: oldKey != null,
       );
+      if (oldKey != null) {
+        _pendingReseal = _PendingReseal(
+          serverUrl: api.baseUrl,
+          email: normalizedEmail,
+          oldKey: oldKey,
+          recoveryKey: recoveryBytes!,
+        );
+      }
     } finally {
       api.close();
+    }
+  }
+
+  /// Runs right after the sign-in that follows a recovery-key reset: re-seals
+  /// every snapshot from the recovered key to the new one, then stores a
+  /// recovery envelope for the new key. The same recovery key keeps working.
+  ///
+  /// Never throws — the user is signed in by now, and what was not re-sealed
+  /// stays readable on this device through the rotation history. Running
+  /// "Change password" later finishes the job.
+  Future<void> _finishRecoveryReset(_PendingReseal reseal) async {
+    final s = _state!;
+    final api = _api!;
+    try {
+      final failed = await _resealAll(
+        oldKey: reseal.oldKey,
+        newKey: s.encryptionKey!,
+      );
+      final pair = RecoveryKey.seal(
+        recoveryKey: reseal.recoveryKey,
+        encryptionKey: s.encryptionKey!,
+      );
+      await api.setRecovery(envelope: pair.envelope, keyBox: pair.keyBox);
+      await _refreshAccount();
+      if (failed) {
+        _lastError =
+            'Your password was reset, but some synced data could not be '
+            're-encrypted yet. This device can still read it; keep it until '
+            'a sync succeeds.';
+      }
+    } catch (e) {
+      _lastError =
+          'Your password was reset, but your synced data could not be '
+          're-encrypted yet ($e). This device can still read it.';
+    }
+    notifyListeners();
+  }
+
+  /// Creates a new recovery key for the signed-in account, replacing any
+  /// earlier one, and returns it formatted for the user to write down. It is
+  /// shown this once: luma keeps no copy it could show again.
+  Future<String> createRecoveryKey() async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+    final key = RecoveryKey.generate();
+    final pair = RecoveryKey.seal(
+      recoveryKey: key,
+      encryptionKey: s.encryptionKey!,
+    );
+    await api.setRecovery(envelope: pair.envelope, keyBox: pair.keyBox);
+    await _refreshAccount();
+    notifyListeners();
+    return RecoveryKey.format(key);
+  }
+
+  /// Removes the account's recovery key. A forgotten password then erases
+  /// the synced data again.
+  Future<void> removeRecoveryKey() async {
+    final s = _state;
+    final api = _api;
+    if (s == null || api == null || !s.serverReady) {
+      throw StateError('Not signed in with an approved account.');
+    }
+    await api.setRecovery();
+    await _refreshAccount();
+    notifyListeners();
+  }
+
+  /// The account's recovery pair re-sealed for [newEncryptionKey], for a
+  /// password change to send along — or null when there is no recovery key,
+  /// or its key box no longer opens with this device's key. A null makes the
+  /// server drop the old pair rather than keep one that opens to a key
+  /// nothing is sealed with any more.
+  Future<RecoveryPair?> _recoveryFor(Uint8List newEncryptionKey) async {
+    final account = await _api!.account();
+    final box = account.recoveryKeyBox;
+    if (box == null) return null;
+    try {
+      return RecoveryKey.seal(
+        recoveryKey: RecoveryKey.openKeyBox(box, _state!.encryptionKey!),
+        encryptionKey: newEncryptionKey,
+      );
+    } on SyncCryptoException {
+      return null;
     }
   }
 
@@ -841,12 +1005,14 @@ class SyncService extends ChangeNotifier {
       iterations: newIterations,
     );
 
+    final recovery = await _recoveryFor(newKeys.encryptionKey);
     await _retainRotationKey();
     await api.changePassword(
       currentAuthKey: currentKeys.authKey,
       newAuthKey: newKeys.authKey,
       newKdfSalt: newSalt,
       newKdfIterations: newIterations,
+      recovery: recovery,
     );
 
     await _adoptNewPassword(
@@ -854,6 +1020,7 @@ class SyncService extends ChangeNotifier {
       newSalt: newSalt,
       newIterations: newIterations,
     );
+    await _refreshAccount();
     notifyListeners();
   }
 
@@ -881,11 +1048,13 @@ class SyncService extends ChangeNotifier {
       iterations: newIterations,
     );
 
+    final recovery = await _recoveryFor(newKeys.encryptionKey);
     await _retainRotationKey();
     await api.resetPassword(
       newAuthKey: newKeys.authKey,
       newKdfSalt: newSalt,
       newKdfIterations: newIterations,
+      recovery: recovery,
     );
 
     await _adoptNewPassword(
@@ -900,8 +1069,8 @@ class SyncService extends ChangeNotifier {
   }
 
   /// Switches this device onto [newKeys] and re-encrypts every snapshot the
-  /// server holds so the account's *other* devices â€” which will derive the
-  /// same new key from the new password â€” can still read them.
+  /// server holds so the account's *other* devices — which will derive the
+  /// same new key from the new password — can still read them.
   ///
   /// Shared by [changePassword] and [completePasswordReset]: the server-side
   /// credential rotation differs between the two, everything after it does
@@ -912,7 +1081,6 @@ class SyncService extends ChangeNotifier {
     required int newIterations,
   }) async {
     final s = _state!;
-    final api = _api!;
     final oldEncryptionKey = s.encryptionKey!;
     s
       ..encryptionKey = newKeys.encryptionKey
@@ -920,16 +1088,36 @@ class SyncService extends ChangeNotifier {
       ..kdfIterations = newIterations;
     await s.save();
 
-    // Re-encrypt every snapshot the server holds so other devices (which
-    // will derive the new key) can still read them.
+    final failed = await _resealAll(
+      oldKey: oldEncryptionKey,
+      newKey: newKeys.encryptionKey,
+    );
+    if (failed) {
+      throw StateError(
+        'Password changed, but some synced data could not be '
+        're-encrypted. The old key was retained in this device\'s secure '
+        'storage for recovery. Keep this device and its data.',
+      );
+    }
+  }
+
+  /// Re-encrypts every snapshot the server holds from [oldKey] to [newKey],
+  /// so devices that derive the new key from the new password can read them.
+  /// Returns whether any snapshot could not be re-sealed.
+  Future<bool> _resealAll({
+    required Uint8List oldKey,
+    required Uint8List newKey,
+  }) async {
+    final s = _state!;
+    final api = _api!;
     final remote = await api.account();
     var failed = false;
     for (final meta in remote.collections.values) {
       try {
         final blob = await api.getBlob(meta.name);
         if (blob == null) continue;
-        final clear = await SyncCrypto.openBytes(blob.bytes, oldEncryptionKey);
-        final sealed = await SyncCrypto.sealBytes(clear, newKeys.encryptionKey);
+        final clear = await SyncCrypto.openBytes(blob.bytes, oldKey);
+        final sealed = await SyncCrypto.sealBytes(clear, newKey);
         final newVersion = await api.putBlob(
           meta.name,
           sealed,
@@ -945,28 +1133,28 @@ class SyncService extends ChangeNotifier {
       }
     }
     await s.save();
-    if (failed) {
-      throw StateError(
-        'Password changed, but some synced data could not be '
-        're-encrypted. The old key was retained in this device\'s secure '
-        'storage for recovery. Keep this device and its data.',
-      );
-    }
+    return failed;
   }
 
   /// Preserve every pre-rotation key before changing server credentials.
   /// This is recovery material, never sent to the server or diagnostics.
-  Future<void> _retainRotationKey() async {
+  /// Defaults to this device's current account and key.
+  Future<void> _retainRotationKey({
+    String? serverUrl,
+    String? email,
+    Uint8List? key,
+  }) async {
     final s = _state!;
-    final account = sha256.convert(utf8.encode('${s.serverUrl}|${s.email}'));
+    final account = sha256.convert(
+      utf8.encode('${serverUrl ?? s.serverUrl}|${email ?? s.email}'),
+    );
     final name = 'sync.rotation.$account';
     final saved = await SecureSecretStore.instance.read(name);
     final history = saved == null
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(jsonDecode(saved) as Map);
-    final key = base64Encode(s.encryptionKey!);
-    final id = sha256.convert(s.encryptionKey!).toString();
-    history[id] = key;
+    final retained = key ?? s.encryptionKey!;
+    history[sha256.convert(retained).toString()] = base64Encode(retained);
     await SecureSecretStore.instance.write(name, jsonEncode(history));
   }
 
@@ -1894,4 +2082,19 @@ class OAuthSignInHandle {
     _cancelled = true;
     if (!_adopted) api.close();
   }
+}
+
+/// What [SyncService.resetPasswordWithCode] hands to the sign-in after it.
+class _PendingReseal {
+  const _PendingReseal({
+    required this.serverUrl,
+    required this.email,
+    required this.oldKey,
+    required this.recoveryKey,
+  });
+
+  final String serverUrl;
+  final String email;
+  final Uint8List oldKey;
+  final Uint8List recoveryKey;
 }

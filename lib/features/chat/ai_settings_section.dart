@@ -136,7 +136,7 @@ class _LocalModelBodyState extends State<_LocalModelBody> {
                 Icon(Icons.phone_android_rounded, size: 17, color: luma.accent),
                 const SizedBox(width: 8),
                 Text(
-                  'Luma Assistant · Qwen3.5-0.8B on-device',
+                  'Luma Assistant · ${LocalModelStore.modelDisplayName} on-device',
                   style: TextStyle(
                     color: luma.textPrimary,
                     fontSize: 13,

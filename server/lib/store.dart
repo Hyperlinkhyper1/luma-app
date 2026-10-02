@@ -45,6 +45,8 @@ class StoredUser {
     this.passwordResetRequiredAtMs,
     this.accessRevokedAtMs,
     this.accessRevokedReason,
+    this.recoveryEnvelope,
+    this.recoveryKeyBox,
     Map<String, String>? oauthSubjects,
     List<String>? recentIps,
   })  : oauthSubjects = oauthSubjects ?? {},
@@ -98,6 +100,23 @@ class StoredUser {
   String? accessRevokedReason;
 
   bool get accessRevoked => accessRevokedAtMs != null;
+
+  /// The account's encryption key sealed under the user's recovery key,
+  /// base64, or null when no recovery key was ever set up. Opaque to the
+  /// server: the recovery key exists only where the user wrote it down, the
+  /// encryption key only on their devices.
+  ///
+  /// This is what lets a forgotten password be reset without erasing the
+  /// synced data — see Api._recoveryEnvelope and Api._resetPasswordWithCode.
+  String? recoveryEnvelope;
+
+  /// The recovery key sealed under the account's encryption key, base64.
+  /// Lets a signed-in device re-seal [recoveryEnvelope] after the password,
+  /// and with it the encryption key, changes, without asking for the
+  /// recovery key again.
+  String? recoveryKeyBox;
+
+  bool get hasRecoveryKey => recoveryEnvelope != null && recoveryKeyBox != null;
 
   /// SHA-256 of the current 6-digit email-verification code, or null if
   /// there is none outstanding (never verified yet, or already verified/used).
@@ -167,6 +186,8 @@ class StoredUser {
         'passwordResetRequiredAtMs': passwordResetRequiredAtMs,
         'accessRevokedAtMs': accessRevokedAtMs,
         'accessRevokedReason': accessRevokedReason,
+        'recoveryEnvelope': recoveryEnvelope,
+        'recoveryKeyBox': recoveryKeyBox,
         'oauthSubjects': oauthSubjects,
         'recentIps': recentIps,
       };
@@ -191,6 +212,8 @@ class StoredUser {
         passwordResetRequiredAtMs: j['passwordResetRequiredAtMs'] as int?,
         accessRevokedAtMs: j['accessRevokedAtMs'] as int?,
         accessRevokedReason: j['accessRevokedReason'] as String?,
+        recoveryEnvelope: j['recoveryEnvelope'] as String?,
+        recoveryKeyBox: j['recoveryKeyBox'] as String?,
         oauthSubjects:
             (j['oauthSubjects'] as Map?)?.map((k, v) => MapEntry('$k', '$v')),
         recentIps: (j['recentIps'] as List?)?.whereType<String>().toList(),

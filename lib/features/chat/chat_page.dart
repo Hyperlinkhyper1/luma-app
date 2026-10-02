@@ -1993,8 +1993,8 @@ class _NoKeyState extends StatelessWidget {
             subtitle: !LocalModelStore.supported
                 ? 'The on-device model is not available on this platform.'
                 : store.isDownloading
-                ? 'Downloading Qwen3.5-0.8B (${LocalModelStore.modelSizeLabel})…'
-                : 'Download Qwen3.5-0.8B (${LocalModelStore.modelSizeLabel}) to start chatting. It runs on this device.',
+                ? 'Downloading ${LocalModelStore.modelDisplayName} (${LocalModelStore.modelSizeLabel})…'
+                : 'Download ${LocalModelStore.modelDisplayName} (${LocalModelStore.modelSizeLabel}) to start chatting. It runs on this device.',
             action: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

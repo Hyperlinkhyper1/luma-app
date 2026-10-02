@@ -20,7 +20,7 @@ class LocalQwenClient implements AiClient {
   static final Map<String, LlamaCppChatRepository> _repositories = {};
   static Future<void>? _warmUp;
 
-  static const _modelName = 'Qwen3.5-0.8B';
+  static String get _modelName => LocalModelStore.modelDisplayName;
 
   /// The tool schemas alone are ~2k tokens, so 4096 left little room for
   /// conversation. 8192 costs a few MB more: only a quarter of Qwen3.5's
@@ -245,7 +245,7 @@ class LocalQwenClient implements AiClient {
     final path = await _modelPath();
     if (path == null) {
       throw AiApiError(
-        'Download Qwen3.5-0.8B in Assistant settings before using the on-device model.',
+        'Download ${LocalModelStore.modelDisplayName} in Assistant settings before using the on-device model.',
       );
     }
 
@@ -300,7 +300,7 @@ class LocalQwenClient implements AiClient {
             : "I couldn't come up with a reply for that.",
         metadataJson: metadataJson,
         usage: AiTokenUsage(
-          model: 'Qwen3.5-0.8B (on-device)',
+          model: '${LocalModelStore.modelDisplayName} (on-device)',
           inputTokens: promptTokens,
           outputTokens: outputTokens,
         ),

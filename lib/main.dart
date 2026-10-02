@@ -450,6 +450,12 @@ class _LumaAppState extends State<LumaApp> {
         icon: Icons.draw_rounded,
         db: _whiteboardDb,
       ),
+      DriftSyncCollection(
+        id: 'text_library',
+        label: 'Text library',
+        icon: Icons.menu_book_rounded,
+        db: _textLibraryDb,
+      ),
       JsonStoreSyncCollection(
         id: 'price_tracker',
         label: 'Price tracker',

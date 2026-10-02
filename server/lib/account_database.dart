@@ -28,7 +28,14 @@ class AccountDatabase {
     'passwordResetRequiredAtMs',
     'accessRevokedAtMs',
     'accessRevokedReason',
+    'recoveryEnvelope',
+    'recoveryKeyBox',
   ];
+
+  /// Upper bound on a stored recovery envelope or key box, base64. Each
+  /// seals 32 bytes, which comes to about a hundred characters.
+  static const maxRecoveryFieldLength = 512;
+
   static const sessionColumns = [
     'tokenHash',
     'userId',
@@ -48,7 +55,7 @@ class AccountDatabase {
     result._use((db) {
       final version =
           db.select('PRAGMA user_version').single.values.single as int;
-      if (version > 1)
+      if (version > 2)
         throw StateError('Account database requires a newer server.');
       db.execute('''
 CREATE TABLE IF NOT EXISTS users (
@@ -83,8 +90,22 @@ CREATE TABLE IF NOT EXISTS sessions (
  deviceLabel TEXT CHECK(length(deviceLabel) <= 60)
 );
 CREATE TABLE IF NOT EXISTS migration_state (source TEXT PRIMARY KEY, digest TEXT NOT NULL);
-PRAGMA user_version = 1;
 ''');
+      if (version < 2) {
+        result._transaction(db, () {
+          final columns = {
+            for (final row in db.select('PRAGMA table_info(users)'))
+              row['name'] as String
+          };
+          for (final column in ['recoveryEnvelope', 'recoveryKeyBox']) {
+            if (!columns.contains(column)) {
+              db.execute('ALTER TABLE users ADD COLUMN $column TEXT '
+                  'CHECK(length($column) <= $maxRecoveryFieldLength)');
+            }
+          }
+          db.execute('PRAGMA user_version = 2');
+        });
+      }
     });
     return result;
   }
@@ -278,6 +299,13 @@ PRAGMA user_version = 1;
       if (size < 16 || size > 64)
         throw const FormatException(
             'Invalid account cryptographic parameters.');
+    }
+    for (final field in ['recoveryEnvelope', 'recoveryKeyBox']) {
+      final value = user[field];
+      if (value != null &&
+          (value is! String || value.length > maxRecoveryFieldLength)) {
+        throw const FormatException('Invalid account recovery data.');
+      }
     }
   }
 }

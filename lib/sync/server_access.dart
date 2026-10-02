@@ -51,6 +51,9 @@ class ServerAccessGate extends ChangeNotifier {
     // like the rest carries only what the user just typed.
     '/api/v1/auth/forgot-password',
     '/api/v1/auth/reset-with-code',
+    // Lets the reset check the recovery key the user typed before it
+    // commits to keeping their synced data. Needs the same emailed code.
+    '/api/v1/auth/recovery-envelope',
     // Signing in with Google or GitHub is the same handshake wearing a
     // different hat: it ends in a session token for an approved account, and
     // like the rest of this list it carries nothing but what the user just

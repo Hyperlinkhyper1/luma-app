@@ -21,6 +21,7 @@ import 'providers/google_client.dart';
 import 'providers/local_qwen_client.dart';
 import 'providers/luma_image_client.dart';
 import 'providers/mistral_proxy_client.dart';
+import 'web_search_client.dart';
 
 /// Orchestrates one chat turn: persists the user's message, calls whichever
 /// AI provider is selected in Settings, and persists the reply — all
@@ -247,6 +248,9 @@ class ChatController extends ChangeNotifier {
         ).run(turns);
       } else {
         final planning = mode == AssistantComposeMode.plan;
+        if (usingLocalModel && !planning) {
+          await _searchAhead(turns, toolSchemas, executeTool);
+        }
         result = await client.chat(
           apiKey: apiKey,
           history: turns,
@@ -354,6 +358,36 @@ class ChatController extends ChangeNotifier {
       _sending = false;
       activity.value = null;
       notifyListeners();
+    }
+  }
+
+  /// For the on-device model: when the last user turn is a question about
+  /// the world and web search is available, searches before the model
+  /// runs and appends the results to that turn. A small local model almost
+  /// never calls web_search by itself and answers from what it half-knows
+  /// instead. Only the turn sent to the model changes; the stored message
+  /// stays as the user wrote it.
+  Future<void> _searchAhead(
+    List<AiTurn> turns,
+    List<AiToolDefinition> tools,
+    Future<Map<String, dynamic>> Function(String, Map<String, dynamic>)
+    executeTool,
+  ) async {
+    if (turns.isEmpty || turns.last.role != 'user') return;
+    if (!tools.any((tool) => tool.name == 'web_search')) return;
+    final question = turns.last.text;
+    if (!WebSearchClient.looksLikeFactQuestion(question)) return;
+    try {
+      final results = WebSearchClient.resultsForPrompt(
+        await executeTool('web_search', {'query': question.trim()}),
+      );
+      if (results == null) return;
+      turns[turns.length - 1] = AiTurn(
+        role: 'user',
+        text: '$question\n\n$results',
+      );
+    } catch (error) {
+      debugPrint('Search ahead failed: $error');
     }
   }
 

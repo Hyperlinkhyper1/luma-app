@@ -13,30 +13,39 @@ class LocalModelStore extends ChangeNotifier {
 
   static final LocalModelStore instance = LocalModelStore._();
 
-  static const modelRepository = 'ggml-org/Qwen3.5-0.8B-GGUF';
-  static const _modelRevision = '9447f74101aeb4e93621884dfa36ee8effb8831b';
+  /// Phones keep Qwen3.5-0.8B at Q4_0: they run on the CPU, where
+  /// generation speed tracks bytes read per token, and llama.cpp repacks
+  /// Q4_0 into its fastest ARM kernels. Laptops and desktops get
+  /// Qwen3.5-4B at Q4_K_M — the 0.8B model invents facts and reasons
+  /// poorly outside English, and 2.7 GB runs well on a GPU and acceptably
+  /// on a laptop CPU. Same family, so the chat template, the empty think
+  /// block and the qwenXml tool-call format all carry over unchanged.
+  static _ModelFile get _file => Platform.isAndroid ? _phone : _desktop;
 
-  /// Q8_0 on desktop, where the extra 250 MB is nothing and a 0.8B model
-  /// loses noticeably less to quantization. Phones keep Q4_0: they run on
-  /// the CPU, where generation speed tracks bytes read per token, and
-  /// llama.cpp repacks Q4_0 into its fastest ARM kernels.
-  static _ModelFile get _file => Platform.isAndroid ? _q4 : _q8;
-
-  // Sizes and SHA-256s published by ggml-org for these files at
-  // [_modelRevision].
-  static const _q4 = _ModelFile(
+  // Sizes and SHA-256s published on Hugging Face for these files at the
+  // pinned revisions.
+  static const _phone = _ModelFile(
+    displayName: 'Qwen3.5-0.8B',
+    repository: 'ggml-org/Qwen3.5-0.8B-GGUF',
+    revision: '9447f74101aeb4e93621884dfa36ee8effb8831b',
     name: 'Qwen3.5-0.8B-Q4_0.gguf',
     bytes: 563036064,
     sha256: '57d1997790d1744fba5b40a7317df71ea5e2acee28c47e78f0cce39c0703f8cf',
   );
-  static const _q8 = _ModelFile(
-    name: 'Qwen3.5-0.8B-Q8_0.gguf',
-    bytes: 811843488,
-    sha256: '75526add2fec8543a78d412a5546dd1c13dcf1ade237b245915d0f12dd43bb3d',
+  static const _desktop = _ModelFile(
+    displayName: 'Qwen3.5-4B',
+    repository: 'lmstudio-community/Qwen3.5-4B-GGUF',
+    revision: 'f9f88ac3e234be915e23811a6d28ea287bdb927e',
+    name: 'Qwen3.5-4B-Q4_K_M.gguf',
+    bytes: 2707513696,
+    sha256: '25082a7dd3776cc3c741c6347d3bd04523f05796607b3fbc32fa3a25dfa1418c',
   );
 
+  static String get modelDisplayName => _file.displayName;
   static String get modelFileName => _file.name;
-  static String get modelSizeLabel => '${(_file.bytes / 1e6).round()} MB';
+  static String get modelSizeLabel => _file.bytes >= 1e9
+      ? '${(_file.bytes / 1e9).toStringAsFixed(1)} GB'
+      : '${(_file.bytes / 1e6).round()} MB';
 
   /// False on iOS: llama.cpp is not bundled there (the upstream iOS build is
   /// unusable — see third_party/llm_llamacpp/LUMA_PATCH.md), so the model
@@ -96,10 +105,10 @@ class LocalModelStore extends ChangeNotifier {
       final directory = await _modelDirectory();
       await Directory(directory).create(recursive: true);
       await for (final progress in _repository.downloadModel(
-        modelRepository,
+        _file.repository,
         modelFileName,
         directory,
-        revision: _modelRevision,
+        revision: _file.revision,
       )) {
         _progress = progress.totalBytes == 0 ? null : progress.progress;
         final now = DateTime.now();
@@ -118,7 +127,7 @@ class LocalModelStore extends ChangeNotifier {
       if (await modelPath() == null) {
         throw StateError('The model download did not produce a valid file.');
       }
-      await _deleteOtherQuantizations();
+      await _deleteOtherModels();
     } catch (error) {
       _error = error.toString();
       final partial = File(
@@ -131,29 +140,42 @@ class LocalModelStore extends ChangeNotifier {
     }
   }
 
-  /// Removes the quantization this platform no longer uses, e.g. the Q4_0
-  /// a desktop downloaded before it switched to Q8_0.
-  Future<void> _deleteOtherQuantizations() async {
-    final directory = await _modelDirectory();
-    for (final file in [_q4, _q8]) {
-      if (file.name == modelFileName) continue;
-      final stale = File('$directory${Platform.pathSeparator}${file.name}');
+  /// Deletes every model file in the models folder except this platform's
+  /// current one: the 0.8B a laptop used before it moved to 4B, an older
+  /// quantization, or an abandoned partial download. Runs once the current
+  /// model is verified, so an upgrade never leaves the old one behind.
+  @visibleForTesting
+  static Future<void> deleteOtherModels(
+    Directory directory,
+    String keep,
+  ) async {
+    if (!await directory.exists()) return;
+    await for (final entry in directory.list()) {
+      if (entry is! File) continue;
+      final name = entry.uri.pathSegments.last;
+      if (name == keep) continue;
+      if (!name.endsWith('.gguf') && !name.endsWith('.gguf.download')) {
+        continue;
+      }
       try {
-        if (!await stale.exists()) continue;
-        // Windows won't delete a file that is still memory-mapped.
-        await LocalQwenClient.release();
-        await stale.delete();
+        await entry.delete();
       } catch (error) {
-        debugPrint('Could not delete ${file.name}: $error');
+        debugPrint('Could not delete old model $name: $error');
       }
     }
+  }
+
+  Future<void> _deleteOtherModels() async {
+    // Windows won't delete a file that is still memory-mapped.
+    await LocalQwenClient.release();
+    await deleteOtherModels(Directory(await _modelDirectory()), modelFileName);
   }
 
   Future<void> remove() async {
     await LocalQwenClient.release();
     final path = await modelPath();
     if (path != null) await File(path).delete();
-    await _deleteOtherQuantizations();
+    await _deleteOtherModels();
     _modelPathCheck = null;
     notifyListeners();
   }
@@ -161,11 +183,17 @@ class LocalModelStore extends ChangeNotifier {
 
 class _ModelFile {
   const _ModelFile({
+    required this.displayName,
+    required this.repository,
+    required this.revision,
     required this.name,
     required this.bytes,
     required this.sha256,
   });
 
+  final String displayName;
+  final String repository;
+  final String revision;
   final String name;
   final int bytes;
   final String sha256;

@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart' as c;
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 
+import 'account_database.dart';
 import 'ai_benchmark_store.dart';
 import 'ai_book_review.dart';
 import 'ai_detector_review.dart';
@@ -529,6 +530,7 @@ class Api {
       ..post('/api/v1/auth/login', _login)
       ..post('/api/v1/auth/forgot-password', _forgotPassword)
       ..post('/api/v1/auth/reset-with-code', _resetPasswordWithCode)
+      ..post('/api/v1/auth/recovery-envelope', _recoveryEnvelope)
       ..get('/api/v1/auth/oauth/providers', _oauthProviders)
       ..post('/api/v1/auth/oauth/start', _oauthStart)
       ..get('/api/v1/auth/oauth/callback/<provider>', _oauthCallback)
@@ -541,6 +543,7 @@ class Api {
       ..post('/api/v1/auth/sessions/<id>/revoke', _requireAuth(_revokeSession))
       ..get('/api/v1/account', _requireAuth(_accountInfo))
       ..post('/api/v1/account/delete', _requireAuth(_deleteAccount))
+      ..post('/api/v1/account/recovery', _requireAuth(_setRecovery))
       ..post('/api/v1/account/deletion-request',
           _requireAuth(_requestAccountDeletion))
       ..post('/api/v1/account/deletion-request/cancel',
@@ -1988,6 +1991,11 @@ class Api {
       return errorResponse(
           400, 'bad_request', 'Invalid change-password payload.');
     }
+    final recovery = _readRecoveryPair(body);
+    if (!recovery.valid) {
+      return errorResponse(
+          400, 'bad_request', 'Invalid recovery key payload.');
+    }
 
     final currentHash = await _hashAuthKey(
         current, Uint8List.fromList(base64Decode(user.authSalt)));
@@ -2009,6 +2017,7 @@ class Api {
       // Choosing a new password is exactly what a forced reset was asking
       // for, so satisfy it here too rather than leaving the account flagged.
       user.passwordResetRequiredAtMs = null;
+      _replaceRecovery(user, recovery);
       store.sessionsByTokenHash.removeWhere(
           (hash, s) => s.userId == user.id && hash != keepTokenHash);
       await store.saveUsers();
@@ -2041,6 +2050,11 @@ class Api {
       return errorResponse(
           400, 'bad_request', 'Invalid password-reset payload.');
     }
+    final recovery = _readRecoveryPair(body);
+    if (!recovery.valid) {
+      return errorResponse(
+          400, 'bad_request', 'Invalid recovery key payload.');
+    }
 
     final auth = request.headers['authorization']!;
     final keepTokenHash =
@@ -2053,6 +2067,7 @@ class Api {
       user.kdfSalt = base64Encode(newSalt);
       user.kdfIterations = iterations;
       user.passwordResetRequiredAtMs = null;
+      _replaceRecovery(user, recovery);
       store.sessionsByTokenHash.removeWhere(
           (hash, s) => s.userId == user.id && hash != keepTokenHash);
       await store.saveUsers();
@@ -2060,6 +2075,118 @@ class Api {
       await store.logActivity('password_reset_done',
           '${user.email} set a new password after an admin reset');
       return jsonResponse(200, {'ok': true});
+    });
+  }
+
+  /// After a password change the encryption key is a new one, so whatever
+  /// recovery envelope the account had now opens to a key nothing is sealed
+  /// with. A client that knows the recovery key sends the pair re-sealed
+  /// for the new key; without that, the stale pair is dropped so a later
+  /// reset cannot "keep" data its recovery key no longer opens.
+  static void _replaceRecovery(StoredUser user,
+      ({bool present, bool valid, String? envelope, String? box}) recovery) {
+    user.recoveryEnvelope = recovery.present ? recovery.envelope : null;
+    user.recoveryKeyBox = recovery.present ? recovery.box : null;
+  }
+
+  /// Sets or removes the account's recovery key: `recoveryEnvelope` plus
+  /// `recoveryKeyBox`, or both null to remove it. Both are sealed on the
+  /// client, so the server only ever stores what it cannot open.
+  Future<Response> _setRecovery(Request request, StoredUser user) async {
+    final body = await _readJson(request);
+    final recovery = _readRecoveryPair(body);
+    if (!recovery.valid) {
+      return errorResponse(
+          400, 'bad_request', 'Invalid recovery key payload.');
+    }
+    return store.lock.synchronized(() async {
+      _replaceRecovery(user, recovery);
+      await store.saveUsers();
+      await store.logActivity(
+          recovery.present ? 'recovery_key_set' : 'recovery_key_removed',
+          recovery.present
+              ? '${user.email} set up a recovery key'
+              : '${user.email} removed their recovery key');
+      return jsonResponse(200, {'ok': true});
+    });
+  }
+
+  /// Checks a forgotten-password code without spending it. Returns the user
+  /// on success, or the error response to send. Every call counts against
+  /// [_resetCodeAttemptLimiter], and exhausting it burns the code — see
+  /// [_verifyCode] for why both matter. Caller holds [store.lock].
+  Future<(StoredUser?, Response?)> _checkResetCode(
+      String email, Object? code) async {
+    if (code is! String || !RegExp(r'^\d{6}$').hasMatch(code)) {
+      return (
+        null,
+        errorResponse(
+            400, 'bad_code', 'Enter the 6-digit code from your email.'),
+      );
+    }
+    final userId = store.userIdByEmail[email];
+    final user = userId == null ? null : store.usersById[userId];
+
+    if (!_resetCodeAttemptLimiter.allow(email)) {
+      if (user != null && user.passwordResetCodeHash != null) {
+        user.passwordResetCodeHash = null;
+        user.passwordResetCodeExpiresAtMs = null;
+        await store.saveUsers();
+      }
+      return (
+        null,
+        errorResponse(429, 'too_many_attempts',
+            'Too many incorrect attempts. Request a new code.'),
+      );
+    }
+
+    if (user == null ||
+        user.passwordResetCodeHash == null ||
+        user.accessRevoked) {
+      return (
+        null,
+        errorResponse(
+            400, 'bad_code', 'That code is invalid or has already been used.'),
+      );
+    }
+    final codeHash = c.sha256.convert(utf8.encode(code)).toString();
+    if (!constantTimeEquals(utf8.encode(user.passwordResetCodeHash!),
+        utf8.encode(codeHash))) {
+      return (null, errorResponse(400, 'bad_code', 'That code is incorrect.'));
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if ((user.passwordResetCodeExpiresAtMs ?? 0) <= now) {
+      user.passwordResetCodeHash = null;
+      user.passwordResetCodeExpiresAtMs = null;
+      await store.saveUsers();
+      return (
+        null,
+        errorResponse(
+            400, 'code_expired', 'That code has expired. Request a new one.'),
+      );
+    }
+    return (user, null);
+  }
+
+  /// Hands the recovery envelope to someone holding a valid reset code, so
+  /// their device can check the recovery key they typed *before* the reset
+  /// commits to keeping data. Does not spend the code. The envelope is
+  /// sealed under a random 160-bit key, so handing it out reveals nothing.
+  Future<Response> _recoveryEnvelope(Request request) async {
+    final body = await _readJson(request);
+    final email = _normalizeEmail(body['email']);
+    if (email == null) return errorResponse(400, 'bad_email', 'Invalid email.');
+    return store.lock.synchronized(() async {
+      final (user, error) = await _checkResetCode(email, body['code']);
+      if (error != null) return error;
+      // A right code already wins everything this limiter guards, and the
+      // reset itself still has to pass it.
+      _resetCodeAttemptLimiter.forget(email);
+      if (!user!.hasRecoveryKey) {
+        return errorResponse(404, 'no_recovery_key',
+            'This account has no recovery key set up.');
+      }
+      return jsonResponse(200, {'recoveryEnvelope': user.recoveryEnvelope});
     });
   }
 
@@ -2116,13 +2243,21 @@ class Api {
 
   /// Sets a new password for someone who proved they own the address with
   /// the code from [_forgotPassword]. Same key payload as [_resetPassword]
-  /// plus `email` and `code`.
+  /// plus `email`, `code` and an optional `keepData`.
   ///
   /// Sync is zero-knowledge, and unlike [_resetPassword] there is no signed-in
-  /// device holding the old key to re-seal the snapshots — so they would be
-  /// unreadable under the new password. They are deleted instead, and every
-  /// session is revoked; each device re-uploads its local copy once it signs
-  /// in with the new password.
+  /// device vouching for the reset. Every session is revoked either way. What
+  /// happens to the synced snapshots depends on the recovery key:
+  ///
+  /// * `keepData: true`, sent only by a device that opened the recovery
+  ///   envelope (see [_recoveryEnvelope]) with the user's recovery key: the
+  ///   snapshots stay. That device now holds the old encryption key and
+  ///   re-seals them under the new one once it signs in, then stores a fresh
+  ///   envelope. Until then the old envelope is kept, since it still opens
+  ///   to the key the data is sealed with.
+  /// * otherwise the snapshots would be unreadable under the new password, so
+  ///   they are deleted along with the now-useless recovery envelope; each
+  ///   device re-uploads its local copy once it signs in again.
   Future<Response> _resetPasswordWithCode(Request request) async {
     final body = await _readJson(request);
     final email = _normalizeEmail(body['email']);
@@ -2135,49 +2270,25 @@ class Api {
     final next = _decodeB64(body['newAuthKey'], minLen: 32, maxLen: 64);
     final newSalt = _decodeB64(body['newKdfSalt'], minLen: 16, maxLen: 64);
     final iterations = body['newKdfIterations'];
+    final keepData = body['keepData'] ?? false;
     if (next == null ||
         newSalt == null ||
         iterations is! int ||
         iterations < 50000 ||
-        iterations > 5000000) {
+        iterations > 5000000 ||
+        keepData is! bool) {
       return errorResponse(
           400, 'bad_request', 'Invalid password-reset payload.');
     }
 
     return store.lock.synchronized(() async {
-      final userId = store.userIdByEmail[email];
-      final user = userId == null ? null : store.usersById[userId];
-
-      // Spent whether or not the account exists, and burns the code once
-      // exhausted — see [_verifyCode] for why both matter.
-      if (!_resetCodeAttemptLimiter.allow(email)) {
-        if (user != null && user.passwordResetCodeHash != null) {
-          user.passwordResetCodeHash = null;
-          user.passwordResetCodeExpiresAtMs = null;
-          await store.saveUsers();
-        }
-        return errorResponse(429, 'too_many_attempts',
-            'Too many incorrect attempts. Request a new code.');
-      }
-
-      if (user == null ||
-          user.passwordResetCodeHash == null ||
-          user.accessRevoked) {
-        return errorResponse(
-            400, 'bad_code', 'That code is invalid or has already been used.');
-      }
-      final codeHash = c.sha256.convert(utf8.encode(code)).toString();
-      if (!constantTimeEquals(utf8.encode(user.passwordResetCodeHash!),
-          utf8.encode(codeHash))) {
-        return errorResponse(400, 'bad_code', 'That code is incorrect.');
-      }
-      final now = DateTime.now().millisecondsSinceEpoch;
-      if ((user.passwordResetCodeExpiresAtMs ?? 0) <= now) {
-        user.passwordResetCodeHash = null;
-        user.passwordResetCodeExpiresAtMs = null;
-        await store.saveUsers();
-        return errorResponse(
-            400, 'code_expired', 'That code has expired. Request a new one.');
+      final (checked, error) = await _checkResetCode(email, code);
+      if (error != null) return error;
+      final user = checked!;
+      if (keepData && !user.hasRecoveryKey) {
+        return errorResponse(409, 'no_recovery_key',
+            'This account has no recovery key set up, so its synced data '
+                'cannot be kept.');
       }
 
       final authSalt = randomBytes(16);
@@ -2189,17 +2300,26 @@ class Api {
       user.passwordResetCodeExpiresAtMs = null;
       user.passwordResetRequiredAtMs = null;
       store.sessionsByTokenHash.removeWhere((_, s) => s.userId == user.id);
-      store.collectionsByUser.remove(user.id);
-      await store.deleteUserData(user.id);
+      if (!keepData) {
+        user.recoveryEnvelope = null;
+        user.recoveryKeyBox = null;
+        store.collectionsByUser.remove(user.id);
+        await store.deleteUserData(user.id);
+      }
       await store.saveUsers();
       await store.saveSessions();
-      await store.saveCollections();
+      if (!keepData) await store.saveCollections();
       _loginFailLimiter.forget(email);
       _resetCodeAttemptLimiter.forget(email);
-      await store.logActivity('password_reset_done',
-          '$email reset their password with an emailed code');
+      await store.logActivity(
+          'password_reset_done',
+          keepData
+              ? '$email reset their password with an emailed code and '
+                  'their recovery key'
+              : '$email reset their password with an emailed code');
       return jsonResponse(200, {
         'ok': true,
+        'keptData': keepData,
         'message': 'Your password was reset. Sign in with your new password.',
       });
     });
@@ -4345,6 +4465,10 @@ class Api {
       // working, which is what lets it re-seal the snapshots under the new
       // key (see _resetPassword).
       'passwordResetRequired': user.passwordResetRequired,
+      // The recovery key sealed under this account's encryption key, so a
+      // signed-in device can re-seal the recovery envelope when the password
+      // changes (see _setRecovery). Null when none is set up.
+      'recoveryKeyBox': user.recoveryKeyBox,
       // The account's latest data-deletion request (see
       // _requestAccountDeletion), or null. Rides along here rather than on its
       // own endpoint so the app learns about a decision on the sync it was
@@ -11865,7 +11989,7 @@ window.lumaAskReason = function (form, message) {
     bulletin_board: 'Bulletin board', qr_codes: 'QR codes', card_wallet: 'Card wallet',
     errands: 'Errands', data_management: 'Data management', mood_journal: 'Mood journal',
     ai_usage: 'AI Usage (agents & library)', school: 'School', mind_map: 'Mind maps',
-    whiteboard: 'Whiteboards', price_tracker: 'Price tracker', wifi_speed_test: 'Wi-Fi speed test',
+    whiteboard: 'Whiteboards', text_library: 'Text library', price_tracker: 'Price tracker', wifi_speed_test: 'Wi-Fi speed test',
     groceries: 'Groceries', airline_tycoon: 'Airline Tycoon',
     airline_tycoon_airport_v2: 'Airline Tycoon (airport mode)', passwords: 'Passwords',
     assistant_memory: 'Assistant memory', cloud_files_index: 'Cloud Files (file list)',
@@ -14221,6 +14345,32 @@ window.lumaAskReason = function (form, message) {
     final email = raw.trim().toLowerCase();
     if (email.length > 254 || !emailPattern.hasMatch(email)) return null;
     return email;
+  }
+
+  /// The `recoveryEnvelope` / `recoveryKeyBox` pair in [body] (see
+  /// [StoredUser.recoveryEnvelope]), each still base64. [present] is false
+  /// when the body carries neither; [valid] is false when it carries only
+  /// one, or one that is not a plausible sealed key.
+  static ({bool present, bool valid, String? envelope, String? box})
+      _readRecoveryPair(Map<String, dynamic> body) {
+    final rawEnvelope = body['recoveryEnvelope'];
+    final rawBox = body['recoveryKeyBox'];
+    if (rawEnvelope == null && rawBox == null) {
+      return (present: false, valid: true, envelope: null, box: null);
+    }
+    final ok = _decodeB64(rawEnvelope, minLen: 32, maxLen: 256) != null &&
+        _decodeB64(rawBox, minLen: 32, maxLen: 256) != null &&
+        (rawEnvelope as String).length <=
+            AccountDatabase.maxRecoveryFieldLength &&
+        (rawBox as String).length <= AccountDatabase.maxRecoveryFieldLength;
+    return ok
+        ? (
+            present: true,
+            valid: true,
+            envelope: rawEnvelope,
+            box: rawBox,
+          )
+        : (present: true, valid: false, envelope: null, box: null);
   }
 
   static Uint8List? _decodeB64(Object? raw,
