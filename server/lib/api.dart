@@ -2839,14 +2839,19 @@ class Api {
   /// Only `model`, `max_tokens` and reasoning are rewritten; everything else
   /// (messages, tools) passes straight through. OpenRouter spells reasoning
   /// as a `reasoning` object rather than OpenAI's `reasoning_effort`.
+  /// [maxTokensCap] is raised only by server-side callers that need room
+  /// for a reasoning model's thinking (the classroom, the school test); a
+  /// client's own request stays capped at 4096.
   static Map<String, dynamic> _aiUpstreamBody(
-      Map<String, dynamic> body, AiModeRoute route) {
+      Map<String, dynamic> body, AiModeRoute route,
+      {int maxTokensCap = 4096}) {
     final maxTokensRaw = body['max_tokens'];
     final effort = route.reasoningEffort ?? body['reasoning_effort'];
     final out = {
       ...body,
       'model': route.model,
-      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
+      'max_tokens':
+          (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, maxTokensCap),
     }
       ..remove('agent_id')
       ..remove('reasoning_effort');

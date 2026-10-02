@@ -16,7 +16,7 @@ extension ClassroomApi on Api {
 
   /// Room for a reasoning model's thinking, which counts as output, on top
   /// of the short JSON reply. Only what the model uses is charged.
-  static const _maxTokens = 4096;
+  static const _maxTokens = kClassroomMaxTokens;
 
   /// Why [user] can't use the classroom right now, or null when they can.
   Response? _classroomRefusal(StoredUser user) {
@@ -112,42 +112,54 @@ extension ClassroomApi on Api {
 
     for (final candidate in candidates) {
       final model = candidate.route.model;
-      try {
-        final upstreamBody = Api._aiUpstreamBody({
-          'messages': messages,
-          'max_tokens': maxTokens,
-          'temperature': temperature,
-        }, candidate.route);
-        _applyAiMaxPrice(candidate.key, candidate.route, upstreamBody);
-        final (status, responseBody) =
-            await _callAiUpstream(candidate.route, upstreamBody);
-        if (status != HttpStatus.ok) {
-          stderr.writeln('[luma] classroom tutor: $model answered $status: '
-              '${snippet(responseBody)}');
-          continue;
-        }
-        await _recordAiPaid(candidate.key, candidate.route, responseBody);
-        await _logAiCall(user, 'Classroom', candidate.route, responseBody);
-        var tokens = 0;
-        String? content;
-        String? finish;
+      // A reasoning model that thinks itself out of tokens gets one more
+      // go at low effort before the next candidate takes over.
+      AiModeRoute? route = candidate.route;
+      while (route != null) {
+        final callRoute = route;
+        route = null;
         try {
-          final decoded = jsonDecode(responseBody);
-          if (decoded is Map) {
-            tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
-            content = decoded['choices']?[0]?['message']?['content'] as String?;
-            finish = decoded['choices']?[0]?['finish_reason'] as String?;
+          final upstreamBody = Api._aiUpstreamBody({
+            'messages': messages,
+            'max_tokens': maxTokens,
+            'temperature': temperature,
+          }, callRoute, maxTokensCap: kClassroomMaxTokens);
+          _applyAiMaxPrice(candidate.key, callRoute, upstreamBody);
+          final (status, responseBody) =
+              await _callAiUpstream(callRoute, upstreamBody);
+          if (status != HttpStatus.ok) {
+            stderr.writeln('[luma] classroom tutor: $model answered $status: '
+                '${snippet(responseBody)}');
+            continue;
           }
-        } catch (_) {}
-        await aiUsage.charge(user.id, tokens > 0 ? tokens : 800, _meteredMode,
-            aiTokenBudget(user.planId, _meteredMode));
-        final parsed = content == null ? null : parse(content);
-        if (parsed != null) return parsed;
-        stderr.writeln('[luma] classroom tutor: $model sent an unusable '
-            'reply${finish == 'length' ? ' (cut off at max_tokens)' : ''}: '
-            '${snippet(content ?? responseBody)}');
-      } catch (e) {
-        stderr.writeln('[luma] classroom tutor: $model failed: $e');
+          await _recordAiPaid(candidate.key, callRoute, responseBody);
+          await _logAiCall(user, 'Classroom', callRoute, responseBody);
+          var tokens = 0;
+          String? content;
+          String? finish;
+          try {
+            final decoded = jsonDecode(responseBody);
+            if (decoded is Map) {
+              tokens =
+                  (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
+              content =
+                  decoded['choices']?[0]?['message']?['content'] as String?;
+              finish = decoded['choices']?[0]?['finish_reason'] as String?;
+            }
+          } catch (_) {}
+          await aiUsage.charge(user.id, tokens > 0 ? tokens : 800, _meteredMode,
+              aiTokenBudget(user.planId, _meteredMode));
+          final parsed = content == null ? null : parse(content);
+          if (parsed != null) return parsed;
+          stderr.writeln('[luma] classroom tutor: $model sent an unusable '
+              'reply${finish == 'length' ? ' (cut off at max_tokens)' : ''}: '
+              '${snippet(content ?? responseBody)}');
+          if (finish == 'length' && callRoute == candidate.route) {
+            route = classroomLowEffortRetry(callRoute);
+          }
+        } catch (e) {
+          stderr.writeln('[luma] classroom tutor: $model failed: $e');
+        }
       }
     }
     return null;

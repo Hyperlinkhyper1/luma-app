@@ -33,10 +33,12 @@ Asking:
 - One clear question with one checkable answer. Put any numbers, text or context the student needs inside the question.
 - Now and then make it multiple choice, with three or four plausible options.
 
-Checking:
-- Judge the meaning, not the exact wording. Accept equivalent answers, other valid methods and small spelling slips, unless spelling is the point of the question, as it can be in a language subject.
-- In a calculation, a right method with a slip is "partly" right.
-- Feedback says what was right, what was missing or wrong, and how to get it right next time, in one to three sentences. Be warm, never mocking.
+Checking — be fair and generous, like a kind teacher, never a strict examiner:
+- Judge the meaning, not the form. A student who clearly knows the answer is "correct", even when it is short, messy, a half sentence, unsure ("denk ik"), in mixed Dutch and English, misspelled, without a unit, or rounded differently. Mention such things in the feedback if useful, but they never lower the result. Only when spelling or grammar is itself what the question asks (a language subject, werkwoordspelling) does a spelling mistake make the answer wrong.
+- "partly" is for an answer that is on the right track but not finished: a right method with a slip (a sign, a calculation or a copying error), a right idea missing a step, only one of two solutions, one of two asked reasons, the right answer with a faulty explanation, or a reaction with the right substances that is not balanced.
+- "wrong" is only for an answer that misses the point: a wrong method or concept, an answer to a different question, no real answer ("weet ik niet"), or several alternatives offered so one of them might be right.
+- When unsure between two results, choose the kinder one.
+- Feedback says what was right, what was missing or wrong, and how to get it right next time, in one to three sentences. Be warm, never mocking. Write only correct, natural language — never words from another language — and state only facts you are sure of: don't comment on rounding or significant figures unless the question asks for them.
 ''';
 
 /// The languages the app speaks, by the code it sends.
@@ -68,7 +70,7 @@ The lesson arrives in the user message between <lesson> and </lesson>, and the q
 Answer with only one JSON object, no markdown fence and nothing before or after it:
 {"question": "<the question>",
  "choices": ["<option>", ...]}
-"choices" is an empty list for an open question, or three or four options for multiple choice with exactly one of them right. Keep the question under 600 characters. ${_languageRule(language)}''';
+"choices" is an empty list for an open question, or three or four options for multiple choice with exactly one of them right. Write each option without a letter or number in front; the app adds the letters. Keep the question under 600 characters. ${_languageRule(language)}''';
 
 /// Appended to the instructions when checking one answer.
 String classroomReviewContract(String? language) => '''
@@ -79,6 +81,23 @@ Answer with only one JSON object, no markdown fence and nothing before or after 
  "feedback": "<one to three sentences; empty when the answer is fully right and there is nothing to add>",
  "answer": "<a short model answer>"}
 ${_languageRule(language)}''';
+
+/// Output tokens a tutor call may use. A reasoning model's thinking counts
+/// as output, and on a d/t or calculation question it can think past 4096
+/// and stop before writing the answer.
+const kClassroomMaxTokens = 8192;
+
+/// The route to try once more when [route]'s model ran out of tokens while
+/// thinking (`finish_reason: length`, no usable answer): the same model
+/// with low reasoning effort. Null when there is nothing lower to try, or
+/// the provider has no effort setting (Mistral rejects one).
+AiModeRoute? classroomLowEffortRetry(AiModeRoute route) {
+  if (route.upstream == AiUpstream.mistral) return null;
+  if (route.reasoningEffort == 'low' || route.reasoningEffort == 'none') {
+    return null;
+  }
+  return AiModeRoute(route.upstream, route.model, reasoningEffort: 'low');
+}
 
 /// Longest instructions the dashboard accepts.
 const kClassroomMaxInstructionChars = 8000;
@@ -320,12 +339,33 @@ ClassroomQuestion? parseClassroomQuestion(String content) {
   if (json == null) return null;
   final question = _text(json['question'], 1200);
   if (question.isEmpty) return null;
-  final choices = <String>[
+  final choices = stripOptionLetters([
     if (json['choices'] case final List list)
       for (final c in list.take(5))
         if (_field(c, 200) case final s when s.isNotEmpty) s,
-  ];
+  ]);
   return ClassroomQuestion(question, choices.length >= 3 ? choices : const []);
+}
+
+/// [choices] without the "A)", "b.", "(C)" or "1." a model wrote in front
+/// of them, since the app letters options itself and would show "A. A) …".
+/// Only stripped when every option carries its own letter or number in
+/// order, so an option that merely starts with "A." is left alone.
+List<String> stripOptionLetters(List<String> choices) {
+  if (choices.isEmpty) return choices;
+  final stripped = <String>[];
+  for (final (i, c) in choices.indexed) {
+    final label =
+        RegExp(r'^\(?([A-Za-z]|\d{1,2})\s*[).:]\s+(.+)$', dotAll: true)
+            .firstMatch(c);
+    final mark = label?[1];
+    final inOrder = mark != null &&
+        (mark.toUpperCase() == String.fromCharCode(65 + i) ||
+            mark == '${i + 1}');
+    if (!inOrder) return choices;
+    stripped.add(label![2]!.trim());
+  }
+  return stripped;
 }
 
 /// The tutor's verdict on one answer.
