@@ -4,7 +4,7 @@ part of 'api.dart';
 /// run against any provider and model, with the server's key or one pasted
 /// for that run only.
 extension SchoolTestsApi on Api {
-  static const _maxTokens = kClassroomMaxTokens;
+  static const _maxTokens = 4096;
 
   /// The suite, whether it is the operator's own, and every run.
   Future<Response> _adminSchoolTestsState(Request request) async {
@@ -136,19 +136,17 @@ extension SchoolTestsApi on Api {
         'messages': messages,
         'max_tokens': _maxTokens,
         'temperature': temperature,
-      }, route, maxTokensCap: kClassroomMaxTokens);
+      }, route);
       final (status, responseBody) =
           await _callAiUpstream(route, upstreamBody, apiKey: key);
       var tokens = 0;
       String? content;
       String? error;
-      String? finish;
       try {
         final decoded = jsonDecode(responseBody);
         if (decoded is Map) {
           tokens = (decoded['usage']?['total_tokens'] as num?)?.toInt() ?? 0;
           content = decoded['choices']?[0]?['message']?['content'] as String?;
-          finish = decoded['choices']?[0]?['finish_reason'] as String?;
           final upstreamError = decoded['error'];
           if (upstreamError is Map) {
             error = upstreamError['message']?.toString();
@@ -167,29 +165,10 @@ extension SchoolTestsApi on Api {
                 '${refused ? ' — ${route.upstream.label} refused the '
                     '${key == null ? 'server\'s' : 'pasted'} key' : ''}'));
       }
-      if (finish == 'length') {
-        // The classroom retries this once at low effort, so the test does
-        // the same: a run then measures what a student would get.
-        final retry = classroomLowEffortRetry(route);
-        if (retry != null && route.reasoningEffort != 'low') {
-          final second = await callRoute(retry, key, messages, temperature);
-          return SchoolTestReply(
-              content: second.content,
-              tokens: tokens + second.tokens,
-              fatal: second.fatal,
-              error: second.error);
-        }
-        return SchoolTestReply(
-            content: content == null || content.trim().isEmpty ? null : content,
-            tokens: tokens,
-            error: 'Ran out of tokens while thinking '
-                '($_maxTokens-token cap) before finishing the answer.');
-      }
-      final empty = content == null || content.trim().isEmpty;
       return SchoolTestReply(
-          content: empty ? null : content,
+          content: content,
           tokens: tokens,
-          error: empty ? 'Empty reply.' : null);
+          error: content == null ? 'Empty reply.' : null);
     }
 
     Future<SchoolTestReply> call(List<Map<String, String>> messages,
@@ -569,11 +548,8 @@ const _schoolTestsScript = r'''
             : '<span class="st-score ' + scoreClass(c.score * 100) + '" style="font-size:13px">'
               + (c.score === 1 ? '✓' : c.score === 0 ? '✗' : Math.round(c.score * 100) + '%') + '</span>')
           + (c.attempts && c.attempts.length > 1
-            ? '<div class="muted" style="font-size:11px">'
-              + (c.attempts.every((a) => a === 0 || a === 1)
-                ? c.attempts.filter((a) => a === 1).length + '/' + c.attempts.length + ' right'
-                : 'runs: ' + c.attempts.map((a) => Math.round(a * 100) + '%').join(' · '))
-              + '</div>' : '') + '</td>'
+            ? '<div class="muted" style="font-size:11px">' + c.attempts.filter((a) => a === 1).length
+              + '/' + c.attempts.length + ' right</div>' : '') + '</td>'
           + '<td>' + (c.ms / 1000).toFixed(1) + ' s</td></tr>').join('')
         + '</tbody></table>';
     });

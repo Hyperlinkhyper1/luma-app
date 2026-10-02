@@ -7,7 +7,6 @@ import 'package:luma_sync_server/ai_mode_routing.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
 import 'package:luma_sync_server/chat_store.dart';
-import 'package:luma_sync_server/classroom.dart';
 import 'package:luma_sync_server/family_store.dart';
 import 'package:luma_sync_server/mail.dart';
 import 'package:luma_sync_server/recipe_store.dart';
@@ -174,64 +173,6 @@ void main() {
       expect(numberReadings('€ 2.318,55'), [2318.55]);
       expect(numberReadings('Kz = 1,8 · 10⁻⁵').single, closeTo(1.8e-5, 1e-12));
       expect(numberReadings('−1'), [-1]);
-    });
-
-    test('a clock time reads as hours', () {
-      final c = _case({
-        'kind': 'answer',
-        'question': 'Hoe laat?',
-        'expect': {'number': 17},
-      });
-      expect(scoreSchoolTestCase(c, _answer('17:00')).score, 1);
-      expect(scoreSchoolTestCase(c, _answer('17:00 uur zonnetijd')).score, 1);
-      expect(numberReadings('om 17:30'), [17.5]);
-      expect(scoreSchoolTestCase(c, _answer('18:00')).score, 0);
-    });
-
-    test('option letters the model wrote are stripped, others kept', () {
-      expect(stripOptionLetters(['A) Zuurstof', 'B) CO₂', 'C) Stikstof']),
-          ['Zuurstof', 'CO₂', 'Stikstof']);
-      expect(stripOptionLetters(['(a) één', '(b) twee', '(c) drie']),
-          ['één', 'twee', 'drie']);
-      expect(stripOptionLetters(['1. één', '2. twee', '3. drie']),
-          ['één', 'twee', 'drie']);
-      // Not every option lettered in order: left as written.
-      expect(stripOptionLetters(['A. Spanje', 'Frankrijk', 'Engeland']),
-          ['A. Spanje', 'Frankrijk', 'Engeland']);
-      final q = parseClassroomQuestion(jsonEncode({
-        'question': 'Welk gas?',
-        'choices': ['A) O₂', 'B) CO₂', 'C) N₂', 'D) H₂'],
-      }))!;
-      expect(q.choices, ['O₂', 'CO₂', 'N₂', 'H₂']);
-    });
-
-    test('a model out of tokens retries once at low effort, not on Mistral',
-        () {
-      expect(
-          classroomLowEffortRetry(
-                  const AiModeRoute(AiUpstream.openrouter, 'x/y'))!
-              .reasoningEffort,
-          'low');
-      expect(
-          classroomLowEffortRetry(const AiModeRoute(AiUpstream.google, 'g',
-              reasoningEffort: 'low')),
-          isNull);
-      expect(
-          classroomLowEffortRetry(const AiModeRoute(AiUpstream.mistral, 'm')),
-          isNull);
-    });
-
-    test('the tutor is told to be kind about form, strict only on substance',
-        () {
-      for (final rule in [
-        'misspelled',
-        'without a unit',
-        'choose the kinder one',
-        'never words from another language',
-        'significant figures',
-      ]) {
-        expect(kDefaultClassroomInstructions, contains(rule), reason: rule);
-      }
     });
 
     test('an option counts by its letter or its exact text', () {

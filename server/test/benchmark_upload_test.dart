@@ -60,23 +60,6 @@ void main() {
       expect(demo.toJson().containsKey('vendor'), isFalse);
     });
 
-    test('a server rack upload is listed under its own test', () async {
-      final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
-      await store.saveUpload(
-        kind: 'rack',
-        id: 'rack_sonnet55',
-        model: 'Sonnet 5.5',
-        vendor: 'anthropic',
-        description: 'A server rack',
-        bytes: utf8.encode('<div class="rack"></div>'),
-      );
-      final rack =
-          (await store.list()).firstWhere((e) => e.id == 'rack_sonnet55');
-      expect(rack.kind, 'rack');
-      final scene = await store.readScene('rack_sonnet55');
-      expect(utf8.decode(scene!.bytes), '<div class="rack"></div>');
-    });
-
     test('an upload replaces a seeded scene until the seed is newer', () async {
       final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
       final past = DateTime.now().subtract(const Duration(hours: 1));

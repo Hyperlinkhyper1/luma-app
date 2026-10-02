@@ -28,7 +28,7 @@ Answer with only one JSON object, no markdown fence and nothing before or after 
 {"question": "<the question, with every number and fact the student needs>",
  "choices": ["<option>", ...],
  "answer": "<the correct answer: the final number with its unit, the letter of the right option, or a short phrase>"}
-"choices" is an empty list for an open question, or three or four options for multiple choice with exactly one of them right. Write each option without a letter in front, and give the letter of the right option as the answer. Write the question in ${_languageName(language)} unless the subject is a language the student is learning.''';
+"choices" is an empty list for an open question, or three or four options for multiple choice with exactly one of them right. Write the question in ${_languageName(language)} unless the subject is a language the student is learning.''';
 
 String _languageName(String code) => kClassroomLanguages[code] ?? code;
 
@@ -86,11 +86,11 @@ AuthoredQuestion? parseAuthoredQuestion(String content) {
   final question = _str(json['question']);
   final answer = json['answer']?.toString().trim() ?? '';
   if (question.isEmpty || answer.isEmpty) return null;
-  final choices = stripOptionLetters([
+  final choices = [
     if (json['choices'] case final List list)
       for (final c in list.take(6))
         if (_str(c) case final s when s.isNotEmpty) s,
-  ]);
+  ];
   return AuthoredQuestion(question, choices, answer);
 }
 

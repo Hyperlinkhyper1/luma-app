@@ -29,24 +29,6 @@
   }
   ui.ic = ic;
 
-  // Names reach these templates from other people: co-op room members write
-  // the shared state (line and station names), OpenStreetMap is publicly
-  // editable, and chat contacts chose their own email. This page also holds
-  // the account's session token (see mp.js), so none of it may become markup.
-  function esc(v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    })[c]);
-  }
-  ui.esc = esc;
-
-  // For style="background:…": anything that isn't a plain colour falls back
-  // to grey rather than letting a shared line smuggle in CSS or markup.
-  function cssColor(v) {
-    return /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]{1,20}$/.test(String(v)) ? v : '#888';
-  }
-  ui.cssColor = cssColor;
-
   const MODE_ICON = { metro: 'metro', tram: 'tram', bus: 'bus', train: 'train', hst: 'hst' };
   const MODE_TINT = { metro: '#e05252', tram: '#2e9e4f', bus: '#f2a33c', train: '#7a6ff0', hst: '#d452c4' };
   ui.MODE_TINT = MODE_TINT;
@@ -302,8 +284,8 @@
       const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
       const M = SB.MODES[line.mode];
       row.innerHTML =
-        '<span class="sw" style="background:' + cssColor(line.color) + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
-        '<span class="lcol"><span class="lname">' + esc(line.name) + '</span>' +
+        '<span class="sw" style="background:' + line.color + '">' + ic(MODE_ICON[line.mode]) + '</span>' +
+        '<span class="lcol"><span class="lname">' + line.name + '</span>' +
         '<span class="lmeta">' + stopCount + ' stops' + (isLoop ? ' · loop' : '') + ' · ' + SB.fmtInt(riders) + '/d · ' + SB.fmtMoney(revenue) + '/d' +
         (ratio > 1.05 ? ' · <b class="bad">crowded</b>' : '') +
         (disruption ? ' · <b class="dis-flag">' + disruption.label + '</b>' : '') + '</span></span>' +
@@ -344,12 +326,12 @@
       const boardings = res ? res.boardings.get(s.id) || 0 : 0;
       panel.innerHTML =
         '<div class="ip-head">' + ic(MODE_ICON[s.mode], 'tint-' + s.mode) +
-        '<span class="ip-title">' + esc(s.name) + '</span>' +
+        '<span class="ip-title">' + s.name + '</span>' +
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
         '<div class="ip-row">Type <b>' + SB.MODES[s.mode].label + (s.real ? ' · real station' : '') + '</b></div>' +
         '<div class="ip-row">Boardings <b>' + SB.fmtInt(boardings) + '/day</b></div>' +
-        '<div class="ip-row">Lines <b>' + (lines.length ? lines.map((l) => '<span class="dot" style="background:' + cssColor(l.color) + '"></span>').join('') : 'none yet') + '</b></div>' +
-        '<div class="ip-row">Area <b>' + esc(SB.game.city.districtNameAt(s.x, s.y) || '—') + '</b></div>' +
+        '<div class="ip-row">Lines <b>' + (lines.length ? lines.map((l) => '<span class="dot" style="background:' + l.color + '"></span>').join('') : 'none yet') + '</b></div>' +
+        '<div class="ip-row">Area <b>' + (SB.game.city.districtNameAt(s.x, s.y) || '—') + '</b></div>' +
         '<div class="ip-actions"><button id="ip-demolish" class="danger">' + ic('trash') + 'Demolish</button></div>';
       panel.style.display = 'block';
       $('ip-close').onclick = () => { ui.selection = null; ui.updateAll(); };
@@ -373,8 +355,8 @@
       const stopCount = line.stationIds.length - (isLoop ? 1 : 0);
       const disruption = SB.world ? SB.world.disruptionFor(line.id) : null;
       panel.innerHTML =
-        '<div class="ip-head"><span class="dot big" style="background:' + cssColor(line.color) + '"></span>' +
-        '<span class="ip-title">' + esc(line.name) + (isLoop ? ' <span class="pill">loop</span>' : '') + '</span>' +
+        '<div class="ip-head"><span class="dot big" style="background:' + line.color + '"></span>' +
+        '<span class="ip-title">' + line.name + (isLoop ? ' <span class="pill">loop</span>' : '') + '</span>' +
         '<button class="mini ghostbtn" id="ip-close">' + ic('x') + '</button></div>' +
         '<div class="ip-row">Mode <b>' + M.label + ' · ' + M.speedKmh + ' km/h</b></div>' +
         '<div class="ip-row">Stops <b>' + stopCount + '</b> · length <b>' + SB.fmtKm(lenM) + '</b></div>' +
@@ -452,10 +434,10 @@
     const ready = contacts.filter((c) => c.ready);
     const rows = ready.length
       ? ready.map((c) =>
-          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + esc(c.peerEmail) + '</b></span>' +
-          '<button class="mini" data-cid="' + esc(c.conversationId) + '" data-uid="' + esc(c.peerUserId) + '">Invite</button></div>'
+          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + c.peerEmail + '</b></span>' +
+          '<button class="mini" data-cid="' + c.conversationId + '" data-uid="' + c.peerUserId + '">Invite</button></div>'
         ).join('')
-      : '<div class="empty">No chat contacts yet — set up the Chat plugin first, or just share the room code ' + esc(SB.mp.roomCode) + ' directly.</div>';
+      : '<div class="empty">No chat contacts yet — set up the Chat plugin first, or just share the room code ' + SB.mp.roomCode + ' directly.</div>';
     openModal(
       '<h2>Invite a contact</h2>' +
       '<p class="sub">Sends them a chat message with the room code — they still need to tap Join.</p>' +
@@ -489,9 +471,9 @@
     try { rooms = await SB.mp.myRooms(); } catch (e) { /* fall through to empty list */ }
     const roomRows = rooms.length
       ? rooms.map((r) =>
-          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + esc(r.code) + '</b><span>' +
-          esc(r.memberCount) + ' member' + (r.memberCount === 1 ? '' : 's') + (r.isOwner ? ' · yours' : '') +
-          '</span></span><button class="mini" data-rejoin="' + esc(r.code) + '">Open</button></div>'
+          '<div class="achrow done" style="opacity:1"><span class="at"><b>' + r.code + '</b><span>' +
+          r.memberCount + ' member' + (r.memberCount === 1 ? '' : 's') + (r.isOwner ? ' · yours' : '') +
+          '</span></span><button class="mini" data-rejoin="' + r.code + '">Open</button></div>'
         ).join('')
       : '';
     openModal(
@@ -537,7 +519,7 @@
 
   ui.confirm = function (title, sub, onYes) {
     openModal(
-      '<h2>' + esc(title) + '</h2><p class="sub">' + esc(sub) + '</p>' +
+      '<h2>' + title + '</h2><p class="sub">' + sub + '</p>' +
       '<div class="mrow"><button id="m-no">Cancel</button>' +
       '<button id="m-yes" class="danger">Confirm</button></div>'
     );
@@ -566,10 +548,10 @@
     let savedHtml = '';
     if (saved.length) {
       savedHtml = '<h3>Your cities</h3><div class="citygrid">' + saved.map((s) =>
-        '<div class="citycard" data-save="' + esc(s.id) + '">' +
-        '<div class="cc-head"><b>' + esc(s.place.name) + '</b><span class="pill">Day ' + esc(s.day) + '</span></div>' +
-        '<div class="cc-meta">' + esc(s.lines) + ' lines · ' + esc(s.stations) + ' stops</div>' +
-        '<div class="cc-save">Continue · <a href="#" class="cc-del" data-save="' + esc(s.id) + '">delete save</a></div>' +
+        '<div class="citycard" data-save="' + s.id + '">' +
+        '<div class="cc-head"><b>' + s.place.name + '</b><span class="pill">Day ' + s.day + '</span></div>' +
+        '<div class="cc-meta">' + s.lines + ' lines · ' + s.stations + ' stops</div>' +
+        '<div class="cc-save">Continue · <a href="#" class="cc-del" data-save="' + s.id + '">delete save</a></div>' +
         '</div>').join('') + '</div>';
     }
     openModal(
@@ -627,8 +609,8 @@
           const p = f.properties || {};
           const ctx = [p.city, p.state, p.country].filter((v) => v && v !== p.name).join(', ');
           return '<div class="citycard" data-res="' + i + '">' +
-            '<div class="cc-head"><b>' + esc(p.name || q) + '</b></div>' +
-            '<div class="cc-meta">' + esc(ctx || p.osm_value || '') + '</div></div>';
+            '<div class="cc-head"><b>' + (p.name || q) + '</b></div>' +
+            '<div class="cc-meta">' + (ctx || p.osm_value || '') + '</div></div>';
         }).join('') + '</div>';
         document.querySelectorAll('[data-res]').forEach((el) => {
           el.addEventListener('click', () => {
@@ -682,7 +664,7 @@
       const rows = [...res.boardings.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
       for (const [id, n] of rows) {
         const s = SB.game.stationById(id);
-        if (s) topStations += '<tr><td>' + esc(s.name) + '</td><td>' + SB.fmtInt(n) + '</td></tr>';
+        if (s) topStations += '<tr><td>' + s.name + '</td><td>' + SB.fmtInt(n) + '</td></tr>';
       }
     }
     const share = res ? res.share : 0, car = res ? res.carShare : 0;

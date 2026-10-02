@@ -1180,13 +1180,9 @@ class Api {
       final wait = _adminFailLimiter.retryAfterSeconds(clientKey);
       return Response.found('/admin/login?locked=$wait');
     }
-    // This route is reachable by anyone, so the body is capped: a login form
-    // is one field, and an uncapped read would let a single request stream
-    // gigabytes into memory.
     Map<String, String> form = const {};
     try {
-      final raw = await _readCappedString(request, 4096);
-      if (raw != null) form = Uri.splitQueryString(raw);
+      form = Uri.splitQueryString(await request.readAsString());
     } catch (_) {}
     final provided = form['key'] ?? '';
     final match = constantTimeEquals(
@@ -1958,40 +1954,10 @@ class Api {
         headers: {'Content-Type': 'text/html; charset=utf-8'},
       );
 
-  /// Safe for element text and for quoted attribute values alike — quotes are
-  /// escaped too, because account emails may legally contain them and land in
-  /// `value="…"` attributes on the dashboard.
   static String _htmlEscape(String s) => s
       .replaceAll('&', '&amp;')
       .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-
-  /// For text placed inside a single-quoted JS string that itself sits in an
-  /// inline handler attribute (`onsubmit="return confirm('…')"`).
-  ///
-  /// [_htmlEscape] is not enough there: the browser decodes `&#39;` back to
-  /// `'` before the handler runs, so an account registered as
-  /// `a'+evil()+'@x.co` would break out of the string and run as the operator
-  /// the moment they clicked Approve. Every character outside a plain
-  /// allow-list becomes a `\uXXXX` escape instead, which neither the HTML
-  /// parser nor the JS string can misread.
-  static String _jsAttrString(String s) {
-    final out = StringBuffer();
-    for (final unit in s.codeUnits) {
-      final safe = (unit >= 0x30 && unit <= 0x39) ||
-          (unit >= 0x41 && unit <= 0x5a) ||
-          (unit >= 0x61 && unit <= 0x7a) ||
-          ' .,@_-:/?!()+'.codeUnits.contains(unit);
-      if (safe) {
-        out.writeCharCode(unit);
-      } else {
-        out.write('\\u${unit.toRadixString(16).padLeft(4, '0')}');
-      }
-    }
-    return out.toString();
-  }
+      .replaceAll('>', '&gt;');
 
   Future<Response> _logout(Request request, StoredUser user) async {
     final auth = request.headers['authorization']!;
@@ -2873,19 +2839,14 @@ class Api {
   /// Only `model`, `max_tokens` and reasoning are rewritten; everything else
   /// (messages, tools) passes straight through. OpenRouter spells reasoning
   /// as a `reasoning` object rather than OpenAI's `reasoning_effort`.
-  /// [maxTokensCap] is raised only by server-side callers that need room
-  /// for a reasoning model's thinking (the classroom, the school test); a
-  /// client's own request stays capped at 4096.
   static Map<String, dynamic> _aiUpstreamBody(
-      Map<String, dynamic> body, AiModeRoute route,
-      {int maxTokensCap = 4096}) {
+      Map<String, dynamic> body, AiModeRoute route) {
     final maxTokensRaw = body['max_tokens'];
     final effort = route.reasoningEffort ?? body['reasoning_effort'];
     final out = {
       ...body,
       'model': route.model,
-      'max_tokens':
-          (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, maxTokensCap),
+      'max_tokens': (maxTokensRaw is int ? maxTokensRaw : 1024).clamp(1, 4096),
     }
       ..remove('agent_id')
       ..remove('reasoning_effort');
@@ -4012,8 +3973,8 @@ class Api {
       return errorResponse(403, 'plan_required',
           'CS2 offline saving requires an Orbit or Nova account.');
     }
-    final raw = await _readCappedString(request, 4 * 1024 * 1024);
-    if (raw == null) {
+    final raw = await request.readAsString();
+    if (raw.length > 4 * 1024 * 1024) {
       return errorResponse(
           413, 'body_too_large', 'CS2 offline saving data is too large.');
     }
@@ -4233,11 +4194,7 @@ class Api {
     }
     Object? body;
     try {
-      final raw = await _readCappedString(request, _maxJsonBody);
-      if (raw == null) {
-        return errorResponse(413, 'too_large', 'Request body too large.');
-      }
-      body = jsonDecode(raw);
+      body = jsonDecode(await request.readAsString());
     } catch (_) {
       return errorResponse(400, 'bad_request', 'Malformed request body.');
     }
@@ -5273,19 +5230,6 @@ class Api {
     return bytes.isEmpty ? null : bytes;
   }
 
-  /// [request]'s body as text, or null once it passes [cap] bytes. Use this
-  /// instead of `readAsString()`, which buffers however much a client sends
-  /// before anything gets to look at its size.
-  static Future<String?> _readCappedString(Request request, int cap) async {
-    if ((request.contentLength ?? 0) > cap) return null;
-    final builder = BytesBuilder(copy: false);
-    await for (final chunk in request.read()) {
-      builder.add(chunk);
-      if (builder.length > cap) return null;
-    }
-    return utf8.decode(builder.takeBytes(), allowMalformed: true);
-  }
-
   // ---- Handlers: plugins ---------------------------------------------------
 
   /// Records one plugin install for the admin dashboard's "Plugins" tab (see
@@ -5422,8 +5366,8 @@ class Api {
     if (!room.isMember(user.id)) {
       return errorResponse(403, 'forbidden', 'Not a member of this room.');
     }
-    final raw = await _readCappedString(request, _maxSubwayStateBytes);
-    if (raw == null) {
+    final raw = await request.readAsString();
+    if (raw.length > _maxSubwayStateBytes) {
       return errorResponse(413, 'too_large', 'Room state too large.');
     }
     try {
@@ -10037,7 +9981,6 @@ syncToolbar();
           u.quotaBytes > 0 ? (used / u.quotaBytes * 100).clamp(0, 100) : 0.0;
       final statusClass = u.status == 'active' ? 'ok' : 'warn';
       final safeEmail = _htmlEscape(u.email);
-      final jsEmail = _jsAttrString(u.email);
       final bannedIps = store.bannedIpsFor(u);
 
       /// One row of the Actions menu: a single-button form, so every action
@@ -10059,19 +10002,19 @@ syncToolbar();
       final items = <String>[
         if (u.isPending)
           item('/admin/verify', 'Approve account',
-              confirm: 'Approve $jsEmail? They can sign in straight after.')
+              confirm: 'Approve $safeEmail? They can sign in straight after.')
         else
           item('/admin/revoke', 'Revoke approval',
-              confirm: 'Revoke $jsEmail? All their devices are signed out '
+              confirm: 'Revoke $safeEmail? All their devices are signed out '
                   'immediately and blocked until you approve them again.',
               danger: true),
         if (u.passwordResetRequired)
           item('/admin/password-reset/cancel', 'Cancel password reset',
-              confirm: 'Cancel the pending password reset for $jsEmail? '
+              confirm: 'Cancel the pending password reset for $safeEmail? '
                   'Their old password starts working again.')
         else
           item('/admin/password-reset', 'Reset password',
-              confirm: 'Reset the password for $jsEmail?\\n\\nTheir current '
+              confirm: 'Reset the password for $safeEmail?\\n\\nTheir current '
                   'password stops working right away. luma will ask them to '
                   'choose a new one the next time they open it on a device '
                   'that is still signed in — that device is also the only '
@@ -10080,11 +10023,11 @@ syncToolbar();
         '<div class="menu-sep"></div>',
         if (u.accessRevoked)
           item('/admin/access/restore', 'Restore access',
-              confirm: 'Give $jsEmail their access back? They can sign in '
+              confirm: 'Give $safeEmail their access back? They can sign in '
                   'again with the password they already had.')
         else
           item('/admin/access/revoke', 'Revoke access',
-              confirm: 'Revoke access for $jsEmail?\\n\\nThey are signed '
+              confirm: 'Revoke access for $safeEmail?\\n\\nThey are signed '
                   'out everywhere and cannot sign in again until you restore '
                   'it here — approving them will not lift it. Their data is '
                   'left untouched.',
@@ -10092,7 +10035,7 @@ syncToolbar();
               askReason: true),
         if (bannedIps.isEmpty)
           item('/admin/ip-ban', 'Ban their IP address',
-              confirm: 'Block every address $jsEmail has connected from '
+              confirm: 'Block every address $safeEmail has connected from '
                   '(${u.recentIps.length})?\\n\\nNothing from those addresses '
                   'reaches luma — including anyone else behind them. The '
                   'account itself is left alone; use Revoke for that.',
@@ -10100,16 +10043,16 @@ syncToolbar();
         else
           item('/admin/ip-unban', 'Lift IP ban (${bannedIps.length})',
               confirm: 'Unblock the ${bannedIps.length} address'
-                  '${bannedIps.length == 1 ? '' : 'es'} banned for $jsEmail?'),
+                  '${bannedIps.length == 1 ? '' : 'es'} banned for $safeEmail?'),
         '<div class="menu-sep"></div>',
         if (classroomCountries.countryOf(u.id) case final country?) ...[
           item('/admin/classroom/country/reset',
               'Reset classroom country (${_htmlEscape(country)})',
-              confirm: 'Let $jsEmail pick their classroom country again?'),
+              confirm: 'Let $safeEmail pick their classroom country again?'),
           '<div class="menu-sep"></div>',
         ],
         item('/admin/account/delete', 'Delete account',
-            confirm: 'Permanently delete $jsEmail?\\n\\nThe account, its '
+            confirm: 'Permanently delete $safeEmail?\\n\\nThe account, its '
                 'sessions and every synced snapshot are erased from the '
                 'server. This cannot be undone.',
             danger: true),
@@ -10157,8 +10100,7 @@ syncToolbar();
           '<td>${_htmlEscape(label)}</td>'
           '<td><form method="post" action="/admin/plan" '
           'style="margin:0" onsubmit="return confirm(\'Remove '
-          '${_jsAttrString(u.email)}\\\'s ${_jsAttrString(label)} plan? They '
-          'revert to Core.\')">'
+          '${_htmlEscape(u.email)}\\\'s $label plan? They revert to Core.\')">'
           '<input type="hidden" name="email" value="${_htmlEscape(u.email)}">'
           '<input type="hidden" name="planId" value="$kDefaultPlanId">'
           '<button type="submit" class="btn btn-danger btn-sm">Remove</button>'
@@ -10234,7 +10176,7 @@ syncToolbar();
           '<td class="nowrap">${fmtDate(b.createdAtMs)}</td>'
           '<td class="actions-cell">'
           '<form method="post" action="/admin/ip-unban" style="margin:0" '
-          'onsubmit="return confirm(\'Unblock ${_jsAttrString(b.ip)}?\')">'
+          'onsubmit="return confirm(\'Unblock $safeIp?\')">'
           '<input type="hidden" name="ip" value="$safeIp">'
           '<button type="submit" class="btn btn-ghost btn-sm">Unban</button>'
           '</form></td>'
@@ -10280,8 +10222,7 @@ syncToolbar();
           'placeholder="Note back to the user (optional)">'
           '<button type="submit" name="decision" value="accept" '
           'class="btn btn-danger btn-sm" '
-          'onclick="return confirm(\'Accept ${_jsAttrString(r.email)}\\\'s '
-          'request?\\n\\nThis '
+          'onclick="return confirm(\'Accept $safeEmail\\\'s request?\\n\\nThis '
           'permanently deletes their account and every synced snapshot the '
           'server holds. It cannot be undone.\')">Accept &amp; delete</button>'
           '<button type="submit" name="decision" value="decline" '
@@ -12670,7 +12611,6 @@ window.lumaAskReason = function (form, message) {
     'engine': 'Engine (.html)',
     'pc': 'PC build (.html)',
     'keyboard': 'Keyboard (.html)',
-    'rack': 'Server rack (.html)',
     'cathedral': 'Cathedral (3D model, .glb)',
   };
 
@@ -12770,7 +12710,7 @@ window.lumaAskReason = function (form, message) {
   let idEdited = false;
   let maxBytes = 60 * 1024 * 1024;
   let entries = [];
-  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', rack: 'Server Rack' };
+  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard' };
 
   function editing() {
     return entries.find(function (e) { return e.id === entryPick.value; }) || null;
@@ -13324,7 +13264,7 @@ window.lumaAskReason = function (form, message) {
     const selCount = $('bnSelCount');
     const renderSel = $('bnRenderSelected');
     const countLine = $('bnCatalogCount');
-    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', rack: 'Server Rack' };
+    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard' };
     let scenes = [];
     let kind = 'all';
     const selected = new Set();
