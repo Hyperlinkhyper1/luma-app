@@ -101,6 +101,7 @@ class AiBenchmarkStore {
     'cathedral',
     'keyboard',
     'cruise_ship',
+    'server_rack',
   ];
 
   static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');

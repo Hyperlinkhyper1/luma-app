@@ -7,6 +7,7 @@ import '../../../../../theme/luma_theme.dart';
 import '../../_shared/windows_webview.dart'
     show WindowsWebview, windowsAssetPath;
 import 'pagoda_test_page.dart' show ModelButton;
+import 'ai_benchmark_scope.dart';
 
 class _BundledRackTest {
   const _BundledRackTest({
@@ -64,7 +65,8 @@ const _bundledRackTests = <_BundledRackTest>[
 ];
 
 /// The **Server Rack Test** page: a 42U rack that opens into a single,
-/// per-archetype server slice. Entries are bundled scenes, so it works with
+/// per-archetype server slice. Bundled scenes remain available alongside
+/// uploaded server scenes, so the bundled entries work with
 /// no server account.
 class ServerRackTestPage extends StatefulWidget {
   const ServerRackTestPage({super.key});
@@ -75,29 +77,81 @@ class ServerRackTestPage extends StatefulWidget {
 
 class _ServerRackTestPageState extends State<ServerRackTestPage> {
   _BundledRackTest? _selected;
+  String? _uploadedModel;
+  Future<File>? _uploadedScene;
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    AiBenchmarkScope.of(context).load();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final repo = AiBenchmarkScope.of(context);
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) => _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    final repo = AiBenchmarkScope.of(context);
+    final uploads = repo.benchmarksOfKind('server_rack');
     final luma = context.luma;
     final selected = _selected;
     final back = IconButton(
       icon: const Icon(Icons.arrow_back_rounded),
-      onPressed: () => setState(() => _selected = null),
+      onPressed: () => setState(() {
+        _selected = null;
+        _uploadedModel = null;
+        _uploadedScene = null;
+      }),
     );
-    if (selected != null) {
+    if (selected != null || _uploadedScene != null) {
       return Scaffold(
         backgroundColor: luma.background,
         appBar: AppBar(
           backgroundColor: luma.background,
           elevation: 0,
-          title: Text(selected.model),
+          title: Text(selected?.model ?? _uploadedModel!),
           leading: back,
         ),
         body: Platform.isWindows
-            ? WindowsWebview(
-                key: ValueKey(selected.asset),
-                fileUrl: Uri.file(windowsAssetPath(selected.asset)).toString(),
-              )
+            ? selected != null
+                ? WindowsWebview(
+                    key: ValueKey(selected.asset),
+                    fileUrl:
+                        Uri.file(windowsAssetPath(selected.asset)).toString(),
+                  )
+                : FutureBuilder<File>(
+                    future: _uploadedScene,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+                      if (snapshot.hasError || !snapshot.hasData) {
+                        return Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: LumaEmptyState(
+                            icon: Icons.cloud_off_rounded,
+                            title: 'Could not load $_uploadedModel',
+                            subtitle:
+                                '${snapshot.error ?? 'The download failed.'}',
+                          ),
+                        );
+                      }
+                      return WindowsWebview(
+                        key: ValueKey(snapshot.data!.path),
+                        fileUrl: Uri.file(snapshot.data!.path).toString(),
+                      );
+                    },
+                  )
             : const Padding(
                 padding: EdgeInsets.all(24),
                 child: LumaEmptyState(
@@ -145,6 +199,19 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
               ),
             ),
             const SizedBox(height: 12),
+            for (final entry in uploads) ...[
+              ModelButton(
+                model: entry.model,
+                vendor: entry.vendor,
+                description: entry.description,
+                onTap: () => setState(() {
+                  _uploadedModel = entry.model;
+                  _uploadedScene = repo.sceneFile(entry.id);
+                }),
+                isSelected: false,
+              ),
+              const SizedBox(height: 12),
+            ],
             for (final entry in _bundledRackTests) ...[
               ModelButton(
                 model: entry.model,

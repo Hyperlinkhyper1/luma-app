@@ -36,6 +36,44 @@ void main() {
       await seed.delete(recursive: true);
     });
 
+    test(
+      'server rack uploads are listed, editable and served as HTML',
+      () async {
+        final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
+        const id = 'server_rack_demo_high';
+        final bytes = utf8.encode('<html><canvas></canvas></html>');
+        await store.saveUpload(
+          kind: 'server_rack',
+          id: id,
+          model: 'Demo (High)',
+          vendor: 'openai',
+          description: 'A server rack',
+          bytes: bytes,
+        );
+        final entry = (await store.list()).firstWhere((e) => e.id == id);
+        expect(entry.kind, 'server_rack');
+        expect(entry.vendor, 'openai');
+        expect(
+          (await store.editableEntries()).any((e) => e['id'] == id),
+          isTrue,
+        );
+        expect((await store.readScene(id))!.bytes, bytes);
+        await store.saveUpload(
+          kind: 'server_rack',
+          id: id,
+          model: 'Demo (High)',
+          vendor: 'openai',
+          description: 'Edited rack',
+          bytes: null,
+        );
+        expect(
+          (await store.list()).firstWhere((e) => e.id == id).description,
+          'Edited rack',
+        );
+        expect((await store.readScene(id))!.bytes, bytes);
+      },
+    );
+
     test('an upload is listed and served with its vendor', () async {
       final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
       await store.saveUpload(
