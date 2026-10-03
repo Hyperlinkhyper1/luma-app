@@ -1,0 +1,2762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SERVER ARCHITECTURE LAB</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- Three.js and OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --bg-dark: #0a0d12;
+      --panel-bg: rgba(13, 17, 23, 0.88);
+      --panel-border: rgba(48, 54, 61, 0.7);
+      --accent-blue: #38bdf8;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: 'Inter', sans-serif;
+      color: var(--text-main);
+    }
+
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    #webgl-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+    }
+
+    .glass-btn {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(71, 85, 105, 0.6);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-btn:hover {
+      background: rgba(51, 65, 85, 0.9);
+      border-color: rgba(56, 189, 248, 0.8);
+      color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .glass-btn.active {
+      background: rgba(14, 116, 144, 0.5);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+    }
+
+    .glass-btn.danger {
+      border-color: rgba(239, 68, 68, 0.6);
+    }
+    .glass-btn.danger:hover {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+    .glass-btn.danger.active {
+      background: rgba(239, 68, 68, 0.4);
+      border-color: #ef4444;
+      color: #fee2e2;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.6);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.9);
+    }
+
+    .pulse-dot {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Tooltip */
+    #hover-tooltip {
+      position: absolute;
+      pointer-events: none;
+      display: none;
+      z-index: 50;
+      transition: transform 0.05s ease-out;
+    }
+
+    .led-blink-fast {
+      animation: blink 0.3s infinite alternate;
+    }
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      100% { opacity: 1.0; }
+    }
+  </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden">
+
+  <!-- 3D WebGL Canvas Container -->
+  <div id="webgl-container"></div>
+
+  <!-- Hover Tooltip -->
+  <div id="hover-tooltip" class="glass-panel px-3 py-1.5 rounded text-xs font-mono border border-cyan-500/40 shadow-xl">
+    <div id="tooltip-title" class="font-bold text-cyan-400">Component</div>
+    <div id="tooltip-desc" class="text-slate-300 text-[11px]">Details</div>
+  </div>
+
+  <!-- TOP HEADER BAR -->
+  <header class="absolute top-0 left-0 right-0 h-14 glass-panel border-b border-slate-800/80 px-5 flex items-center justify-between z-20">
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-3 h-3 rounded-sm bg-cyan-400 shadow-[0_0_8px_#38bdf8]"></div>
+        <h1 class="text-base font-bold tracking-wider font-mono uppercase bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-300 bg-clip-text text-transparent">
+          SERVER ARCHITECTURE LAB
+        </h1>
+      </div>
+      <div class="hidden md:flex items-center space-x-1.5 text-xs text-slate-400 border-l border-slate-700/60 pl-4 font-mono">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block pulse-dot"></span>
+        <span class="text-emerald-400 font-semibold" id="sys-status">SYS READY</span>
+        <span class="text-slate-600">|</span>
+        <span id="current-view-badge" class="px-2 py-0.5 rounded bg-slate-800 text-sky-400 border border-slate-700 text-[11px]">RACK VIEW (42U)</span>
+      </div>
+    </div>
+
+    <!-- Center Mode Switch -->
+    <div class="flex items-center bg-slate-900/90 p-1 rounded-lg border border-slate-700/70 space-x-1 font-mono text-xs">
+      <button id="btn-mode-rack" class="px-3.5 py-1.5 rounded font-medium transition flex items-center space-x-1.5 active glass-btn">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <span>RACK VIEW</span>
+      </button>
+      <button id="btn-mode-slice" class="px-3.5 py-1.5 rounded font-medium transition flex items-center space-x-1.5 glass-btn">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+        <span>SLICE VIEW</span>
+      </button>
+    </div>
+
+    <!-- Performance Monitor & Comparison Button -->
+    <div class="flex items-center space-x-4 font-mono text-xs">
+      <button id="btn-compare-modal" class="glass-btn px-2.5 py-1 rounded text-cyan-300 border-cyan-600/50 flex items-center space-x-1">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <span>ARCHETYPE MATRIX</span>
+      </button>
+      <div class="bg-slate-900/80 border border-slate-800 rounded px-3 py-1 flex items-center space-x-3 text-[11px] text-slate-400">
+        <div>FPS: <span id="perf-fps" class="text-emerald-400 font-bold">60</span></div>
+        <div>CALLS: <span id="perf-calls" class="text-sky-400 font-bold">--</span></div>
+        <div>TRIS: <span id="perf-tris" class="text-amber-400 font-bold">--</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- LEFT CONTROL PANEL: RACK OVERVIEW & SERVER LIST -->
+  <aside id="left-panel" class="absolute top-16 left-4 bottom-20 w-80 glass-panel rounded-xl border border-slate-800 flex flex-col z-20 shadow-2xl transition-all duration-300">
+    <div class="p-3 border-b border-slate-800/80 flex items-center justify-between">
+      <div class="font-mono text-xs font-semibold text-slate-300 flex items-center space-x-2">
+        <span class="w-2 h-2 bg-sky-400 rounded-sm"></span>
+        <span>RACK ELEVATION (42U)</span>
+      </div>
+      <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider">EIA-310-D Standard</span>
+    </div>
+
+    <!-- Camera Presets for Rack or Slice -->
+    <div class="p-2 border-b border-slate-800/60 bg-slate-950/40">
+      <div class="text-[10px] font-mono text-slate-400 mb-1.5 uppercase font-semibold">Camera Presets</div>
+      <div id="rack-camera-presets" class="grid grid-cols-2 gap-1 text-[11px] font-mono">
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="rack-front">FULL RACK FRONT</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left active" data-cam="rack-34">FULL RACK 3/4</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="rack-side">FULL RACK SIDE</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="rack-rear">FULL RACK REAR</button>
+      </div>
+      <div id="slice-camera-presets" class="hidden grid grid-cols-2 gap-1 text-[11px] font-mono">
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="slice-whole">WHOLE SLICE</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="slice-top">TOP DOWN</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="slice-34">3/4 CAD VIEW</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="slice-front">FRONT INTERNALS</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="slice-rear">REAR I/O &amp; PSUs</button>
+        <button class="cam-preset glass-btn px-2 py-1 rounded text-left" data-cam="slice-cpu">CPU + MEMORY</button>
+      </div>
+    </div>
+
+    <!-- Rack Server List / Slice Navigator -->
+    <div id="rack-list-container" class="flex-1 overflow-y-auto p-2 space-y-1.5">
+      <!-- Populated dynamically via JS -->
+    </div>
+
+    <!-- Slice Navigator (visible in Slice mode) -->
+    <div id="slice-nav-container" class="hidden p-3 border-t border-slate-800/80 bg-slate-950/60 space-y-2">
+      <div class="flex items-center justify-between text-xs font-mono">
+        <button id="btn-prev-server" class="glass-btn px-2.5 py-1 rounded hover:text-cyan-400 flex items-center space-x-1">
+          <span>&larr; PREV</span>
+        </button>
+        <span id="slice-nav-counter" class="text-slate-400 font-bold">01 / 07</span>
+        <button id="btn-next-server" class="glass-btn px-2.5 py-1 rounded hover:text-cyan-400 flex items-center space-x-1">
+          <span>NEXT &rarr;</span>
+        </button>
+      </div>
+      <button id="btn-return-rack" class="w-full glass-btn py-1.5 rounded text-xs font-mono text-cyan-300 font-semibold border-cyan-500/40 flex items-center justify-center space-x-2">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"/></svg>
+        <span>RETURN TO RACK</span>
+      </button>
+    </div>
+
+    <!-- Rack Power & Heat Telemetry Footprint -->
+    <div id="rack-telemetry-box" class="p-3 border-t border-slate-800/80 bg-slate-950/80 text-xs font-mono space-y-1.5">
+      <div class="flex items-center justify-between text-slate-400">
+        <span>RACK TOTAL LOAD</span>
+        <span id="rack-power-total" class="font-bold text-amber-400">12.7 kW</span>
+      </div>
+      <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+        <div id="rack-power-bar" class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 63%"></div>
+      </div>
+      <div class="flex items-center justify-between text-[11px] text-slate-500">
+        <span>THERMAL DISSIPATION</span>
+        <span id="rack-heat-total" class="text-orange-400">43,330 BTU/hr</span>
+      </div>
+      <p class="text-[10px] text-slate-500 leading-tight pt-1 border-t border-slate-900">
+        *100% of consumed server power converts to heat. Datacenter HVAC requires 1.0 kW chill per kW server load (PUE 1.15).
+      </p>
+    </div>
+  </aside>
+
+  <!-- RIGHT DETAIL PANEL: SELECTED SERVER & COMPONENT INSPECTOR -->
+  <aside id="right-panel" class="absolute top-16 right-4 bottom-20 w-96 glass-panel rounded-xl border border-slate-800 flex flex-col z-20 shadow-2xl transition-all duration-300">
+    <div class="p-3 border-b border-slate-800/80 flex items-center justify-between">
+      <div class="flex items-center space-x-2 font-mono text-xs font-semibold text-slate-200">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        <span id="info-server-title">AI COMPUTE NODE</span>
+      </div>
+      <span id="info-server-u" class="px-2 py-0.5 rounded bg-sky-950 border border-sky-800/80 text-cyan-300 font-mono text-[11px]">U39-U42 (4U)</span>
+    </div>
+
+    <!-- Inspector Tabs -->
+    <div class="flex border-b border-slate-800/60 font-mono text-xs">
+      <button class="tab-btn flex-1 py-2 text-center border-b-2 border-cyan-400 text-cyan-300 font-medium active" data-tab="tab-specs">SPECS</button>
+      <button class="tab-btn flex-1 py-2 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200" data-tab="tab-health">TELEMETRY</button>
+      <button class="tab-btn flex-1 py-2 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200" data-tab="tab-arch">ARCH EXPLANATION</button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-3 space-y-3 font-mono text-xs">
+      
+      <!-- TAB 1: SYSTEM SPECS & SELECTED COMPONENT -->
+      <div id="tab-specs" class="space-y-3">
+        <!-- Action Button to Inspect Slice -->
+        <button id="btn-action-inspect" class="w-full glass-btn py-2 rounded-lg text-sm font-semibold text-sky-300 border-sky-500/60 shadow-lg hover:border-sky-400 flex items-center justify-center space-x-2">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          <span>INSPECT SLICE (OPEN INTERNALS)</span>
+        </button>
+
+        <!-- Selected Component Deep Dive Box -->
+        <div class="p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/80 space-y-1.5">
+          <div class="flex items-center justify-between text-[11px] text-cyan-400 uppercase font-bold border-b border-slate-800 pb-1">
+            <span id="comp-name">Component: CPU Socket 1</span>
+            <span id="comp-role" class="text-slate-400 text-[10px]">Processing</span>
+          </div>
+          <div class="text-[11px] text-slate-300 space-y-1 pt-0.5">
+            <div class="flex justify-between"><span class="text-slate-500">Architecture:</span> <span id="comp-arch" class="text-slate-200">64-Core Enterprise x86_64</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Power TDP:</span> <span id="comp-power" class="text-amber-400">350W</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Thermal Solution:</span> <span id="comp-cooling" class="text-slate-200">Passive Extruded Copper/Al Fin</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Bus / Interface:</span> <span id="comp-bus" class="text-slate-200">128 PCIe Gen5 Lanes / 8-Ch DDR5</span></div>
+          </div>
+          <div id="comp-notes" class="text-[10px] text-slate-400 italic bg-slate-950 p-1.5 rounded mt-1 border border-slate-800/80">
+            Click any component inside Slice Mode to probe its technical parameters.
+          </div>
+        </div>
+
+        <!-- System Architecture Overview -->
+        <div class="space-y-1.5 text-[11px]">
+          <div class="text-slate-400 uppercase font-semibold text-[10px]">Hardware Configuration</div>
+          <div class="bg-slate-950/60 p-2.5 rounded border border-slate-800 space-y-1">
+            <div class="flex justify-between"><span class="text-slate-500">Processors:</span> <span id="spec-cpu" class="text-slate-200">2x High-TDP Server CPUs</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Accelerators:</span> <span id="spec-gpu" class="text-slate-200">8x SXM High-Density GPUs</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">System Memory:</span> <span id="spec-ram" class="text-slate-200">1024 GB ECC DDR5 RDIMM</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Storage Subsystem:</span> <span id="spec-storage" class="text-slate-200">8x 3.84TB NVMe U.3 Hot-Swap</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Network Interfaces:</span> <span id="spec-network" class="text-slate-200">Dual 200GbE QSFP56 + 1GbE BMC</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Power Delivery:</span> <span id="spec-psu" class="text-slate-200">4x 3000W Titanium Redundant (2+2)</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Cooling Scheme:</span> <span id="spec-fan" class="text-slate-200">8x 80mm Counter-Rotating PWM</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: LIVE TELEMETRY & FAILURE SIMULATION -->
+      <div id="tab-health" class="hidden space-y-3">
+        <div class="bg-slate-950/70 p-2.5 rounded border border-slate-800 space-y-2">
+          <div class="text-[10px] text-slate-400 uppercase font-bold flex justify-between">
+            <span>Live BMC Environmental Sensors</span>
+            <span class="text-emerald-400 font-normal">POLL: 1000ms</span>
+          </div>
+
+          <!-- Gauges -->
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
+              <span class="text-slate-500 block text-[10px]">CPU 1 TEMP</span>
+              <span id="tel-cpu1" class="text-base font-bold text-emerald-400">62°C</span>
+            </div>
+            <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
+              <span class="text-slate-500 block text-[10px]">CPU 2 TEMP</span>
+              <span id="tel-cpu2" class="text-base font-bold text-emerald-400">65°C</span>
+            </div>
+            <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
+              <span class="text-slate-500 block text-[10px]">ACCEL / GPU TEMP</span>
+              <span id="tel-gpu" class="text-base font-bold text-cyan-400">74°C</span>
+            </div>
+            <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
+              <span class="text-slate-500 block text-[10px]">FAN WALL SPEED</span>
+              <span id="tel-fan" class="text-base font-bold text-sky-400">11,400 RPM</span>
+            </div>
+            <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
+              <span class="text-slate-500 block text-[10px]">SYSTEM POWER DRAW</span>
+              <span id="tel-power" class="text-base font-bold text-amber-400">7.2 kW</span>
+            </div>
+            <div class="bg-slate-900 p-1.5 rounded border border-slate-800">
+              <span class="text-slate-500 block text-[10px]">NETWORK THROUGHPUT</span>
+              <span id="tel-net" class="text-base font-bold text-indigo-400">168 Gb/s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Failure Simulation Engine -->
+        <div class="space-y-1.5">
+          <div class="text-[10px] text-slate-400 uppercase font-semibold flex items-center justify-between">
+            <span>Inject Hardware Fault</span>
+            <span id="fault-active-badge" class="hidden text-red-400 font-bold bg-red-950 px-1.5 py-0.2 rounded border border-red-800">FAULT ACTIVE</span>
+          </div>
+          <div class="grid grid-cols-1 gap-1 text-[11px]">
+            <button id="btn-fail-fan" class="fail-btn glass-btn danger px-2.5 py-1.5 rounded text-left flex justify-between items-center" data-type="fan">
+              <span>FAN 3 ROTOR FAILURE</span>
+              <span class="text-[10px] text-slate-400">Thermal Compensate</span>
+            </button>
+            <button id="btn-fail-psu" class="fail-btn glass-btn danger px-2.5 py-1.5 rounded text-left flex justify-between items-center" data-type="psu">
+              <span>PSU 1 FEED POWER LOSS</span>
+              <span class="text-[10px] text-slate-400">Failover to Feed B</span>
+            </button>
+            <button id="btn-fail-drive" class="fail-btn glass-btn danger px-2.5 py-1.5 rounded text-left flex justify-between items-center" data-type="drive">
+              <span>NVMe DRIVE 04 MEDIA ERROR</span>
+              <span class="text-[10px] text-slate-400">RAID Degraded</span>
+            </button>
+            <button id="btn-fail-gpu" class="fail-btn glass-btn danger px-2.5 py-1.5 rounded text-left flex justify-between items-center" data-type="gpu">
+              <span>GPU 2 THERMAL THROTTLE</span>
+              <span class="text-[10px] text-slate-400">Fans 100% Boost</span>
+            </button>
+            <button id="btn-fail-net" class="fail-btn glass-btn danger px-2.5 py-1.5 rounded text-left flex justify-between items-center" data-type="net">
+              <span>QSFP PHY LINK LOSS (PORT 0)</span>
+              <span class="text-[10px] text-slate-400">LACP Rebalance</span>
+            </button>
+          </div>
+          <button id="btn-clear-faults" class="w-full glass-btn py-1 text-slate-400 hover:text-white rounded text-[11px] mt-1">
+            CLEAR ALL INJECTED FAULTS
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 3: ARCHITECTURE REASONING -->
+      <div id="tab-arch" class="hidden space-y-2.5">
+        <div class="bg-slate-950/70 p-3 rounded border border-slate-800 space-y-2">
+          <div class="text-xs font-bold text-sky-400" id="arch-design-title">GPU Accelerator Architecture Rationale</div>
+          <p id="arch-design-desc" class="text-[11px] text-slate-300 leading-relaxed">
+            GPU accelerator clusters operate at extreme thermal and electrical densities (up to 700W per module). A 4U chassis allows unobstructed front-to-rear laminar airflow across heavy copper fin stacks. Power supplies are quadrupled (2+2 redundant) with solid copper busbars to minimize resistive voltage drop across the 12V/48V domain.
+          </p>
+          <div class="border-t border-slate-800/80 pt-2 space-y-1">
+            <div class="text-[10px] text-slate-400 uppercase font-semibold">Engineering Priorities</div>
+            <ul id="arch-priorities" class="list-disc list-inside text-[11px] text-slate-300 space-y-0.5">
+              <li>Low static pressure drop over accelerator fin-arrays</li>
+              <li>Dual-root PCIe Gen5 switch tree minimizing CPU-GPU latency</li>
+              <li>Inter-GPU NVLink mesh delivering 900 GB/s cross-card bandwidth</li>
+              <li>High-amperage titanium power redundancy (N+N failover)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- BOTTOM CONTROL TOOLBAR -->
+  <nav class="absolute bottom-3 left-1/2 -translate-x-1/2 glass-panel rounded-xl px-3 py-2 border border-slate-800/90 z-20 shadow-2xl flex items-center space-x-2 font-mono text-xs">
+    
+    <!-- View Switcher -->
+    <div class="flex items-center space-x-1 pr-2 border-r border-slate-700/80">
+      <button id="tb-rack" class="glass-btn px-2.5 py-1.5 rounded active">RACK</button>
+      <button id="tb-slice" class="glass-btn px-2.5 py-1.5 rounded">SLICE</button>
+    </div>
+
+    <!-- Slice Inspection Controls (only active or visible when relevant) -->
+    <div class="flex items-center space-x-1 pr-2 border-r border-slate-700/80">
+      <button id="tb-cover" class="glass-btn px-2.5 py-1.5 rounded flex items-center space-x-1" title="Toggle Top Chassis Sheet Metal Cover">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <span>OPEN COVER</span>
+      </button>
+      <button id="tb-cutaway" class="glass-btn px-2.5 py-1.5 rounded flex items-center space-x-1" title="Toggle Transparent Chassis Sidewalls">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+        <span>CUTAWAY</span>
+      </button>
+      <button id="tb-explode" class="glass-btn px-2.5 py-1.5 rounded flex items-center space-x-1" title="Explode Hardware Layers into CAD Stack">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+        <span>EXPLODE</span>
+      </button>
+    </div>
+
+    <!-- Visualizer Toggles -->
+    <div class="flex items-center space-x-1 pr-2 border-r border-slate-700/80">
+      <button id="tb-airflow" class="glass-btn px-2.5 py-1.5 rounded flex items-center space-x-1" title="Visualize Thermal Airflow Streams">
+        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+        <span>AIRFLOW</span>
+      </button>
+      <button id="tb-power" class="glass-btn px-2.5 py-1.5 rounded flex items-center space-x-1" title="Visualize Dual Redundant Power Flow">
+        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+        <span>POWER</span>
+      </button>
+      <button id="tb-data" class="glass-btn px-2.5 py-1.5 rounded flex items-center space-x-1" title="Visualize PCIe/SAS/DDR Data Paths">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>DATA</span>
+      </button>
+    </div>
+
+    <!-- Rack Doors & Sides Toggle (Full Rack only) -->
+    <div id="rack-panel-toggles" class="flex items-center space-x-1 pr-2 border-r border-slate-700/80">
+      <button id="tb-sides" class="glass-btn px-2 py-1.5 rounded text-[11px]" title="Toggle Outer Rack Side Panels">
+        SIDES: <span id="lbl-sides" class="text-emerald-400 font-bold">ON</span>
+      </button>
+      <button id="tb-pdu" class="glass-btn px-2 py-1.5 rounded text-[11px]" title="Highlight Redundant Vertical PDUs">
+        PDUs: <span id="lbl-pdu" class="text-sky-400 font-bold">A/B</span>
+      </button>
+    </div>
+
+    <!-- Reset State Button -->
+    <button id="tb-reset" class="glass-btn px-3 py-1.5 rounded text-rose-300 hover:text-white flex items-center space-x-1">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      <span>RESET</span>
+    </button>
+  </nav>
+
+  <!-- MODAL: ARCHETYPE COMPARISON MATRIX -->
+  <div id="compare-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-6">
+    <div class="glass-panel w-full max-w-4xl max-h-[85vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-3 h-3 bg-cyan-400 rounded-sm"></div>
+          <h2 class="font-mono font-bold text-sm text-white tracking-wider">ENTERPRISE SERVER ARCHETYPE COMPARISON MATRIX</h2>
+        </div>
+        <button id="btn-close-modal" class="text-slate-400 hover:text-white font-mono text-lg px-2 py-1">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-6 text-xs font-mono">
+        <p class="text-slate-400 text-[11px] leading-relaxed">
+          In high-scale enterprise datacenters, hardware configurations are strictly specialized for workload characteristics rather than general-purpose overprovisioning. Compare the architectural trade-offs across compute, memory hierarchy, thermal dissipation, and I/O topology below.
+        </p>
+
+        <!-- Comparison Table with Bars -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 text-[11px]">
+                <th class="py-2 px-3">ARCHETYPE</th>
+                <th class="py-2 px-3">U SIZE</th>
+                <th class="py-2 px-3">COMPUTE (CPU)</th>
+                <th class="py-2 px-3">ACCELERATION</th>
+                <th class="py-2 px-3">RAM CAPACITY</th>
+                <th class="py-2 px-3">STORAGE DENSITY</th>
+                <th class="py-2 px-3">NETWORKING</th>
+                <th class="py-2 px-3">POWER / COOLING</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-tbody" class="divide-y divide-slate-800/60 text-[11px]">
+              <!-- Dynamic rows loaded via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+            <h4 class="font-bold text-sky-400 text-xs mb-1">Thermal &amp; Power Laws in Datacenters</h4>
+            <p class="text-[11px] text-slate-400 leading-normal">
+              Server efficiency is governed by resistive line loss (P = I²R) and acoustic fan affinity laws (P_fan ∝ RPM³). 4U designs use deep front-to-rear plenum chambers allowing larger diameter fans (80mm vs 40mm) to deliver greater volumetric CFM at lower RPM and substantially higher static pressure.
+            </p>
+          </div>
+          <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+            <h4 class="font-bold text-emerald-400 text-xs mb-1">Bus Redundancy &amp; Failure Domains</h4>
+            <p class="text-[11px] text-slate-400 leading-normal">
+              Enterprise platforms separate power feeds into A-side and B-side utility lines with dual automatic transfer switches (ATS). Storage servers decouple compute controllers from SAS backplanes via dual-ported expanders to guarantee non-disruptive hot-swap maintenance.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APPLICATION LOGIC IN JAVASCRIPT MODULE -->
+  <script type="module">
+    // --- ENTERPRISE SERVER ARCHITECTURAL DATA DEFINITIONS ---
+    const ARCHETYPES = [
+      {
+        id: 'gpu-node',
+        name: 'AI COMPUTE NODE',
+        archetype: 'GPU / AI Accelerator',
+        rackPos: 'U39-U42',
+        uHeight: 4,
+        startU: 39,
+        endU: 42,
+        purpose: 'Deep learning neural training, LLM inference & accelerator computing',
+        powerTypical: 7.2, // kW
+        heatBtu: 24566,
+        specs: {
+          cpu: '2x 64-Core High-TDP Server CPUs (350W TDP each)',
+          gpu: '8x SXM5/OAM Accelerator Modules (700W each, NVLink Mesh)',
+          ram: '1024 GB (16x 64GB DDR5-5600 ECC RDIMM)',
+          storage: '8x 3.84TB NVMe Gen5 U.3 SSDs (Hot-Swap Front Matrix)',
+          network: '4x 200Gb/s QSFP56 InfiniBand + 2x 25GbE LOM + BMC',
+          psu: '4x 3000W 80-Plus Titanium Redundant (2+2 Grid A/B)',
+          cooling: '8x 80mm Counter-Rotating PWM Fans (18,000 max RPM)'
+        },
+        designTitle: 'GPU Accelerator Architecture Rationale',
+        designDesc: 'SXM/OAM GPU platforms dissipate over 6-8 kW per chassis. A 4U chassis depth creates a direct aerodynamic channel where high-pressure fans force ambient intake air directly through massive copper vapor chambers on the GPUs before exhausting through rear perforated grilles. Dual busbars supply 48V/12V rails directly from four PSUs to prevent PCB copper trace burnout.',
+        priorities: [
+          'High static pressure airflow for 700W GPU fin-stacks',
+          'Inter-GPU 900 GB/s NVLink interconnect mesh topology',
+          'Heavy 4-way redundant Titanium power delivery (2+2 feed isolation)',
+          'PCIe Gen5 switch topology linking Host CPUs directly to accelerators'
+        ],
+        ratings: { cpu: 85, gpu: 100, ram: 75, storage: 60, net: 95, pwr: 100 }
+      },
+      {
+        id: 'virt-node',
+        name: 'VIRTUALIZATION HYPERVISOR',
+        archetype: 'Virtualization & Private Cloud',
+        rackPos: 'U37-U38',
+        uHeight: 2,
+        startU: 37,
+        endU: 38,
+        purpose: 'High-density multi-tenant virtual machines, hyper-converged containers & ESXi',
+        powerTypical: 1.1,
+        heatBtu: 3753,
+        specs: {
+          cpu: '2x 96-Core High-Density Virtualization CPUs (300W)',
+          gpu: 'None / 1x Low-Profile Management Accelerator',
+          ram: '2048 GB (32x 64GB DDR5-4800 2DPC All Channels Populated)',
+          storage: '8x 1.92TB Enterprise SATA/SAS SSDs (Hardware RAID-10)',
+          network: 'Dual-Port 100GbE QSFP28 + Quad 10GbE SFP+ NIC',
+          psu: '2x 1600W Platinum Redundant (1+1 Feed A/B)',
+          cooling: '6x 60mm Dual-Rotor Hot-Swap Fan Modules'
+        },
+        designTitle: 'Virtualization & Memory Density Rationale',
+        designDesc: 'Virtualization hosts are primarily memory- and core-constrained rather than accelerator-constrained. The 2U form factor permits 32 full-length DIMM slots arrayed across 16 memory channels per socket. Large extruded aluminum fin heat sinks provide ample passive heat removal from CPUs without sacrificing PCIe riser clearance.',
+        priorities: [
+          'Extreme memory capacity (32 DIMMs) to maximize VM-to-host density',
+          'Extensive SR-IOV network partitioning via dual 100GbE ports',
+          'Hot-swap fan modules serviceable without opening cover',
+          'High memory bandwidth with balanced dual-socket channel routing'
+        ],
+        ratings: { cpu: 95, gpu: 20, ram: 100, storage: 55, net: 85, pwr: 50 }
+      },
+      {
+        id: 'compute-1',
+        name: 'GENERAL PURPOSE COMPUTE 01',
+        archetype: 'Balanced Compute Node',
+        rackPos: 'U36',
+        uHeight: 1,
+        startU: 36,
+        endU: 36,
+        purpose: 'Front-end web servers, microservice meshes, REST APIs & caching layers',
+        powerTypical: 0.7,
+        heatBtu: 2388,
+        specs: {
+          cpu: '2x 32-Core Server CPUs (205W TDP each)',
+          gpu: 'None (Integrated AST2600 2D Video)',
+          ram: '512 GB (16x 32GB DDR5-5600 1DPC)',
+          storage: '4x 3.5" or 8x 2.5" Hot-Swap SAS/SATA Bays (Front)',
+          network: '2x 25GbE SFP28 LOM + 1GbE Management Port',
+          psu: '2x 800W Titanium Redundant 1U Slim PSUs',
+          cooling: '5x 40mm High-RPM Counter-Rotating Dual Fans'
+        },
+        designTitle: 'Balanced 1U Compute Rationale',
+        designDesc: '1U general compute maximizes horizontal rack density. Every millimeter is utilized: the front bay accepts 4x 3.5-inch or 8x 2.5-inch drives, followed immediately by a high-speed 40mm fan bank, dual sockets with low-profile copper-base heatsinks, and compact PCIe riser assemblies feeding rear I/O.',
+        priorities: [
+          'Optimal cost-to-performance ratio across standard datacenter workloads',
+          'Symmetric memory channels configured for 1 DIMM per channel (1DPC)',
+          'Slim redundant 1U power supply bays accessible from rear cold aisle',
+          'Rapid rail deployment with toolless slide-in latches'
+        ],
+        ratings: { cpu: 75, gpu: 10, ram: 65, storage: 50, net: 65, pwr: 40 }
+      },
+      {
+        id: 'compute-2',
+        name: 'GENERAL PURPOSE COMPUTE 02',
+        archetype: 'Balanced Compute Node',
+        rackPos: 'U35',
+        uHeight: 1,
+        startU: 35,
+        endU: 35,
+        purpose: 'Secondary compute node, container orchestration & stateless tasks',
+        powerTypical: 0.7,
+        heatBtu: 2388,
+        specs: {
+          cpu: '2x 32-Core Server CPUs (205W TDP each)',
+          gpu: 'None',
+          ram: '512 GB (16x 32GB DDR5-5600 1DPC)',
+          storage: '4x 3.5" Enterprise SAS Hard Drives',
+          network: '2x 25GbE SFP28 + Dedicated BMC',
+          psu: '2x 800W Titanium Redundant 1U Slim PSUs',
+          cooling: '5x 40mm Counter-Rotating Dual Fans'
+        },
+        designTitle: 'Scale-Out Modular Compute',
+        designDesc: 'Identical specification to Compute Node 01, representing horizontally scalable server farms. Deploying symmetric 1U nodes simplifies spare parts inventory, firmware image deployment, and automated BMC management profiles.',
+        priorities: [
+          'Interchangeable field replaceable units (FRUs)',
+          'Uniform power draw distribution across PDU phases',
+          'Predictable front-to-back acoustic profile'
+        ],
+        ratings: { cpu: 75, gpu: 10, ram: 65, storage: 50, net: 65, pwr: 40 }
+      },
+      {
+        id: 'storage-node',
+        name: 'HIGH-DENSITY STORAGE SERVER',
+        archetype: 'Storage & Archival Vault',
+        rackPos: 'U31-U34',
+        uHeight: 4,
+        startU: 31,
+        endU: 34,
+        purpose: 'Object storage, scale-out Ceph/ZFS pools, backup tiers & big-data lakes',
+        powerTypical: 1.0,
+        heatBtu: 3412,
+        specs: {
+          cpu: '1x or 2x 24-Core Storage-Optimized CPUs (165W)',
+          gpu: 'None',
+          ram: '256 GB ECC DDR5 (Optimized for ZFS ARC cache)',
+          storage: '24x 3.5" 22TB Enterprise SAS-3 Drives (528TB Raw)',
+          network: 'Dual-Port 100GbE RDMA (RoCEv2) for NVMe-oF / iSCSI',
+          psu: '2x 1200W Platinum Redundant PSUs',
+          cooling: '4x 80mm Intermediate Mid-Chassis Fan Wall'
+        },
+        designTitle: 'Storage Backplane Architecture Rationale',
+        designDesc: 'The front 60% of the chassis is completely dominated by 24 hot-swappable 3.5-inch drive bays organized in a 4x6 matrix. A massive 12Gb/s SAS backplane PCB bridges the drives to rear LSI/Broadcom HBA controllers via high-density SFF-8643 cables. The fan wall sits behind the backplane to pull air across the drive caddies.',
+        priorities: [
+          'Direct SAS backplane signal integrity with dual-expander redundancy',
+          'Vibration-damped drive trays to prevent rotational spindle acoustic interference',
+          'Dedicated HBA host controllers with high PCIe throughput to CPU',
+          'Sustained cold-to-hot aisle airflow despite high static resistance of 24 drives'
+        ],
+        ratings: { cpu: 60, gpu: 0, ram: 50, storage: 100, net: 80, pwr: 45 }
+      },
+      {
+        id: 'network-appliance',
+        name: 'TOP-OF-RACK SWITCH / APPLIANCE',
+        archetype: 'Network Appliance',
+        rackPos: 'U30',
+        uHeight: 1,
+        startU: 30,
+        endU: 30,
+        purpose: 'Spine-leaf interconnect, packet filtering, BGP routing & load balancing',
+        powerTypical: 0.4,
+        heatBtu: 1364,
+        specs: {
+          cpu: '1x Embedded 16-Core Network Processing Unit + ASIC Switch Engine',
+          gpu: 'None',
+          ram: '64 GB High-Speed ECC Memory',
+          storage: '2x 480GB M.2 NVMe Boot Drives (Internal)',
+          network: '32x 100GbE QSFP28 Ports + 2x 10GbE SFP+ + Out-of-Band Mgt',
+          psu: '2x 550W High-Efficiency AC/DC Hot-Swap PSUs',
+          cooling: '4x 40mm High-Velocity Front-to-Back Fans'
+        },
+        designTitle: 'High-Density Network ASIC Topology',
+        designDesc: 'Engineered for microsecond packet switching and massive network bandwidth. Front panel is completely filled with high-density optical transceiver cages (QSFP28) wired directly to a center-mounted silicon packet ASIC covered by a wide horizontal heatsink.',
+        priorities: [
+          'Ultra-low packet serialization latency across 3.2 Tbps aggregate bandwidth',
+          'Front-to-back or back-to-front reversible airflow options',
+          'Redundant hot-swappable power feeds from Dual PDUs'
+        ],
+        ratings: { cpu: 50, gpu: 0, ram: 30, storage: 20, net: 100, pwr: 30 }
+      },
+      {
+        id: 'db-node',
+        name: 'IN-MEMORY DATABASE SERVER',
+        archetype: 'Database / High-Memory',
+        rackPos: 'U28-U29',
+        uHeight: 2,
+        startU: 28,
+        endU: 29,
+        purpose: 'Transactional SQL/NoSQL databases, in-memory Redis/SAP HANA & low-latency analytics',
+        powerTypical: 1.6,
+        heatBtu: 5460,
+        specs: {
+          cpu: '2x 64-Core High-Frequency Database CPUs (350W TDP)',
+          gpu: 'None',
+          ram: '2048 GB (32x 64GB DDR5-5600 Low-Latency RDIMMs)',
+          storage: '16x 7.68TB Enterprise NVMe Gen5 U.2 SSDs',
+          network: 'Quad-Port 25GbE + Dual-Port 100GbE RoCEv2',
+          psu: '2x 2000W Titanium Redundant PSUs',
+          cooling: '6x 60mm High-Performance Fan Modules'
+        },
+        designTitle: 'Ultra-Low Latency Database Topology',
+        designDesc: 'Designed to eliminate storage and memory bottlenecks. Pure NVMe storage bays connect through direct PCIe Gen5 traces without HBA translation latency. The memory array surrounds both CPUs in a symmetrical layout to maximize NUMA bandwidth for in-memory transactional processing.',
+        priorities: [
+          'Direct CPU PCIe lane allocation to NVMe bays for sub-10 microsecond I/O',
+          '32-DIMM dual-socket architecture tuned for NUMA memory affinity',
+          'Heavy copper fin cooling to sustain maximum all-core turbo frequencies',
+          'Redundant NVMe dual-controller failover paths'
+        ],
+        ratings: { cpu: 90, gpu: 10, ram: 95, storage: 85, net: 90, pwr: 70 }
+      }
+    ];
+
+    // Standard Rack Dimensions (1U = 44.45mm -> scaled in our 3D world: 1U = 1.0 units)
+    // 1U = 1.0 unit = 44.45 mm
+    // Rack Width = 19" EIA standard = 482.6 mm = ~10.85 units
+    // Rack Depth = 1000 mm = ~22.5 units
+    // Rack Height = 42U = 42.0 units (+ frames = ~44.5 units)
+    const SCALE_U = 1.0;
+    const RACK_W = 11.0;
+    const RACK_D = 22.0;
+    const RACK_H_UNITS = 42;
+
+    // Component Database for Click Probing
+    const COMPONENT_DETAILS = {
+      'cpu': {
+        name: 'Host Processor (CPU Socket)',
+        role: 'Central Processing & Memory Controller',
+        arch: 'Enterprise x86-64 / 64-96 Cores / AVX-512',
+        power: '280W - 350W TDP',
+        cooling: 'High-Density Aluminum/Copper Vapor-Chamber Heatsink',
+        bus: '128 PCIe Gen 5.0 Lanes / 8-Channel DDR5',
+        notes: 'Aligned directly in laminar wind tunnel behind fan wall for maximum thermal transfer.'
+      },
+      'gpu': {
+        name: 'SXM / OAM Accelerator Module',
+        role: 'Matrix Tensor Math & AI Acceleration',
+        arch: 'High-Density Accelerator / 16,896 CUDA/Tensor Cores',
+        power: '700W Peak Dissipation',
+        cooling: 'Heavy Multi-Heatpipe Direct-Contact Copper Heat Sink',
+        bus: 'PCIe Gen5 x16 Host Link + 900 GB/s NVLink Mesh',
+        notes: 'Primary heat source in modern AI datacenters. Requires >120 CFM airflow per accelerator.'
+      },
+      'dimm': {
+        name: 'ECC Registered DDR5 DIMM',
+        role: 'High-Bandwidth Primary System Memory',
+        arch: '32GB - 64GB DDR5-5600 Registered RDIMM with On-Die ECC',
+        power: '12W - 15W per Module',
+        cooling: 'Passive Aluminum Heat Spreader + Airflow',
+        bus: '80-bit Wide Memory Channel with Parity / Sideband',
+        notes: 'Arranged symmetrically in memory channel banks (A1-D2, E1-H2) adjacent to CPU sockets.'
+      },
+      'fan': {
+        name: 'Hot-Swap Counter-Rotating PWM Fan Module',
+        role: 'Chassis Airflow & Thermal Management',
+        arch: 'Dual-Rotor 12V 4.5A Brushless Motor',
+        power: '45W per Dual Fan at Full Speed',
+        cooling: 'Self-Cooling Hydrodynamic Fluid Bearings',
+        bus: '4-Pin PWM Tachometer / BMC Fan Bus Control',
+        notes: 'Dual counter-rotating impellers cancel rotational swirl to boost static pressure through dense fin-stacks.'
+      },
+      'psu': {
+        name: 'Common Redundant Power Supply (CRPS)',
+        role: 'AC/DC Mains Rectification & 12V Distribution',
+        arch: '80-Plus Titanium Efficiency (>96% at 50% load)',
+        power: '800W - 3000W Output (Single 12V Rail)',
+        cooling: 'Integrated Internal 40mm Exhaust Fan',
+        bus: 'PMBus / I2C Telemetry to Baseboard Management Controller',
+        notes: 'Provides N+1 or N+N grid redundancy. Connects to dual independent rack PDUs (Feeds A and B).'
+      },
+      'storage': {
+        name: 'Enterprise NVMe / SAS Hot-Swap Drive',
+        role: 'Persistent Storage Subsystem',
+        arch: 'U.3 NVMe Gen5 TLC SSD / 3.5" High-Capacity SAS HDD',
+        power: '8W (SSD) to 12W (HDD Spin-up)',
+        cooling: 'Airflow through Caddy Perforated Faceplate',
+        bus: 'Dual-Port SAS-3 12Gb/s or PCIe 5.0 x4',
+        notes: 'Spring-loaded locking lever ensures blind-mate connection to internal backplane PCB.'
+      },
+      'backplane': {
+        name: 'High-Speed SAS / NVMe Storage Backplane',
+        role: 'Drive Signal Distribution & Power Midplane',
+        arch: 'Multi-layer High-Tg Low-Loss FR4 PCB',
+        power: 'Power delivery to all front drive bays',
+        cooling: 'Passive, sits between drive cage and fan wall',
+        bus: 'Mini-SAS HD (SFF-8643) / SlimSAS PCIe 4.0/5.0 Traces',
+        notes: 'Integrates SAS expander ICs and hot-swap controller circuitry for drive insertion protection.'
+      },
+      'pcie': {
+        name: 'PCIe Gen5 Riser & Expansion Card',
+        role: 'High-Speed I/O & Networking Subsystem',
+        arch: 'PCIe 5.0 x16 Riser Card with 200GbE / InfiniBand NIC',
+        power: '25W - 75W (Slot Power Limit)',
+        cooling: 'Rear Chassis Exhaust Airflow',
+        bus: 'PCIe Gen 5 (32 GT/s per Lane)',
+        notes: 'Elevates full-height PCIe cards horizontally to fit within 1U/2U rack chassis height limits.'
+      },
+      'pdu': {
+        name: 'Rack Zero-U Vertical Power Distribution Unit',
+        role: 'Three-Phase Datacenter Power Distribution',
+        arch: '30A 208V 3-Phase Delta / Wye PDU with C13/C19 Outlets',
+        power: 'Up to 17.3 kW Capacity per PDU',
+        cooling: 'Passive Ambient Convection',
+        bus: 'SNMP / Modbus-TCP Network Management',
+        notes: 'Mounted vertically along rear rack uprights (PDU A on left, PDU B on right) for feed redundancy.'
+      }
+    };
+
+    // --- APPLICATION STATE ---
+    const state = {
+      viewMode: 'rack', // 'rack' | 'slice'
+      selectedServerIndex: 0,
+      hoveredServerIndex: -1,
+      hoveredComponent: null,
+      selectedComponent: 'cpu',
+      coverOpen: false,
+      cutawayActive: false,
+      explodedActive: false,
+      airflowActive: false,
+      powerActive: false,
+      dataActive: false,
+      sidesVisible: true,
+      pduHighlighted: false,
+      faults: {
+        fan: false,
+        psu: false,
+        drive: false,
+        gpu: false,
+        net: false
+      },
+      isTransitioning: false,
+      transitionProgress: 0,
+      telemetryTimer: 0,
+      activeTab: 'tab-specs'
+    };
+
+    // --- THREE.JS SCENE SETUP ---
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0c0f14);
+    scene.fog = new THREE.FogExp2(0x0c0f14, 0.012);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 300);
+    camera.position.set(22, 28, 36);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxDistance = 140;
+    controls.minDistance = 3.0;
+    controls.target.set(0, 21, 0);
+
+    // --- LIGHTING SETUP (Technical CAD / Studio Lighting) ---
+    const hemiLight = new THREE.HemisphereLight(0xecf8ff, 0x111622, 0.65);
+    scene.add(hemiLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight1.position.set(30, 45, 35);
+    dirLight1.castShadow = true;
+    dirLight1.shadow.mapSize.width = 2048;
+    dirLight1.shadow.mapSize.height = 2048;
+    dirLight1.shadow.camera.near = 5;
+    dirLight1.shadow.camera.far = 120;
+    const shadowSize = 35;
+    dirLight1.shadow.camera.left = -shadowSize;
+    dirLight1.shadow.camera.right = shadowSize;
+    dirLight1.shadow.camera.top = shadowSize;
+    dirLight1.shadow.camera.bottom = -shadowSize;
+    dirLight1.shadow.bias = -0.0005;
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0x7dd3fc, 0.5); // Cool blue fill
+    dirLight2.position.set(-30, 25, -25);
+    scene.add(dirLight2);
+
+    const rackRearLight = new THREE.DirectionalLight(0xffeedd, 0.4); // Warm rear light
+    rackRearLight.position.set(0, 25, -35);
+    scene.add(rackRearLight);
+
+    // Grid Floor
+    const floorGeo = new THREE.PlaneGeometry(240, 240);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x090c10,
+      roughness: 0.85,
+      metalness: 0.2
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.05;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const gridHelper = new THREE.GridHelper(160, 80, 0x1e293b, 0x0f172a);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    // --- MATERIAL PALETTE (Procedural CAD Engineering) ---
+    const materials = {
+      rackFrame: new THREE.MeshStandardMaterial({ color: 0x181a1f, roughness: 0.6, metalness: 0.8 }),
+      rackRail: new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.45, metalness: 0.85 }),
+      rackHoles: new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.7, metalness: 0.4 }),
+      chassisDark: new THREE.MeshStandardMaterial({ color: 0x1e2229, roughness: 0.5, metalness: 0.7 }),
+      chassisSheetMetal: new THREE.MeshStandardMaterial({ color: 0x8a939e, roughness: 0.35, metalness: 0.9 }),
+      chassisInterior: new THREE.MeshStandardMaterial({ color: 0x717985, roughness: 0.3, metalness: 0.85 }),
+      chassisCutaway: new THREE.MeshStandardMaterial({ color: 0x8a939e, roughness: 0.2, metalness: 0.8, transparent: true, opacity: 0.15, wireframe: false }),
+      pcbGreen: new THREE.MeshStandardMaterial({ color: 0x14452f, roughness: 0.4, metalness: 0.3 }),
+      pcbDark: new THREE.MeshStandardMaterial({ color: 0x111915, roughness: 0.35, metalness: 0.35 }),
+      pcbTraces: new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.9 }), // Gold traces
+      copperHeatsink: new THREE.MeshStandardMaterial({ color: 0xd97736, roughness: 0.3, metalness: 0.85 }),
+      silverHeatsink: new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.25, metalness: 0.95 }),
+      dimmPcb: new THREE.MeshStandardMaterial({ color: 0x1a3a2a, roughness: 0.4, metalness: 0.3 }),
+      chipBlack: new THREE.MeshStandardMaterial({ color: 0x141619, roughness: 0.5, metalness: 0.5 }),
+      goldContact: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.2, metalness: 0.95 }),
+      fanShroud: new THREE.MeshStandardMaterial({ color: 0x16181d, roughness: 0.6, metalness: 0.4 }),
+      fanBlade: new THREE.MeshStandardMaterial({ color: 0x0f1114, roughness: 0.4, metalness: 0.5 }),
+      fanOrangeTab: new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4, metalness: 0.1 }),
+      psuHousing: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.35, metalness: 0.9 }),
+      psuHandle: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4, metalness: 0.2 }),
+      driveCarrier: new THREE.MeshStandardMaterial({ color: 0x2b303c, roughness: 0.45, metalness: 0.7 }),
+      driveFaceplate: new THREE.MeshStandardMaterial({ color: 0x17191e, roughness: 0.6, metalness: 0.5 }),
+      pduA: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.4, metalness: 0.6 }), // Blue PDU Feed A
+      pduB: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.4, metalness: 0.6 }), // Red PDU Feed B
+      cablePowerA: new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.6, metalness: 0.2 }),
+      cablePowerB: new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.6, metalness: 0.2 }),
+      cableNetBlue: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5, metalness: 0.2 }),
+      cableNetYellow: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.5, metalness: 0.2 }),
+      ledGreen: new THREE.MeshBasicMaterial({ color: 0x10b981 }),
+      ledAmber: new THREE.MeshBasicMaterial({ color: 0xf59e0b }),
+      ledRed: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
+      ledBlue: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
+      glowAirflowCold: new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.65 }),
+      glowAirflowHot: new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.7 }),
+      powerFlowMat: new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.85 }),
+      dataFlowMat: new THREE.MeshBasicMaterial({ color: 0x34d399, transparent: true, opacity: 0.85 }),
+      highlightGlow: new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.4 })
+    };
+
+    // Shared Geometries to optimize GPU memory & draw performance
+    const sharedGeo = {
+      box1: new THREE.BoxGeometry(1, 1, 1),
+      dimmStick: new THREE.BoxGeometry(0.08, 0.75, 2.6),
+      chipSmall: new THREE.BoxGeometry(0.1, 0.2, 0.3),
+      capacitor: new THREE.CylinderGeometry(0.1, 0.1, 0.35, 12),
+      fanBladeGeo: new THREE.BoxGeometry(0.04, 0.4, 0.15)
+    };
+
+    // Procedural Dynamic Textures for Rack Unit Labels and Motherboard Silk-screening
+    function createUTextCanvas(uNum) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 32;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#1e2229';
+      ctx.fillRect(0, 0, 64, 32);
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`U${uNum}`, 32, 16);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.minFilter = THREE.LinearFilter;
+      return tex;
+    }
+
+    // --- PROCEDURAL 42U RACK CREATION ---
+    const rackGroup = new THREE.Group();
+    rackGroup.name = "RackGroup";
+    scene.add(rackGroup);
+
+    // Sub-groups for modular toggles
+    const rackFrameGroup = new THREE.Group();
+    const rackServersGroup = new THREE.Group();
+    const rackRearGroup = new THREE.Group();
+    const rackSidePanelsGroup = new THREE.Group();
+    rackGroup.add(rackFrameGroup);
+    rackGroup.add(rackServersGroup);
+    rackGroup.add(rackRearGroup);
+    rackGroup.add(rackSidePanelsGroup);
+
+    // 1. Structural Vertical Posts & Horizontal Extrusions
+    function buildRackStructure() {
+      const postW = 0.6;
+      const postD = 0.8;
+      const halfW = RACK_W / 2;
+      const halfD = RACK_D / 2;
+      const rackH = RACK_H_UNITS * SCALE_U + 2.5;
+
+      const postGeo = new THREE.BoxGeometry(postW, rackH, postD);
+
+      // 4 Corner structural posts
+      const corners = [
+        [-halfW + postW/2, -halfD + postD/2],
+        [ halfW - postW/2, -halfD + postD/2],
+        [-halfW + postW/2,  halfD - postD/2],
+        [ halfW - postW/2,  halfD - postD/2]
+      ];
+
+      corners.forEach(([x, z]) => {
+        const post = new THREE.Mesh(postGeo, materials.rackFrame);
+        post.position.set(x, rackH / 2, z);
+        post.castShadow = true;
+        post.receiveShadow = true;
+        rackFrameGroup.add(post);
+      });
+
+      // Top and Bottom Structural Caps
+      const capXGeo = new THREE.BoxGeometry(RACK_W, 1.2, postD);
+      const capZGeo = new THREE.BoxGeometry(postW, 1.2, RACK_D);
+
+      // Bottom base frame
+      const basePlate = new THREE.Mesh(new THREE.BoxGeometry(RACK_W, 0.4, RACK_D), materials.rackFrame);
+      basePlate.position.set(0, 0.2, 0);
+      basePlate.receiveShadow = true;
+      rackFrameGroup.add(basePlate);
+
+      // 4 Heavy Datacenter Leveling Casters / Feet
+      const footGeo = new THREE.CylinderGeometry(0.4, 0.5, 0.6, 16);
+      corners.forEach(([x, z]) => {
+        const foot = new THREE.Mesh(footGeo, materials.rackHoles);
+        foot.position.set(x, -0.3, z);
+        rackFrameGroup.add(foot);
+      });
+
+      // Top Roof with Perforated Exhaust Grill
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(RACK_W, 0.3, RACK_D), materials.rackFrame);
+      roof.position.set(0, rackH + 0.15, 0);
+      rackFrameGroup.add(roof);
+
+      // Top Fan Exhaust Vent Module
+      const roofVent = new THREE.Mesh(new THREE.BoxGeometry(RACK_W - 2.0, 0.1, RACK_D - 4.0), materials.rackHoles);
+      roofVent.position.set(0, rackH + 0.35, 0);
+      rackFrameGroup.add(roofVent);
+
+      // EIA-310 19" Vertical Equipment Mounting Rails (Front & Rear)
+      const railW = 0.35;
+      const railD = 0.35;
+      const railH = RACK_H_UNITS * SCALE_U;
+      const railDistX = 4.8; // Standard 19" mounting space
+      const railFrontZ = halfD - 1.8;
+      const railRearZ = -halfD + 2.5;
+
+      const railGeo = new THREE.BoxGeometry(railW, railH, railD);
+
+      const railPositions = [
+        [-railDistX, railFrontZ],
+        [ railDistX, railFrontZ],
+        [-railDistX, railRearZ],
+        [ railDistX, railRearZ]
+      ];
+
+      railPositions.forEach(([rx, rz]) => {
+        const rail = new THREE.Mesh(railGeo, materials.rackRail);
+        rail.position.set(rx, 1.2 + railH / 2, rz);
+        rackFrameGroup.add(rail);
+      });
+
+      // Rack Unit Markings & EIA Hole Grid using InstancedMesh
+      const holeCount = RACK_H_UNITS * 3 * 2; // 3 holes per U on both front rails
+      const holeGeo = new THREE.BoxGeometry(0.12, 0.14, 0.05);
+      const holeMesh = new THREE.InstancedMesh(holeGeo, materials.rackHoles, holeCount);
+
+      const dummy = new THREE.Object3D();
+      let idx = 0;
+      for (let u = 1; u <= RACK_H_UNITS; u++) {
+        const uCenterY = 1.2 + (u - 0.5) * SCALE_U;
+        [-railDistX, railDistX].forEach(rx => {
+          [-0.28, 0, 0.28].forEach(dy => {
+            dummy.position.set(rx, uCenterY + dy, railFrontZ + railD/2 + 0.02);
+            dummy.updateMatrix();
+            holeMesh.setMatrixAt(idx++, dummy.matrix);
+          });
+        });
+      }
+      holeMesh.instanceMatrix.needsUpdate = true;
+      rackFrameGroup.add(holeMesh);
+
+      // Removable Sheet Metal Side Panels
+      const sidePanelGeo = new THREE.BoxGeometry(0.15, rackH - 1.2, RACK_D - 1.0);
+      const leftSide = new THREE.Mesh(sidePanelGeo, materials.rackFrame);
+      leftSide.position.set(-halfW + 0.08, rackH / 2, 0);
+      rackSidePanelsGroup.add(leftSide);
+
+      const rightSide = new THREE.Mesh(sidePanelGeo, materials.rackFrame);
+      rightSide.position.set(halfW - 0.08, rackH / 2, 0);
+      rackSidePanelsGroup.add(rightSide);
+    }
+    buildRackStructure();
+
+    // 2. Rear Architecture: Dual Redundant Vertical PDUs & Cable Loom
+    function buildRearArchitecture() {
+      const pduH = RACK_H_UNITS * SCALE_U * 0.9;
+      const pduW = 0.5;
+      const pduD = 0.5;
+      const pduY = 1.2 + (RACK_H_UNITS * SCALE_U) / 2;
+      const pduZ = -RACK_D / 2 + 1.2;
+
+      // PDU Feed A (Blue - Left Rear)
+      const pduAGeo = new THREE.BoxGeometry(pduW, pduH, pduD);
+      const pduA = new THREE.Mesh(pduAGeo, materials.pduA);
+      pduA.position.set(-RACK_W / 2 + 1.2, pduY, pduZ);
+      rackRearGroup.add(pduA);
+
+      // PDU Feed B (Red - Right Rear)
+      const pduB = new THREE.Mesh(pduAGeo, materials.pduB);
+      pduB.position.set(RACK_W / 2 - 1.2, pduY, pduZ);
+      rackRearGroup.add(pduB);
+
+      // Receptacles on PDUs
+      const outletGeo = new THREE.BoxGeometry(0.2, 0.35, 0.1);
+      const outletMat = materials.chipBlack;
+      for (let i = 0; i < 24; i++) {
+        const oy = pduY - pduH/2 + 1.0 + i * 1.5;
+        const outA = new THREE.Mesh(outletGeo, outletMat);
+        outA.position.set(-RACK_W / 2 + 1.2, oy, pduZ + pduD/2 + 0.05);
+        rackRearGroup.add(outA);
+
+        const outB = new THREE.Mesh(outletGeo, outletMat);
+        outB.position.set(RACK_W / 2 - 1.2, oy, pduZ + pduD/2 + 0.05);
+        rackRearGroup.add(outB);
+      }
+
+      // Vertical Cable Trays / Management Ladders (D-rings)
+      const ringGeo = new THREE.TorusGeometry(0.3, 0.05, 8, 16);
+      for (let i = 0; i < 16; i++) {
+        const ry = 2.0 + i * 2.4;
+        const ringL = new THREE.Mesh(ringGeo, materials.chassisDark);
+        ringL.position.set(-RACK_W/2 + 2.0, ry, pduZ + 0.3);
+        ringL.rotation.y = Math.PI / 2;
+        rackRearGroup.add(ringL);
+
+        const ringR = new THREE.Mesh(ringGeo, materials.chassisDark);
+        ringR.position.set(RACK_W/2 - 2.0, ry, pduZ + 0.3);
+        ringR.rotation.y = Math.PI / 2;
+        rackRearGroup.add(ringR);
+      }
+
+      // Procedural Rear Power & Network Cable Drops to Servers
+      ARCHETYPES.forEach((srv, sIdx) => {
+        const srvCenterY = 1.2 + (srv.startU + (srv.uHeight - 1)/2) * SCALE_U;
+        const srvRearZ = -RACK_D / 2 + 2.6;
+
+        // Power Cable A (to PDU A)
+        const curveA = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-2.8, srvCenterY, srvRearZ),
+          new THREE.Vector3(-3.8, srvCenterY, srvRearZ - 0.4),
+          new THREE.Vector3(-RACK_W/2 + 1.2, srvCenterY - 0.3, pduZ + 0.1)
+        ]);
+        const tubeAGeo = new THREE.TubeGeometry(curveA, 12, 0.07, 6, false);
+        const tubeA = new THREE.Mesh(tubeAGeo, materials.cablePowerA);
+        rackRearGroup.add(tubeA);
+
+        // Power Cable B (to PDU B)
+        const curveB = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(2.8, srvCenterY, srvRearZ),
+          new THREE.Vector3(3.8, srvCenterY, srvRearZ - 0.4),
+          new THREE.Vector3(RACK_W/2 - 1.2, srvCenterY - 0.3, pduZ + 0.1)
+        ]);
+        const tubeBGeo = new THREE.TubeGeometry(curveB, 12, 0.07, 6, false);
+        const tubeB = new THREE.Mesh(tubeBGeo, materials.cablePowerB);
+        rackRearGroup.add(tubeB);
+
+        // Network Patch Cables (routed vertically toward top-of-rack switch U30)
+        const torSwitchY = 1.2 + 30 * SCALE_U;
+        const curveNet = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0.5 + (sIdx % 2)*0.4, srvCenterY, srvRearZ),
+          new THREE.Vector3(2.2, srvCenterY + 0.4, srvRearZ - 0.2),
+          new THREE.Vector3(2.2, torSwitchY - 0.2, srvRearZ - 0.2),
+          new THREE.Vector3(0.5, torSwitchY, srvRearZ)
+        ]);
+        const tubeNetGeo = new THREE.TubeGeometry(curveNet, 14, 0.05, 5, false);
+        const tubeNet = new THREE.Mesh(tubeNetGeo, (sIdx % 2 === 0) ? materials.cableNetBlue : materials.cableNetYellow);
+        rackRearGroup.add(tubeNet);
+      });
+    }
+    buildRearArchitecture();
+
+    // 3. Populate Rack with Server Nodes & Blanking Panels
+    const rackServerMeshes = [];
+
+    function populateRackServers() {
+      const chassisW = 9.2;
+      const chassisD = 18.0;
+
+      // Track occupied Us
+      const occupiedUs = new Set();
+
+      ARCHETYPES.forEach((srv, index) => {
+        const uH = srv.uHeight * SCALE_U;
+        const srvY = 1.2 + (srv.startU - 1) * SCALE_U + uH / 2;
+        const srvZ = 0.5; // Centered inside rack depth
+
+        for (let u = srv.startU; u <= srv.endU; u++) {
+          occupiedUs.add(u);
+        }
+
+        const serverMeshGroup = new THREE.Group();
+        serverMeshGroup.position.set(0, srvY, srvZ);
+        serverMeshGroup.userData = { serverIndex: index, archetype: srv };
+
+        // Server Outer Enclosure Box (Rack-level LOD representation)
+        const bodyGeo = new THREE.BoxGeometry(chassisW, uH - 0.08, chassisD);
+        const bodyMat = materials.chassisDark.clone();
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        serverMeshGroup.add(body);
+
+        // Front Faceplate (Detailed with drive bays, latches, ears, LEDs)
+        const faceplateGeo = new THREE.BoxGeometry(chassisW + 0.3, uH - 0.06, 0.3);
+        const faceplate = new THREE.Mesh(faceplateGeo, materials.driveFaceplate);
+        faceplate.position.set(0, 0, chassisD / 2 + 0.15);
+        serverMeshGroup.add(faceplate);
+
+        // Rack Mounting Ears (EIA front flanges with screws)
+        const earW = 0.55;
+        const earGeo = new THREE.BoxGeometry(earW, uH - 0.1, 0.15);
+        const leftEar = new THREE.Mesh(earGeo, materials.rackRail);
+        leftEar.position.set(-chassisW/2 - earW/2, 0, chassisD/2 + 0.2);
+        serverMeshGroup.add(leftEar);
+
+        const rightEar = new THREE.Mesh(earGeo, materials.rackRail);
+        rightEar.position.set(chassisW/2 + earW/2, 0, chassisD/2 + 0.2);
+        serverMeshGroup.add(rightEar);
+
+        // Archetype-Specific Front Fascia Details
+        if (srv.id === 'gpu-node') {
+          // 4U GPU node: 8x NVMe bays in middle, high-velocity intake grills left & right
+          const ventGeo = new THREE.BoxGeometry(2.4, uH - 0.6, 0.05);
+          const ventL = new THREE.Mesh(ventGeo, materials.rackHoles);
+          ventL.position.set(-3.1, 0, chassisD/2 + 0.32);
+          serverMeshGroup.add(ventL);
+
+          const ventR = new THREE.Mesh(ventGeo, materials.rackHoles);
+          ventR.position.set(3.1, 0, chassisD/2 + 0.32);
+          serverMeshGroup.add(ventR);
+
+          // Center 8x NVMe drives (2x4 matrix)
+          for (let r = 0; r < 2; r++) {
+            for (let c = 0; c < 4; c++) {
+              const driveCaddy = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.1), materials.driveCarrier);
+              driveCaddy.position.set(-1.2 + c * 0.8, -0.45 + r * 0.9, chassisD/2 + 0.32);
+              serverMeshGroup.add(driveCaddy);
+
+              const led = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.05), materials.ledGreen);
+              led.position.set(-1.2 + c * 0.8 + 0.25, -0.45 + r * 0.9 + 0.3, chassisD/2 + 0.38);
+              serverMeshGroup.add(led);
+            }
+          }
+        } else if (srv.id === 'storage-node') {
+          // 4U Storage Node: 24x 3.5" drive caddy matrix (4 rows x 6 columns)
+          const cols = 6;
+          const rows = 4;
+          const dw = 1.35;
+          const dh = 0.8;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const caddy = new THREE.Mesh(new THREE.BoxGeometry(dw - 0.08, dh - 0.08, 0.15), materials.driveCarrier);
+              caddy.position.set(-chassisW/2 + 0.8 + c * dw, -uH/2 + 0.6 + r * dh, chassisD/2 + 0.32);
+              serverMeshGroup.add(caddy);
+
+              // Latch & LED
+              const latch = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.06), materials.chassisDark);
+              latch.position.set(-chassisW/2 + 0.8 + c * dw - 0.35, -uH/2 + 0.6 + r * dh, chassisD/2 + 0.41);
+              serverMeshGroup.add(latch);
+
+              const led = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.04), materials.ledGreen);
+              led.position.set(-chassisW/2 + 0.8 + c * dw + 0.45, -uH/2 + 0.6 + r * dh + 0.25, chassisD/2 + 0.41);
+              serverMeshGroup.add(led);
+            }
+          }
+        } else if (srv.id === 'network-appliance') {
+          // 1U Switch: Matrix of 32x QSFP28 cages
+          for (let c = 0; c < 16; c++) {
+            const cageUpper = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.28, 0.1), materials.silverHeatsink);
+            cageUpper.position.set(-3.5 + c * 0.47, 0.15, chassisD/2 + 0.32);
+            serverMeshGroup.add(cageUpper);
+
+            const cageLower = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.28, 0.1), materials.silverHeatsink);
+            cageLower.position.set(-3.5 + c * 0.47, -0.15, chassisD/2 + 0.32);
+            serverMeshGroup.add(cageLower);
+          }
+        } else {
+          // Standard 1U/2U server drives (2.5" or 3.5")
+          const count = srv.uHeight === 1 ? 4 : 8;
+          const dw = (chassisW - 2.5) / count;
+          for (let c = 0; c < count; c++) {
+            const caddy = new THREE.Mesh(new THREE.BoxGeometry(dw - 0.12, uH - 0.3, 0.12), materials.driveCarrier);
+            caddy.position.set(-chassisW/2 + 1.2 + c * dw, 0, chassisD/2 + 0.32);
+            serverMeshGroup.add(caddy);
+
+            const led = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.04), materials.ledGreen);
+            led.position.set(-chassisW/2 + 1.2 + c * dw + dw/3, 0.2, chassisD/2 + 0.39);
+            serverMeshGroup.add(led);
+          }
+        }
+
+        // Rear Facet of Server: Dual/Quad PSUs with handles and status LEDs
+        const psuCount = srv.id === 'gpu-node' ? 4 : 2;
+        const psuW = 1.3;
+        const psuH = Math.min(uH - 0.2, 1.4);
+        for (let p = 0; p < psuCount; p++) {
+          const psuMesh = new THREE.Mesh(new THREE.BoxGeometry(psuW, psuH, 0.2), materials.psuHousing);
+          const px = -2.5 + p * (psuW + 0.2);
+          psuMesh.position.set(px, -uH/2 + psuH/2 + 0.1, -chassisD/2 - 0.11);
+          serverMeshGroup.add(psuMesh);
+
+          // Blue handle
+          const handle = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.15, 0.25), materials.psuHandle);
+          handle.position.set(px, -uH/2 + psuH/2 + 0.1, -chassisD/2 - 0.25);
+          serverMeshGroup.add(handle);
+
+          // LED
+          const psuLed = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.05), materials.ledGreen);
+          psuLed.position.set(px + 0.4, -uH/2 + psuH/2 + 0.3, -chassisD/2 - 0.22);
+          serverMeshGroup.add(psuLed);
+        }
+
+        // Store references for raycasting & rail animations
+        rackServersGroup.add(serverMeshGroup);
+        rackServerMeshes.push({
+          group: serverMeshGroup,
+          bodyMesh: body,
+          data: srv,
+          index: index,
+          originalY: srvY,
+          originalZ: srvZ
+        });
+      });
+
+      // Populate Empty Spaces with EIA 1U / 2U Blanking Panels
+      for (let u = 1; u <= RACK_H_UNITS; u++) {
+        if (!occupiedUs.has(u)) {
+          const blankY = 1.2 + (u - 0.5) * SCALE_U;
+          const blankPanel = new THREE.Mesh(new THREE.BoxGeometry(chassisW, 0.92, 0.15), materials.chassisDark);
+          blankPanel.position.set(0, blankY, chassisD / 2 + 0.2);
+
+          // Subtle horizontal ribbing texture
+          const rib = new THREE.Mesh(new THREE.BoxGeometry(chassisW - 1.0, 0.15, 0.05), materials.rackHoles);
+          rib.position.set(0, 0, 0.08);
+          blankPanel.add(rib);
+
+          rackFrameGroup.add(blankPanel);
+        }
+      }
+    }
+    populateRackServers();
+
+    // --- PROCEDURAL DETAILED SINGLE SLICE HARDWARE ENGINE ---
+    // This creates the CAD-level open chassis inspection slice inspired by reference
+    const sliceMasterGroup = new THREE.Group();
+    sliceMasterGroup.name = "SliceMasterGroup";
+    sliceMasterGroup.visible = false;
+    scene.add(sliceMasterGroup);
+
+    // Exploded View Assembly Layers
+    const sliceLayers = {
+      baseChassis: new THREE.Group(),
+      motherboard: new THREE.Group(),
+      backplane: new THREE.Group(),
+      fanWall: new THREE.Group(),
+      cpuRamArea: new THREE.Group(),
+      gpuArea: new THREE.Group(),
+      risersPcie: new THREE.Group(),
+      powerSubsys: new THREE.Group(),
+      airDuct: new THREE.Group(),
+      topCover: new THREE.Group()
+    };
+
+    Object.values(sliceLayers).forEach(layer => sliceMasterGroup.add(layer));
+
+    // Dynamic Elements to animate in slice mode
+    let sliceFanBlades = [];
+    let sliceAirflowParticles = null;
+    let slicePowerFlowLines = [];
+    let sliceDataFlowLines = [];
+    let sliceProbedMeshes = [];
+
+    // Helper: Build a High-Precision Finned Passive Heatsink
+    function createFinnedHeatsink(w, h, d, finCount, mat) {
+      const group = new THREE.Group();
+      const baseH = 0.15;
+      const base = new THREE.Mesh(new THREE.BoxGeometry(w, baseH, d), mat);
+      base.position.y = baseH / 2;
+      group.add(base);
+
+      const finThickness = (d / finCount) * 0.35;
+      const finH = h - baseH;
+      const finSpacing = d / finCount;
+
+      for (let i = 0; i < finCount; i++) {
+        const fin = new THREE.Mesh(new THREE.BoxGeometry(w - 0.05, finH, finThickness), mat);
+        fin.position.set(0, baseH + finH / 2, -d/2 + finSpacing/2 + i * finSpacing);
+        group.add(fin);
+      }
+      return group;
+    }
+
+    // Helper: Build a Memory Channel Bank (DIMMs with sockets and locking latches)
+    function createDimmBank(count, spacing, isPopulated = true) {
+      const group = new THREE.Group();
+      const socketMat = materials.chipBlack;
+      const dimmMat = materials.dimmPcb;
+
+      for (let i = 0; i < count; i++) {
+        const zOff = (i - (count - 1)/2) * spacing;
+
+        // Base DIMM Socket on Motherboard
+        const socket = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 2.7), socketMat);
+        socket.position.set(0, 0.08, zOff);
+        group.add(socket);
+
+        // White/Orange Ejection Latches at Ends
+        const latch1 = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.3, 0.15), materials.silverHeatsink);
+        latch1.position.set(0, 0.15, zOff - 1.35);
+        group.add(latch1);
+        const latch2 = latch1.clone();
+        latch2.position.set(0, 0.15, zOff + 1.35);
+        group.add(latch2);
+
+        if (isPopulated) {
+          // DIMM PCB
+          const stick = new THREE.Mesh(sharedGeo.dimmStick, dimmMat);
+          stick.position.set(0, 0.45, zOff);
+          group.add(stick);
+
+          // DRAM IC Chips on DIMM
+          for (let c = 0; c < 8; c++) {
+            const chip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.22, 0.22), materials.chipBlack);
+            chip.position.set(0, 0.45, zOff - 1.0 + c * 0.28);
+            group.add(chip);
+          }
+
+          // Register for Raycasting Probe
+          stick.userData = { componentType: 'dimm', label: `DDR5 RDIMM Slot ${i+1}` };
+          sliceProbedMeshes.push(stick);
+        }
+      }
+      return group;
+    }
+
+    // Helper: Build a High-Detail Fan Wall with Counter-Rotating Impellers
+    function createFanWallModule(w, h, fanCount) {
+      const group = new THREE.Group();
+      const frameMat = materials.fanShroud;
+      const bladeMat = materials.fanBlade;
+      const fanW = (w - 0.4) / fanCount;
+
+      for (let i = 0; i < fanCount; i++) {
+        const fx = -w/2 + 0.2 + fanW/2 + i * fanW;
+
+        // Fan Outer Shroud Box
+        const shroud = new THREE.Mesh(new THREE.BoxGeometry(fanW - 0.08, h - 0.1, 1.2), frameMat);
+        shroud.position.set(fx, h/2, 0);
+        group.add(shroud);
+
+        // Circular Bore Hole
+        const cylinderCut = new THREE.Mesh(new THREE.CylinderGeometry(fanW*0.42, fanW*0.42, 1.22, 24), materials.chassisInterior);
+        cylinderCut.rotation.x = Math.PI / 2;
+        cylinderCut.position.set(fx, h/2, 0);
+
+        // Center Motor Hub
+        const hub = new THREE.Mesh(new THREE.CylinderGeometry(fanW*0.16, fanW*0.16, 1.0, 16), materials.chipBlack);
+        hub.rotation.x = Math.PI / 2;
+        hub.position.set(fx, h/2, 0);
+        group.add(hub);
+
+        // Rotating Fan Blades (Front and Rear Rotor for Counter-Rotating Stage)
+        const bladeSet1 = new THREE.Group();
+        bladeSet1.position.set(fx, h/2, -0.2);
+        for (let b = 0; b < 7; b++) {
+          const blade = new THREE.Mesh(sharedGeo.fanBladeGeo, bladeMat);
+          blade.rotation.z = (b / 7) * Math.PI * 2;
+          blade.rotation.y = 0.4;
+          blade.position.y = fanW * 0.22;
+          bladeSet1.add(blade);
+        }
+        group.add(bladeSet1);
+
+        const bladeSet2 = new THREE.Group();
+        bladeSet2.position.set(fx, h/2, 0.2);
+        for (let b = 0; b < 7; b++) {
+          const blade = new THREE.Mesh(sharedGeo.fanBladeGeo, bladeMat);
+          blade.rotation.z = (b / 7) * Math.PI * 2;
+          blade.rotation.y = -0.4; // Counter pitch
+          blade.position.y = fanW * 0.22;
+          bladeSet2.add(blade);
+        }
+        group.add(bladeSet2);
+
+        sliceFanBlades.push({ b1: bladeSet1, b2: bladeSet2, fanIdx: i });
+
+        // Hot-Swap Orange Removal Latch on Top
+        const tab = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.4), materials.fanOrangeTab);
+        tab.position.set(fx, h + 0.1, 0);
+        group.add(tab);
+
+        shroud.userData = { componentType: 'fan', label: `Fan Module ${i+1} (Dual Rotor)` };
+        sliceProbedMeshes.push(shroud);
+      }
+      return group;
+    }
+
+    // MAIN SLICE GENERATOR: Cleans and reconstructs single server slice based on active archetype
+    function rebuildSliceHardware(serverIndex) {
+      // Clear previous hardware
+      Object.values(sliceLayers).forEach(layer => {
+        while (layer.children.length > 0) {
+          const obj = layer.children[0];
+          layer.remove(obj);
+        }
+      });
+      sliceFanBlades = [];
+      sliceProbedMeshes = [];
+
+      const srv = ARCHETYPES[serverIndex];
+      const uH = srv.uHeight * SCALE_U;
+      const sW = 9.2;
+      const sD = 18.0;
+
+      // 1. BASE CHASSIS (Structural sheet metal, sidewalls, rails, rear I/O plate)
+      const baseSheet = new THREE.Mesh(new THREE.BoxGeometry(sW, 0.15, sD), materials.chassisSheetMetal);
+      baseSheet.position.set(0, 0.08, 0);
+      baseSheet.receiveShadow = true;
+      sliceLayers.baseChassis.add(baseSheet);
+
+      // Left & Right Metal Sidewalls
+      const wallMat = state.cutawayActive ? materials.chassisCutaway : materials.chassisSheetMetal;
+      const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.12, uH, sD), wallMat);
+      wallL.position.set(-sW/2 + 0.06, uH/2 + 0.15, 0);
+      sliceLayers.baseChassis.add(wallL);
+
+      const wallR = new THREE.Mesh(new THREE.BoxGeometry(0.12, uH, sD), wallMat);
+      wallR.position.set(sW/2 - 0.06, uH/2 + 0.15, 0);
+      sliceLayers.baseChassis.add(wallR);
+
+      // Telescoping Ball-Bearing Slide Rails on Outer Sides
+      const railL = new THREE.Mesh(new THREE.BoxGeometry(0.15, uH * 0.4, sD * 0.95), materials.rackRail);
+      railL.position.set(-sW/2 - 0.1, uH * 0.4, 0);
+      sliceLayers.baseChassis.add(railL);
+
+      const railR = new THREE.Mesh(new THREE.BoxGeometry(0.15, uH * 0.4, sD * 0.95), materials.rackRail);
+      railR.position.set(sW/2 + 0.1, uH * 0.4, 0);
+      sliceLayers.baseChassis.add(railR);
+
+      // Front Storage Bay Enclosure Matrix & Drives
+      const frontDepth = srv.id === 'storage-node' ? 9.5 : 4.5;
+      const driveCage = new THREE.Mesh(new THREE.BoxGeometry(sW - 0.4, uH - 0.1, frontDepth), materials.chassisDark);
+      driveCage.position.set(0, uH/2 + 0.1, sD/2 - frontDepth/2);
+      sliceLayers.baseChassis.add(driveCage);
+
+      // Detailed Front Drive Carriers
+      const rows = srv.uHeight >= 4 ? 4 : (srv.uHeight >= 2 ? 2 : 1);
+      const cols = srv.id === 'storage-node' ? 6 : 4;
+      const dW = (sW - 0.8) / cols;
+      const dH = (uH - 0.3) / rows;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const driveBox = new THREE.Mesh(new THREE.BoxGeometry(dW - 0.08, dH - 0.08, 0.2), materials.driveCarrier);
+          driveBox.position.set(-sW/2 + 0.5 + c * dW + dW/2, 0.25 + r * dH + dH/2, sD/2 + 0.11);
+          sliceLayers.baseChassis.add(driveBox);
+
+          const led = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.04), materials.ledGreen);
+          led.position.set(-sW/2 + 0.5 + c * dW + dW/2 + dW/3, 0.25 + r * dH + dH/2 + dH/4, sD/2 + 0.22);
+          sliceLayers.baseChassis.add(led);
+
+          driveBox.userData = { componentType: 'storage', label: `Drive Bay [Row ${r+1}, Col ${c+1}]` };
+          sliceProbedMeshes.push(driveBox);
+        }
+      }
+
+      // 2. STORAGE BACKPLANE PCB (Vertical board directly behind drive cage)
+      const bpZ = sD/2 - frontDepth - 0.08;
+      const backplaneMesh = new THREE.Mesh(new THREE.BoxGeometry(sW - 0.5, uH - 0.2, 0.12), materials.pcbGreen);
+      backplaneMesh.position.set(0, uH/2 + 0.1, bpZ);
+      sliceLayers.backplane.add(backplaneMesh);
+
+      // SAS / NVMe Expander Chips on Backplane
+      for (let i = 0; i < 4; i++) {
+        const bpChip = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.08), materials.chipBlack);
+        bpChip.position.set(-3.0 + i * 2.0, uH/2 + 0.1, bpZ - 0.08);
+        sliceLayers.backplane.add(bpChip);
+      }
+      backplaneMesh.userData = { componentType: 'backplane', label: '12Gb/s SAS & Gen5 NVMe Storage Backplane' };
+      sliceProbedMeshes.push(backplaneMesh);
+
+      // 3. FAN WALL ASSEMBLY
+      const fanWallZ = bpZ - 1.2;
+      const fanCount = srv.id === 'gpu-node' ? 8 : (srv.id === 'compute-1' || srv.id === 'compute-2' ? 5 : 6);
+      const fanWall = createFanWallModule(sW - 0.5, uH - 0.25, fanCount);
+      fanWall.position.set(0, 0.18, fanWallZ);
+      sliceLayers.fanWall.add(fanWall);
+
+      // 4. MAINBOARD / PCB
+      const mbDepth = sD - frontDepth - 4.5;
+      const mbZ = fanWallZ - 0.8 - mbDepth/2;
+      const mainboardMesh = new THREE.Mesh(new THREE.BoxGeometry(sW - 0.6, 0.12, mbDepth), materials.pcbDark);
+      mainboardMesh.position.set(0, 0.22, mbZ);
+      mainboardMesh.receiveShadow = true;
+      sliceLayers.motherboard.add(mainboardMesh);
+
+      // Motherboard Gold Circuit Bus Traces (Visualized with procedural thin meshes)
+      for (let i = 0; i < 8; i++) {
+        const trace = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.02, mbDepth - 1.0), materials.pcbTraces);
+        trace.position.set(-3.2 + i * 0.9, 0.29, mbZ);
+        sliceLayers.motherboard.add(trace);
+      }
+
+      // Solid VRM Polymer Capacitors along CPU Power Planes
+      for (let c = 0; c < 24; c++) {
+        const cap = new THREE.Mesh(sharedGeo.capacitor, materials.silverHeatsink);
+        cap.position.set(-2.8 + (c % 8) * 0.8, 0.38, mbZ - 1.5 + Math.floor(c / 8) * 0.6);
+        sliceLayers.motherboard.add(cap);
+      }
+
+      // ASPEED BMC & Management Controller IC
+      const bmcChip = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.15, 0.7), materials.chipBlack);
+      bmcChip.position.set(sW/2 - 1.2, 0.3, mbZ - mbDepth/2 + 1.2);
+      sliceLayers.motherboard.add(bmcChip);
+
+      // 5. ARCHETYPE SPECIFIC CPU & MEMORY & ACCELERATOR TOPOLOGY
+      if (srv.id === 'gpu-node') {
+        // --- GPU / AI ACCELERATOR ARCHITECTURE ---
+        // Rear half: 2x Host CPUs with low-profile heatsinks
+        const cpu1 = createFinnedHeatsink(1.8, 1.2, 1.8, 16, materials.silverHeatsink);
+        cpu1.position.set(-2.2, 0.28, mbZ - 2.8);
+        sliceLayers.cpuRamArea.add(cpu1);
+
+        const cpu2 = createFinnedHeatsink(1.8, 1.2, 1.8, 16, materials.silverHeatsink);
+        cpu2.position.set(2.2, 0.28, mbZ - 2.8);
+        sliceLayers.cpuRamArea.add(cpu2);
+
+        // Memory Channels flanking CPUs (8 DIMMs per CPU)
+        const dimmL1 = createDimmBank(4, 0.26); dimmL1.position.set(-3.5, 0.28, mbZ - 2.8); sliceLayers.cpuRamArea.add(dimmL1);
+        const dimmR1 = createDimmBank(4, 0.26); dimmR1.position.set(-0.9, 0.28, mbZ - 2.8); sliceLayers.cpuRamArea.add(dimmR1);
+        const dimmL2 = createDimmBank(4, 0.26); dimmL2.position.set(0.9, 0.28, mbZ - 2.8); sliceLayers.cpuRamArea.add(dimmL2);
+        const dimmR2 = createDimmBank(4, 0.26); dimmR2.position.set(3.5, 0.28, mbZ - 2.8); sliceLayers.cpuRamArea.add(dimmR2);
+
+        // FRONT / CENTER DOMINANT: 8x SXM / OAM GPU BASEBOARD ASSEMBLY
+        const gpuBoardZ = mbZ + 1.6;
+        const gpuBaseboard = new THREE.Mesh(new THREE.BoxGeometry(sW - 1.0, 0.15, 4.6), materials.pcbGreen);
+        gpuBaseboard.position.set(0, 0.35, gpuBoardZ);
+        sliceLayers.gpuArea.add(gpuBaseboard);
+
+        // 8x Massive GPU Accelerators with Copper Vapor-Chamber Heatsinks (2 rows of 4)
+        for (let r = 0; r < 2; r++) {
+          for (let c = 0; c < 4; c++) {
+            const gx = -3.0 + c * 2.0;
+            const gz = gpuBoardZ - 1.1 + r * 2.2;
+
+            const gpuSink = createFinnedHeatsink(1.6, 2.2, 1.8, 18, materials.copperHeatsink);
+            gpuSink.position.set(gx, 0.42, gz);
+            sliceLayers.gpuArea.add(gpuSink);
+
+            // NVLink / PCIe Bridge Interconnect Blocks between GPUs
+            if (c < 3) {
+              const nvlinkBridge = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.2, 0.5), materials.goldContact);
+              nvlinkBridge.position.set(gx + 1.0, 0.55, gz);
+              sliceLayers.gpuArea.add(nvlinkBridge);
+            }
+
+            gpuSink.userData = { componentType: 'gpu', label: `SXM5 Accelerator Module #${r*4 + c + 1}` };
+            sliceProbedMeshes.push(gpuSink);
+          }
+        }
+
+        // Heavy Copper Power Busbars across GPU baseboard
+        const busbarA = new THREE.Mesh(new THREE.BoxGeometry(sW - 1.2, 0.18, 0.15), materials.copperHeatsink);
+        busbarA.position.set(0, 0.5, gpuBoardZ + 2.1);
+        sliceLayers.gpuArea.add(busbarA);
+
+        cpu1.userData = { componentType: 'cpu', label: 'Host CPU 1 (Root Complex A)' };
+        cpu2.userData = { componentType: 'cpu', label: 'Host CPU 2 (Root Complex B)' };
+        sliceProbedMeshes.push(cpu1, cpu2);
+
+      } else if (srv.id === 'virt-node' || srv.id === 'db-node') {
+        // --- VIRTUALIZATION & DATABASE: DENSE MEMORY & DUAL HEAVY SOCKETS ---
+        const cpu1 = createFinnedHeatsink(2.2, uH * 0.65, 2.2, 22, materials.silverHeatsink);
+        cpu1.position.set(-2.2, 0.28, mbZ);
+        sliceLayers.cpuRamArea.add(cpu1);
+
+        const cpu2 = createFinnedHeatsink(2.2, uH * 0.65, 2.2, 22, materials.silverHeatsink);
+        cpu2.position.set(2.2, 0.28, mbZ);
+        sliceLayers.cpuRamArea.add(cpu2);
+
+        // 32 DIMMs Loaded (4 banks of 8 DIMMs flanking both sockets)
+        const dimm1 = createDimmBank(8, 0.22); dimm1.position.set(-3.7, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm1);
+        const dimm2 = createDimmBank(8, 0.22); dimm2.position.set(-0.7, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm2);
+        const dimm3 = createDimmBank(8, 0.22); dimm3.position.set(0.7, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm3);
+        const dimm4 = createDimmBank(8, 0.22); dimm4.position.set(3.7, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm4);
+
+        cpu1.userData = { componentType: 'cpu', label: 'Host CPU 1 (NUMA Node 0)' };
+        cpu2.userData = { componentType: 'cpu', label: 'Host CPU 2 (NUMA Node 1)' };
+        sliceProbedMeshes.push(cpu1, cpu2);
+
+      } else if (srv.id === 'storage-node') {
+        // --- STORAGE SERVER: MODERATE CPU SLED BEHIND DRIVE CAGES ---
+        const cpu1 = createFinnedHeatsink(1.8, 1.4, 1.8, 16, materials.silverHeatsink);
+        cpu1.position.set(-1.8, 0.28, mbZ);
+        sliceLayers.cpuRamArea.add(cpu1);
+
+        const cpu2 = createFinnedHeatsink(1.8, 1.4, 1.8, 16, materials.silverHeatsink);
+        cpu2.position.set(1.8, 0.28, mbZ);
+        sliceLayers.cpuRamArea.add(cpu2);
+
+        const dimm1 = createDimmBank(8, 0.24); dimm1.position.set(-3.2, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm1);
+        const dimm2 = createDimmBank(8, 0.24); dimm2.position.set(3.2, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm2);
+
+        // Hardware SAS HBA Storage Controller PCIe Card with SFF-8643 Cabling
+        const hbaCard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.2, 3.2), materials.pcbGreen);
+        hbaCard.position.set(0, 0.9, mbZ - 1.2);
+        sliceLayers.risersPcie.add(hbaCard);
+
+        // Ribbon / Mini-SAS cables routing from HBA forward to backplane
+        const sasCableCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, 1.2, mbZ - 0.2),
+          new THREE.Vector3(-0.4, 1.5, fanWallZ + 0.6),
+          new THREE.Vector3(0, 1.0, bpZ - 0.1)
+        ]);
+        const sasCable = new THREE.Mesh(new THREE.TubeGeometry(sasCableCurve, 10, 0.08, 6, false), materials.cableNetBlue);
+        sliceLayers.risersPcie.add(sasCable);
+
+        cpu1.userData = { componentType: 'cpu', label: 'Host CPU 1 (Storage Controller Host)' };
+        hbaCard.userData = { componentType: 'pcie', label: 'Broadcom SAS-3 12Gb/s Host Bus Adapter (HBA)' };
+        sliceProbedMeshes.push(cpu1, hbaCard);
+
+      } else {
+        // --- 1U COMPUTE / NETWORK BALANCED ---
+        const cpu1 = createFinnedHeatsink(1.6, 0.65, 1.6, 14, materials.copperHeatsink);
+        cpu1.position.set(-1.8, 0.28, mbZ);
+        sliceLayers.cpuRamArea.add(cpu1);
+
+        const cpu2 = createFinnedHeatsink(1.6, 0.65, 1.6, 14, materials.copperHeatsink);
+        cpu2.position.set(1.8, 0.28, mbZ);
+        sliceLayers.cpuRamArea.add(cpu2);
+
+        const dimm1 = createDimmBank(8, 0.25); dimm1.position.set(-3.0, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm1);
+        const dimm2 = createDimmBank(8, 0.25); dimm2.position.set(3.0, 0.28, mbZ); sliceLayers.cpuRamArea.add(dimm2);
+
+        cpu1.userData = { componentType: 'cpu', label: 'Host CPU 1 (Compute Socket)' };
+        cpu2.userData = { componentType: 'cpu', label: 'Host CPU 2 (Compute Socket)' };
+        sliceProbedMeshes.push(cpu1, cpu2);
+      }
+
+      // 6. REAR EXPANSION: PCIe RISERS & HIGH-SPEED NICs
+      const riserCount = srv.uHeight >= 2 ? 3 : 1;
+      for (let r = 0; r < riserCount; r++) {
+        const rx = -2.8 + r * 2.8;
+        const rz = -sD/2 + 2.5;
+        const riserCard = new THREE.Mesh(new THREE.BoxGeometry(0.12, uH * 0.7, 3.4), materials.pcbDark);
+        riserCard.position.set(rx, uH * 0.45, rz);
+        sliceLayers.risersPcie.add(riserCard);
+
+        // Gold finger edge connector to motherboard
+        const edgeCon = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 2.8), materials.goldContact);
+        edgeCon.position.set(rx, 0.3, rz);
+        sliceLayers.risersPcie.add(edgeCon);
+
+        // Rear metal bracket & NIC ports
+        const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.08, uH * 0.75, 0.25), materials.silverHeatsink);
+        bracket.position.set(rx, uH * 0.45, -sD/2 + 0.1);
+        sliceLayers.risersPcie.add(bracket);
+
+        riserCard.userData = { componentType: 'pcie', label: `PCIe Gen5 Riser Card ${r+1}` };
+        sliceProbedMeshes.push(riserCard);
+      }
+
+      // 7. POWER SUBSYSTEM (Redundant Hot-Swap PSUs & Power Distribution Board)
+      const psuCount = srv.id === 'gpu-node' ? 4 : 2;
+      const psuW = 1.35;
+      const psuH = Math.min(uH - 0.2, 1.4);
+      const psuL = 5.2;
+
+      for (let p = 0; p < psuCount; p++) {
+        const px = sW/2 - 0.8 - psuW/2 - p * (psuW + 0.15);
+        const pz = -sD/2 + psuL/2 + 0.1;
+
+        const psuBox = new THREE.Mesh(new THREE.BoxGeometry(psuW, psuH, psuL), materials.psuHousing);
+        psuBox.position.set(px, psuH/2 + 0.15, pz);
+        sliceLayers.powerSubsys.add(psuBox);
+
+        // Hot swap blue handle on rear
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.15, 0.3), materials.psuHandle);
+        handle.position.set(px, psuH/2 + 0.15, -sD/2 - 0.05);
+        sliceLayers.powerSubsys.add(handle);
+
+        // Blind-mate gold power contacts at front of PSU
+        const blindMate = new THREE.Mesh(new THREE.BoxGeometry(psuW * 0.8, 0.2, 0.3), materials.goldContact);
+        blindMate.position.set(px, 0.3, pz + psuL/2);
+        sliceLayers.powerSubsys.add(blindMate);
+
+        psuBox.userData = { componentType: 'psu', label: `CRPS Power Supply Module ${p+1} (Feed ${p % 2 === 0 ? 'A' : 'B'})` };
+        sliceProbedMeshes.push(psuBox);
+      }
+
+      // Power Distribution Board (PDB)
+      const pdbMesh = new THREE.Mesh(new THREE.BoxGeometry(psuCount * (psuW + 0.15), 0.15, 1.0), materials.pcbDark);
+      pdbMesh.position.set(sW/2 - 0.8 - (psuCount * (psuW + 0.15))/2, 0.3, -sD/2 + psuL + 0.6);
+      sliceLayers.powerSubsys.add(pdbMesh);
+
+      // 8. TRANSLUCENT AIR DUCT (Air baffle directing airflow across CPUs)
+      const ductMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.18,
+        roughness: 0.2,
+        metalness: 0.1
+      });
+      const ductMesh = new THREE.Mesh(new THREE.BoxGeometry(sW - 1.2, uH * 0.7, mbDepth * 0.65), ductMat);
+      ductMesh.position.set(0, uH * 0.5 + 0.1, mbZ);
+      sliceLayers.airDuct.add(ductMesh);
+
+      // 9. TOP SHEET METAL COVER (Service cover with push-button latch)
+      const coverMesh = new THREE.Mesh(new THREE.BoxGeometry(sW, 0.12, sD), materials.chassisSheetMetal);
+      coverMesh.position.set(0, uH + 0.18, 0);
+      sliceLayers.topCover.add(coverMesh);
+
+      // Cover Latch Mechanism
+      const latch = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.4), materials.chassisDark);
+      latch.position.set(0, uH + 0.25, -sD/2 + 2.0);
+      sliceLayers.topCover.add(latch);
+
+      // Reset cover state based on global flag
+      sliceLayers.topCover.visible = !state.coverOpen;
+    }
+
+    // --- VISUALIZATION OVERLAYS (Airflow, Power Paths, Data Paths) ---
+
+    // 1. Airflow Stream Particle System
+    function initAirflowVisualization() {
+      const particleCount = 280;
+      const geo = new THREE.BufferGeometry();
+      const pos = new Float32Array(particleCount * 3);
+      const colors = new Float32Array(particleCount * 3);
+
+      for (let i = 0; i < particleCount; i++) {
+        pos[i * 3 + 0] = (Math.random() - 0.5) * 8.0; // X
+        pos[i * 3 + 1] = 0.5 + Math.random() * 2.0;    // Y
+        pos[i * 3 + 2] = 8.0 - Math.random() * 16.0;   // Z (front to back)
+
+        // Color gradient: Cold blue at front (Z > 0), warm amber/orange at rear (Z < 0)
+        colors[i * 3 + 0] = 0.2;
+        colors[i * 3 + 1] = 0.7;
+        colors[i * 3 + 2] = 1.0;
+      }
+
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const pMat = new THREE.PointsMaterial({
+        size: 0.25,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending
+      });
+
+      sliceAirflowParticles = new THREE.Points(geo, pMat);
+      sliceAirflowParticles.visible = state.airflowActive;
+      sliceMasterGroup.add(sliceAirflowParticles);
+    }
+    initAirflowVisualization();
+
+    // 2. Power Path Flow Lines
+    function initPowerPathVisualization() {
+      slicePowerFlowLines.forEach(l => sliceMasterGroup.remove(l));
+      slicePowerFlowLines = [];
+
+      // Paths from Rear PSUs -> PDB -> Motherboard -> VRMs -> CPUs & GPUs
+      const paths = [
+        // Feed A path to CPU 1 & Memory
+        [
+          new THREE.Vector3(3.2, 0.6, -8.5),
+          new THREE.Vector3(3.2, 0.4, -3.5),
+          new THREE.Vector3(1.0, 0.35, -1.0),
+          new THREE.Vector3(-1.8, 0.35, -1.0),
+          new THREE.Vector3(-1.8, 0.6, -1.0)
+        ],
+        // Feed B path to CPU 2 & GPU baseboard
+        [
+          new THREE.Vector3(1.8, 0.6, -8.5),
+          new THREE.Vector3(1.8, 0.4, -3.5),
+          new THREE.Vector3(0.0, 0.35, 0.0),
+          new THREE.Vector3(1.8, 0.35, 1.5),
+          new THREE.Vector3(1.8, 0.6, 2.5)
+        ]
+      ];
+
+      paths.forEach(pts => {
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const tubeGeo = new THREE.TubeGeometry(curve, 20, 0.08, 6, false);
+        const tubeMesh = new THREE.Mesh(tubeGeo, materials.powerFlowMat);
+        tubeMesh.visible = state.powerActive;
+        slicePowerFlowLines.push(tubeMesh);
+        sliceMasterGroup.add(tubeMesh);
+      });
+    }
+    initPowerPathVisualization();
+
+    // 3. Data Path Flow Lines
+    function initDataPathVisualization() {
+      sliceDataFlowLines.forEach(l => sliceMasterGroup.remove(l));
+      sliceDataFlowLines = [];
+
+      // Conceptual High-Speed Buses: Front NVMe -> Backplane -> CPU -> PCIe NIC
+      const paths = [
+        [
+          new THREE.Vector3(-2.5, 0.6, 7.5),
+          new THREE.Vector3(-2.5, 0.4, 4.0),
+          new THREE.Vector3(-1.8, 0.35, 0.0),
+          new THREE.Vector3(-1.8, 0.6, -2.5),
+          new THREE.Vector3(-2.8, 0.8, -6.5)
+        ],
+        [
+          new THREE.Vector3(2.5, 0.6, 7.5),
+          new THREE.Vector3(2.5, 0.4, 4.0),
+          new THREE.Vector3(1.8, 0.35, 0.0),
+          new THREE.Vector3(1.8, 0.6, -2.5),
+          new THREE.Vector3(0.0, 0.8, -6.5)
+        ]
+      ];
+
+      paths.forEach(pts => {
+        const curve = new THREE.CatmullRomCurve3(pts);
+        const tubeGeo = new THREE.TubeGeometry(curve, 20, 0.08, 6, false);
+        const tubeMesh = new THREE.Mesh(tubeGeo, materials.dataFlowMat);
+        tubeMesh.visible = state.dataActive;
+        sliceDataFlowLines.push(tubeMesh);
+        sliceMasterGroup.add(tubeMesh);
+      });
+    }
+    initDataPathVisualization();
+
+    // --- ANIMATION & TRANSITION CONTROLLER (TWEENING) ---
+    // Smooth transitions for camera, rail slide, explode, and cover
+    const animation = {
+      isAnimating: false,
+      targetCamPos: new THREE.Vector3(),
+      targetCamLook: new THREE.Vector3(),
+      startCamPos: new THREE.Vector3(),
+      startCamLook: new THREE.Vector3(),
+      slideServer: null,
+      slideStart: 0,
+      slideTarget: 0,
+      slideProgress: 1.0,
+      explodeProgress: 0.0,
+      targetExplode: 0.0,
+      coverProgress: 0.0,
+      targetCover: 0.0,
+      duration: 1.2,
+      elapsed: 0
+    };
+
+    function startCameraTransition(pos, target, duration = 1.0) {
+      animation.startCamPos.copy(camera.position);
+      animation.startCamLook.copy(controls.target);
+      animation.targetCamPos.copy(pos);
+      animation.targetCamLook.copy(target);
+      animation.elapsed = 0;
+      animation.duration = duration;
+      animation.isAnimating = true;
+    }
+
+    // Enter Single Slice Mode with full theatrical rack ejection
+    function enterSliceMode(serverIndex) {
+      if (state.viewMode === 'slice' && state.selectedServerIndex === serverIndex) return;
+
+      state.viewMode = 'slice';
+      state.selectedServerIndex = serverIndex;
+      updateUIForCurrentMode();
+      updateSelectedServerDisplay();
+
+      const serverObj = rackServerMeshes[serverIndex];
+
+      // 1. Slide server forward on rack rails
+      animation.slideServer = serverObj;
+      animation.slideStart = serverObj.group.position.z;
+      animation.slideTarget = serverObj.originalZ + 14.0; // 70% out of rack
+      animation.slideProgress = 0.0;
+
+      // Camera smoothly tracks to front of pulled out server
+      const targetLook = new THREE.Vector3(0, serverObj.originalY, serverObj.originalZ + 8.0);
+      const targetCam = new THREE.Vector3(14, serverObj.originalY + 12, serverObj.originalZ + 22.0);
+      startCameraTransition(targetCam, targetLook, 1.4);
+
+      // Once pulled out, isolate into high-detail Slice view
+      setTimeout(() => {
+        rackGroup.visible = false;
+        sliceMasterGroup.visible = true;
+        rebuildSliceHardware(serverIndex);
+        initPowerPathVisualization();
+        initDataPathVisualization();
+
+        // Position camera in pristine 3/4 Whole Slice Engineering view (inspired by reference image)
+        const wholeSliceCam = new THREE.Vector3(16, 18, 20);
+        const wholeSliceLook = new THREE.Vector3(0, 1.5, 0);
+        startCameraTransition(wholeSliceCam, wholeSliceLook, 1.0);
+      }, 1200);
+    }
+
+    // Return to Full Rack Mode
+    function returnToRackMode() {
+      state.viewMode = 'rack';
+      state.explodedActive = false;
+      state.coverOpen = false;
+      animation.targetExplode = 0.0;
+      animation.targetCover = 0.0;
+      updateUIForCurrentMode();
+
+      sliceMasterGroup.visible = false;
+      rackGroup.visible = true;
+
+      // Slide server smoothly back into rack
+      const serverObj = rackServerMeshes[state.selectedServerIndex];
+      serverObj.group.position.z = serverObj.originalZ + 14.0;
+      animation.slideServer = serverObj;
+      animation.slideStart = serverObj.group.position.z;
+      animation.slideTarget = serverObj.originalZ;
+      animation.slideProgress = 0.0;
+
+      // Restore Full Rack 3/4 Camera view
+      const rack34Cam = new THREE.Vector3(22, 28, 36);
+      const rack34Look = new THREE.Vector3(0, 21, 0);
+      startCameraTransition(rack34Cam, rack34Look, 1.2);
+    }
+
+    // --- UI POPULATION & INTERACTIVE SYNC ---
+
+    // 1. Build Left Rack Server List
+    function populateRackServerListUI() {
+      const container = document.getElementById('rack-list-container');
+      container.innerHTML = '';
+
+      ARCHETYPES.forEach((srv, idx) => {
+        const item = document.createElement('div');
+        item.className = `p-2 rounded border font-mono text-xs cursor-pointer transition flex items-center justify-between ${
+          idx === state.selectedServerIndex
+            ? 'bg-sky-950/80 border-sky-500/80 text-sky-200'
+            : 'bg-slate-900/60 border-slate-800/80 text-slate-300 hover:bg-slate-800/60'
+        }`;
+        item.id = `rack-item-${idx}`;
+
+        item.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="w-1.5 h-6 rounded-sm ${idx === state.selectedServerIndex ? 'bg-sky-400' : 'bg-slate-600'}"></span>
+            <div>
+              <div class="font-bold text-[11px] leading-tight">${srv.name}</div>
+              <div class="text-[10px] text-slate-400">${srv.archetype}</div>
+            </div>
+          </div>
+          <div class="text-right font-mono">
+            <span class="text-xs font-bold ${idx === state.selectedServerIndex ? 'text-cyan-400' : 'text-slate-400'}">${srv.rackPos}</span>
+            <div class="text-[9px] text-slate-500">${srv.powerTypical} kW</div>
+          </div>
+        `;
+
+        item.addEventListener('click', () => {
+          selectServer(idx);
+        });
+
+        item.addEventListener('mouseenter', () => {
+          highlightServer(idx);
+        });
+
+        item.addEventListener('mouseleave', () => {
+          unhighlightServer();
+        });
+
+        container.appendChild(item);
+      });
+    }
+    populateRackServerListUI();
+
+    // 2. Build Archetype Comparison Matrix Modal Table
+    function populateComparisonMatrixUI() {
+      const tbody = document.getElementById('matrix-tbody');
+      tbody.innerHTML = '';
+
+      ARCHETYPES.forEach(srv => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-slate-800/40 transition';
+
+        const makeBar = (val, color) => `
+          <div class="w-16 bg-slate-800 rounded-full h-1.5 overflow-hidden inline-block mr-1 align-middle">
+            <div class="${color} h-full rounded-full" style="width: ${val}%"></div>
+          </div>
+          <span class="text-[9px] text-slate-400">${val}%</span>
+        `;
+
+        row.innerHTML = `
+          <td class="py-2.5 px-3 font-bold text-white">${srv.name}</td>
+          <td class="py-2.5 px-3 font-semibold text-cyan-400">${srv.uHeight}U</td>
+          <td class="py-2.5 px-3">${makeBar(srv.ratings.cpu, 'bg-emerald-400')}</td>
+          <td class="py-2.5 px-3">${makeBar(srv.ratings.gpu, 'bg-indigo-400')}</td>
+          <td class="py-2.5 px-3">${makeBar(srv.ratings.ram, 'bg-sky-400')}</td>
+          <td class="py-2.5 px-3">${makeBar(srv.ratings.storage, 'bg-amber-400')}</td>
+          <td class="py-2.5 px-3">${makeBar(srv.ratings.net, 'bg-teal-400')}</td>
+          <td class="py-2.5 px-3">${makeBar(srv.ratings.pwr, 'bg-rose-400')}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    populateComparisonMatrixUI();
+
+    // Select Server Function
+    function selectServer(index) {
+      state.selectedServerIndex = index;
+
+      // Update selection highlighting in rack
+      rackServerMeshes.forEach((item, i) => {
+        if (i === index) {
+          item.bodyMesh.material.color.setHex(0x2d4356); // Subtle blue tint
+        } else {
+          item.bodyMesh.material.color.setHex(0x1e2229);
+        }
+      });
+
+      populateRackServerListUI();
+      updateSelectedServerDisplay();
+
+      if (state.viewMode === 'slice') {
+        rebuildSliceHardware(index);
+        initPowerPathVisualization();
+        initDataPathVisualization();
+      }
+    }
+
+    // Hover Highlight
+    function highlightServer(index) {
+      state.hoveredServerIndex = index;
+      if (state.viewMode === 'rack') {
+        rackServerMeshes.forEach((item, i) => {
+          if (i === index && i !== state.selectedServerIndex) {
+            item.bodyMesh.material.color.setHex(0x252b36);
+          }
+        });
+      }
+    }
+
+    function unhighlightServer() {
+      state.hoveredServerIndex = -1;
+      if (state.viewMode === 'rack') {
+        rackServerMeshes.forEach((item, i) => {
+          if (i !== state.selectedServerIndex) {
+            item.bodyMesh.material.color.setHex(0x1e2229);
+          }
+        });
+      }
+    }
+
+    // Update Right Inspector Panel with Selected Server Info
+    function updateSelectedServerDisplay() {
+      const srv = ARCHETYPES[state.selectedServerIndex];
+
+      document.getElementById('info-server-title').textContent = srv.name;
+      document.getElementById('info-server-u').textContent = `${srv.rackPos} (${srv.uHeight}U)`;
+
+      // Specs Tab
+      document.getElementById('spec-cpu').textContent = srv.specs.cpu;
+      document.getElementById('spec-gpu').textContent = srv.specs.gpu;
+      document.getElementById('spec-ram').textContent = srv.specs.ram;
+      document.getElementById('spec-storage').textContent = srv.specs.storage;
+      document.getElementById('spec-network').textContent = srv.specs.network;
+      document.getElementById('spec-psu').textContent = srv.specs.psu;
+      document.getElementById('spec-fan').textContent = srv.specs.cooling;
+
+      // Architecture Tab
+      document.getElementById('arch-design-title').textContent = srv.designTitle;
+      document.getElementById('arch-design-desc').textContent = srv.designDesc;
+      const prioList = document.getElementById('arch-priorities');
+      prioList.innerHTML = '';
+      srv.priorities.forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = p;
+        prioList.appendChild(li);
+      });
+
+      // Slice Nav Counter
+      document.getElementById('slice-nav-counter').textContent = `0${state.selectedServerIndex + 1} / 0${ARCHETYPES.length}`;
+    }
+    updateSelectedServerDisplay();
+
+    // Update Probed Component in Inspector
+    function updateComponentInspector(type, customLabel) {
+      const comp = COMPONENT_DETAILS[type] || COMPONENT_DETAILS['cpu'];
+      state.selectedComponent = type;
+
+      document.getElementById('comp-name').textContent = customLabel || comp.name;
+      document.getElementById('comp-role').textContent = comp.role;
+      document.getElementById('comp-arch').textContent = comp.arch;
+      document.getElementById('comp-power').textContent = comp.power;
+      document.getElementById('comp-cooling').textContent = comp.cooling;
+      document.getElementById('comp-bus').textContent = comp.bus;
+      document.getElementById('comp-notes').textContent = comp.notes;
+    }
+
+    // Update Mode Views in UI
+    function updateUIForCurrentMode() {
+      const isSlice = state.viewMode === 'slice';
+
+      document.getElementById('btn-mode-rack').classList.toggle('active', !isSlice);
+      document.getElementById('btn-mode-slice').classList.toggle('active', isSlice);
+      document.getElementById('tb-rack').classList.toggle('active', !isSlice);
+      document.getElementById('tb-slice').classList.toggle('active', isSlice);
+
+      document.getElementById('current-view-badge').textContent = isSlice ? 'SINGLE SLICE INSPECTION' : 'RACK VIEW (42U)';
+      document.getElementById('rack-camera-presets').classList.toggle('hidden', isSlice);
+      document.getElementById('slice-camera-presets').classList.toggle('hidden', !isSlice);
+      document.getElementById('slice-nav-container').classList.toggle('hidden', !isSlice);
+      document.getElementById('rack-panel-toggles').classList.toggle('hidden', isSlice);
+      document.getElementById('rack-telemetry-box').classList.toggle('hidden', isSlice);
+
+      // Action button text
+      const actionBtn = document.getElementById('btn-action-inspect');
+      if (isSlice) {
+        actionBtn.innerHTML = `
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"/></svg>
+          <span>RETURN TO FULL RACK</span>
+        `;
+      } else {
+        actionBtn.innerHTML = `
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          <span>INSPECT SLICE (OPEN INTERNALS)</span>
+        `;
+      }
+    }
+
+    // --- RAYCASTING MOUSE PICKING (Servers & Components) ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const tooltip = document.getElementById('hover-tooltip');
+    const tooltipTitle = document.getElementById('tooltip-title');
+    const tooltipDesc = document.getElementById('tooltip-desc');
+
+    function onPointerMove(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      // Update tooltip position
+      tooltip.style.left = `${event.clientX + 14}px`;
+      tooltip.style.top = `${event.clientY + 14}px`;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      if (state.viewMode === 'rack') {
+        // Intersect servers in rack
+        const intersects = raycaster.intersectObjects(rackServersGroup.children, true);
+        if (intersects.length > 0) {
+          let root = intersects[0].object;
+          while (root.parent && root.parent !== rackServersGroup) {
+            root = root.parent;
+          }
+          if (root.userData && root.userData.serverIndex !== undefined) {
+            const idx = root.userData.serverIndex;
+            highlightServer(idx);
+            tooltip.style.display = 'block';
+            tooltipTitle.textContent = ARCHETYPES[idx].name;
+            tooltipDesc.textContent = `${ARCHETYPES[idx].rackPos} | ${ARCHETYPES[idx].archetype}`;
+            document.body.style.cursor = 'pointer';
+            return;
+          }
+        }
+        tooltip.style.display = 'none';
+        document.body.style.cursor = 'default';
+        unhighlightServer();
+      } else {
+        // Intersect components in slice mode
+        const intersects = raycaster.intersectObjects(sliceProbedMeshes, true);
+        if (intersects.length > 0) {
+          const hit = intersects[0].object;
+          if (hit.userData && hit.userData.componentType) {
+            tooltip.style.display = 'block';
+            tooltipTitle.textContent = hit.userData.label || 'Component';
+            tooltipDesc.textContent = `Click to inspect ${hit.userData.componentType.toUpperCase()}`;
+            document.body.style.cursor = 'pointer';
+            return;
+          }
+        }
+        tooltip.style.display = 'none';
+        document.body.style.cursor = 'default';
+      }
+    }
+
+    function onPointerClick(event) {
+      // Ignore if clicking on UI overlay
+      if (event.clientX < 340 && event.clientY > 60) return;
+      if (event.clientX > window.innerWidth - 400 && event.clientY > 60) return;
+      if (event.clientY > window.innerHeight - 80) return;
+
+      raycaster.setFromCamera(mouse, camera);
+
+      if (state.viewMode === 'rack') {
+        const intersects = raycaster.intersectObjects(rackServersGroup.children, true);
+        if (intersects.length > 0) {
+          let root = intersects[0].object;
+          while (root.parent && root.parent !== rackServersGroup) {
+            root = root.parent;
+          }
+          if (root.userData && root.userData.serverIndex !== undefined) {
+            selectServer(root.userData.serverIndex);
+          }
+        }
+      } else {
+        const intersects = raycaster.intersectObjects(sliceProbedMeshes, true);
+        if (intersects.length > 0) {
+          const hit = intersects[0].object;
+          if (hit.userData && hit.userData.componentType) {
+            updateComponentInspector(hit.userData.componentType, hit.userData.label);
+          }
+        }
+      }
+    }
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('click', onPointerClick);
+
+    // --- EVENT LISTENERS & BUTTON ACTIONS ---
+
+    // Top View Toggle Buttons
+    document.getElementById('btn-mode-rack').addEventListener('click', returnToRackMode);
+    document.getElementById('btn-mode-slice').addEventListener('click', () => enterSliceMode(state.selectedServerIndex));
+    document.getElementById('tb-rack').addEventListener('click', returnToRackMode);
+    document.getElementById('tb-slice').addEventListener('click', () => enterSliceMode(state.selectedServerIndex));
+    document.getElementById('btn-action-inspect').addEventListener('click', () => {
+      if (state.viewMode === 'rack') {
+        enterSliceMode(state.selectedServerIndex);
+      } else {
+        returnToRackMode();
+      }
+    });
+
+    // Slice Prev / Next Switchers
+    document.getElementById('btn-prev-server').addEventListener('click', () => {
+      const prev = (state.selectedServerIndex - 1 + ARCHETYPES.length) % ARCHETYPES.length;
+      selectServer(prev);
+    });
+    document.getElementById('btn-next-server').addEventListener('click', () => {
+      const next = (state.selectedServerIndex + 1) % ARCHETYPES.length;
+      selectServer(next);
+    });
+    document.getElementById('btn-return-rack').addEventListener('click', returnToRackMode);
+
+    // Open/Close Cover Toggle
+    const btnCover = document.getElementById('tb-cover');
+    btnCover.addEventListener('click', () => {
+      state.coverOpen = !state.coverOpen;
+      btnCover.classList.toggle('active', state.coverOpen);
+      btnCover.querySelector('span').textContent = state.coverOpen ? 'CLOSE COVER' : 'OPEN COVER';
+      animation.targetCover = state.coverOpen ? 1.0 : 0.0;
+    });
+
+    // Cutaway Chassis Sidewalls Toggle
+    const btnCutaway = document.getElementById('tb-cutaway');
+    btnCutaway.addEventListener('click', () => {
+      state.cutawayActive = !state.cutawayActive;
+      btnCutaway.classList.toggle('active', state.cutawayActive);
+      if (state.viewMode === 'slice') {
+        rebuildSliceHardware(state.selectedServerIndex);
+      }
+    });
+
+    // Exploded View Assembly Toggle
+    const btnExplode = document.getElementById('tb-explode');
+    btnExplode.addEventListener('click', () => {
+      state.explodedActive = !state.explodedActive;
+      btnExplode.classList.toggle('active', state.explodedActive);
+      animation.targetExplode = state.explodedActive ? 1.0 : 0.0;
+    });
+
+    // Airflow Visualizer Toggle
+    const btnAirflow = document.getElementById('tb-airflow');
+    btnAirflow.addEventListener('click', () => {
+      state.airflowActive = !state.airflowActive;
+      btnAirflow.classList.toggle('active', state.airflowActive);
+      if (sliceAirflowParticles) sliceAirflowParticles.visible = state.airflowActive;
+    });
+
+    // Power Path Visualizer Toggle
+    const btnPower = document.getElementById('tb-power');
+    btnPower.addEventListener('click', () => {
+      state.powerActive = !state.powerActive;
+      btnPower.classList.toggle('active', state.powerActive);
+      slicePowerFlowLines.forEach(l => l.visible = state.powerActive);
+    });
+
+    // Data Path Visualizer Toggle
+    const btnData = document.getElementById('tb-data');
+    btnData.addEventListener('click', () => {
+      state.dataActive = !state.dataActive;
+      btnData.classList.toggle('active', state.dataActive);
+      sliceDataFlowLines.forEach(l => l.visible = state.dataActive);
+    });
+
+    // Rack Side Panels & PDU Toggles
+    const btnSides = document.getElementById('tb-sides');
+    btnSides.addEventListener('click', () => {
+      state.sidesVisible = !state.sidesVisible;
+      rackSidePanelsGroup.visible = state.sidesVisible;
+      document.getElementById('lbl-sides').textContent = state.sidesVisible ? 'ON' : 'OFF';
+      btnSides.classList.toggle('active', !state.sidesVisible);
+    });
+
+    const btnPDU = document.getElementById('tb-pdu');
+    btnPDU.addEventListener('click', () => {
+      state.pduHighlighted = !state.pduHighlighted;
+      btnPDU.classList.toggle('active', state.pduHighlighted);
+      // Quick camera move to view rear PDUs
+      if (state.viewMode === 'rack') {
+        startCameraTransition(new THREE.Vector3(0, 24, -38), new THREE.Vector3(0, 21, 0), 1.0);
+      }
+    });
+
+    // Global Reset Button
+    document.getElementById('tb-reset').addEventListener('click', () => {
+      state.coverOpen = false;
+      state.cutawayActive = false;
+      state.explodedActive = false;
+      state.airflowActive = false;
+      state.powerActive = false;
+      state.dataActive = false;
+      state.sidesVisible = true;
+      rackSidePanelsGroup.visible = true;
+
+      // Clear faults
+      Object.keys(state.faults).forEach(k => state.faults[k] = false);
+      document.querySelectorAll('.fail-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('fault-active-badge').classList.add('hidden');
+      document.getElementById('sys-status').textContent = 'SYS READY';
+      document.getElementById('sys-status').className = 'text-emerald-400 font-semibold';
+
+      // Update button visual states
+      btnCover.classList.remove('active');
+      btnCover.querySelector('span').textContent = 'OPEN COVER';
+      btnCutaway.classList.remove('active');
+      btnExplode.classList.remove('active');
+      btnAirflow.classList.remove('active');
+      btnPower.classList.remove('active');
+      btnData.classList.remove('active');
+      document.getElementById('lbl-sides').textContent = 'ON';
+
+      if (sliceAirflowParticles) sliceAirflowParticles.visible = false;
+      slicePowerFlowLines.forEach(l => l.visible = false);
+      sliceDataFlowLines.forEach(l => l.visible = false);
+
+      animation.targetExplode = 0.0;
+      animation.targetCover = 0.0;
+
+      returnToRackMode();
+    });
+
+    // Inspector Tab Switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.classList.remove('active', 'border-cyan-400', 'text-cyan-300');
+          b.classList.add('border-transparent', 'text-slate-400');
+        });
+        btn.classList.add('active', 'border-cyan-400', 'text-cyan-300');
+        btn.classList.remove('border-transparent', 'text-slate-400');
+
+        const tabId = btn.getAttribute('data-tab');
+        document.getElementById('tab-specs').classList.add('hidden');
+        document.getElementById('tab-health').classList.add('hidden');
+        document.getElementById('tab-arch').classList.add('hidden');
+        document.getElementById(tabId).classList.remove('hidden');
+      });
+    });
+
+    // Failure Injections
+    document.querySelectorAll('.fail-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.getAttribute('data-type');
+        state.faults[type] = !state.faults[type];
+        btn.classList.toggle('active', state.faults[type]);
+
+        const hasAnyFault = Object.values(state.faults).some(v => v);
+        document.getElementById('fault-active-badge').classList.toggle('hidden', !hasAnyFault);
+
+        const statusLabel = document.getElementById('sys-status');
+        if (hasAnyFault) {
+          statusLabel.textContent = 'FAULT DEGRADED';
+          statusLabel.className = 'text-red-400 font-semibold animate-pulse';
+        } else {
+          statusLabel.textContent = 'SYS READY';
+          statusLabel.className = 'text-emerald-400 font-semibold';
+        }
+      });
+    });
+
+    document.getElementById('btn-clear-faults').addEventListener('click', () => {
+      Object.keys(state.faults).forEach(k => state.faults[k] = false);
+      document.querySelectorAll('.fail-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('fault-active-badge').classList.add('hidden');
+      const statusLabel = document.getElementById('sys-status');
+      statusLabel.textContent = 'SYS READY';
+      statusLabel.className = 'text-emerald-400 font-semibold';
+    });
+
+    // Archetype Comparison Modal
+    const modal = document.getElementById('compare-modal');
+    document.getElementById('btn-compare-modal').addEventListener('click', () => modal.classList.remove('hidden'));
+    document.getElementById('btn-close-modal').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.add('hidden');
+    });
+
+    // Camera Presets
+    document.querySelectorAll('.cam-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cam-preset').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const camType = btn.getAttribute('data-cam');
+        if (camType === 'rack-front') {
+          startCameraTransition(new THREE.Vector3(0, 21, 40), new THREE.Vector3(0, 21, 0), 1.0);
+        } else if (camType === 'rack-34') {
+          startCameraTransition(new THREE.Vector3(22, 28, 36), new THREE.Vector3(0, 21, 0), 1.0);
+        } else if (camType === 'rack-side') {
+          startCameraTransition(new THREE.Vector3(42, 21, 0), new THREE.Vector3(0, 21, 0), 1.0);
+        } else if (camType === 'rack-rear') {
+          startCameraTransition(new THREE.Vector3(0, 22, -38), new THREE.Vector3(0, 21, 0), 1.0);
+        } else if (camType === 'slice-whole') {
+          startCameraTransition(new THREE.Vector3(16, 18, 20), new THREE.Vector3(0, 1.5, 0), 1.0);
+        } else if (camType === 'slice-top') {
+          startCameraTransition(new THREE.Vector3(0, 26, 0.1), new THREE.Vector3(0, 0, 0), 1.0);
+        } else if (camType === 'slice-34') {
+          startCameraTransition(new THREE.Vector3(18, 14, 18), new THREE.Vector3(0, 1.0, 0), 1.0);
+        } else if (camType === 'slice-front') {
+          startCameraTransition(new THREE.Vector3(0, 8, 18), new THREE.Vector3(0, 2.0, 4.0), 1.0);
+        } else if (camType === 'slice-rear') {
+          startCameraTransition(new THREE.Vector3(0, 8, -18), new THREE.Vector3(0, 2.0, -4.0), 1.0);
+        } else if (camType === 'slice-cpu') {
+          startCameraTransition(new THREE.Vector3(-6, 9, 2), new THREE.Vector3(0, 0.5, -1.0), 1.0);
+        }
+      });
+    });
+
+    // --- TELEMETRY ENVIRONMENTAL SIMULATION ---
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let currentFps = 60;
+
+    function updateEnvironmentalSimulation(delta) {
+      state.telemetryTimer += delta;
+      if (state.telemetryTimer < 0.6) return; // Update roughly twice per second
+      state.telemetryTimer = 0;
+
+      const srv = ARCHETYPES[state.selectedServerIndex];
+      const f = state.faults;
+
+      // Base simulated values with subtle believable noise
+      const noise = (Math.sin(performance.now() * 0.002) + 1) * 0.5;
+
+      let cpu1Temp = Math.round(58 + noise * 6);
+      let cpu2Temp = Math.round(61 + noise * 5);
+      let gpuTemp = Math.round(68 + noise * 8);
+      let fanRpm = Math.round(9200 + noise * 800);
+      let pwr = (srv.powerTypical + (noise - 0.5) * 0.2).toFixed(1);
+      let net = Math.round(85 + noise * 30);
+
+      // Fault logic injection
+      if (f.fan) {
+        cpu1Temp += 18;
+        cpu2Temp += 14;
+        fanRpm = 16800; // Neighboring fans boost to 100%
+      }
+      if (f.psu) {
+        // Redundant power doubles on surviving supply
+        pwr = (parseFloat(pwr) * 1.05).toFixed(1);
+      }
+      if (f.gpu) {
+        gpuTemp += 22; // Overheat
+        fanRpm = 17500;
+      }
+      if (f.net) {
+        net = Math.round(net * 0.45); // Link degradation
+      }
+
+      // Update UI elements
+      document.getElementById('tel-cpu1').textContent = `${cpu1Temp}°C`;
+      document.getElementById('tel-cpu1').className = cpu1Temp > 75 ? 'text-base font-bold text-red-400' : 'text-base font-bold text-emerald-400';
+
+      document.getElementById('tel-cpu2').textContent = `${cpu2Temp}°C`;
+      document.getElementById('tel-cpu2').className = cpu2Temp > 75 ? 'text-base font-bold text-red-400' : 'text-base font-bold text-emerald-400';
+
+      document.getElementById('tel-gpu').textContent = `${gpuTemp}°C`;
+      document.getElementById('tel-gpu').className = gpuTemp > 85 ? 'text-base font-bold text-red-400' : 'text-base font-bold text-cyan-400';
+
+      document.getElementById('tel-fan').textContent = `${fanRpm.toLocaleString()} RPM`;
+      document.getElementById('tel-power').textContent = `${pwr} kW`;
+      document.getElementById('tel-net').textContent = `${net} Gb/s`;
+    }
+
+    // --- ANIMATION RENDER LOOP ---
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const time = performance.now() * 0.001;
+
+      // Smooth OrbitControls Damping
+      controls.update();
+
+      // Camera Lerp Transition
+      if (animation.isAnimating) {
+        animation.elapsed += delta;
+        const t = Math.min(animation.elapsed / animation.duration, 1.0);
+        // Smooth Cubic In-Out
+        const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        camera.position.lerpVectors(animation.startCamPos, animation.targetCamPos, ease);
+        controls.target.lerpVectors(animation.startCamLook, animation.targetCamLook, ease);
+
+        if (t >= 1.0) {
+          animation.isAnimating = false;
+        }
+      }
+
+      // Server Rail Slide Animation
+      if (animation.slideServer && animation.slideProgress < 1.0) {
+        animation.slideProgress += delta * 1.5;
+        const st = Math.min(animation.slideProgress, 1.0);
+        const ease = st < 0.5 ? 2 * st * st : -1 + (4 - 2 * st) * st;
+        const curZ = THREE.MathUtils.lerp(animation.slideStart, animation.slideTarget, ease);
+        animation.slideServer.group.position.z = curZ;
+      }
+
+      // Exploded View Assembly Lerp
+      animation.explodeProgress = THREE.MathUtils.lerp(animation.explodeProgress, animation.targetExplode, delta * 4.0);
+      if (sliceMasterGroup.visible) {
+        const ep = animation.explodeProgress;
+        sliceLayers.topCover.position.y = ep * 6.0;
+        sliceLayers.airDuct.position.y = ep * 4.2;
+        sliceLayers.risersPcie.position.y = ep * 3.0;
+        sliceLayers.cpuRamArea.position.y = ep * 1.8;
+        sliceLayers.gpuArea.position.y = ep * 1.8;
+        sliceLayers.fanWall.position.z = -ep * 2.2;
+        sliceLayers.backplane.position.z = ep * 2.5;
+        sliceLayers.powerSubsys.position.x = ep * 3.5;
+      }
+
+      // Top Cover Smooth Opening / Sliding Back
+      animation.coverProgress = THREE.MathUtils.lerp(animation.coverProgress, animation.targetCover, delta * 3.5);
+      if (sliceLayers.topCover) {
+        sliceLayers.topCover.position.z = -animation.coverProgress * 12.0;
+        sliceLayers.topCover.position.y = (animation.explodeProgress * 6.0) + (animation.coverProgress * 1.2);
+        sliceLayers.topCover.visible = (animation.coverProgress < 0.95);
+      }
+
+      // Fan Rotor Rotation Animation
+      const fanSpeed = (state.faults.fan ? 45.0 : 25.0) * delta;
+      sliceFanBlades.forEach(f => {
+        // If fan failure fault active, fan 3 stops
+        if (state.faults.fan && f.fanIdx === 2) return;
+        f.b1.rotation.y += fanSpeed;
+        f.b2.rotation.y -= fanSpeed;
+      });
+
+      // Airflow Particles Animation
+      if (sliceAirflowParticles && sliceAirflowParticles.visible) {
+        const pos = sliceAirflowParticles.geometry.attributes.position.array;
+        const colors = sliceAirflowParticles.geometry.attributes.color.array;
+        const count = pos.length / 3;
+
+        for (let i = 0; i < count; i++) {
+          pos[i * 3 + 2] -= delta * 14.0; // Flow from front (+Z) to rear (-Z)
+
+          // Reset when exiting rear exhaust
+          if (pos[i * 3 + 2] < -9.0) {
+            pos[i * 3 + 2] = 8.5;
+            pos[i * 3 + 0] = (Math.random() - 0.5) * 8.0;
+            pos[i * 3 + 1] = 0.5 + Math.random() * 2.2;
+          }
+
+          // Thermal gradient shift: Blue -> Amber -> Orange as air warms up
+          const progress = (8.5 - pos[i * 3 + 2]) / 17.5;
+          colors[i * 3 + 0] = 0.2 + progress * 0.8;
+          colors[i * 3 + 1] = 0.8 - progress * 0.4;
+          colors[i * 3 + 2] = 1.0 - progress * 0.8;
+        }
+        sliceAirflowParticles.geometry.attributes.position.needsUpdate = true;
+        sliceAirflowParticles.geometry.attributes.color.needsUpdate = true;
+      }
+
+      // Pulsing Power & Data lines
+      if (state.powerActive) {
+        materials.powerFlowMat.opacity = 0.6 + Math.sin(time * 6.0) * 0.3;
+      }
+      if (state.dataActive) {
+        materials.dataFlowMat.opacity = 0.6 + Math.cos(time * 8.0) * 0.3;
+      }
+
+      // Update Environmental Simulation
+      updateEnvironmentalSimulation(delta);
+
+      // Live Performance Profiling
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsTime >= 500) {
+        currentFps = Math.round((frameCount * 1000) / (now - lastFpsTime));
+        frameCount = 0;
+        lastFpsTime = now;
+        document.getElementById('perf-fps').textContent = currentFps;
+        document.getElementById('perf-calls').textContent = renderer.info.render.calls;
+        document.getElementById('perf-tris').textContent = (renderer.info.render.triangles / 1000).toFixed(1) + 'k';
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Window Resize Handling
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Start Rendering Loop
+    animate();
+  </script>
+</body>
+</html>
