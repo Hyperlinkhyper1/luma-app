@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#183c32">
+  <title>Server Architecture Lab | Interactive Engineering Workspace</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    :root{--ink:#20342c;--muted:#7b867e;--line:#dfe4dd;--paper:#f9faf7;--accent:#27644b;--mint:#e9f0e5;--mono:Consolas,"SFMono-Regular",monospace;--sans:Inter,"Segoe UI",Arial,sans-serif}
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}body{font-family:var(--sans);font-size:12px;color:var(--ink);background:var(--paper)}button,select,input{font:inherit}button{cursor:pointer;color:inherit;border:0;background:none}button:disabled{cursor:not-allowed;opacity:.3}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #4d9876;outline-offset:3px}button,select{touch-action:manipulation}svg{display:block}.icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}.mono{font-family:var(--mono)}.eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}.muted{color:var(--muted)}.hidden,[hidden]{display:none!important}.dot{width:6px;height:6px;display:inline-block;border-radius:50%;background:#4d9666;flex:none}.dot.warning{background:#c97742}.separator{height:24px;width:1px;background:var(--line)}
+    .topbar{height:69px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 25px;background:#fbfcf9;position:relative;z-index:20}.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:33px;height:37px;border:1.7px solid #356747;border-radius:3px;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:6px}.brand-mark span{height:5px;border:1px solid #356747;position:relative}.brand-mark span:after{content:"";width:2px;height:2px;background:#356747;position:absolute;right:3px;top:1px}.brand h1{font-size:14px;font-weight:650;letter-spacing:1.45px;margin:0 0 4px;line-height:1.2}.brand-sub{font-family:var(--mono);font-size:8px;letter-spacing:2.1px;color:#91978b}.top-actions{display:flex;align-items:center;gap:23px}.performance{display:flex;gap:23px}.perf{display:flex;align-items:baseline;gap:6px}.perf b{font:12px var(--mono);font-weight:600}.perf span{font:8px var(--mono);color:#8b948c;letter-spacing:.5px}.perf:first-child b{color:#4b7751}.outline-button{border:1px solid #d4dcd1;border-radius:4px;height:32px;padding:0 12px;display:inline-flex;align-items:center;gap:8px;font-size:10px;font-weight:550;transition:background .2s}.outline-button:hover{background:#edf2e9}.outline-button .icon{width:14px;height:14px}.round-button{width:27px;height:27px;border:1px solid #d3dace;border-radius:50%;display:grid;place-items:center;color:#748271;font:12px var(--mono)}
+    .workspace{display:grid;grid-template-columns:243px minmax(0,1fr) 289px;height:calc(100dvh - 96px)}.left-panel,.right-panel{position:relative;z-index:5;min-height:0;background:var(--paper);overflow:auto;scrollbar-width:thin;scrollbar-color:#cbd4c6 transparent}.left-panel{border-right:1px solid var(--line);display:flex;flex-direction:column}.right-panel{border-left:1px solid var(--line)}.panel-intro{padding:25px 20px 21px}.panel-intro .eyebrow{display:flex;justify-content:space-between;align-items:center}.panel-intro h2{font-size:20px;font-weight:500;letter-spacing:-.65px;margin:13px 0 7px}.location{display:flex;align-items:center;gap:7px;font:9px var(--mono);color:#858e82;letter-spacing:.25px}.panel-tabs{display:flex;padding:0 20px;border-bottom:1px solid var(--line);gap:23px}.panel-tab{font-size:10px;color:#949b91;padding:0 0 13px;position:relative}.panel-tab.active{color:#285c43;font-weight:600}.panel-tab.active:after{content:"";height:2px;background:#366b46;position:absolute;left:0;right:0;bottom:-1px}.section-label{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 12px;font:9px var(--mono);letter-spacing:1.15px;color:#8c9686}.section-label span:last-child{font-size:9px;color:#9da597;letter-spacing:0}.server-list{padding:0 10px}.server-row{width:100%;display:grid;grid-template-columns:27px 1fr auto;align-items:center;gap:10px;text-align:left;border:1px solid transparent;border-radius:3px;padding:12px 9px;margin:2px 0;position:relative;transition:background .18s,border-color .18s}.server-row:hover{background:#f0f3ec}.server-row.active{background:#e9eee3;border-color:#d1ddc6}.server-row.active:before{content:"";position:absolute;width:2px;height:22px;top:19px;left:-1px;background:#608454}.server-row .icon{width:24px;height:24px;color:#7b8672;stroke-width:1.1}.server-row.active .icon{color:#4c7345}.server-name{font-size:11px;font-weight:550;margin-bottom:6px;letter-spacing:-.1px;white-space:nowrap}.server-meta{font:8px var(--mono);color:#8b9583;display:flex;align-items:center;gap:6px}.server-meta .dot{width:4px;height:4px}.u-tag{font:9px var(--mono);color:#7e8b73;align-self:start;padding-top:3px}.left-bottom{margin-top:auto;padding:20px}.occupancy-row{font-size:10px;display:flex;justify-content:space-between;color:#818d78}.occupancy-row b{font-weight:500;color:#4e6145}.occupancy-track{display:flex;gap:2px;margin:10px 0 16px;height:5px}.occupancy-track i{flex:1;background:#e4e8de}.occupancy-track i.filled{background:#809472}.enclosure{display:flex;justify-content:space-between;align-items:center;padding-top:15px;border-top:1px solid var(--line);gap:6px}.enclosure>span{font:8px var(--mono);letter-spacing:.5px;color:#929b89}.small-toggle{padding:5px 7px;border:1px solid #dce2d5;border-radius:3px;font-size:9px;color:#84917b}.small-toggle.active{background:#e7eee0;border-color:#9eb38e;color:#4d6940}.comparison-link{width:100%;border-top:1px solid var(--line);margin-top:17px;padding:16px 0 0;display:flex;align-items:center;justify-content:space-between;font-size:10px}.comparison-link .icon{width:14px;height:14px;color:#8b9681}.power-content{padding:24px 20px}.power-big{font-size:34px;font-weight:400;letter-spacing:-1.5px;margin:10px 0 2px}.power-big small{font-size:12px;letter-spacing:0;color:#838f78;margin-left:6px}.power-sub{font:9px var(--mono);color:#929a8a;line-height:1.8}.power-breakdown{margin-top:26px}.power-row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #e7eadd;font-size:10px;color:#77816d}.power-row b{font:10px var(--mono);color:#4d5f42}.feed-row{margin-top:24px}.feed-track{height:4px;background:#e3e8db;margin:9px 0 6px}.feed-track span{display:block;width:72.4%;height:100%;background:#7d956a}.heat-note{font-size:11px;line-height:1.85;color:#7e8873;border-top:1px solid var(--line);padding-top:20px;margin-top:23px}.heat-note strong{font-weight:550;color:#506146}.power-content .icon{color:#8b987b}
+    .stage{min-width:0;min-height:0;display:flex;flex-direction:column;background:#e9ede8;position:relative}.viewport{flex:1;min-height:0;position:relative;overflow:hidden;isolation:isolate}.viewport canvas{display:block;width:100%;height:100%;outline:none;touch-action:none}.scene-header{position:absolute;top:26px;left:28px;z-index:2;pointer-events:none}.scene-header .eyebrow{font-size:8px;letter-spacing:1.6px;color:#8b978a}.scene-header h2{font-size:22px;font-weight:450;letter-spacing:-.8px;margin:8px 0 7px}.scene-subtitle{font:9px var(--mono);color:#8c9888;letter-spacing:.1px}.scene-header .back-to-rack{pointer-events:auto;color:#57744d;display:flex;gap:7px;align-items:center;font-size:9px;padding:0;margin-bottom:13px}.back-to-rack .icon{width:12px;height:12px}.camera-select-wrap{position:absolute;right:22px;top:28px;z-index:3;display:flex;align-items:center;gap:8px;padding:7px 9px;background:rgba(248,250,245,.77);border:1px solid #d6ddd0;border-radius:4px;color:#6d7c62}.camera-select-wrap .icon{width:13px;height:13px}.camera-select-wrap select{border:0;outline:0;background:transparent;color:#5f7053;max-width:150px;font-size:9px;cursor:pointer;padding-right:5px}.camera-shortcuts{position:absolute;top:68px;right:22px;display:flex;gap:3px;z-index:3}.camera-shortcuts button{font:8px var(--mono);color:#95a08c;padding:5px 7px;border-radius:2px}.camera-shortcuts button.active{color:#536e48;background:#dce5d6}.scene-bottom{position:absolute;left:25px;right:23px;bottom:16px;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:10px;pointer-events:none}.stage-caption{font:8px var(--mono);color:#8b9783;letter-spacing:.3px;line-height:2}.selection-caption{display:flex;gap:7px;align-items:center;font-size:9px;color:#62804f}.selection-caption i{display:inline-block;width:15px;height:2px;background:#729057}.navigation-hint{font-size:9px;color:#949d8d;display:flex;gap:11px;align-items:center}.navigation-hint span{display:flex;gap:5px;align-items:center}.navigation-hint .icon{width:12px;height:12px}.orientation{position:absolute;right:25px;bottom:57px;width:57px;height:57px;pointer-events:none;opacity:.7}.orientation svg{width:100%;height:100%}.view-switch{display:flex;align-items:center;gap:3px;background:#edf1e7;padding:4px;border:1px solid #e1e6d8;border-radius:4px}.view-button{height:41px;min-width:61px;border-radius:3px;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;font-size:8px;font-weight:550;white-space:nowrap;color:#8b977f}.view-button .icon{width:17px;height:17px}.view-button.active{background:#3f6445;color:#f5f8ec;box-shadow:0 1px 2px #20391b1c}.toolbar{height:79px;flex:none;display:flex;align-items:center;justify-content:center;padding:10px 11px;gap:12px;border-top:1px solid #dce2d4;background:#f8faf5;z-index:6;position:relative}.tool-group{display:flex;gap:3px}.tool-button{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;min-width:43px;padding:8px 4px;border-radius:4px;color:#8a9680;font-size:8px;white-space:nowrap;transition:color .2s,background .2s}.tool-button .icon{width:17px;height:17px;stroke-width:1.4}.tool-button:hover:not(:disabled){background:#ecf1e6;color:#4a6d3e}.tool-button.active{color:#486c36;background:#e8efdf}.tool-button[data-action="airflow"].active{color:#278994;background:#e0eef0}.tool-button[data-action="power"].active{color:#a07b36;background:#f4eddb}.tool-button[data-action="data"].active{color:#736197;background:#ede7f5}.tool-button.warning{color:#ac713f;background:#f7ecdc}.toolbar .separator{height:30px;background:#e1e6d8}.tooltip{position:absolute;z-index:10;pointer-events:none;background:#233a2e;color:#f0f5e7;border-radius:4px;padding:10px 13px;box-shadow:0 3px 15px #16312218;max-width:230px}.tooltip strong{display:block;font-size:10px;font-weight:550;margin-bottom:4px}.tooltip span{font:8px var(--mono);color:#b7c4ac}.flow-legend{position:absolute;left:26px;bottom:71px;z-index:2;display:flex;flex-direction:column;gap:7px;pointer-events:none}.flow-legend span{font:9px var(--mono);color:#789174;display:flex;gap:8px;align-items:center;max-width:400px}.flow-legend i{width:7px;height:7px;background:#4098a8;border-radius:50%}.flow-legend .power-legend i{background:#bc9447}.flow-legend .data-legend i{background:#9280ba}.slice-pagination{position:absolute;left:50%;transform:translateX(-50%);bottom:55px;display:flex;align-items:center;gap:18px;z-index:3;background:#f4f7efe8;border:1px solid #d7e0d0;border-radius:4px;padding:8px 10px;backdrop-filter:blur(6px)}.slice-pagination button{padding:3px;color:#69825b;display:flex;align-items:center;gap:5px;font-size:9px}.slice-pagination button .icon{width:13px;height:13px}.slice-pagination .server-counter{white-space:nowrap;font:8px var(--mono);color:#7d9072;letter-spacing:.8px}.transition-status{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);z-index:9;padding:11px 17px;background:#f8faf0eb;border:1px solid #d6e0cb;font:10px var(--mono);letter-spacing:.5px;color:#5e7a4d;border-radius:4px;pointer-events:none;box-shadow:0 5px 30px #182c0910}.loader{position:absolute;inset:0;background:#e9ede8;z-index:12;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;transition:opacity .5s}.loader.dismissed{opacity:0;pointer-events:none}.loader .spinner{width:32px;height:32px;border:1px solid #bccbb6;border-top-color:#567c43;border-radius:50%;animation:spin 1.2s linear infinite}.loader p{font:10px var(--mono);letter-spacing:1px;color:#738467;max-width:320px;text-align:center;line-height:1.8}.loader button{border:1px solid #aabf99;padding:9px 16px;border-radius:3px}.switch-veil{position:absolute;inset:0;pointer-events:none;background:#e9ede8;z-index:8;opacity:0;transition:opacity .18s}.viewport.switching .switch-veil{opacity:1}
+    .selected-intro{padding:24px 22px 19px;border-bottom:1px solid var(--line)}.selected-intro>.eyebrow{display:flex;align-items:center;justify-content:space-between;font-size:8px;letter-spacing:1.25px}.selected-intro h2{font-size:24px;font-weight:480;line-height:1.18;letter-spacing:-.8px;margin:15px 0 9px}.archetype-label{font:8px var(--mono);letter-spacing:.9px;color:#89937e}.position-row{display:flex;justify-content:space-between;align-items:center;margin:20px 0 17px;font-size:10px;color:#89927f}.position-row strong{font:10px var(--mono);color:#566749;font-weight:500}.inspect-button{background:#416348;color:#f7f8ed;display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 14px;border:1px solid #416348;border-radius:3px;font-size:10px;font-weight:500;transition:background .2s}.inspect-button:hover{background:#2e5035}.inspect-button .icon{width:15px;height:15px}.details-section{padding:20px 22px;border-bottom:1px solid var(--line)}.section-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}.section-heading h3{font-size:10px;font-weight:600;margin:0;color:#5b6b50}.section-heading>span{font:8px var(--mono);letter-spacing:.8px;color:#9ca68e}.spec-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 15px}.spec-label{font-size:9px;color:#97a08a;margin-bottom:5px}.spec-value{font-size:11px;color:#60714f;font-weight:500}.health-header{display:flex;align-items:center;gap:6px;font:8px var(--mono);letter-spacing:.5px;color:#8c9f78}.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px 14px}.metric-label{font-size:9px;color:#96a086;margin-bottom:6px}.metric-value{font-family:var(--mono);font-size:18px;color:#586d48;letter-spacing:-.7px;font-weight:400;line-height:1.1}.metric-value small{font-size:9px;color:#9aa88a;letter-spacing:0;margin-left:3px}.metric-value.alert{color:#b77945}.metric-track{margin-top:8px;height:2px;width:100%;background:#e6ebdd}.metric-track>span{display:block;width:65%;height:100%;background:#a0b18b;transition:width 1s}.sparkline{width:100%;height:29px;margin:14px 0 7px;overflow:visible}.health-message{display:flex;gap:6px;align-items:flex-start;font-size:9px;color:#8c9b7d;line-height:1.6}.health-message .dot{margin-top:4px;width:5px;height:5px}.health-message.warning{color:#b27642}.workload{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:9px;color:#8c997b}.workload input{min-width:0;width:100%;height:3px;accent-color:#7a9762;cursor:pointer}.workload b{font:9px var(--mono);font-weight:400;color:#657e51}.architecture-note{font-size:10px;line-height:1.85;color:#929d82;margin:0}.architecture-note strong{color:#667c50;font-weight:500}.architecture-priority{margin-bottom:10px;display:flex;gap:6px;align-items:center;font-size:10px;color:#77915e}.architecture-priority .icon{width:14px;height:14px}.component-panel{background:#f1f5eb;border-bottom:1px solid #dbe5cf;padding:18px 22px}.component-panel .section-heading{margin-bottom:10px}.component-panel h3{font-size:15px;font-weight:500;margin:0 0 9px;letter-spacing:-.3px}.component-panel p{font-size:10px;line-height:1.75;color:#7d8e6d;margin:0 0 12px}.component-row{display:flex;justify-content:space-between;gap:12px;font-size:9px;line-height:1.7;padding:4px 0;border-top:1px solid #e1e9d6}.component-row span:first-child{color:#99a58d}.component-row span:last-child{color:#647b52;text-align:right;max-width:145px}.component-panel .close-component{font-size:16px;color:#839973;padding:0 2px}.failure-popover{position:absolute;bottom:76px;right:12px;width:247px;background:#fbfcf7;border:1px solid #d9e1ce;box-shadow:0 8px 35px #21310c18;z-index:11;border-radius:5px;padding:17px}.failure-popover .section-heading{margin-bottom:5px}.failure-popover p{font-size:9px;line-height:1.6;color:#94a085;margin:0 0 12px}.failure-option{display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 0;border-bottom:1px solid #e6eadc;font-size:10px;color:#788c63}.failure-option .icon{width:14px;height:14px;color:#9da98d}.failure-option.active{color:#b5743d}.failure-option.active .icon{color:#b5743d}.restore-button{font-size:9px;color:#7e9767;text-align:center;width:100%;padding-top:14px}.statusbar{height:27px;border-top:1px solid var(--line);background:#f3f6ed;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font:8px var(--mono);color:#93a083;letter-spacing:.2px;gap:15px;position:relative;z-index:20}.statusbar>div{display:flex;align-items:center;gap:7px}.statusbar .dot{width:4px;height:4px}.statusbar .right-status{color:#a0aa93}
+    dialog{border:1px solid #d5dec8;border-radius:7px;background:#f9fbf5;color:var(--ink);max-width:calc(100vw - 40px);box-shadow:0 22px 100px #19251125;padding:0}dialog::backdrop{background:#22332165;backdrop-filter:blur(5px)}.dialog-header{padding:27px 30px 22px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--line)}.dialog-header h2{font-size:25px;letter-spacing:-.8px;font-weight:450;margin:8px 0 8px}.dialog-header p{font-size:11px;color:#87957a;margin:0;line-height:1.8}.dialog-close{font-size:24px;color:#8d9b7e;line-height:1;padding:2px}.comparison-dialog{width:1040px}.compare-body{padding:25px 30px 30px;overflow-x:auto}.compare-table{width:100%;border-collapse:collapse;min-width:750px}.compare-table th{width:15%;vertical-align:top;text-align:left;padding:0 14px 20px;font-size:12px;font-weight:500}.compare-table th:first-child{width:23%;font:9px var(--mono);color:#8d9b7d;letter-spacing:.4px;vertical-align:bottom}.compare-table th .icon{width:25px;height:25px;color:#65894c;margin-bottom:12px}.compare-table th small{display:block;font:9px var(--mono);color:#9aa589;margin-top:8px}.compare-table td{padding:13px 14px;border-top:1px solid #e1e7d6;font-size:10px;color:#7a8e66}.compare-bars{display:flex;gap:3px}.compare-bars i{height:7px;flex:1;background:#e6ebdd;border-radius:1px}.compare-bars i.on{background:#8ea578}.compare-table tr:nth-child(3) .compare-bars i.on{background:#70976c}.compare-note{font-size:10px;color:#94a086;margin-top:22px;line-height:1.8}.compare-inspect{font-size:9px;color:#698e51;margin-top:8px;border-bottom:1px solid #bfcfb1;padding:2px 0}.help-dialog{width:630px}.help-body{padding:24px 30px 30px;line-height:1.9;color:#849575;font-size:11px}.help-body h3{font-size:11px;font-weight:600;color:#59714a;margin:20px 0 8px}.help-body h3:first-child{margin-top:0}.shortcut-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 25px}.shortcut-grid p{display:flex;justify-content:space-between;margin:0;font-size:10px}kbd{font:9px var(--mono);color:#647e51;border:1px solid #dbe4ce;background:#eef3e6;border-radius:3px;padding:0 6px}.toast{position:fixed;left:50%;bottom:112px;transform:translate(-50%,10px);max-width:410px;background:#2f4c35;color:#f1f5e9;padding:13px 18px;border-radius:4px;font-size:11px;z-index:40;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;line-height:1.6;box-shadow:0 4px 25px #17301c1a}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .architecture-note{color:#758568}.metric-label,.spec-label{color:#78866e}.metric-value small{color:#7d8c70}.server-meta{color:#7a886e}.tool-button{color:#77866b}.stage-caption,.scene-subtitle{color:#7c8c73}.component-panel p{color:#718365}.compare-note{color:#78896c}.selected-purpose{font-size:10px;line-height:1.7;color:#7c896e;margin:11px 0 0}
+    @keyframes spin{to{transform:rotate(360deg)}}@keyframes panel-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}.selected-intro,.details-section,.server-list{animation:panel-in .5s both}.details-section{animation-delay:.1s}.right-panel .details-section:last-child{animation-delay:.2s}
+    @media(min-width:1600px){.workspace{grid-template-columns:260px minmax(0,1fr) 311px}.server-row{padding:15px 12px}.server-name{font-size:12px}.selected-intro,.details-section,.component-panel{padding-left:26px;padding-right:26px}.toolbar{gap:20px}.tool-button{min-width:51px}.selected-intro h2{font-size:27px}.details-section{padding-top:24px;padding-bottom:24px}.metric-grid{gap:22px 18px}}
+    @media(max-width:1250px){.workspace{grid-template-columns:215px minmax(0,1fr) 258px}.topbar{padding:0 19px}.performance{gap:13px}.top-actions{gap:16px}.panel-intro{padding-left:16px;padding-right:16px}.server-row{gap:7px;padding-left:6px;padding-right:6px;grid-template-columns:23px 1fr auto}.server-row .icon{width:21px;height:21px}.server-name{font-size:10px}.server-meta{font-size:7px}.left-bottom{padding:17px}.selected-intro,.details-section,.component-panel{padding-left:18px;padding-right:18px}.toolbar{gap:6px;padding:8px 5px}.tool-button{min-width:34px;font-size:7px;padding:8px 3px}.tool-group{gap:1px}.view-button{min-width:49px;font-size:7px}.scene-header{left:22px}.camera-select-wrap{right:17px}.navigation-hint{font-size:8px;gap:7px}.metric-value{font-size:17px}.selected-intro h2{font-size:22px}}
+    @media(max-width:1040px){.workspace{grid-template-columns:191px minmax(0,1fr) 229px}.brand h1{font-size:12px;letter-spacing:1px}.brand-sub{font-size:7px}.top-actions{gap:12px}.top-actions .outline-button{font-size:9px;padding:0 9px}.performance{gap:10px}.perf{gap:4px}.perf span{font-size:7px}.perf b{font-size:10px}.server-row{grid-template-columns:20px 1fr auto;gap:6px}.server-name{font-size:9px}.server-row .icon{width:18px}.server-meta{font-size:6.5px}.u-tag{font-size:8px}.panel-intro h2{font-size:18px}.panel-tabs{gap:15px;padding:0 16px}.panel-tab{font-size:9px}.selected-intro,.details-section{padding-left:16px;padding-right:16px}.spec-value{font-size:10px}.metric-value{font-size:15px}.toolbar{height:72px;gap:6px;flex-wrap:nowrap}.tool-button{min-width:29px;font-size:0;gap:0;height:36px}.tool-button .icon{width:15px;height:15px}.tool-group{gap:1px}.view-switch{padding:2px}.view-button{min-width:42px;height:38px;font-size:7px}.toolbar .separator{margin:0 1px}.camera-select-wrap{top:101px;left:22px;right:auto}.camera-shortcuts{top:136px;left:20px;right:auto}.scene-header h2{font-size:20px}.navigation-hint span:last-child{display:none}.section-label{padding-left:16px;padding-right:16px}.health-message{font-size:8px}.scene-bottom{left:20px;right:17px}.slice-pagination{gap:10px}.slice-pagination button{font-size:8px}.slice-pagination .server-counter{font-size:7px}.enclosure{flex-wrap:wrap}.enclosure>span{width:100%;margin-bottom:4px}.enclosure .small-toggle{flex:1}.power-content{padding:20px 16px}}
+    @media(max-width:800px){.workspace{grid-template-columns:170px minmax(0,1fr)}.right-panel{position:absolute;right:0;top:69px;bottom:27px;width:250px;box-shadow:-8px 0 30px #25321910;transform:translateX(100%);transition:transform .25s;z-index:14}.right-panel.mobile-open{transform:translateX(0)}.performance .perf:not(:first-child){display:none}.topbar{padding:0 13px}.top-actions .outline-button span{display:none}.top-actions .outline-button{padding:0 8px}.top-actions .separator{display:none}.scene-header{left:20px}.camera-select-wrap{left:auto;right:15px;top:28px}.camera-shortcuts{left:auto;right:15px;top:68px}.mobile-info{display:flex!important;position:absolute;right:15px;top:107px;z-index:4;align-items:center;gap:6px;font-size:9px;color:#6b8459;padding:8px;background:#f5f8ef;border:1px solid #d6e0cd;border-radius:3px}.mobile-info .icon{width:13px;height:13px}.server-list{padding:0 6px}.server-row{gap:5px;grid-template-columns:17px 1fr auto}.server-name{font-size:8px}.server-meta{font-size:6px;gap:4px}.server-row .icon{width:16px}.u-tag{font-size:7px}.panel-intro{padding:23px 13px 19px}.panel-intro h2{font-size:16px}.location{font-size:7px}.panel-tabs{padding:0 13px;gap:14px}.panel-tab{font-size:8px}.left-bottom{padding:13px}.occupancy-row,.comparison-link{font-size:9px}.statusbar .status-center{display:none}.tool-button{min-width:33px}.toolbar{gap:8px}.view-button{min-width:49px}.left-panel .section-label{padding-left:13px;padding-right:13px;font-size:8px}.scene-subtitle{font-size:8px}.brand-mark{width:28px;height:32px;padding:5px}.brand h1{font-size:10px}.brand-sub{font-size:6px;letter-spacing:1.5px}.brand{gap:9px}}
+    @media(max-width:560px){.workspace{grid-template-columns:1fr}.left-panel{display:none}.topbar{height:61px}.workspace{height:calc(100dvh - 88px)}.right-panel{top:61px}.performance{display:none}.top-actions{gap:9px}.scene-header{top:22px}.scene-header h2{font-size:20px}.camera-select-wrap{top:25px;max-width:155px}.camera-select-wrap select{max-width:113px;font-size:8px}.camera-shortcuts{top:62px}.mobile-info{top:101px}.toolbar{height:76px;gap:7px}.tool-button{min-width:28px;padding:6px 2px}.tool-button .icon{width:15px}.view-button{min-width:40px}.view-switch{gap:1px}.toolbar .separator{display:none}.scene-bottom{left:17px;right:14px}.navigation-hint{font-size:7px}.navigation-hint span:last-child{display:none}.statusbar{font-size:7px;padding:0 13px}.right-status span{display:none}.flow-legend{left:18px;font-size:7px;bottom:105px}.flow-legend span{font-size:7px;max-width:280px}.orientation{right:17px;bottom:64px;width:45px}.slice-pagination{bottom:57px;gap:10px}.slice-pagination button{font-size:8px}.dialog-header{padding:22px}.dialog-header h2{font-size:22px}.help-body{padding:20px}.shortcut-grid{grid-template-columns:1fr}.compare-body{padding:20px}.comparison-dialog{max-height:85vh}.toast{width:calc(100% - 40px);bottom:113px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+  </style>
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+  <svg width="0" height="0" aria-hidden="true" style="position:absolute;overflow:hidden"><defs>
+    <symbol id="i-rack" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="1"/><path d="M5 8h14M5 14h14M8 5h5M8 11h5M8 17h5M8 20h8"/><path d="M16 5h.01M16 11h.01M16 17h.01" stroke-width="2"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="6" rx="1"/><rect x="2" y="14" width="20" height="5" rx="1"/><path d="M5 8h8M5 16.5h8M18 8h.01M18 16.5h.01"/></symbol>
+    <symbol id="i-slice" viewBox="0 0 24 24"><path d="m2 11 10-5 10 5-10 5-10-5Zm0 0v6l10 5 10-5v-6M12 16v6M5 7l7-4 7 4"/></symbol>
+    <symbol id="i-cover" viewBox="0 0 24 24"><path d="m3 11 9-4 9 4-9 4-9-4Zm0 5 9 5 9-5M12 2v3m-3-1 3-2 3 2"/></symbol>
+    <symbol id="i-cutaway" viewBox="0 0 24 24"><path d="m3 7 9-5 9 5v10l-9 5-9-5V7Zm0 0 9 5 9-5M12 12v10"/><path d="m8 4 8 5v10M3 12l9 5 9-5" stroke-dasharray="2 3"/></symbol>
+    <symbol id="i-explode" viewBox="0 0 24 24"><path d="m3 6 9-4 9 4-9 4-9-4Zm0 6 9 4 9-4M3 18l9 4 9-4"/><path d="M3 9v-1m18 1v-1M3 16v-1m18 1v-1"/></symbol>
+    <symbol id="i-airflow" viewBox="0 0 24 24"><path d="M3 7h12c5 0 5-5 2-5-2 0-2 2-2 2M2 12h17c5 0 3 7 0 5M5 17h6c4 0 4 5 1 5"/></symbol>
+    <symbol id="i-power" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-7l0-7Z"/></symbol>
+    <symbol id="i-data" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v6M5 17v-4h14v4"/></symbol>
+    <symbol id="i-failure" viewBox="0 0 24 24"><path d="m10.5 3-9 16a1 1 0 0 0 1 2h19a1 1 0 0 0 1-2l-9-16a1.7 1.7 0 0 0-3 0Z"/><path d="M12 8v6m0 3v.1"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 19 19 5M5 5h14v14"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-compare" viewBox="0 0 24 24"><rect x="2" y="4" width="8" height="16" rx="1"/><rect x="14" y="4" width="8" height="16" rx="1"/><path d="M5 8h2M5 12h2M17 8h2M17 12h2M17 16h2"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3"/></symbol>
+    <symbol id="i-gpu" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="13" rx="1"/><rect x="5" y="8" width="6" height="7"/><rect x="14" y="8" width="5" height="7"/><path d="M6 18v3h10v-3M7 8v7m2-7v7m7-7v7"/></symbol>
+    <symbol id="i-storage" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="1"/><path d="M2 9h20M2 14h20M9 4v16m6-16v16M5 7h1m5 0h1m5 0h1M5 12h1m5 0h1m5 0h1M5 17h1m5 0h1m5 0h1"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="m2 8 5-1 2-3h6l2 3 5 1v12H2V8Z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-orbit" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-35 12 12)"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-mouse" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="6"/><path d="M12 2v7M6 9h12"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  </defs></svg>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div><div><h1>SERVER ARCHITECTURE LAB</h1><div class="brand-sub">AN INTERACTIVE ENGINEERING WORKSPACE</div></div></div>
+    <div class="top-actions"><div class="performance" aria-label="Live renderer performance"><div class="perf"><b id="fps">--</b><span>FPS</span></div><div class="perf"><b id="draw-calls">--</b><span>DRAW CALLS</span></div><div class="perf"><b id="triangles">--</b><span>TRIANGLES</span></div></div><div class="separator"></div><button class="outline-button" id="compare-top"><svg class="icon"><use href="#i-compare"/></svg><span>Compare architectures</span></button><button class="round-button" id="help-button" aria-label="Open workspace guide" title="Workspace guide (?)">?</button></div>
+  </header>
+  <main class="workspace">
+    <aside class="left-panel" aria-label="Rack configuration">
+      <div class="panel-intro"><div class="eyebrow">YOUR WORKSPACE <span>01</span></div><h2>Production rack</h2><div class="location"><span class="dot"></span>DC-01 / ROW B / RACK 04</div></div>
+      <div class="panel-tabs" role="tablist" aria-label="Rack details"><button class="panel-tab active" id="equipment-tab" role="tab" aria-selected="true">Equipment</button><button class="panel-tab" id="power-tab" role="tab" aria-selected="false">Power &amp; cooling</button></div>
+      <div id="equipment-content" role="tabpanel"><div class="section-label">INSTALLED SYSTEMS <span>08</span></div><div class="server-list" id="server-list"></div></div>
+      <div class="power-content hidden" id="power-content" role="tabpanel"><div class="eyebrow">RACK DESIGN POWER</div><div class="power-big">13.32<small>kW</small></div><div class="power-sub">19U of compute, storage &amp; networking<br>Live simulated draw: <span id="rack-live-power">10.84</span> kW</div><div class="power-breakdown" id="power-breakdown"></div><div class="feed-row"><div class="occupancy-row"><b>A / B independent feeds</b><span>72%</span></div><div class="feed-track"><span></span></div><div class="power-sub">18.4 kW usable capacity per feed<br>Each feed supports the full design load.</div></div><div class="heat-note"><div class="eyebrow">ESTIMATED DESIGN HEAT</div><div class="power-big" style="font-size:27px">45.4<small>kBTU/h</small></div><p>Almost <strong>100% of electrical power becomes heat</strong>. At a 15 C air-temperature rise, this rack needs approximately <strong>1,560 CFM</strong> of airflow.</p><p class="power-sub">Equipment load only. Facility cooling and UPS losses are additional.</p></div></div>
+      <div class="left-bottom"><div class="occupancy-row"><b>19U occupied</b><span>23U available</span></div><div class="occupancy-track" id="occupancy-track" aria-label="19 of 42 rack units occupied"></div><div class="enclosure"><span>ENCLOSURE</span><button class="small-toggle" id="side-toggle" aria-pressed="false">Side panels</button><button class="small-toggle" id="door-toggle" aria-pressed="false">Doors</button></div><button class="comparison-link" id="compare-left"><span>Explore the architectures</span><svg class="icon"><use href="#i-arrow"/></svg></button></div>
+    </aside>
+    <section class="stage" aria-label="Interactive 3D hardware viewer">
+      <div class="viewport" id="viewport">
+        <div class="scene-header"><button class="back-to-rack hidden" id="return-rack"><svg class="icon"><use href="#i-prev"/></svg>RETURN TO RACK</button><div class="eyebrow" id="scene-eyebrow">RACK 04 / ENGINEERING VIEW</div><h2 id="scene-title">The complete architecture.</h2><div class="scene-subtitle" id="scene-subtitle">42U enclosure / 19-inch standard</div></div>
+        <div class="camera-select-wrap"><svg class="icon"><use href="#i-camera"/></svg><select id="camera-select" aria-label="Camera preset"></select></div>
+        <div class="camera-shortcuts" id="camera-shortcuts"></div>
+        <button class="mobile-info hidden" id="mobile-info"><svg class="icon"><use href="#i-info"/></svg>System details</button>
+        <div class="orientation" aria-hidden="true"><svg viewBox="0 0 70 70"><path d="M34 40 59 49" stroke="#a48774"/><path d="M34 40 12 52" stroke="#748b92"/><path d="M34 40V12" stroke="#7f9870"/><circle cx="34" cy="40" r="3" fill="#b0bba4"/><text x="59" y="56" fill="#a48774" font-size="8" font-family="monospace">X</text><text x="4" y="60" fill="#748b92" font-size="8" font-family="monospace">Z</text><text x="31" y="9" fill="#7f9870" font-size="8" font-family="monospace">Y</text></svg></div>
+        <div class="flow-legend" id="flow-legend"></div>
+        <div class="slice-pagination hidden" id="slice-pagination"><button id="previous-server" title="Previous server ([)"><svg class="icon"><use href="#i-prev"/></svg>Previous</button><span class="server-counter" id="server-counter">SERVER 01 / 08</span><button id="next-server" title="Next server (])">Next<svg class="icon"><use href="#i-next"/></svg></button></div>
+        <div class="scene-bottom"><div class="stage-caption"><div class="selection-caption"><i></i><span id="selected-caption">U39-U42 / AI COMPUTE NODE</span></div><span id="scale-caption">REAL-WORLD PROPORTIONS / 1U = 44.45 mm</span></div><div class="navigation-hint"><span><svg class="icon"><use href="#i-orbit"/></svg>Drag to orbit</span><span><svg class="icon"><use href="#i-mouse"/></svg>Scroll to zoom</span></div></div>
+        <div class="tooltip hidden" id="hover-tooltip"></div><div class="transition-status hidden" id="transition-status" role="status"></div><div class="switch-veil"></div>
+        <div class="loader" id="loader"><div class="spinner"></div><p id="loader-text">ASSEMBLING THE ARCHITECTURE</p></div>
+      </div>
+      <div class="toolbar" aria-label="Visualization tools">
+        <div class="view-switch"><button class="view-button active" id="rack-view" aria-pressed="true" title="Full rack view (1)"><svg class="icon"><use href="#i-rack"/></svg>RACK VIEW</button><button class="view-button" id="slice-view" aria-pressed="false" title="Single slice view (2)"><svg class="icon"><use href="#i-slice"/></svg>SLICE VIEW</button></div>
+        <div class="separator"></div>
+        <div class="tool-group"><button class="tool-button" data-action="cover" disabled aria-pressed="false" title="Open cover (O)"><svg class="icon"><use href="#i-cover"/></svg><span>Open cover</span></button><button class="tool-button" data-action="cutaway" disabled aria-pressed="false" title="Chassis cutaway (C)"><svg class="icon"><use href="#i-cutaway"/></svg><span>Cutaway</span></button><button class="tool-button" data-action="explode" disabled aria-pressed="false" title="Exploded view (E)"><svg class="icon"><use href="#i-explode"/></svg><span>Explode</span></button></div>
+        <div class="separator"></div>
+        <div class="tool-group"><button class="tool-button" data-action="airflow" aria-pressed="false" title="Show airflow (A)"><svg class="icon"><use href="#i-airflow"/></svg><span>Airflow</span></button><button class="tool-button" data-action="power" aria-pressed="false" title="Show power path (P)"><svg class="icon"><use href="#i-power"/></svg><span>Power</span></button><button class="tool-button" data-action="data" aria-pressed="false" title="Show conceptual data paths (D)"><svg class="icon"><use href="#i-data"/></svg><span>Data</span></button></div>
+        <div class="separator"></div>
+        <div class="tool-group"><button class="tool-button" id="failure-button" data-action="failures" aria-expanded="false" title="Simulate failure"><svg class="icon"><use href="#i-failure"/></svg><span>Failures</span></button><button class="tool-button" data-action="reset" title="Reset the entire lab (R)"><svg class="icon"><use href="#i-reset"/></svg><span>Reset</span></button></div>
+        <div class="failure-popover hidden" id="failure-popover"><div class="section-heading"><h3>Simulate a failure</h3><svg class="icon" style="width:14px;height:14px;color:#ab8658"><use href="#i-failure"/></svg></div><p>Inject a fault into the selected system. Watch how redundancy responds.</p><div id="failure-options"></div><button class="restore-button" id="restore-failures">Restore all systems</button></div>
+      </div>
+    </section>
+    <aside class="right-panel" id="right-panel" aria-label="Selected system details">
+      <div class="selected-intro"><div class="eyebrow">SELECTED SYSTEM <span id="selected-number">01 / 08</span></div><h2 id="selected-name">AI compute node</h2><div class="archetype-label" id="archetype-label">GPU / ACCELERATED COMPUTE</div><p class="selected-purpose" id="selected-purpose">AI training, inference, scientific computing and accelerator workloads.</p><div class="position-row"><span>Rack position <strong id="selected-position">U39-U42</strong></span><strong id="selected-height">4U</strong></div><button class="inspect-button" id="inspect-button"><span>Inspect slice</span><svg class="icon"><use href="#i-arrow"/></svg></button></div>
+      <div class="component-panel hidden" id="component-panel"><div class="section-heading"><span class="eyebrow">COMPONENT INSPECTOR</span><button class="close-component" id="close-component" aria-label="Close component inspector">&times;</button></div><h3 id="component-name"></h3><p id="component-description"></p><div id="component-specs"></div></div>
+      <section class="details-section"><div class="section-heading"><h3>System configuration</h3><span id="system-model">AX-840</span></div><div class="spec-grid" id="system-specs"></div></section>
+      <section class="details-section"><div class="section-heading"><h3>Live telemetry</h3><div class="health-header"><span class="dot" id="health-dot"></span>SIMULATED</div></div><div class="metric-grid" id="metric-grid"></div><svg class="sparkline" viewBox="0 0 240 29" preserveAspectRatio="none" aria-label="Recent simulated power draw"><defs><linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#9bb284" stop-opacity=".2"/><stop offset="100%" stop-color="#9bb284" stop-opacity="0"/></linearGradient></defs><path id="spark-area" fill="url(#spark-fill)"/><path id="spark-line" fill="none" stroke="#9ab17f" stroke-width="1"/><path d="M0 28H240" stroke="#e4ebd9" stroke-width="1"/></svg><div class="health-message" id="health-message"><span class="dot"></span><span>All systems nominal. Redundancy available.</span></div><label class="workload"><span>Workload</span><input id="workload-slider" type="range" min="10" max="100" value="68" aria-label="Simulated server workload"><b id="workload-value">68%</b></label></section>
+      <section class="details-section" style="border-bottom:0"><div class="section-heading"><h3>Why this architecture?</h3><svg class="icon" style="width:13px;height:13px;color:#99a789"><use href="#i-info"/></svg></div><div class="architecture-priority"><svg class="icon"><use href="#i-check"/></svg><span id="architecture-priority">Accelerator density &amp; cooling</span></div><p class="architecture-note" id="architecture-note"></p></section>
+    </aside>
+  </main>
+  <footer class="statusbar"><div><span class="dot" id="global-health-dot"></span><span id="global-health">All systems operational</span></div><div class="status-center">PROCEDURAL HARDWARE / CONCEPTUAL ENGINEERING MODEL</div><div class="right-status"><span id="render-api">WEBGL 2</span><span>/</span> LAB v1.0</div></footer>
+  <dialog class="comparison-dialog" id="comparison-dialog"><div class="dialog-header"><div><div class="eyebrow">FIVE WORKLOADS. FIVE DESIGN PRIORITIES.</div><h2>Architecture, compared.</h2><p>Every system is a different balance of compute, capacity, power, and cooling.</p></div><button class="dialog-close" data-close-dialog aria-label="Close comparison">&times;</button></div><div class="compare-body"><table class="compare-table" id="compare-table"></table><p class="compare-note">Indicators describe relative architectural emphasis, not measured benchmarks. Component specifications are plausible, illustrative configurations, not a manufacturer's product specification.</p></div></dialog>
+  <dialog class="help-dialog" id="help-dialog"><div class="dialog-header"><div><div class="eyebrow">WORKSPACE GUIDE</div><h2>From rack to silicon.</h2><p>Select a system. Pull it out. Understand what is inside.</p></div><button class="dialog-close" data-close-dialog aria-label="Close guide">&times;</button></div><div class="help-body"><h3>Navigate the lab</h3><p>Drag to orbit, scroll to zoom, and right-drag or Shift-drag to pan. Select any installed system in the rack or equipment list, then choose <strong>Inspect slice</strong>. Click internal hardware to learn about its role and connections.</p><div class="shortcut-grid"><p>Rack / slice view <kbd>1 / 2</kbd></p><p>Open / close cover <kbd>O</kbd></p><p>Chassis cutaway <kbd>C</kbd></p><p>Exploded view <kbd>E</kbd></p><p>Air / power / data <kbd>A / P / D</kbd></p><p>Previous / next system <kbd>[ / ]</kbd></p><p>Reset everything <kbd>R</kbd></p><p>Close panels <kbd>Esc</kbd></p></div><h3>Engineering assumptions</h3><p>The 19-inch rack uses 44.45 mm units. System power is an approximate AC design load; all telemetry is a slow-changing local simulation. Each A/B feed is independently sized for the complete 13.32 kW design load (415 V, 32 A, three-phase, 80% design loading). GPU power supplies are four high-line 4 kW modules in a 2+2 arrangement.</p><p>Storage nodes use two 12-drive, dual-parity groups. Capacity labels distinguish raw from usable storage. PSU and network failures preserve operation using the remaining feed or link. Multiple injected faults can exhaust that protection.</p><h3>Visualization, not circuit analysis</h3><p>Power and data lines show conceptual dependencies, not exact PCB traces. Air streams illustrate intake, fin channels, and exhaust, not a CFD solution. The open U13-U16 service space must be blanked before production operation. The optional enclosure demonstrates removable panels and perforated doors.</p><p>All hardware is generated locally in this document. Only Three.js, its official helpers, and the required utility CSS runtime are loaded from a CDN. No hardware models, photographs, or texture files are used.</p></div></dialog>
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const icon = (name) => `<svg class="icon" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+    let toastTimer;
+    function toast(message) { $('toast').textContent = message; $('toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('show'), 4100); }
+    async function startLab() {
+      const THREE = await import('three');
+      const [{ OrbitControls }, { RoomEnvironment }] = await Promise.all([import('three/addons/controls/OrbitControls.js'), import('three/addons/environments/RoomEnvironment.js')]);
+      const U = .4445, W = 4.46, FLOOR_U = .73, RACK_FRONT = 4.78;
+      const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const V = (x=0,y=0,z=0) => new THREE.Vector3(x,y,z);
+      const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+      const configs = {
+        gpu: { title:'GPU / accelerated compute', short:'GPU / AI', icon:'gpu', model:'AX-840', u:4, d:10, cpu:2, cores:64, cpuW:350, slots:24, populated:16, dimmGB:64, ram:1024, gpu:8, gpuW:600, drives:8, bays:8, driveGB:4000, driveType:'NVMe U.2', psus:4, psuW:4000, net:400, netLabel:'2 x 200 GbE', power:7.2, fans:12, fanRPM:14200, priority:'Accelerator density & cooling', purpose:'AI training, inference, scientific computing and accelerator workloads.', why:'Eight purpose-built accelerator modules share a high-bandwidth baseboard. Dense fin stacks and two rows of high-pressure fans move heat straight to the rear. A large 2+2 power system sustains the load if either power feed is lost.', bars:[5,5,4,2,5,5,5,5] },
+        virtual: { title:'Virtualization / private cloud', short:'Virtualization', icon:'server', model:'VX-220', u:2, d:8, cpu:2, cores:48, cpuW:250, slots:32, populated:32, dimmGB:32, ram:1024, gpu:0, drives:8, bays:12, driveGB:1920, driveType:'SAS SSD', psus:2, psuW:1600, net:200, netLabel:'2 x 100 GbE', power:1.1, fans:6, fanRPM:9800, priority:'CPU concurrency & memory capacity', purpose:'Virtual machines, hypervisors, containers and private-cloud hosting.', why:'Two high-core-count processors are surrounded by fully populated, balanced memory channels. Large ECC capacity supports many concurrent VMs, while PCIe risers provide fast network and storage access without obstructing front-to-rear airflow.', bars:[5,0,5,3,4,3,3,4] },
+        compute: { title:'General-purpose compute', short:'General purpose', icon:'chip', model:'CX-110', u:1, d:7.6, cpu:2, cores:24, cpuW:165, slots:24, populated:16, dimmGB:16, ram:256, gpu:0, drives:4, bays:8, driveGB:960, driveType:'SATA SSD', psus:2, psuW:1000, net:50, netLabel:'2 x 25 GbE', power:.65, fans:8, fanRPM:15600, priority:'Balanced, efficient service delivery', purpose:'Web hosting, APIs, application services and everyday enterprise compute.', why:'A balanced 1U design pairs two processors with moderate ECC memory and front-accessible SSDs. Low-profile heatsinks and a horizontal PCIe riser respect the 44.45 mm height limit. Empty DIMM slots leave a practical upgrade path.', bars:[3,0,2,2,3,2,2,2] },
+        storage: { title:'Storage / data infrastructure', short:'Storage', icon:'storage', model:'SX-424', u:4, d:8.2, cpu:1, cores:24, cpuW:165, slots:8, populated:8, dimmGB:32, ram:256, gpu:0, drives:24, bays:24, driveGB:18000, driveType:'3.5-inch SAS HDD', psus:2, psuW:1600, net:50, netLabel:'2 x 25 GbE', power:1, fans:4, fanRPM:8200, priority:'Drive density & resilient capacity', purpose:'NAS, object storage, backups and large, redundant storage pools.', why:'Twenty-four front-serviceable drives connect through a ventilated SAS expander backplane to a PCIe HBA. A moderate CPU and ECC memory manage two 12-drive dual-parity groups. Air passes between the drive carriers before reaching the fan wall.', bars:[2,0,2,5,3,3,3,3] },
+        database: { title:'Database / high-memory compute', short:'Database', icon:'chip', model:'DX-232', u:2, d:8.1, cpu:2, cores:64, cpuW:300, slots:32, populated:32, dimmGB:64, ram:2048, gpu:0, drives:12, bays:12, driveGB:7680, driveType:'NVMe U.2', psus:2, psuW:2400, net:200, netLabel:'2 x 100 GbE', power:1.55, fans:6, fanRPM:11700, priority:'Memory bandwidth & low I/O latency', purpose:'Transactional databases, analytics and large in-memory datasets.', why:'Two balanced banks of ECC memory surround the CPUs to maximize channel bandwidth. Twelve NVMe drives connect over PCIe, avoiding a SAS HBA bottleneck. Redundant high-speed NICs and stronger cooling keep demanding transactional workloads responsive.', bars:[5,0,5,4,4,4,4,4] },
+        network: { title:'Network / fabric services', short:'Network', icon:'data', model:'NX-124', u:1, d:5.2, cpu:1, cores:16, cpuW:65, slots:4, populated:4, dimmGB:8, ram:32, gpu:0, drives:1, bays:0, driveGB:240, driveType:'M.2 boot SSD', psus:2, psuW:550, net:400, netLabel:'24 x 25G + 4 x 100G', power:.35, fans:4, fanRPM:11200, priority:'Packet throughput & link availability', purpose:'Switching, routing, firewalling and network-fabric services.', why:'The shallow 1U chassis is organized around front-accessible transceivers and a large switch ASIC. A smaller control-plane CPU and memory footprint leave room for SerDes routing. Redundant PSUs and dedicated management keep the fabric serviceable.', bars:[2,0,1,1,5,2,3,4] }
+      };
+      const servers = [
+        {name:'AI compute node',type:'gpu',bottom:39,tag:'ACCELERATED COMPUTE'},
+        {name:'Virtualization host',type:'virtual',bottom:37,tag:'PRIVATE CLOUD'},
+        {name:'Compute node 01',type:'compute',bottom:36,tag:'APPLICATION SERVICES'},
+        {name:'Compute node 02',type:'compute',bottom:35,tag:'APPLICATION SERVICES'},
+        {name:'Storage array',type:'storage',bottom:31,tag:'PRIMARY STORAGE'},
+        {name:'Network appliance',type:'network',bottom:30,tag:'NETWORK FABRIC'},
+        {name:'Database node',type:'database',bottom:28,tag:'HIGH-MEMORY COMPUTE'},
+        {name:'Archive storage',type:'storage',bottom:17,tag:'BACKUP & ARCHIVE',overrides:{power:.82,driveGB:12000}}
+      ].map((s,i) => {
+        const cfg={...configs[s.type],...s.overrides}, height=cfg.u*U-.032;
+        return {...s,index:i,cfg,height,position:V(0,FLOOR_U+(s.bottom-1)*U,RACK_FRONT-cfg.d/2),range:cfg.u===1?`U${s.bottom}`:`U${s.bottom}-U${s.bottom+cfg.u-1}`,faults:new Set(),load:.68,health:{cpu:64,cpu2:62,gpu:70,fan:cfg.fanRPM*.81,power:cfg.power*.8144,memory:cfg.ram*.62,network:cfg.net*.23},history:Array.from({length:48},(_,j)=>.8144+Math.sin(j*.35)*.007)};
+      });
+      const state={mode:'rack',selected:0,transition:false,token:0,cover:false,cutaway:false,explode:false,airflow:false,power:false,data:false,panels:false,doors:false,preset:'threeQuarter',component:null,hover:null,cameraTween:null};
+      const viewport=$('viewport');
+      const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+      renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));
+      renderer.setClearColor(0xe9ede8);
+      renderer.outputColorSpace=THREE.SRGBColorSpace;
+      renderer.toneMapping=THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure=1.22;
+      renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
+      renderer.domElement.setAttribute('aria-label','Orbitable 3D server rack. Use the equipment list for keyboard-accessible server selection.');renderer.domElement.setAttribute('tabindex','0');
+      viewport.prepend(renderer.domElement);
+      const scene=new THREE.Scene();scene.background=new THREE.Color(0xe9ede8);
+      scene.fog=new THREE.Fog(0xe9ede8,65,140);
+      const camera=new THREE.PerspectiveCamera(35,1,.05,250);
+      const controls=new OrbitControls(camera,renderer.domElement);
+      controls.enableDamping=true;controls.dampingFactor=.075;controls.minDistance=3;controls.maxDistance=85;controls.maxPolarAngle=Math.PI*.49;controls.zoomSpeed=.75;controls.panSpeed=.7;controls.rotateSpeed=.65;
+      const pmrem=new THREE.PMREMGenerator(renderer), room=new RoomEnvironment();
+      const env=pmrem.fromScene(room,.04);scene.environment=env.texture;scene.environmentIntensity=.65;room.dispose();pmrem.dispose();
+      scene.add(new THREE.HemisphereLight(0xf5fff1,0x6b766e,2.4));
+      const key=new THREE.DirectionalLight(0xfff8e8,3.5);key.position.set(12,30,19);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-17;key.shadow.camera.right=17;key.shadow.camera.top=25;key.shadow.camera.bottom=-15;key.shadow.camera.near=1;key.shadow.camera.far=85;key.shadow.bias=-.0003;key.shadow.normalBias=.025;scene.add(key);scene.add(key.target);
+      const fill=new THREE.DirectionalLight(0xe1edf5,2.1);fill.position.set(-18,15,-6);scene.add(fill);
+      const rearLight=new THREE.DirectionalLight(0xffffff,1.1);rearLight.position.set(0,19,-20);scene.add(rearLight);
+      const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),new THREE.MeshStandardMaterial({color:0xe9ede8,roughness:1,metalness:0}));ground.rotation.x=-Math.PI/2;ground.position.y=-.01;ground.receiveShadow=true;scene.add(ground);
+      const grid=new THREE.GridHelper(110,110,0xc1ccbb,0xd2dacb);grid.position.y=.002;grid.material.transparent=true;grid.material.opacity=.5;grid.material.depthWrite=false;scene.add(grid);
+      const mats={};
+      function material(name,color,metalness=.35,roughness=.55,extra={}){return mats[name]=new THREE.MeshStandardMaterial({color,metalness,roughness,...extra});}
+      material('frame',0x303735,.72,.42);material('black',0x171e1c,.26,.58);material('chassis',0x66706c,.8,.34);material('steel',0xa3ada5,.85,.3);material('aluminum',0xc4cec5,.8,.3);material('pcb',0x1c5b47,.2,.7);material('pcbEdge',0x12362e,.12,.73);material('chip',0x202724,.12,.72);material('socket',0x344039,.18,.62);material('gold',0xc9a75c,.82,.27);material('copper',0xb47845,.82,.32);material('service',0x93ad6f,.18,.7);material('rubber',0x1c221f,.05,.96);material('white',0xd6ded0,.2,.55);material('blue',0x496d7b,.4,.45);material('led',0x8cbd60,.15,.4,{emissive:0x699e35,emissiveIntensity:1.1});material('red',0xc6764c,.1,.5,{emissive:0xba4620,emissiveIntensity:.8});material('off',0x29362b,.1,.8);material('wireA',0x52666f,.24,.52);material('wireB',0x52785e,.2,.56);material('networkCable',0x779a95,.28,.5);
+      const boxGeo=new THREE.BoxGeometry(1,1,1), planeGeo=new THREE.PlaneGeometry(1,1), cylinderGeo=new THREE.CylinderGeometry(.5,.5,1,12), screwGeo=new THREE.CylinderGeometry(.5,.5,1,8), ringGeo=new THREE.TorusGeometry(.5,.045,5,22);
+      const geometries={box:boxGeo,plane:planeGeo,cylinder:cylinderGeo,screw:screwGeo,ring:ringGeo};
+      const dummy=new THREE.Object3D(), sharedTextures=[];
+      function perforatedMaterial(name,repeatsX,repeatsY,color){const c=document.createElement('canvas');c.width=c.height=64;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,64,64);ctx.globalCompositeOperation='destination-out';for(let y=4;y<64;y+=8)for(let x=4;x<64;x+=8){ctx.beginPath();ctx.arc(x+(y%16===4?0:4),y,2.8,0,Math.PI*2);ctx.fill();}const tex=new THREE.CanvasTexture(c);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatsX,repeatsY);tex.anisotropy=4;sharedTextures.push(tex);return material(name,color,.7,.45,{map:tex,alphaTest:.45,side:THREE.DoubleSide});}
+      perforatedMaterial('grille',5,1,0x5d685f);perforatedMaterial('smallGrille',1,1,0x727e70);perforatedMaterial('doorGrille',6,18,0x3a463b);
+      class Batch {
+        constructor(parent,picks=null){this.parent=parent;this.items=new Map();this.picks=picks;}
+        add(mat,pos,scale,part=null,rotation=null,geo='box'){
+          const m=typeof mat==='string'?mats[mat]:mat,k=m.uuid+geo;
+          if(!this.items.has(k))this.items.set(k,{mat:m,geo:geometries[geo],entries:[]});
+          this.items.get(k).entries.push({pos,scale,part,rotation});
+        }
+        flush(){for(const {mat,geo,entries} of this.items.values()){const mesh=new THREE.InstancedMesh(geo,mat,entries.length);mesh.userData.parts=entries.map(e=>e.part);entries.forEach((e,i)=>{dummy.position.set(...e.pos);dummy.scale.set(...e.scale);dummy.rotation.set(...(e.rotation||[0,0,0]));dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);});mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=geo!==planeGeo&&!(mat.transparent&&mat.opacity<.4);mesh.receiveShadow=true;mesh.computeBoundingSphere();this.parent.add(mesh);if(this.picks)this.picks.push(mesh);}this.items.clear();}
+      }
+      const labelCache=new Map();
+      function label(parent,text,x,y,z,w,h,options={}){
+        const k=text+(options.color||'#d8e1d1')+(options.bg||'');let tex=labelCache.get(k);
+        if(!tex){const c=document.createElement('canvas');c.width=768;c.height=96;const ctx=c.getContext('2d');if(options.bg){ctx.fillStyle=options.bg;ctx.fillRect(0,0,768,96);}ctx.fillStyle=options.color||'#d8e1d1';ctx.font='500 46px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,384,49,744);tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;labelCache.set(k,tex);}
+        const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false,side:THREE.DoubleSide});const mesh=new THREE.Mesh(planeGeo,mat);mesh.scale.set(w,h,1);mesh.position.set(x,y,z);if(options.flat)mesh.rotation.x=-Math.PI/2;if(options.rear)mesh.rotation.y=Math.PI;parent.add(mesh);return mesh;
+      }
+      function group(parent,name){const g=new THREE.Group();g.name=name;parent.add(g);return g;}
+      function part(model,assembly,kind,name,description,rows,center,size,index=0){const p={kind,name,description,rows,assembly,center:V(...center),size:V(...size),index,server:model.server};model.parts.push(p);return p;}
+      function boxMesh(parent,mat,pos,scale){const m=new THREE.Mesh(boxGeo,typeof mat==='string'?mats[mat]:mat);m.position.set(...pos);m.scale.set(...scale);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+      function curveTube(parent,points,mat,radius=.028){const curve=new THREE.CatmullRomCurve3(points.map(p=>Array.isArray(p)?V(...p):p));const geo=new THREE.TubeGeometry(curve,18,radius,5,false),mesh=new THREE.Mesh(geo,typeof mat==='string'?mats[mat]:mat);mesh.castShadow=false;parent.add(mesh);return mesh;}
+      function led(model,parent,pos,kind,index,size=.035){const entry={parent,pos,kind,index,size,mesh:null,instanceId:0};model.indicators.push(entry);return entry;}
+      mats.indicator=new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false});
+      function finalizeIndicators(model){const groups=new Map();for(const e of model.indicators){if(!groups.has(e.parent))groups.set(e.parent,[]);groups.get(e.parent).push(e);}for(const [parent,entries] of groups){const mesh=new THREE.InstancedMesh(boxGeo,mats.indicator,entries.length);entries.forEach((e,i)=>{dummy.position.set(...e.pos);dummy.rotation.set(0,0,0);dummy.scale.set(e.size,e.size,e.size*.7);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix);mesh.setColorAt(i,new THREE.Color(0x86b66a));e.mesh=mesh;e.instanceId=i;});mesh.instanceMatrix.needsUpdate=true;mesh.instanceColor.needsUpdate=true;parent.add(mesh);}updateIndicators(model);}
+      const rack=group(scene,'42U RACK'),rackStructure=group(rack,'FRAME'),rackSystems=group(rack,'INSTALLED SYSTEMS'),rackCables=group(rack,'REAR CABLE MANAGEMENT');
+      let rackPanels,rackDoors,highModel=null,rackFlows=null;
+      const lowModels=[];
+      const animations=[];
+      const selectBox=new THREE.Box3(),hoverBox=new THREE.Box3();
+      const selectedOutline=new THREE.Box3Helper(selectBox,0x8eae66);selectedOutline.material.transparent=true;selectedOutline.material.opacity=.88;selectedOutline.material.depthTest=true;selectedOutline.renderOrder=5;scene.add(selectedOutline);
+      const hoverOutline=new THREE.Box3Helper(hoverBox,0xc0d19d);hoverOutline.material.transparent=true;hoverOutline.material.opacity=.85;scene.add(hoverOutline);hoverOutline.visible=false;
+      const bladeShape=new THREE.Shape();bladeShape.moveTo(.08,-.025);bladeShape.bezierCurveTo(.22,-.025,.44,.01,.49,.14);bladeShape.lineTo(.43,.27);bladeShape.bezierCurveTo(.26,.18,.17,.12,.075,.07);bladeShape.closePath();
+      const bladeGeo=new THREE.ShapeGeometry(bladeShape,5);material('blade',0x606b60,.65,.38,{side:THREE.DoubleSide});
+      function assembly(model,name,offset){const g=group(model.root,name);model.assemblies.push({group:g,offset:V(...offset)});return g;}
+      function buildServer(server,detail=false){
+        const cfg=server.cfg,h=server.height,d=cfg.d,fz=d/2;
+        const root=new THREE.Group();root.name=server.name;root.userData.serverIndex=server.index;
+        const model={root,server,detail,parts:[],picks:[],assemblies:[],indicators:[],fans:[],coverValue:0,explodeValue:0,cutValue:0,flows:null};
+        const shell=group(root,'STRUCTURAL CHASSIS'),batch=new Batch(shell,model.picks);
+        const chassisPart=part(model,shell,'chassis','Structural chassis','A 19-inch rackmount steel enclosure. Telescoping rails carry the chassis during service; air enters at the front and leaves at the rear.',[['Form factor',`${cfg.u}U / ${(cfg.u*44.45).toFixed(1)} mm`],['Body width','446 mm'],['Depth',`${(d*100).toFixed(0)} mm`],['Service access','Front drives / rear PSUs']],[0,h/2,0],[W,h,d]);
+        batch.add('chassis',[0,.022,0],[W,.045,d],chassisPart);
+        batch.add('frame',[0,.062,fz-.09],[W,.065,.12],chassisPart);
+        batch.add('frame',[0,h-.04,fz-.045],[W,.06,.09],chassisPart);
+        batch.add('frame',[0,.065,-fz+.05],[W,.08,.1],chassisPart);
+        batch.add('frame',[0,h-.045,-fz+.05],[W,.075,.1],chassisPart);
+        model.wallMat=mats.chassis.clone();model.wallMat.transparent=true;
+        [-1,1].forEach(side=>{
+          batch.add(model.wallMat,[side*(W/2-.019),h/2,0],[.038,h,d],chassisPart);
+          batch.add('frame',[side*(W/2-.055),h-.05,0],[.09,.045,d-.12],chassisPart);
+          batch.add('steel',[side*(W/2+.018),h*.45,-.12],[.04,.12,d-.4],chassisPart);
+          batch.add('black',[side*(W/2+.04),h*.45,-.12],[.016,.032,d-.6],chassisPart);
+          batch.add('frame',[side*2.3215,h/2,fz+.01],[.183,h-.015,.075],chassisPart);
+          batch.add('steel',[side*(W/2+.11),h*.5,fz+.11],[.038,Math.max(.16,h*.48),.045],chassisPart);
+          [.0635,cfg.u*U-.0635].forEach(y=>batch.add('steel',[side*2.3255,y,fz+.055],[.052,.018,.052],chassisPart,[Math.PI/2,0,0],'screw'));
+          for(let z=-fz+.18;z<fz;z+=1.35)batch.add('steel',[side*(W/2-.1),h-.015,z],[.037,.012,.037],chassisPart,null,'screw');
+        });
+        batch.flush();
+        model.cover=group(root,'REMOVABLE TOP COVER');model.cover.position.y=h+.005;
+        model.coverMat=mats.frame.clone();model.coverMat.transparent=true;
+        const coverPart=part(model,model.cover,'cover','Service cover','The cover slides toward the rear before lifting free. It forms the upper pressure boundary of the front-to-rear cooling path.',[['Access','Tool-less captive latches'],['Operation','Close before production use']],[0,.01,0],[W,.018,d]);
+        const cb=new Batch(model.cover,model.picks);cb.add(model.coverMat,[0,0,0],[W-.015,.018,d-.055],coverPart);
+        for(const x of [-1.8,1.8])cb.add(model.coverMat,[x,.011,0],[.035,.006,d-.5],coverPart);
+        for(const x of [-1.85,1.85])cb.add('black',[x,.012,-fz+.32],[.26,.009,.2],coverPart);cb.flush();
+        label(model.cover,`${cfg.model} / ${cfg.u}U`,0,.010,0,1.9,.2,{flat:true,color:'#a7b49e'});
+        model.coverMaterials=[];model.cover.traverse(o=>{if(o.material){if(Object.values(mats).includes(o.material))o.material=o.material.clone();o.material.transparent=true;model.coverMaterials.push(o.material);}});
+        model.latches=[];for(const side of [-1,1]){const latch=group(root,'CAPTIVE SERVICE LATCH');latch.position.set(side*(W/2+.11),h*.5,fz+.14);boxMesh(latch,'service',[0,.045,0],[.058,Math.min(h*.36,.17),.039]);model.latches.push(latch);}
+        model.front=assembly(model,'FRONT STORAGE',[0,.35,.55]);
+        const fb=new Batch(model.front,model.picks);
+        if(server.type==='network')buildNetworkFront(model,fb);else buildDrives(model,fb);
+        const ctrl=part(model,model.front,'management','Front control panel','Power, unit-identification and health indicators remain accessible while the chassis is installed.',[['Control','Power / UID / health'],['Management','Independent BMC']],[2.165,h*.54,fz],[.105,h*.8,.12]);
+        fb.add('black',[2.165,h*.52,fz+.025],[.105,h*.88,.095],ctrl);
+        fb.add('steel',[2.16,h-.125,fz+.081],[.060,.018,.060],ctrl,[Math.PI/2,0,0],'cylinder');
+        led(model,model.front,[2.16,Math.max(.12,h-.23),fz+.087],'system',0,.026);
+        fb.add('blue',[2.16,.115,fz+.088],[.027,.027,.018],ctrl);
+        fb.flush();
+        if(cfg.u>=2)label(model.front,cfg.model,-.1,h-.047,fz+.063,1.17,.075);
+        model.psuGroup=assembly(model,'REAR HOT-SWAP POWER',[0,.8,-.36]);buildPSUs(model);
+        model.ioGroup=assembly(model,'PCIE AND REAR IO',[0,1.45,-.12]);buildRearIO(model);
+        if(detail){
+          model.backplane=assembly(model,'STORAGE BACKPLANE',[0,.65,.27]);buildBackplane(model);
+          model.board=assembly(model,'CPU AND MEMORY BOARD',[0,.52,0]);buildMotherboard(model);
+          model.fanGroup=assembly(model,'HOT-SWAP FAN WALL',[0,1.18,.16]);buildFans(model);
+          if(cfg.gpu){model.gpuGroup=assembly(model,'ACCELERATOR BASEBOARD',[0,1.85,0]);buildAccelerators(model);}
+          model.duct=assembly(model,'REMOVABLE AIR DUCT',[0,2.45,.08]);buildDuct(model);
+          buildInternalCables(model);
+          model.internalCables=[];model.root.traverse(o=>{if(o.geometry?.type==='TubeGeometry')model.internalCables.push(o);});
+        }
+        finalizeIndicators(model);
+        if(detail)validateModel(model);
+        model.root.updateMatrixWorld(true);
+        return model;
+      }
+      function driveLayout(model){const s=model.server,c=s.cfg,h=s.height;let cols=4,rows=2,areaW=3.95,rowH=(h-.08)/2,base=.06;
+        if(s.type==='storage'){cols=4;rows=6;areaW=4.2;rowH=(h-.13)/6;base=.055;}
+        else if(s.type==='virtual'||s.type==='database'){cols=6;rows=2;areaW=4.30;rowH=(h-.12)/2;base=.06;}
+        else if(s.type==='gpu'){rowH=.24;base=.06;}
+        return {cols,rows,areaW,rowH,base,depth:s.type==='storage'?1.49:1.07};
+      }
+      function buildDrives(model,b){
+        const s=model.server,c=s.cfg,fz=c.d/2,l=driveLayout(model),bw=l.areaW/l.cols;
+        model.driveLayout=l;
+        for(let n=0;n<c.bays;n++){
+          const col=n%l.cols,row=Math.floor(n/l.cols),x=-l.areaW/2+bw*(col+.5)-.04,y=l.base+l.rowH*(row+.5),pop=n<c.drives;
+          const rawTB=c.driveGB/1000;
+          const p=part(model,model.front,pop?'drive':'emptydrive',pop?`Drive ${String(n+1).padStart(2,'0')}`:`Empty drive bay ${n+1}`,pop?(s.type==='storage'?'A front-removable enterprise SAS drive. Its blind-mate connector seats into the expander backplane; dual-parity groups tolerate failures without immediate data loss.':'A front-accessible, hot-swappable enterprise SSD. The carrier guides its blind-mate power and data connector into the backplane.'):'An unused carrier position with a ventilated blank. Maintaining blanks preserves the designed airflow.',[['Type',pop?c.driveType:'Ventilated blank'],['Capacity',pop?`${rawTB<1?c.driveGB+' GB':rawTB.toFixed(2)+' TB'} raw`:'Not populated'],['Connection',c.driveType.includes('NVMe')?'PCIe 4.0 x4 / U.2':s.type==='storage'?'12 Gb/s SAS expander':'SATA / SAS backplane'],['Protection',s.type==='storage'?'2 x 12-drive dual-parity groups':'Mirrored SSD pairs / RAID 10'],['Service','Front hot swap']],[x,y,fz-l.depth*.5],[bw-.025,l.rowH-.012,l.depth],n);
+          b.add('black',[x,y,fz-.015],[bw-.032,l.rowH-.013,.145],p);
+          b.add('chassis',[x,y,fz+.062],[bw-.052,l.rowH-.047,.023],p);
+          b.add('black',[x-.055,y,fz+.078],[bw-.24,l.rowH-.085,.014],p);
+          const ventCount=s.type==='storage'?8:6;
+          for(let k=0;k<ventCount;k++)b.add('frame',[x-bw*.37+k*(bw-.26)/ventCount,y,fz+.088],[.043,l.rowH-.1,.016],p);
+          b.add(pop?'aluminum':'frame',[x+bw*.32,y,fz+.095],[.105,l.rowH-.077,.035],p);
+          b.add(pop?'service':'frame',[x+bw*.36,y+l.rowH*.25,fz+.116],[.045,.027,.016],p);
+          if(pop&&c.driveType.includes('NVMe'))b.add('copper',[x-bw*.385,y,fz+.107],[.022,l.rowH*.49,.014],p);
+          if(pop)led(model,model.front,[x-bw*.39,y-l.rowH*.23,fz+.104],'drive',n,.022);
+          if(model.detail){
+            b.add('frame',[x,y-l.rowH*.44,fz-l.depth*.5-.035],[bw-.022,.021,l.depth-.06],p);
+            if(pop){const diskW=s.type==='storage'?1.016:Math.min(bw-.016,.6985),diskH=s.type==='storage' ? .248 : Math.min(.15,l.rowH*.78);b.add('aluminum',[x,y+.014,fz-l.depth*.51],[diskW,diskH,l.depth-.14],p);b.add('pcbEdge',[x,y-diskH*.5,fz-l.depth*.53],[diskW-.025,.018,l.depth-.23],p);b.add('black',[x,y+.016,fz-l.depth+.018],[.28,Math.min(.19,l.rowH*.65),.075],p);b.add('gold',[x,y+.015,fz-l.depth-.024],[.22,.035,.014],p);
+              if(row===l.rows-1){const labelY=y+.017+diskH/2;b.add('white',[x,labelY,fz-l.depth*.5],[bw*.57,.004,l.depth*.45],p);for(let q=0;q<10;q++)b.add('black',[x-bw*.19+q*bw*.04,labelY+.003,fz-l.depth*.54],[.015,.003,l.depth*.24],p);}
+            }
+            [-1,1].forEach(side=>b.add('steel',[x+side*(bw*.5-.005),y,fz-l.depth*.5],[.005,l.rowH-.02,l.depth],p));
+          }
+        }
+        if(s.type==='gpu'){
+          const p=part(model,model.front,'intake','High-pressure intake','The upper face is a perforated intake, not a decorative panel. Two fan rows feed separate CPU and accelerator cooling lanes.',[['Direction','Front to rear'],['Cooling class','High static-pressure air']],[0,1.12,fz],[4.1,.95,.06]);
+          b.add(mats.grille,[-.06,1.115,fz+.044],[3.98,.95,1],p,null,'plane');
+          for(let x=-1.9;x<2;x+=.64)b.add('frame',[x,1.115,fz-.075],[.028,.94,.18],p);
+        }
+      }
+      function buildNetworkFront(model,b){
+        const fz=model.server.cfg.d/2;
+        b.add('grille',[0,.213,fz+.035],[W,.395,1],null,null,'plane');
+        if(model.detail){
+          const board=part(model,model.front,'network-board','Front transceiver daughterboard','A modular front I/O board supports the transceiver cages. Shielded high-speed twinax bundles pass through dedicated fan-wall cable openings to the central switching board.',[['Interfaces','24 SFP28 + 4 QSFP28 cages'],['Connection','Short shielded SerDes interconnects'],['Service','Front-accessible transceivers']],[0,.09,fz-.36],[4.12,.14,.68]);
+          b.add('pcb',[0,.074,fz-.36],[4.12,.019,.67],board);
+          for(let i=0;i<9;i++)b.add('chip',[-1.73+i*.41,.113,fz-.64],[.17,.045,.075],board);
+        }
+        for(let n=0;n<24;n++){
+          const x=-1.965+(n%12)*.264,y=.128+Math.floor(n/12)*.16;
+          const p=part(model,model.front,'port',`SFP28 port ${n+1}`,'A front-serviceable transceiver cage. Packet switching is handled by the switch ASIC, not by the management CPU.',[['Line rate','25 Gb/s'],['Media','SFP28 optical / DAC'],['Plane','Data fabric']],[x,y,fz],[.235,.126,.22],n);
+          addPort(model,b,model.front,x,y,fz+.05,.215,.105,p,1,n,'link');
+          if(model.detail)b.add('steel',[x,y,fz-.32],[.22,.112,.55],p);
+        }
+        for(let n=0;n<4;n++){
+          const x=1.37+(n%2)*.29,y=.13+Math.floor(n/2)*.16;
+          const p=part(model,model.front,'port',`QSFP28 uplink ${n+1}`,'A high-speed aggregation port. Redundant links provide an alternative route if one link goes down.',[['Line rate','100 Gb/s'],['Interface','QSFP28']],[x,y,fz],[.255,.125,.3],24+n);
+          addPort(model,b,model.front,x,y,fz+.05,.242,.105,p,1,n+24,'link');
+        }
+      }
+      function addPort(model,b,parent,x,y,z,w,h,p,normal=-1,index=0,kind='network'){
+        b.add('steel',[x,y,z-normal*.11],[w+.035,h+.034,.25],p);
+        b.add('black',[x,y,z+normal*.025],[w,h,.014],p);
+        b.add('gold',[x,y-h*.35,z+normal*.034],[w*.78,.016,.009],p);
+        b.add('frame',[x,y-h*.6,z+normal*.07],[w*.66,.022,.07],p);
+        led(model,parent,[x+w*.55,y+h*.6,z+normal*.047],kind,index,.018);
+      }
+      function buildPSUs(model){
+        const s=model.server,c=s.cfg,h=s.height,back=-c.d/2,b=new Batch(model.psuGroup,model.picks);
+        const ph=Math.min(h-.105,c.gpu ? .6 : .64),pw=.76,pd=c.gpu?1.62:1.48;
+        for(let i=0;i<c.psus;i++){
+          const x=i%2===0?-1.66:1.66,y=ph/2+.07+(c.gpu?Math.floor(i/2)*.76:0),z=back+pd/2;
+          const feed=i%2===0?'A':'B';
+          const p=part(model,model.psuGroup,'psu',`Power supply ${i+1} / feed ${feed}`,'Rear-accessible, hot-swappable AC-to-DC power module. Redundant modules connect to independent rack feeds. The remaining supply capacity carries the server if this module fails.',[['Rated output',`${c.psuW.toLocaleString()} W DC (high-line AC)`],['Redundancy',c.psus===4?'2+2 / independent A-B feeds':'1+1 / independent A-B feeds'],['Source',`PDU ${feed}`],['Service','Rear hot swap']],[x,y,z],[pw,ph,pd],i);
+          b.add('chassis',[x,y,z],[pw,ph,pd],p);b.add('black',[x,y,back-.016],[pw-.04,ph-.035,.07],p);
+          b.add('smallGrille',[x-.075,y,back-.06],[pw*.67,ph*.77,1],p,[0,Math.PI,0],'plane');
+          b.add('black',[x+pw*.29,y-.02,back-.085],[pw*.23,ph*.4,.045],p);
+          b.add('steel',[x+pw*.29,y-.02,back-.112],[pw*.15,ph*.26,.012],p);
+          b.add('black',[x+pw*.29,y-.02,back-.124],[pw*.1,ph*.16,.01],p);
+          for(const side of [-1,1])b.add('steel',[x+side*.26,y-ph*.38,back-.13],[.035,.035,.2],p);
+          b.add('steel',[x,y-ph*.38,back-.225],[.55,.035,.035],p);
+          b.add('service',[x-.29,y+ph*.36,back-.075],[.09,.065,.06],p);
+          led(model,model.psuGroup,[x+.29,y+ph*.33,back-.105],'psu',i,.032);
+          if(model.detail){
+            b.add('pcb',[x,y,back+pd+.055],[pw*.72,ph*.58,.065],p);b.add('gold',[x,y,back+pd+.102],[pw*.55,.05,.026],p);
+            label(model.psuGroup,`PSU ${i+1} / ${c.psuW}W`,x,y+ph/2+.006,z,.62,.12,{flat:true,color:'#25382a',bg:'#bfc9b5'});
+            for(let j=0;j<5;j++)b.add('black',[x-.23+j*.105,y+ph/2+.009,back+.35],[.035,.009,.3],p);
+          }
+        }
+        if(model.detail){
+          const z=back+pd+.18,lift=s.type==='network' ? .12 : .05,p=part(model,model.psuGroup,'distribution','DC power distribution','OR-ing and current-sharing circuitry combine independent PSU outputs before feeding the motherboard, storage and accelerators. Signal paths are separate from these power buses.',[['Sources',`${c.psus} redundant PSUs`],['Function','Current sharing / fault isolation'],['Visualization','Logical, not exact wiring']],[0,.13+lift,z],[4.03,.16,.29]);
+          b.add('pcb',[0,.11+lift,z],[4.03,.045,.29],p);for(let i=0;i<2;i++)b.add('copper',[0,.145+lift,z-.06+i*.12],[3.7,.035,.062],p);
+          for(const x of [-1.4,-.65,.65,1.4])b.add('black',[x,.2+lift,z],[.18,.10,.27],p);
+          for(const x of [-1.93,1.93])b.add('gold',[x,.085+lift/2,z],[.058,.06+lift,.058],p,null,'cylinder');
+          model.powerNode=V(0,.25+lift,z);
+        }
+        b.flush();
+      }
+      function buildRearIO(model){
+        const s=model.server,c=s.cfg,h=s.height,rear=-c.d/2,b=new Batch(model.ioGroup,model.picks);
+        const low=h<.5,ny=c.gpu ? .87 : Math.min(h*.57,.47),cz=rear+.83;
+        const nic=part(model,model.ioGroup,'nic',s.type==='network'?'HA cluster interconnects':'High-speed network adapters',s.type==='network'?'Dedicated rear cluster links support high-availability state synchronization independently of the front data-plane uplinks. The management RJ45 is on a separate out-of-band controller.':'PCIe network adapters connect compute and memory to the network fabric. The two uplinks are independently connected so a single link failure reduces capacity rather than isolating the host.',[['Interfaces',s.type==='network'?'2 x 25 GbE HA / cluster':c.netLabel],['Host connection',c.gpu?'PCIe 5.0 x16':'PCIe 4.0 x8 / x16'],['Resilience','Redundant uplinks'],['Management','Separate BMC Ethernet']],[0,ny,cz],[2.5,Math.min(.55,h-.08),1.6]);
+        b.add('smallGrille',[0,h*.51,rear+.021],[2.49,h-.14,1],nic,[0,Math.PI,0],'plane');
+        for(let i=0;i<2;i++)addPort(model,b,model.ioGroup,-.55+i*.82,ny,rear-.045,.28,.135,nic,-1,i,'network');
+        const mg=part(model,model.ioGroup,'management','Dedicated management Ethernet','The baseboard management controller remains reachable independently of the operating system. It monitors temperatures, fans, power and remote console access.',[['Type','1 GbE RJ45'],['Controller','BMC / out-of-band'],['Power','Standby auxiliary rail']],[.93,.165,rear],[.22,.2,.22]);
+        addPort(model,b,model.ioGroup,.94,.17,rear-.043,.164,.12,mg,-1,0,'management');
+        b.add('black',[.65,.13,rear-.06],[.13,.055,.05],mg);b.add('steel',[.65,.13,rear-.079],[.09,.018,.014],mg);
+        if(c.u>=2)for(let x=-1.05;x<1.1;x+=.16)for(let y=.15;y<h-.12;y+=.12){if(Math.abs(y-ny)>.13&&!(x>.5&&y<.3))b.add('black',[x,y,rear-.007],[.075,.04,.025],nic);}
+        if(model.detail){
+          if(c.gpu){b.add('pcbEdge',[0,.069,cz],[2.47,.034,1.62],nic);b.add('pcb',[0,.092,cz],[2.44,.015,1.60],nic);for(const x of [-1.12,1.12])for(const z of [cz-.65,cz+.65])b.add('gold',[x,.047,z],[.05,.062,.05],nic,null,'cylinder');}
+          for(let i=0;i<2;i++){
+            const x=-.52+i*.91;
+            b.add('socket',[x,.12,cz],[.077,.082,1.33],nic);b.add('gold',[x,.165,cz],[.023,.015,1.20],nic);
+            if(low){
+              b.add('pcb',[x,.19,cz],[.028,.14,1.28],nic);b.add('pcb',[x+.29,.245,cz],[.62,.029,1.28],nic);
+              b.add('chip',[x+.27,.275,cz],[.27,.04,.35],nic);for(let j=0;j<8;j++)b.add('aluminum',[x+.11+j*.045,.31,cz],[.018,.055,.43],nic);
+            }else{
+              b.add('pcb',[x,.16+(ny-.13)/2,cz],[.036,ny-.10,1.37],nic);b.add('gold',[x-.023,.177,cz],[.014,.045,1.13],nic);
+              for(let j=0;j<4;j++)b.add('chip',[x+.035,ny*.62,cz-.48+j*.25],[.032,Math.min(.2,ny*.48),.19],nic);
+              b.add('aluminum',[x+.10,ny*.62,cz],[.14,Math.min(.27,ny*.62),.48],nic);for(let j=0;j<7;j++)b.add('steel',[x+.17,ny*.62,cz-.22+j*.073],[.10,Math.min(.27,ny*.62),.018],nic);
+            }
+            b.add('steel',[x,ny*.5,rear+.12],[.19,ny,.045],nic);
+          }
+          if(s.type==='virtual'||s.type==='database'){
+            for(const x of [-.98,.91]){b.add('socket',[x,.125,rear+1.72],[.085,.058,1.16],nic);b.add('gold',[x,.158,rear+1.72],[.027,.009,.99],nic);}
+          }
+        }
+        b.flush();model.networkNode=V(-.13,ny+.1,rear+.5);
+      }
+      function buildBackplane(model){
+        if(model.server.type==='network')return;
+        const s=model.server,c=s.cfg,l=model.driveLayout,back=c.d/2-l.depth-.075,b=new Batch(model.backplane,model.picks);
+        const p=part(model,model.backplane,'backplane',c.driveType.includes('NVMe')?'NVMe hot-swap backplane':'SAS / SATA drive backplane','Blind-mate connectors make drives front-serviceable. Vented PCB strips and open cage lanes allow intake air through; the backplane is not a solid wall across the airflow.',[['Topology',s.type==='storage'?'24 drives / SAS expander':c.driveType.includes('NVMe')?'Individual PCIe x4 links':'SAS / SATA channels'],['Upstream',s.type==='storage'?'12 Gb/s SAS HBA':c.driveType.includes('NVMe')?'CPU PCIe root complex':'Storage controller'],['Service','Drives hot-swap from front']],[0,(s.height-.1)/2,back],[4.14,s.type==='gpu' ? .5 : s.height-.12,.13]);
+        for(let r=0;r<l.rows;r++){
+          const y=l.base+l.rowH*(r+.5);
+          b.add('pcb',[0,y-l.rowH*.32,back],[4.12,.052,.055],p);
+          for(let col=0;col<l.cols;col++){const x=-l.areaW/2+(l.areaW/l.cols)*(col+.5)-.04;b.add('pcb',[x,y,back],[.32,l.rowH*.77,.045],p);b.add('socket',[x,y,back+.055],[.26,l.rowH*.60,.07],p);b.add('gold',[x,y,back+.098],[.20,.032,.016],p);b.add('chip',[x,y,back-.044],[.17,l.rowH*.47,.035],p);}
+        }
+        for(const x of [-2.055,2.055])b.add('pcb',[x,s.height*.32,back],[.053,Math.min(s.height-.15,l.rows*l.rowH),.06],p);
+        b.add('socket',[1.87,.22,back-.095],[.17,.17,.13],p);
+        if(s.type==='storage'){
+          const expander=part(model,model.backplane,'controller','SAS expander','A SAS expander fans the HBA uplinks out to the twenty-four drive connectors. It increases port fan-out, not the aggregate bandwidth of the HBA uplinks.',[['Downstream','24 SAS drive positions'],['Upstream','Wide SAS links to HBA'],['Function','Port expansion / drive discovery']],[1.78,.87,back-.07],[.44,.49,.2]);
+          b.add('pcb',[1.78,.87,back-.02],[.44,.49,.029],expander);b.add('chip',[1.78,.87,back-.053],[.28,.26,.036],expander);
+          for(let j=0;j<7;j++)b.add('aluminum',[1.64+j*.047,.87,back-.103],[.018,.31,.102],expander);
+        }
+        b.flush();model.backplaneNode=V(1.83,.26,back-.12);
+      }
+      function buildMotherboard(model){
+        const s=model.server,c=s.cfg,h=s.height,b=new Batch(model.board,model.picks),gpu=!!c.gpu,storage=s.type==='storage',network=s.type==='network';
+        const cpuZ=gpu?1.78:storage?-.51:network?-.05:.08;
+        const boardDepth=gpu?2.3:storage?3.4:network?2.34:3.72,boardZ=gpu?1.91:storage?-.65:network ? .15 : .08;
+        model.cpuZ=cpuZ;model.cpuXs=c.cpu===2?[-1.025,1.025]:[network?-1.05:-.89];
+        const mb=part(model,model.board,'motherboard','Server system board','A purpose-built rack-server PCB with balanced processor memory channels, local VRM power stages, a BMC and rear-facing PCIe expansion. The visible routing is illustrative rather than an electrical schematic.',[['Platform',`${c.cpu} socket${c.cpu>1?'s':''} / ECC RDIMM`],['Memory slots',`${c.slots} (${c.populated} populated)`],['Board orientation','Front-to-rear chassis airflow'],['Management','Dedicated BMC controller']],[0,.08,boardZ],[4.16,.1,boardDepth]);
+        b.add('pcbEdge',[0,.066,boardZ],[4.16,.036,boardDepth],mb);b.add('pcb',[0,.086,boardZ],[4.13,.017,boardDepth-.024],mb);
+        if(!gpu){const extStart=boardZ-boardDepth/2,extEnd=-c.d/2+.27,extDepth=extStart-extEnd;if(extDepth>0){b.add('pcbEdge',[0,.066,(extStart+extEnd)/2],[2.47,.035,extDepth],mb);b.add('pcb',[0,.086,(extStart+extEnd)/2],[2.44,.017,extDepth],mb);}}
+        for(const x of [-1.95,1.95])for(const z of [boardZ-boardDepth*.45,boardZ,boardZ+boardDepth*.45]){b.add('gold',[x,.048,z],[.06,.065,.06],mb,null,'cylinder');b.add('steel',[x,.104,z],[.048,.021,.048],mb,null,'screw');}
+        const tracePositions=[];
+        const trace=(a,bp)=>tracePositions.push(...a,...bp);
+        const cpuTop=h<.5 ? .366 : gpu ? .66 : .61;
+        model.cpuTop=cpuTop;
+        model.cpuXs.forEach((x,ci)=>{
+          const cp=part(model,model.board,'cpu',`CPU ${ci+1}`,'A socketed enterprise processor with a passive heatsink. Fin channels run front-to-rear; all cooling pressure comes from the chassis fan wall. Nearby chokes, MOSFETs and capacitors form its local voltage regulator.',[['Type',`${c.cores}-core server CPU`],['Socket',`CPU ${ci+1}`],['Approx. package power',`${c.cpuW} W`],['Cooling','Passive, chassis-driven airflow'],['Memory',`${c.slots/c.cpu} local DIMM slots`]],[x,cpuTop/2+.06,cpuZ],[.88,cpuTop,1.01],ci);
+          b.add('socket',[x,.118,cpuZ],[.89,.040,.99],cp);b.add('black',[x,.149,cpuZ],[.75,.024,.81],cp);b.add('gold',[x,.166,cpuZ],[.61,.020,.65],cp);b.add('aluminum',[x,.182,cpuZ],[.62,.018,.66],cp);
+          b.add('copper',[x,.200,cpuZ],[.727,.024,.83],cp);
+          const finH=cpuTop-.225;
+          b.add('aluminum',[x,.218,cpuZ],[.77,.020,.88],cp);
+          for(let j=0;j<17;j++)b.add('aluminum',[x-.352+j*.044,.225+finH/2,cpuZ],[.018,finH,.87],cp);
+          for(const sx of [-1,1])for(const sz of [-1,1]){b.add('steel',[x+sx*.399,.22,cpuZ+sz*.447],[.069,.07,.067],cp,null,'screw');b.add('socket',[x+sx*.404,.158,cpuZ+sz*.45],[.08,.05,.095],cp);}
+          for(let j=0;j<6;j++){
+            const xx=x-.315+j*.126,z=cpuZ+.84;
+            b.add('socket',[xx,.153,z],[.09,.11,.12],cp);b.add('chip',[xx,.115,z+.145],[.08,.035,.08],cp);
+            b.add('aluminum',[xx,.151,z+.265],[.054,.112,.054],cp,null,'cylinder');b.add('black',[xx,.21,z+.265],[.043,.008,.043],cp,null,'cylinder');
+            trace([xx,.098,z+.14],[xx,.098,cpuZ+.51]);
+          }
+          const slotsPerSide=c.slots/c.cpu/2,filledPerSide=c.populated/c.cpu/2,spacing=slotsPerSide>=8 ? .067 : .071;
+          [-1,1].forEach((side,bank)=>{
+            for(let n=0;n<slotsPerSide;n++){
+              const channelsPerSide=c.slots===4?2:4;
+              const xx=x+side*(.514+n*spacing),pop=n<filledPerSide,channel=String.fromCharCode(65+bank*channelsPerSide+n%channelsPerSide),name=`DIMM ${ci===0?'A':'B'}${bank*slotsPerSide+n+1}`;
+              const ram=part(model,model.board,pop?'dimm':'dimm-slot',name,pop?'An ECC registered memory module on the local CPU memory controller. Matching populations across channels improve bandwidth; this model uses symmetric socket populations.':'An unpopulated memory connector. Upgrade populations must follow the platform channel-balancing rules, rather than filling arbitrary adjacent slots.',[['Type',pop?'ECC RDIMM':'Empty RDIMM slot'],['Capacity',pop?`${c.dimmGB} GB`:'Available for expansion'],['NUMA domain',`CPU ${ci+1}`],['Channel',channel],['Population',`${c.populated} / ${c.slots} slots`]],[xx,.243,cpuZ],[.051,.296,1.36],ci*100+bank*slotsPerSide+n);
+              b.add('socket',[xx,.128,cpuZ],[.044,.059,1.34],ram);b.add('black',[xx,.16,cpuZ],[.014,.012,1.22],ram);
+              for(const end of [-1,1])b.add('white',[xx,.164,cpuZ+end*.672],[.049,.075,.067],ram);
+              if(pop){
+                b.add('pcb',[xx,.266,cpuZ],[.024,.234,1.245],ram);b.add('gold',[xx,.164,cpuZ],[.029,.042,1.17],ram);
+                for(const face of [-1,1])for(let j=0;j<9;j++)b.add('chip',[xx+face*.019,.286,cpuZ-.51+j*.128],[.015,.105,.093],ram);
+                b.add('white',[xx+.032,.337,cpuZ+.07],[.004,.029,.32],ram);
+              }
+              if(n===0||n===slotsPerSide-1)label(model.board,`${ci===0?'A':'B'}${bank*slotsPerSide+n+1}`,xx,.106,cpuZ+.78,.055,.095,{flat:true,color:'#bed2ad'});
+              trace([xx,.099,cpuZ+.64],[xx,.099,cpuZ+.75]);trace([xx,.099,cpuZ+.75],[x+side*.30,.099,cpuZ+.48]);
+            }
+          });
+        });
+        const bmcZ=gpu?2.72:storage?-.82:network?-.84:-1.34,bmcX=storage?1.69:1.84;
+        const bmc=part(model,model.board,'bmc','Baseboard management controller','The BMC monitors sensors, controls fan policy and provides an out-of-band management interface even when the operating system is unavailable.',[['Functions','Sensors / remote console / fan control'],['Network','Dedicated management Ethernet'],['Supply','Standby auxiliary power']],[bmcX,.15,bmcZ],[.32,.17,.35]);
+        b.add('chip',[bmcX,.14,bmcZ],[.24,.075,.27],bmc);
+        for(let j=0;j<9;j++)for(const side of [-1,1])b.add('steel',[bmcX+side*.133,.11,bmcZ-.11+j*.027],[.035,.012,.014],bmc);
+        label(model.board,'BMC',bmcX,.18,bmcZ,.23,.067,{flat:true,color:'#bed0ad'});
+        const chipsetZ=gpu?2.78:boardZ-boardDepth*.5+.34;
+        const chipset=part(model,model.board,'chipset','Platform I/O controller','This platform controller handles lower-speed system I/O, boot devices and board peripherals. High-bandwidth memory, accelerators and NVMe links connect to CPU root complexes rather than passing through this small controller.',[['Role','Platform / peripheral I/O'],['CPU connection','Chipset interconnect'],['Separate from','BMC and high-speed PCIe fabric']],[0,.15,chipsetZ],[.48,.18,.39]);
+        b.add('socket',[0,.13,chipsetZ],[.47,.05,.38],chipset);b.add('chip',[0,.172,chipsetZ],[.34,.04,.29],chipset);
+        for(let j=0;j<9;j++)b.add('aluminum',[-.185+j*.046,.222,chipsetZ],[.018,.06,.34],chipset);
+        for(let j=0;j<18;j++){
+          const x=-1.82+(j%9)*.455,z=boardZ-boardDepth*.5+.12+Math.floor(j/9)*.16;
+          b.add('chip',[x,.116,z],[.14,.031,.069],mb);for(let k=0;k<3;k++)b.add('gold',[x-.048+k*.046,.122,z+.05],[.018,.025,.036],mb);
+          trace([x,.098,z+.068],[x+.06,.098,z+.15]);trace([x+.06,.098,z+.15],[x+.27,.098,z+.15]);
+        }
+        for(let j=0;j<12;j++){
+          const x=-1.86+j*.338,z=boardZ+boardDepth*.5-.08;
+          b.add('socket',[x,.124,z],[.21,.057,.08],mb);for(let k=0;k<4;k++)b.add('gold',[x-.066+k*.044,.166,z],[.013,.024,.018],mb);
+        }
+        if(storage||s.type==='virtual'){
+          const x=storage?1.13:.13,z=storage?-.64:-1.17;
+          const p=part(model,model.board,'hba','SAS host bus adapter','A PCIe storage adapter connects the CPU to the drive backplane. This HBA exposes individual disks; parity and pooling are managed by the storage software, not an invented on-drive RAID engine.',[['Host','PCIe 4.0 x8'],['Downstream','12 Gb/s SAS'],['Topology',storage?'SAS expander / 24 drives':'SAS SSD backplane'],['Mode','HBA / pass-through']],[x,.31,z],[.70,.45,1.16]);
+          b.add('socket',[x-.29,.14,z],[.069,.075,1.16],p);b.add('pcb',[x-.29,.238,z],[.034,.19,1.10],p);b.add('pcb',[x,.335,z],[.64,.025,1.10],p);b.add('chip',[x,.376,z],[.34,.04,.33],p);
+          for(let i=0;i<10;i++)b.add('aluminum',[x-.21+i*.047,.415,z],[.018,.068,.43],p);b.add('socket',[x,.378,z+.46],[.44,.073,.11],p);model.hbaNode=V(x,.402,z+.515);
+        }
+        if(c.bays&&!model.hbaNode){
+          const x=gpu?-1.82:1.42,z=gpu?2.71:-1.35;
+          const header=part(model,model.board,'connector',c.driveType.includes('NVMe')?'PCIe storage uplinks':'SATA storage headers','Low-profile board connectors route storage links along the chassis edge, outside the memory banks. NVMe links connect to CPU PCIe lanes; SATA devices use the platform storage controller.',[['Protocol',c.driveType.includes('NVMe')?'PCIe / NVMe':'SATA 6 Gb/s'],['Downstream','Front hot-swap backplane']],[x,.165,z],[.33,.15,.21]);
+          b.add('socket',[x,.16,z],[.31,.115,.19],header);b.add('gold',[x,.17,z+.104],[.24,.034,.012],header);model.storageNode=V(x,.19,z+.105);
+        }
+        if(network){
+          const p=part(model,model.board,'asic','Switch ASIC','A dedicated packet-switching ASIC moves traffic at line rate. The control-plane CPU handles configuration and protocols; it is not in the forwarding path for every packet.',[['Role','Hardware packet forwarding'],['Fabric','24 x 25G / 4 x 100G'],['Cooling','Low-profile passive fin stack']],[.98,.24,-.03],[1.12,.28,1.0]);
+          b.add('socket',[.98,.133,-.03],[1.03,.07,.94],p);b.add('copper',[.98,.197,-.03],[.92,.041,.85],p);for(let i=0;i<20;i++)b.add('aluminum',[.53+i*.047,.281,-.03],[.017,.13,.85],p);
+          const boot=part(model,model.board,'drive','M.2 boot SSD','A small on-board boot device holds the network operating system. It is not a data-plane storage array.',[['Capacity','240 GB'],['Interface','M.2 / PCIe'],['Service','Internal, power down first']],[.88,.137,-1.02],[.29,.075,.81]);
+          b.add('pcb',[.88,.136,-1.02],[.23,.025,.76],boot);for(let i=0;i<3;i++)b.add('chip',[.88,.169,-1.23+i*.22],[.17,.037,.16],boot);b.add('gold',[.88,.141,-.59],[.20,.012,.075],boot);
+        }
+        const tg=new THREE.BufferGeometry();tg.setAttribute('position',new THREE.Float32BufferAttribute(tracePositions,3));const lines=new THREE.LineSegments(tg,new THREE.LineBasicMaterial({color:0x75a780,transparent:true,opacity:.34}));model.board.add(lines);b.flush();
+      }
+      function buildFans(model){
+        const s=model.server,c=s.cfg,h=s.height,b=new Batch(model.fanGroup,model.picks),gpu=!!c.gpu;
+        const cols=gpu?6:c.fans,spacing=s.type==='storage'?1.005:gpu ? .668 : s.type==='network' ? .55 : c.u===1 ? .486 : .665;
+        const size=s.type==='storage' ? .91 : gpu ? .63 : c.u===1 ? .364 : .604,depth=gpu ? .57 : .43;
+        const z=gpu?3.29:s.type==='storage'?1.99:s.type==='network'?1.63:c.d/2-1.55;
+        model.fanZ=z;
+        for(let i=0;i<c.fans;i++){
+          const x=(i%cols-(cols-1)/2)*spacing,y=gpu ? .41+Math.floor(i/cols)*.73 : s.type==='storage' ? .77 : size/2+.045,r=size*.43;
+          const p=part(model,model.fanGroup,'fan',`Fan module ${i+1}`,'A serviceable, high-static-pressure fan module with guarded blades. Its axis points along the chassis airflow, not upward at the cover. Adjacent modules increase speed if a fan fails.',[['Direction','Front intake to rear exhaust'],['Nominal speed',`${c.fanRPM.toLocaleString()} RPM`],['Service','Hot-swappable module'],['Failure response','Adjacent fans ramp up']],[x,y,z],[size,size,depth],i);
+          for(const side of [-1,1]){b.add('black',[x+side*(size/2-.028),y,z],[.056,size,depth],p);b.add('black',[x,y+side*(size/2-.028),z],[size,.056,depth],p);}
+          for(const face of [-1,1]){
+            b.add('frame',[x,y,z+face*(depth*.5-.015)],[r*2,r*2,r*2],p,null,'ring');
+            b.add('steel',[x,y,z+face*(depth*.5+.008)],[r*1.21,r*1.21,r*1.21],p,null,'ring');
+            for(let j=0;j<3;j++)b.add('steel',[x,y,z+face*(depth*.5+.014)],[.016,size*.84,.015],p,[0,0,j*Math.PI/3]);
+          }
+          b.add('black',[x,y,z],[r*.37,.17,r*.37],p,[Math.PI/2,0,0],'cylinder');
+          b.add('service',[x,y+size/2-.026,z+.05],[size*.43,.028,.12],p);
+          led(model,model.fanGroup,[x+size*.34,y+size*.34,z+depth/2+.025],'fan',i,.025);
+          model.fans.push({x,y,z,r,phase:i*.41,part:p,index:i});
+        }
+        b.flush();
+        // Actual circular cutouts leave open flow passages instead of a solid decorative fan wall.
+        const bulkheadShape=new THREE.Shape();bulkheadShape.moveTo(-2.17,.032);bulkheadShape.lineTo(2.17,.032);bulkheadShape.lineTo(2.17,h-.008);bulkheadShape.lineTo(-2.17,h-.008);bulkheadShape.closePath();
+        for(const f of model.fans){const hole=new THREE.Path();hole.absarc(f.x,f.y,f.r*1.035,0,Math.PI*2,true);bulkheadShape.holes.push(hole);}
+        for(const side of [-1,1]){const x=side*2.06,top=Math.min(h-.025,.52),cableSlot=new THREE.Path();cableSlot.moveTo(x-.10,.093);cableSlot.lineTo(x-.10,top);cableSlot.lineTo(x+.10,top);cableSlot.lineTo(x+.10,.093);cableSlot.closePath();bulkheadShape.holes.push(cableSlot);}
+        const bulkheadGeometry=new THREE.ExtrudeGeometry(bulkheadShape,{depth:.019,bevelEnabled:false,curveSegments:14}),bulkhead=new THREE.Mesh(bulkheadGeometry,mats.chassis);
+        bulkhead.position.z=z+depth/2-.023;bulkhead.castShadow=true;bulkhead.receiveShadow=true;bulkhead.userData.part=part(model,model.fanGroup,'duct','Fan-wall pressure bulkhead','The bulkhead closes bypass gaps around the fan modules. Open circular apertures align with the fan axes so pressure is used to drive air through the hardware, rather than recirculating inside the chassis.',[['Modules',String(c.fans)],['Direction','Front to rear'],['Openings','Matched to fan blade diameter']],[0,h/2,z+depth/2],[4.34,h-.04,.04]);model.fanGroup.add(bulkhead);model.picks.push(bulkhead);
+        const rotors=new THREE.InstancedMesh(bladeGeo,mats.blade,c.fans*7);rotors.instanceMatrix.setUsage(THREE.DynamicDrawUsage);rotors.userData.parts=[];rotors.castShadow=false;rotors.frustumCulled=false;model.fans.forEach(f=>{for(let j=0;j<7;j++)rotors.userData.parts.push(f.part);});model.fanGroup.add(rotors);model.rotors=rotors;model.picks.push(rotors);updateFans(model,0);
+      }
+      function updateFans(model,dt){
+        if(!model.rotors)return;
+        model.fans.forEach((f,i)=>{
+          const failed=model.server.faults.has('fan')&&i===0;
+          if(!failed)f.phase+=dt*20*(model.server.health.fan/model.server.cfg.fanRPM)*(reducedMotion ? .2 : 1);
+          for(let j=0;j<7;j++){dummy.position.set(f.x,f.y,f.z);dummy.scale.setScalar(f.r*1.89);dummy.rotation.set(0,0,f.phase+j*Math.PI*2/7);dummy.updateMatrix();model.rotors.setMatrixAt(i*7+j,dummy.matrix);}
+        });model.rotors.instanceMatrix.needsUpdate=true;
+      }
+      function buildAccelerators(model){
+        const b=new Batch(model.gpuGroup,model.picks);
+        const base=part(model,model.gpuGroup,'interconnect','Accelerator interconnect baseboard','Eight purpose-built mezzanine accelerators share a dedicated baseboard. Host PCIe links connect them to the two CPUs; a separate scale-up fabric carries GPU-to-GPU traffic without routing it through system memory.',[['Accelerators','8 datacenter modules'],['Host links','PCIe 5.0 via switch fabric'],['Scale-up','Dedicated accelerator interconnect'],['Power','Separate high-current distribution']],[0,.12,-1.07],[4.17,.17,3.86]);
+        b.add('pcbEdge',[0,.111,-1.07],[4.17,.048,3.86],base);b.add('pcb',[0,.142,-1.07],[4.13,.018,3.82],base);
+        for(let i=0;i<8;i++){
+          const x=-1.545+(i%4)*1.03,z=.03-Math.floor(i/4)*1.67;
+          const p=part(model,model.gpuGroup,'gpu',`GPU accelerator ${i+1}`,'A datacenter mezzanine accelerator, not a desktop graphics card. It mounts flat to a dedicated interconnect baseboard and is cooled by front-to-rear passive fin channels. HBM packages sit beside the compute die under the thermal assembly.',[['Role','AI / parallel compute'],['Form','Purpose-built accelerator module'],['Memory','80 GB HBM per module'],['Approx. package power','600 W'],['Host / peer links','PCIe 5.0 / scale-up fabric']],[x,.64,z],[.925,1.02,1.43],i);
+          b.add('socket',[x,.185,z],[.915,.054,1.42],p);b.add('pcb',[x,.225,z],[.89,.024,1.38],p);
+          b.add('gold',[x,.255,z],[.49,.037,.59],p);b.add('aluminum',[x,.277,z],[.39,.025,.46],p);
+          for(const side of [-1,1])for(let j=0;j<3;j++)b.add('chip',[x+side*.32,.26,z-.32+j*.31],[.12,.035,.20],p);
+          b.add('copper',[x,.313,z],[.84,.065,1.3],p);b.add('aluminum',[x,.37,z],[.86,.05,1.34],p);
+          for(let j=0;j<20;j++)b.add('aluminum',[x-.411+j*.0433,.725,z],[.016,.663,1.34],p);
+          for(const side of [-1,1])for(const end of [-1,1])b.add('steel',[x+side*.427,.36,z+end*.665],[.04,.18,.04],p,null,'screw');
+          b.add('socket',[x,.225,z-.733],[.39,.125,.10],p);
+          led(model,model.gpuGroup,[x+.39,.29,z+.672],'gpu',i,.025);
+          label(model.gpuGroup,`ACCEL ${i+1}`,x,1.061,z+.47,.60,.1,{flat:true,color:'#37462f',bg:'#b6c4ad'});
+          for(let k=0;k<4;k++)b.add('copper',[x-.21+k*.14,.176,z-.75],[.071,.031,.13],base);
+        }
+        for(const x of [-1.1,0,1.1]){
+          b.add('socket',[x,.21,-2.68],[.53,.105,.38],base);for(let j=0;j<9;j++)b.add('aluminum',[x-.23+j*.058,.329,-2.68],[.024,.12,.37],base);
+          for(let j=0;j<6;j++)b.add('copper',[x-.19+j*.076,.16,-2.96],[.028,.023,.23],base);
+        }
+        b.add('pcb',[0,.143,.90],[2.42,.025,.45],base);
+        for(const x of [-.82,.82]){b.add('chip',[x,.19,.915],[.46,.062,.27],base);for(let j=0;j<8;j++)b.add('aluminum',[x-.20+j*.058,.255,.915],[.023,.075,.27],base);}
+        b.flush();model.gpuNode=V(0,1.15,-.84);
+      }
+      function buildDuct(model){
+        const c=model.server.cfg,h=model.server.height,y=Math.min(h-.018,.75),z=model.cpuZ;
+        model.ductMat=new THREE.MeshPhysicalMaterial({color:0x7c9688,metalness:0,roughness:.4,transparent:true,opacity:.085,side:THREE.DoubleSide,depthWrite:false});
+        const b=new Batch(model.duct,model.picks),p=part(model,model.duct,'duct','Processor air shroud','A removable pressure guide keeps fan output over the CPU fin channels and memory banks. Without the shroud, air would take lower-resistance paths around the hot components.',[['Function','Control bypass / maintain pressure'],['Material','Molded serviceable air guide'],['Service','Remove before CPU maintenance']],[0,y-.06,z],[4.16,.18,1.52]);
+        b.add(model.ductMat,[0,y,z],[4.14,.008,1.55],p);
+        for(const x of [-2.075,2.075])b.add(model.ductMat,[x,y-.125,z],[.018,.26,1.55],p);
+        for(const x of [-2.06,2.06])b.add('service',[x,y+.012,z+.6],[.095,.019,.19],p);b.flush();
+      }
+      function buildInternalCables(model){
+        const s=model.server,c=s.cfg;
+        if(model.backplaneNode){
+          const a=model.backplaneNode,dest=model.hbaNode||model.storageNode,routeY=c.u===1 ? .26 : Math.min(.5,dest.y+.12);
+          for(let i=0;i<(s.type==='storage'?3:2);i++)curveTube(model.board,[[a.x,.27+i*.025,a.z-.03],[2.12,routeY+i*.014,a.z-.32],[2.12,routeY+i*.014,dest.z-.23],[dest.x+.12,dest.y+.045+i*.012,dest.z+.13],[dest.x,dest.y+.015+i*.012,dest.z+.025]],s.type==='storage'?'blue':'black',.022);
+        }
+        const pn=model.powerNode;
+        for(const side of [-1,1])curveTube(model.board,[[side*1.67,.16,pn.z],[side*2.12,.15,pn.z+.28],[side*2.12,.15,model.cpuZ+.9],[side*1.49,.17,model.cpuZ+.95]],'black',.033);
+        if(c.gpu){
+          for(let i=0;i<4;i++){const x=-1.5+i;curveTube(model.gpuGroup,[[x,.17,pn.z],[x,.21,-2.92],[x+.08,.25,-2.47]],'black',.038);}
+          for(const side of [-1,1])curveTube(model.ioGroup,[[side*.52,.23,-c.d/2+.94],[side*1.17,.30,-c.d/2+1.3],[side*2.11,.28,-c.d/2+1.9],[side*2.11,.34,model.cpuZ-.87],[side*1.15,.17,model.cpuZ-1.0]],'blue',.026);
+        }
+        if(s.type==='network')for(const side of [-1,1])curveTube(model.board,[[side*1.83,.12,c.d/2-.62],[side*2.065,.25,c.d/2-.76],[side*2.065,.25,1.38],[side*1.78,.17,1.22]],'blue',.028);
+      }
+      function unitLabels(parent,z,rear=false){
+        const c=document.createElement('canvas');c.width=128;c.height=4096;const ctx=c.getContext('2d');ctx.font='500 58px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#a6b39c';for(let u=1;u<=42;u++)ctx.fillText(String(u).padStart(2,'0'),64,(42-u+.5)*4096/42);
+        const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=8;sharedTextures.push(texture);const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+        for(const x of [-2.607,2.607]){const mesh=new THREE.Mesh(planeGeo,mat);mesh.position.set(x,FLOOR_U+42*U/2,z);mesh.scale.set(.155,42*U,1);if(rear)mesh.rotation.y=Math.PI;parent.add(mesh);}
+      }
+      function buildRack(){
+        const b=new Batch(rackStructure),top=19.87,front=5.18,rear=-6.06,centerZ=(front+rear)/2;
+        for(const x of [-3.035,3.035])for(const z of [front,rear]){
+          b.add('frame',[x,(top+.62)/2,z],[.245,top-.62,.245]);
+          b.add('black',[x,10.06,z+.128],[.075,18.7,.014]);
+          b.add('steel',[x,.58,z],[.37,.13,.36]);
+        }
+        for(const y of [.62,top]){
+          for(const z of [front,rear])b.add('frame',[0,y,z],[6.31,.26,.31]);
+          for(const x of [-3.035,3.035])b.add('frame',[x,y,centerZ],[.30,.26,11.48]);
+        }
+        b.add('frame',[0,.5325,centerZ],[5.95,.045,11.1]);
+        b.add('frame',[0,top+.025,centerZ],[6.24,.14,11.25]);
+        b.add('black',[0,top+.101,-1.04],[3.78,.025,4.6]);
+        for(let j=0;j<18;j++)b.add('chassis',[-1.8+j*.21,top+.114,-1.04],[.064,.011,4.38]);
+        for(const x of [-3.015,3.015])for(const y of [1.03,9.8,19.37])b.add('frame',[x,y,centerZ],[.18,.12,11.1]);
+        for(const x of [-2.3255,2.3255])for(const z of [4.76,-4.74]){
+          b.add('chassis',[x,FLOOR_U+42*U/2,z],[.205,42*U+.19,.125]);
+          b.add('frame',[x+(x>0 ? .14 : -.14),FLOOR_U+42*U/2,z-.055],[.14,42*U+.22,.215]);
+          for(let u=0;u<42;u++)for(const offset of [.0635,.22225,.381]){
+            b.add('black',[x,FLOOR_U+u*U+offset,z+.067],[.095,.095,1],null,null,'plane');
+            b.add('black',[x,FLOOR_U+u*U+offset,z-.067],[.095,.095,1],null,[0,Math.PI,0],'plane');
+          }
+        }
+        for(const x of [-2.64,2.64])for(const z of [4.42,-5.32]){
+          b.add('steel',[x,.40,z],[.18,.23,.22]);b.add('rubber',[x,.215,z],[.47,.205,.47],null,[0,0,Math.PI/2],'cylinder');b.add('chassis',[x+.12,.215,z],[.27,.029,.27],null,[0,0,Math.PI/2],'cylinder');
+          b.add('steel',[x+(x>0?-.36:.36),.13,z],[.08,.25,.08],null,null,'cylinder');b.add('rubber',[x+(x>0?-.36:.36),.027,z],[.28,.055,.28],null,null,'cylinder');
+        }
+        for(const s of servers){
+          for(const side of [-1,1]){b.add('steel',[side*2.32,s.position.y+s.height*.45,-.1],[.105,.12,9.74]);b.add('black',[side*2.335,s.position.y+s.height*.45,-.1],[.026,.028,9.50]);}
+          const model=buildServer(s,false);model.root.position.copy(s.position);rackSystems.add(model.root);lowModels.push(model);
+        }
+        const blanks=[[1,4],[5,4],[9,4],[21,4],[25,3]];
+        for(const [bottom,count] of blanks){
+          const y=FLOOR_U+(bottom-1)*U+count*U/2;
+          b.add('frame',[0,y,RACK_FRONT+.017],[4.826,count*U-.032,.052]);
+          for(let k=1;k<count;k++)b.add('black',[0,y-count*U/2+k*U,RACK_FRONT+.047],[4.5,.015,.006]);
+          for(const x of [-2.3255,2.3255])for(const sy of [-1,1])b.add('steel',[x,y+sy*(count*U/2-.0635),RACK_FRONT+.065],[.043,.015,.043],null,[Math.PI/2,0,0],'screw');
+          label(rackStructure,'RESERVED CAPACITY',0,y,RACK_FRONT+.048,1.64,.085,{color:'#687762'});
+        }
+        b.add('frame',[0,FLOOR_U+26.5*U,-5.70],[4.68,.35,.18]);
+        for(let i=0;i<24;i++)b.add('black',[-2.16+i*.187,FLOOR_U+26.5*U,-5.802],[.12,.17,.025]);
+        label(rackStructure,'REAR PATCH / FABRIC',0,FLOOR_U+26.5*U+.14,-5.806,1.46,.063,{rear:true,color:'#a8b59c'});
+        label(rackStructure,'ARCHITECTURE LAB',0,19.86,front+.165,2.51,.13,{color:'#bfcbb3'});
+        label(rackStructure,'R04',2.35,19.86,front+.168,.43,.17,{color:'#a5b99a'});
+        unitLabels(rackStructure,4.843);unitLabels(rackStructure,-4.82,true);
+        for(const side of [-1,1]){
+          const x=side*2.77;
+          b.add('black',[x,10.0,-5.77],[.245,18.5,.25]);b.add(side<0?'wireA':'wireB',[x+side*.09,10.0,-5.905],[.034,18.05,.017]);
+          for(let i=0;i<36;i++){const y=1.11+i*.49;b.add('chassis',[x,y,-5.913],[.15,.27,.025]);b.add('black',[x,y,-5.934],[.108,.19,.023]);b.add('gold',[x-.022,y-.01,-5.951],[.019,.07,.009]);b.add('gold',[x+.022,y-.01,-5.951],[.019,.07,.009]);}
+          label(rackStructure,side<0?'PDU A':'PDU B',x,19.06,-5.931,.22,.27,{rear:true,color:side<0?'#9eb9c0':'#b1c49b'});
+          b.add('led',[x,18.65,-5.94],[.035,.05,.025]);
+          for(let y=2;y<19;y+=2.5){b.add('black',[side*2.76,y,-4.5],[.35,.07,1.05]);b.add('frame',[side*2.85,y,-4.46],[.085,.47,.88]);}
+        }
+        b.flush();
+        rackPanels=group(rackStructure,'REMOVABLE SIDE PANELS');const pb=new Batch(rackPanels);
+        for(const side of [-1,1])for(const y of [5.34,14.69]){
+          pb.add('frame',[side*3.17,y,centerZ],[.065,9.19,11.17]);pb.add('black',[side*3.209,y,centerZ],[.012,8.9,10.86]);
+          pb.add('chassis',[side*3.225,y+3.5,.1],[.028,.46,.19]);pb.add('black',[side*3.245,y+3.5,.1],[.02,.31,.087]);
+          for(let z=-5;z<5;z+=2)pb.add('frame',[side*3.229,y,z],[.028,8.8,.045]);
+        }pb.flush();rackPanels.visible=false;
+        rackDoors=group(rackStructure,'PERFORATED DOORS');const db=new Batch(rackDoors);
+        for(const z of [5.39,-6.27]){
+          for(const x of [-2.94,2.94])db.add('frame',[x,10.12,z],[.18,19.05,.09]);
+          for(const y of [.67,19.59])db.add('frame',[0,y,z],[5.95,.17,.09]);
+          db.add('doorGrille',[0,10.1,z],[5.73,18.78,1],null,null,'plane');db.add('black',[2.66,10.2,z+(z>0 ? .08 : -.08)],[.115,.83,.12]);
+          for(const y of [2.2,10.2,18.2])db.add('steel',[-2.99,y,z],[.11,.22,.13]);
+        }db.flush();rackDoors.visible=false;
+        const dimPoints=[[-3.72,FLOOR_U,5.15],[-3.72,FLOOR_U+42*U,5.15],[-3.88,FLOOR_U,5.15],[-3.56,FLOOR_U,5.15],[-3.88,FLOOR_U+42*U,5.15],[-3.56,FLOOR_U+42*U,5.15]];
+        const dg=new THREE.BufferGeometry().setFromPoints(dimPoints.map(p=>V(...p)));const dl=new THREE.LineSegments(dg,new THREE.LineBasicMaterial({color:0x8e9c85,transparent:true,opacity:.65}));rackStructure.add(dl);
+        label(rackStructure,'42U',-4.13,10.35,5.18,.65,.24,{color:'#7c8f6f'});label(rackStructure,'1867 mm',-4.13,9.99,5.18,.77,.135,{color:'#899a7d'});
+        buildRackCables();
+      }
+      function buildRackCables(){
+        const switchY=servers[5].position.y+.22;
+        for(const s of servers){
+          const cableGroup=group(rackCables,`${s.name} / SERVICE HARNESS`);s.cableGroup=cableGroup;
+          const c=s.cfg,z=s.position.z-c.d/2;
+          for(let i=0;i<c.psus;i++){
+            const side=i%2===0?-1:1,x=side*1.66,y=s.position.y+Math.min(s.height*.46,.4)+(c.gpu?Math.floor(i/2)*.76:0);
+            curveTube(cableGroup,[[x+.21,y,z-.12],[x+.21,y,z-.40],[side*2.45,y-.09,-5.61],[side*2.71,y-.17,-5.98]],side<0?'wireA':'wireB',.036);
+          }
+          for(let i=0;i<2;i++){
+            const x=-.55+i*.82,y=s.position.y+(c.gpu ? .87 : Math.min(s.height*.57,.47));
+            curveTube(cableGroup,[[x,y,z-.12],[x,y,z-.48],[2.36+i*.10,y+.1,-5.48],[2.49+i*.10,switchY+(s.index-3)*.035,-5.52],[1.92-i*.2,switchY,-5.79]],'networkCable',.021);
+          }
+        }
+        for(const side of [-1,1])curveTube(rackCables,[[side*2.8,1,-5.9],[side*2.7,.4,-6.15],[side*3.5,.13,-6.15],[side*4.9,.10,-7.5]],side<0?'wireA':'wireB',.065);
+      }
+      function createFlow(parent,paths,kind){
+        const root=group(parent,`${kind.toUpperCase()} / CONCEPTUAL PATHS`),positions=[],colors=[],samples=[],segments=96;
+        const cool=new THREE.Color(kind==='airflow'?0x6d9fae:kind==='power'?0xbe974d:0x9075b0),warm=new THREE.Color(kind==='airflow'?0xbc9360:kind==='power'?0xd0b265:0xa293c3);
+        for(const definition of paths){
+          const points=definition.points||definition,curve=new THREE.CatmullRomCurve3(points.map(p=>Array.isArray(p)?V(...p):p)),pts=curve.getSpacedPoints(segments),data=new Float32Array((segments+1)*3);
+          pts.forEach((p,i)=>p.toArray(data,i*3));samples.push(data);
+          for(let j=0;j<segments;j++)for(const k of [j,j+1]){positions.push(pts[k].x,pts[k].y,pts[k].z);const color=cool.clone().lerp(warm,kind==='airflow'?clamp((k/segments-.45)*1.85,0,1):k/segments);colors.push(color.r,color.g,color.b);}
+        }
+        const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+        const lines=new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:kind==='airflow' ? .24 : .65,depthWrite:false}));root.add(lines);
+        const perPath=kind==='airflow'?10:5,count=paths.length*perPath,pg=new THREE.BufferGeometry(),pp=new Float32Array(count*3),pc=new Float32Array(count*3);
+        pg.setAttribute('position',new THREE.BufferAttribute(pp,3).setUsage(THREE.DynamicDrawUsage));pg.setAttribute('color',new THREE.BufferAttribute(pc,3).setUsage(THREE.DynamicDrawUsage));
+        const particles=new THREE.Points(pg,new THREE.PointsMaterial({size:kind==='airflow' ? .064 : .073,vertexColors:true,transparent:true,opacity:.9,sizeAttenuation:true,depthWrite:false}));particles.frustumCulled=false;root.add(particles);root.visible=false;
+        return {root,kind,samples,segments,perPath,pp,pc,pg,cool,warm};
+      }
+      function updateFlow(flow,time){
+        if(!flow||!flow.root.visible)return;
+        const speed=flow.kind==='airflow' ? .20 : .135,color=new THREE.Color();
+        flow.samples.forEach((sample,i)=>{for(let j=0;j<flow.perPath;j++){
+          let t=(time*speed+j/flow.perPath+i*.071)%1;if(flow.kind==='data'&&j%2)t=1-t;
+          const at=t*flow.segments,k=Math.min(flow.segments-1,Math.floor(at)),f=at-k,index=(i*flow.perPath+j)*3;
+          if(flow.kind==='power'&&flow.sourcePSUs&&i===0&&flow.server.faults.has('psu')){flow.pp[index]=0;flow.pp[index+1]=-1000;flow.pp[index+2]=0;continue;}
+          for(let a=0;a<3;a++)flow.pp[index+a]=lerp(sample[k*3+a],sample[Math.min(k+1,flow.segments)*3+a],f);
+          color.copy(flow.cool).lerp(flow.warm,flow.kind==='airflow'?clamp((t-.45)*1.85,0,1):t);color.toArray(flow.pc,index);
+        }});flow.pg.attributes.position.needsUpdate=true;flow.pg.attributes.color.needsUpdate=true;
+      }
+      function buildSliceFlows(model){
+        const s=model.server,c=s.cfg,h=s.height,fz=c.d/2,cpuY=model.cpuTop+.11,air=[],power=[],data=[],pn=model.powerNode;
+        if(c.gpu){
+          for(let i=0;i<4;i++){
+            const x=-1.545+i*1.03;
+            for(const dx of [-.087,.087])air.push([[x+dx,1.18,fz+.65],[x+dx,1.15,3.30],[x+dx,.86,1.35],[x+dx,.81,.04],[x+dx,.81,-1.67],[x*.66,1.56,-3.50],[x*.64,1.57,-fz-.7]]);
+          }
+          for(const x of model.cpuXs)air.push([[x,.30,fz+.6],[x,.30,fz-1.04],[x,.43,model.fanZ],[x+.02,.48,model.cpuZ+.5],[x+.02,.48,model.cpuZ-.6],[x,.45,-1.9],[x*.72,.64,-3.2],[x*.7,1.53,-fz-.6]]);
+        }else if(s.type==='storage'){
+          for(let i=0;i<6;i++){
+            const gap=[-1.09,-.04,1.01][i%3],y=i<3 ? .60 : 1.13,fanX=[-1.50,-.5,.5,1.5][i%4],targetX=i<3?-.89+(i-1)*.13:1.0;
+            air.push([[gap,y,fz+.65],[gap,y,fz-1.39],[gap,i<3 ? .75 : 1.06,model.backplaneNode.z+.11],[fanX,.74,model.fanZ],[targetX,i<3 ? .44 : .70,.6],[targetX,i<3 ? .44 : .70,-.65],[targetX*.55,.76,-2.15],[targetX*.4,1.0,-fz-.6]]);
+          }
+        }else{
+          for(const x of model.cpuXs)for(let j=-1;j<=1;j++){
+            const gap=c.u===1?(x<0?-1.028:1.028):(x<0?-1.418:1.337),finX=x+j*.132+.022;
+            const nearest=model.fans.reduce((a,f)=>Math.abs(f.x-gap)<Math.abs(a.x-gap)?f:a,model.fans[0]);
+            const y=Math.min(h-.10,.43),frontY=model.driveLayout?model.driveLayout.base+model.driveLayout.rowH:.208;
+            air.push([[gap,frontY,fz+.65],[gap,frontY,fz-1.09],[nearest.x,nearest.y,model.fanZ],[finX,y,model.cpuZ+.50],[finX,y,model.cpuZ-.55],[finX*.35,Math.min(h-.065,.72),-fz+1.4],[c.u===1?(finX>0 ? .05 : -.18):finX*.2,Math.min(h-.10,.73),-fz-.6]]);
+          }
+          if(s.type==='network')for(let i=0;i<3;i++)air.push([[1.146,.208,fz+.6],[1.146,.208,fz-.65],[.825,.227,model.fanZ+.12],[.825,.227,model.fanZ-.12],[.60+i*.188,.28,.25],[.60+i*.188,.30,-.45],[-.12+i*.07,.309,-fz-.6]]);
+        }
+        for(let i=0;i<c.psus;i++){
+          const x=i%2===0?-1.66:1.66,y=Math.min(h*.46,.4)+(c.gpu?Math.floor(i/2)*.76:0);
+          power.push([[x,y,-fz-.65],[x,y,-fz+.25],[x,.26,pn.z],[pn.x,pn.y+.03,pn.z]]);
+        }
+        model.cpuXs.forEach(x=>{
+          power.push([[pn.x,pn.y+.05,pn.z],[x,.31,pn.z+.35],[x,cpuY,model.cpuZ]]);
+          power.push([[x,cpuY,model.cpuZ],[x+(x<0?-.69:.69),.45,model.cpuZ]]);
+          data.push([[x,cpuY,model.cpuZ],[x+(x<0?-.73:.73),.45,model.cpuZ-.13],[x+(x<0?-.73:.73),.45,model.cpuZ+.42]]);
+          data.push([[x,cpuY,model.cpuZ],[x*.4,Math.max(.5,h*.55),-fz+2.07],[model.networkNode.x,model.networkNode.y,model.networkNode.z],[model.networkNode.x,model.networkNode.y,-fz-.48]]);
+        });
+        power.push([[pn.x,pn.y,pn.z],[0,Math.min(.4,h*.7),-fz+1.0],[model.networkNode.x,model.networkNode.y,model.networkNode.z]]);
+        if(c.cpu===2)data.push([[model.cpuXs[0],cpuY,model.cpuZ],[model.cpuXs[0]*.4,cpuY,model.cpuZ-.88],[model.cpuXs[1]*.4,cpuY,model.cpuZ-.88],[model.cpuXs[1],cpuY,model.cpuZ]]);
+        if(s.type==='network'){power.push([[pn.x,pn.y,pn.z],[.98,.39,-.03]]);power.push([[pn.x,pn.y,pn.z],[.88,.23,-1.02]]);}
+        if(model.backplaneNode){
+          const bp=model.backplaneNode;
+          power.push([[0,pn.y+.08,pn.z],[2.03,.38,pn.z+.15],[2.03,.40,bp.z],[bp.x,bp.y+.16,bp.z]]);
+          if(s.type==='storage'){
+            for(let i=0;i<4;i++)data.push([[-1.615+i*1.05,h*.48,fz-.5],[-1.615+i*1.05,h*.48,bp.z],[bp.x,h*.50,bp.z],[model.hbaNode.x,model.hbaNode.y+.10,model.hbaNode.z],[-.89,cpuY,model.cpuZ]]);
+          }else{
+            const end=model.hbaNode||V(model.cpuXs[0],cpuY,model.cpuZ);
+            data.push([[0,h*.42,fz-.38],[0,h*.42,bp.z],[bp.x,bp.y+.18,bp.z],[1.96,.48,model.fanZ-.45],[end.x,end.y+.04,end.z]]);
+          }
+        }
+        if(c.gpu)for(let i=0;i<8;i++){
+          const x=-1.545+(i%4)*1.03,z=.03-Math.floor(i/4)*1.67;
+          power.push([[0,.39,pn.z],[x,.48,pn.z+.28],[x,1.14,z]]);
+          data.push([[x<0?-1.025:1.025,cpuY,model.cpuZ],[x<0?-.82:.82,.60,.96],[x,1.20,z]]);
+          if(i<4)data.push([[x,1.17,.03],[x,1.18,-1.64],[x*.6,.7,-2.71]]);
+        }
+        if(s.type==='network')data.push([[.98,.48,-.03],[.98,.44,1.10],[.98,.44,fz+.30]]);
+        model.flows={airflow:createFlow(model.root,air,'airflow'),power:createFlow(model.root,power,'power'),data:createFlow(model.root,data,'data')};model.flows.power.sourcePSUs=c.psus;model.flows.power.server=s;
+      }
+      function buildRackFlows(){
+        const air=[],power=[],data=[];
+        for(const s of servers){
+          const zRear=s.position.z-s.cfg.d/2,y=s.position.y+s.height*.64;
+          for(const x of [-1.05,0,1.05])air.push([[x,y,RACK_FRONT+1.1],[x,y,RACK_FRONT+.2],[x,y,RACK_FRONT-1.4],[x*.7,y,zRear+.8],[x*.7,y,zRear-.9]]);
+          for(const side of [-1,1])power.push([[side*2.77,.9,-5.94],[side*2.77,y,-5.94],[side*2.4,y,-5.68],[side*1.66,y,zRear-.20],[side*1.66,y,zRear+1.05]]);
+          data.push([[0,y,zRear-.15],[2.32,y,-5.47],[2.54,servers[5].position.y+.2,-5.54],[.4,servers[5].position.y+.2,-5.74]]);
+        }
+        rackFlows={airflow:createFlow(rack,air,'airflow'),power:createFlow(rack,power,'power'),data:createFlow(rack,data,'data')};
+      }
+      const rackPresets=[['front','Full rack front'],['threeQuarter','Full rack 3/4'],['side','Full rack side'],['rear','Full rack rear']];
+      const slicePresets=[['whole','Whole slice'],['top','Top down'],['engineering','3/4 engineering view'],['frontInternal','Front internals'],['rearInternal','Rear internals'],['cpu','CPU + memory'],['gpu','GPU area'],['storage','Storage area']];
+      function cameraFit(box,direction,padding=1.22){
+        const center=box.getCenter(V()),dir=direction.clone().normalize(),right=V().crossVectors(V(0,1,0),dir).normalize(),up=V().crossVectors(dir,right).normalize();
+        const tanV=Math.tan(THREE.MathUtils.degToRad(camera.fov/2)),tanH=tanV*camera.aspect;let distance=0;
+        for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z]){
+          const p=V(x,y,z).sub(center),depth=p.dot(dir);distance=Math.max(distance,depth+Math.abs(p.dot(right))*padding/tanH,depth+Math.abs(p.dot(up))*padding/tanV);
+        }
+        return {position:center.clone().addScaledVector(dir,distance),target:center};
+      }
+      function cameraForPreset(name,mode=state.mode){
+        if(mode==='rack'){
+          const directions={front:V(0,.09,1),threeQuarter:V(1.05,.40,1.7),side:V(1,.09,.01),rear:V(-.9,.39,-1.7)};
+          return cameraFit(new THREE.Box3(V(-4.15,0,-6.36),V(3.55,20.13,5.64)),directions[name]||directions.threeQuarter,1.19);
+        }
+        const s=servers[state.selected],c=s.cfg,h=s.height,base=highModel?highModel.root.position.clone():V(0,1.02,0),e=state.explode?2.7:0;
+        let min=V(-2.59,-.06,-c.d/2-.32),max=V(2.59,h+.15+e,c.d/2+.35),direction=V(1.02,1.50,1.75),padding=1.25;
+        if(name==='top')direction=V(.0001,1,.0001);
+        if(name==='engineering')direction=V(-1.2,1.32,1.75);
+        if(name==='frontInternal'){direction=V(.12,.72,1.4);min.z=c.d/2-3.7;max.y=h+.12+e;}
+        if(name==='rearInternal'){direction=V(-.7,.83,-1.6);max.z=-c.d/2+3.8;}
+        if(name==='cpu'){direction=V(.12,1.5,1.5);min=V(-2.17,.06,highModel.cpuZ-1.2);max=V(2.17,highModel.cpuTop+.48+e,highModel.cpuZ+1.25);}
+        if(name==='gpu'&&c.gpu){direction=V(.75,1.65,1.55);min=V(-2.24,.07,-2.95);max=V(2.24,1.29+e,.95);}
+        if(name==='storage'){
+          direction=V(-.25,1.0,1.65);min=V(-2.25,.02,c.d/2-2.03);max=V(2.25,h+.2+e,c.d/2+.34);
+          if(s.type==='network'){min=V(.47,.04,-1.62);max=V(1.35,.6,-.46);}
+        }
+        return cameraFit(new THREE.Box3(min.add(base),max.add(base)),direction,padding);
+      }
+      function moveCamera(solution,duration=800){
+        if(reducedMotion&&duration)duration=Math.min(duration,180);
+        if(!duration){camera.position.copy(solution.position);controls.target.copy(solution.target);controls.update();state.cameraTween=null;return;}
+        state.cameraTween={from:camera.position.clone(),to:solution.position.clone(),targetFrom:controls.target.clone(),targetTo:solution.target.clone(),start:performance.now(),duration};
+      }
+      function setPreset(name,smooth=true){
+        if(state.transition)return;
+        if(state.mode==='slice'&&name==='gpu'&&!servers[state.selected].cfg.gpu)return;
+        state.preset=name;moveCamera(cameraForPreset(name),smooth?780:0);updateCameraUI();
+      }
+      function updateCameraUI(){
+        const presets=state.mode==='rack'?rackPresets:slicePresets;
+        $('camera-select').innerHTML=presets.map(([value,text])=>`<option value="${value}" ${value==='gpu'&&!servers[state.selected].cfg.gpu?'disabled':''}>${text}</option>`).join('');$('camera-select').value=state.preset;
+        const shortcuts=state.mode==='rack'?[['front','FRONT'],['threeQuarter','3/4'],['side','SIDE'],['rear','REAR']]:[['whole','WHOLE'],['top','TOP'],['engineering','3/4']];
+        $('camera-shortcuts').innerHTML=shortcuts.map(([value,text])=>`<button data-preset="${value}" class="${state.preset===value?'active':''}" title="${presets.find(p=>p[0]===value)[1]}">${text}</button>`).join('');
+      }
+      function animate(duration,fn,token=state.token){return new Promise(resolve=>animations.push({start:performance.now(),duration:reducedMotion?Math.min(duration,180):duration,fn,token,resolve}));}
+      function disposeModel(model){
+        if(!model)return;model.root.removeFromParent();const shared=new Set([...Object.values(geometries),bladeGeo]),materials=new Set(Object.values(mats)),doneG=new Set(),doneM=new Set();
+        model.root.traverse(obj=>{if(obj.isInstancedMesh)obj.dispose();if(obj.geometry&&!shared.has(obj.geometry)&&!doneG.has(obj.geometry)){obj.geometry.dispose();doneG.add(obj.geometry);}if(obj.material){const array=Array.isArray(obj.material)?obj.material:[obj.material];for(const m of array)if(!materials.has(m)&&!doneM.has(m)){m.dispose();doneM.add(m);}}});
+      }
+      const faultDefinitions=[
+        ['fan','Fan failure','Fan module 1 stopped. Adjacent fans are ramping up.'],
+        ['psu','PSU failure','PSU 1 is offline. The remaining supplies are carrying the load.'],
+        ['drive','Drive failure','Drive 1 failed. The dual-parity pool or mirrored SSD set is degraded.'],
+        ['gpu','GPU overheat','Accelerator 1 is overheating. Cooling ramps up; thermal throttling starts at 90 C.'],
+        ['network','Network link failure','Primary link lost. Traffic is using the remaining uplink.']
+      ];
+      function updateIndicators(model){
+        const faults=model.server.faults,good=new THREE.Color(0x87b866),bad=new THREE.Color(0xc67b48),off=new THREE.Color(0x28372b);
+        for(const e of model.indicators){
+          if(!e.mesh)continue;
+          const failed=e.index===0&&((e.kind==='fan'&&faults.has('fan'))||(e.kind==='psu'&&faults.has('psu'))||(e.kind==='drive'&&faults.has('drive'))||(e.kind==='gpu'&&faults.has('gpu')));
+          const noLink=faults.has('network')&&(model.server.type==='network'?(e.kind==='link'&&e.index===24):(e.kind==='network'&&e.index===0));
+          e.mesh.setColorAt(e.instanceId,noLink?off:(failed||(e.kind==='system'&&faults.size)?bad:good));e.mesh.instanceColor.needsUpdate=true;
+        }
+      }
+      function renderServerList(){
+        $('server-list').innerHTML=servers.map(s=>`<button class="server-row ${s.index===state.selected?'active':''}" data-server="${s.index}" aria-pressed="${s.index===state.selected}" aria-label="${s.name}, ${s.range}, ${s.cfg.u}U"><span>${icon(s.cfg.icon)}</span><span><span class="server-name" style="display:block">${s.name}</span><span class="server-meta"><span class="dot ${s.faults.size?'warning':''}"></span>${s.range} <span>/</span> ${s.cfg.model}</span></span><span class="u-tag">${s.cfg.u}U</span></button>`).join('');
+      }
+      function systemSpecs(s){
+        const c=s.cfg,ram=c.ram>=1024?`${c.ram/1024} TB ECC`:`${c.ram} GB ECC`,psu=`${c.psus} x ${(c.psuW/1000).toFixed(1)} kW`,driveTB=c.driveGB/1000;
+        if(c.gpu)return [['Processors',`${c.cpu} x ${c.cores}-core`],['Accelerators',`${c.gpu} x GPU / 600 W`],['Memory',ram],['Storage',`${c.drives} x ${driveTB} TB NVMe`],['Networking',c.netLabel],['Redundant PSUs',psu]];
+        if(s.type==='storage')return [['Processor',`${c.cpu} x ${c.cores}-core`],['Memory',ram],['Hot-swap drives',`${c.drives} x ${driveTB} TB SAS`],['Pool capacity',`${c.drives*driveTB} TB raw`],['Networking',c.netLabel],['Redundant PSUs',psu]];
+        return [['Processors',`${c.cpu} x ${c.cores}-core`],['Memory',ram],['Storage',s.type==='network'?'240 GB M.2 boot':`${c.drives} x ${driveTB} TB SSD`],['Networking',c.netLabel],['Redundant PSUs',psu],['AC design load',`${c.power.toFixed(2)} kW`]];
+      }
+      function renderMetrics(){
+        const s=servers[state.selected],second=s.cfg.gpu?'GPU hotspot':s.cfg.cpu>1?'CPU 2 temperature':s.type==='storage'?'Storage utilization':'Active front links';
+        const fields=[['cpu','CPU 1 temperature'],['second',second],['power','Power draw'],['fan','Fan speed'],['memory','Memory in use'],['network','Network traffic']];
+        $('metric-grid').innerHTML=fields.map(([id,text])=>`<div><div class="metric-label">${text}</div><div class="metric-value" id="metric-${id}">--</div>${id==='cpu'||id==='second'?`<div class="metric-track"><span id="track-${id}"></span></div>`:''}</div>`).join('');
+        renderHealth();
+      }
+      function renderHealth(){
+        const s=servers[state.selected],c=s.cfg,h=s.health;
+        if(!$('metric-cpu'))return;
+        $('metric-cpu').innerHTML=`${Math.round(h.cpu)}<small>&deg;C</small>`;$('metric-cpu').classList.toggle('alert',h.cpu>80);
+        let value;
+        if(c.gpu)value=`${Math.round(h.gpu)}<small>&deg;C</small>`;
+        else if(c.cpu>1)value=`${Math.round(h.cpu2)}<small>&deg;C</small>`;
+        else if(s.type==='storage'){const usable=(c.drives-4)*c.driveGB/1000;value=`${Math.round(usable*.61)}<small>/ ${usable} TB</small>`;}
+        else value=`${s.faults.has('network')?27:28}<small>/ 28 links</small>`;
+        $('metric-second').innerHTML=value;$('metric-second').classList.toggle('alert',c.gpu?h.gpu>85:c.cpu>1?h.cpu2>80:s.faults.has('drive')||s.faults.has('network'));
+        $('metric-power').innerHTML=`${h.power.toFixed(2)}<small>kW</small>`;
+        $('metric-fan').innerHTML=`${(Math.round(h.fan/100)*100).toLocaleString()}<small>RPM</small>`;
+        $('metric-memory').innerHTML=`${Math.round(h.memory)}<small>/ ${c.ram} GB</small>`;
+        $('metric-network').innerHTML=`${h.network.toFixed(1)}<small>Gbit/s</small>`;
+        $('track-cpu').style.width=clamp(h.cpu,0,100)+'%';$('track-second').style.width=(c.gpu?clamp(h.gpu,0,100):c.cpu>1?clamp(h.cpu2,0,100):61)+'%';
+        const warning=s.faults.size>0,notes=[];
+        if(s.faults.has('fan'))notes.push('Fan 1 stopped; adjacent fans compensating.');
+        if(s.faults.has('psu'))notes.push('PSU 1 offline; load shared by remaining modules. Feed redundancy reduced.');
+        if(s.faults.has('drive'))notes.push(s.type==='storage'?'Drive 1 failed; dual-parity pool degraded.':s.type==='network'?'Boot SSD failed; replace before the next reboot.':'Drive 1 failed; mirrored SSD set degraded.');
+        if(s.faults.has('gpu'))notes.push(h.gpu>90?'GPU 1 thermal limit; clocks and power reduced.':'GPU 1 heating up; fans responding.');
+        if(s.faults.has('network'))notes.push('Primary link down; failover link active.');
+        if(!warning&&(h.cpu>82||(c.gpu&&h.gpu>85)))notes.push('Temperatures recovering; cooling remains elevated.');
+        if(!notes.length)notes.push('All systems nominal. Redundancy available.');
+        $('health-message').classList.toggle('warning',warning);$('health-message').innerHTML=`<span class="dot ${warning?'warning':''}"></span><span>${notes.join(' ')}</span>`;$('health-dot').classList.toggle('warning',warning);
+        const min=Math.min(...s.history)-.007,max=Math.max(...s.history)+.007,range=Math.max(.028,max-min);
+        const path=s.history.map((v,i)=>`${i?'L':'M'}${(i/(s.history.length-1)*240).toFixed(1)},${(26-(v-min)/range*22).toFixed(1)}`).join(' ');
+        $('spark-line').setAttribute('d',path);$('spark-area').setAttribute('d',`${path} L240,29 L0,29 Z`);
+        $('rack-live-power').textContent=servers.reduce((sum,s)=>sum+s.health.power,0).toFixed(2);
+        if(state.component)updateComponentStatus();
+      }
+      function updateTelemetry(dt,time){
+        for(const s of servers){
+          const c=s.cfg,f=s.faults,h=s.health,load=s.load,drift=Math.sin(time*.12+s.index*.7)*.75;
+          const cpuTarget=38+load*39+(s.type==='database'?4:s.type==='compute'?2:0)+(f.has('fan')?14:0)+drift;
+          const gpuTarget=Math.min(97,48+load*34+(f.has('gpu')?24:0)+(f.has('fan')?8:0)+drift);
+          const tempRate=1-Math.exp(-dt/15),rate=1-Math.exp(-dt/7);
+          h.cpu=lerp(h.cpu,cpuTarget,tempRate);h.cpu2=lerp(h.cpu2,cpuTarget-2-(f.has('fan')?8:0)+Math.sin(time*.09)*.65,tempRate);h.gpu=lerp(h.gpu,gpuTarget,tempRate);
+          const fanBoost=f.has('fan')||f.has('gpu')||h.cpu>82||(c.gpu&&h.gpu>85)?1.22:1;
+          h.fan=lerp(h.fan,Math.min(c.fanRPM*1.22,c.fanRPM*(.55+load*.45)*fanBoost),rate);
+          const throttled=c.gpu&&h.gpu>90;
+          h.power=lerp(h.power,c.power*(.42+.58*load)*(throttled ? .96 : 1)*(f.has('psu')?1.013:1)+(fanBoost>1 ? .024 : 0)+Math.sin(time*.19+s.index)*c.power*.004,rate);
+          h.memory=lerp(h.memory,c.ram*(.29+load*.51+Math.sin(time*.055+s.index)*.005),rate);
+          h.network=lerp(h.network,c.net*load*.37*(f.has('network')?(s.type==='network' ? .75 : .56):1)*(1+Math.sin(time*.16+s.index)*.025),rate);
+          s.history.push(h.power/c.power);if(s.history.length>48)s.history.shift();
+        }
+        renderHealth();
+      }
+      function renderFailureOptions(){
+        const s=servers[state.selected];$('failure-options').innerHTML=faultDefinitions.map(([key,label])=>`<button class="failure-option ${s.faults.has(key)?'active':''}" data-fault="${key}" aria-pressed="${s.faults.has(key)}" ${key==='gpu'&&!s.cfg.gpu?'disabled':''}>${label}${icon(s.faults.has(key)?'check':'next')}</button>`).join('');
+      }
+      function updateGlobalHealth(){
+        const count=servers.filter(s=>s.faults.size).length;$('global-health').textContent=count?`${count} system${count===1?'':'s'} degraded / failover active`:'All systems operational';$('global-health-dot').classList.toggle('warning',count>0);renderServerList();
+      }
+      function renderComponent(p){
+        state.component=p;$('component-panel').classList.toggle('hidden',!p);
+        if(!p){$('selected-caption').textContent=`${servers[state.selected].range} / ${servers[state.selected].name.toUpperCase()}`;return;}
+        $('component-name').textContent=p.name;$('component-description').textContent=p.description;
+        $('component-specs').innerHTML=p.rows.map(([a,b])=>`<div class="component-row"><span>${a}</span><span>${b}</span></div>`).join('')+'<div class="component-row"><span>Current state</span><span id="component-live-state">Operational</span></div>';
+        $('selected-caption').textContent=`${p.kind.toUpperCase()} / ${p.name.toUpperCase()}`;updateComponentStatus();
+        if(innerWidth<801)$('right-panel').classList.add('mobile-open');
+      }
+      function updateComponentStatus(){
+        const p=state.component;if(!p||!$('component-live-state'))return;const s=p.server,f=s.faults;let text='Operational';
+        if(p.kind==='psu'){const online=s.cfg.psus-(f.has('psu')?1:0);text=f.has('psu')&&p.index===0?'Offline / isolated':`${Math.round(s.health.power*940/online)} W DC estimated`;} 
+        else if(p.kind==='fan')text=f.has('fan')&&p.index===0?'Stopped / 0 RPM':`${Math.round(s.health.fan/100)*100} RPM`;
+        else if(p.kind==='drive')text=f.has('drive')&&p.index===0?'Failed / replace carrier':'Online / healthy';
+        else if(p.kind==='gpu')text=f.has('gpu')&&p.index===0?`${Math.round(s.health.gpu)} C / thermal warning`:`${Math.round(48+s.load*34+(f.has('fan')?4:0))} C / online`;
+        else if(p.kind==='nic')text=s.type==='network'?'HA cluster links online':f.has('network')?'Link 1 down / failover active':'Both links up';
+        else if(p.kind==='port')text=f.has('network')&&p.index===24?'No link':'Link up';
+        else if(p.kind==='cpu')text=`${Math.round(p.index===1?s.health.cpu2:s.health.cpu)} C / online`;
+        else if(p.kind==='emptydrive'||p.kind==='dimm-slot')text='Unpopulated / available';
+        else if(p.kind==='cover')text=state.cover?'Removed for inspection':'Closed / cooling boundary intact';
+        else if(p.kind==='chassis')text='Service inspection environment';
+        $('component-live-state').textContent=text;
+      }
+      function syncButtons(){
+        const slice=state.mode==='slice';
+        for(const mode of ['rack','slice']){const b=$(`${mode}-view`);b.classList.toggle('active',state.mode===mode);b.setAttribute('aria-pressed',state.mode===mode);b.disabled=state.transition;}
+        document.querySelectorAll('.tool-button').forEach(b=>{
+          const action=b.dataset.action;b.disabled=action==='reset'?false:state.transition||(['cover','cutaway','explode'].includes(action)&&!slice);
+          if(action in state){b.classList.toggle('active',!!state[action]);b.setAttribute('aria-pressed',!!state[action]);}
+          if(action==='cover'){b.querySelector('span').textContent=state.cover?'Close cover':'Open cover';b.title=state.cover?'Close cover (O)':'Open cover (O)';}
+        });
+        $('failure-button').classList.toggle('warning',servers[state.selected].faults.size>0);
+        $('inspect-button').disabled=state.transition;$('inspect-button').querySelector('span').textContent=slice?'Return to rack':'Inspect slice';
+        $('inspect-button').querySelector('use').setAttribute('href',slice?'#i-prev':'#i-arrow');
+        $('return-rack').classList.toggle('hidden',!slice);$('slice-pagination').classList.toggle('hidden',!slice);$('previous-server').disabled=state.transition;$('next-server').disabled=state.transition;$('camera-select').disabled=state.transition;
+        $('side-toggle').classList.toggle('active',state.panels);$('side-toggle').setAttribute('aria-pressed',state.panels);$('door-toggle').classList.toggle('active',state.doors);$('door-toggle').setAttribute('aria-pressed',state.doors);
+        $('side-toggle').disabled=slice||state.transition;$('door-toggle').disabled=slice||state.transition;
+        const descriptions=[];if(state.airflow)descriptions.push('<span><i></i>AIRFLOW / cool intake to warm exhaust</span>');if(state.power)descriptions.push('<span class="power-legend"><i></i>POWER / A + B sources to DC loads</span>');if(state.data)descriptions.push('<span class="data-legend"><i></i>DATA / conceptual links, not PCB traces</span>');$('flow-legend').innerHTML=descriptions.join('');
+      }
+      function updateUI(){
+        const s=servers[state.selected],c=s.cfg,slice=state.mode==='slice';renderServerList();
+        $('selected-name').textContent=s.name;$('selected-number').textContent=`${String(s.index+1).padStart(2,'0')} / 08`;$('selected-position').textContent=s.range;$('selected-height').textContent=`${c.u}U`;$('archetype-label').textContent=c.title.toUpperCase();$('selected-purpose').textContent=c.purpose;$('system-model').textContent=c.model;
+        $('system-specs').innerHTML=systemSpecs(s).map(([a,b])=>`<div><div class="spec-label">${a}</div><div class="spec-value">${b}</div></div>`).join('');
+        $('architecture-priority').textContent=c.priority;$('architecture-note').textContent=c.why;
+        $('scene-eyebrow').textContent=slice?`${c.model} / SINGLE SLICE INSPECTION`:'RACK 04 / ENGINEERING VIEW';$('scene-title').textContent=slice?s.name:'The complete architecture.';$('scene-subtitle').textContent=slice?`${c.u}U / ${s.range} / ${Math.round(c.d*100)} mm chassis`:'42U enclosure / 19-inch standard';
+        $('server-counter').textContent=`SERVER ${String(s.index+1).padStart(2,'0')} / 08`;
+        $('selected-caption').textContent=`${s.range} / ${s.name.toUpperCase()}`;$('scale-caption').textContent=slice?'CLICK A COMPONENT TO INSPECT / DOUBLE-CLICK TO FOCUS':'REAL-WORLD PROPORTIONS / 1U = 44.45 mm';
+        $('workload-slider').value=s.load*100;$('workload-value').textContent=`${Math.round(s.load*100)}%`;
+        renderComponent(null);renderMetrics();renderFailureOptions();updateCameraUI();syncButtons();
+      }
+      function applyModelPose(model,cover,explode,cut){
+        if(!model)return;
+        model.coverValue=cover;model.explodeValue=explode;model.cutValue=cut;
+        model.cover.visible=cover<.994;model.cover.position.y=model.server.height+.005+Math.max(0,cover-.16)*1.68;model.cover.position.z=-cover*.88;
+        for(const mat of model.coverMaterials)mat.opacity=cover>.52?clamp(1-(cover-.52)/.48,0,1):1;
+        for(const a of model.assemblies)a.group.position.copy(a.offset).multiplyScalar(explode);
+        model.wallMat.opacity=1-cut*.90;model.wallMat.depthWrite=cut<.025;for(const mesh of model.picks)if(mesh.material===model.wallMat)mesh.castShadow=cut<.1;
+        if(model.internalCables)for(const cable of model.internalCables)cable.visible=explode<.055;
+        model.root.updateMatrixWorld(true);
+      }
+      function prepareHighModel(server){
+        if(highModel&&highModel.server.index!==server.index){disposeModel(highModel);highModel=null;}
+        if(!highModel){highModel=buildServer(server,true);scene.add(highModel.root);buildSliceFlows(highModel);}
+        highModel.root.position.set(0,1.02,0);highModel.root.visible=false;applyModelPose(highModel,0,0,0);return highModel;
+      }
+      function transitionMessage(message){$('transition-status').textContent=message;$('transition-status').classList.toggle('hidden',!message);}
+      function finishTransition(){state.transition=false;controls.enabled=true;transitionMessage('');renderer.shadowMap.needsUpdate=true;syncButtons();}
+      async function enterSlice(){
+        if(state.transition||state.mode==='slice')return;
+        const token=++state.token,s=servers[state.selected],low=lowModels[state.selected],shift=s.cfg.d*.74;
+        state.transition=true;controls.enabled=false;state.cameraTween=null;state.rackPreset=state.preset;state.hover=null;hoverOutline.visible=false;$('hover-tooltip').classList.add('hidden');$('right-panel').classList.remove('mobile-open');
+        state.restoreDoors=state.doors;state.doors=false;rackDoors.visible=false;
+        state.cover=false;state.explode=false;state.cutaway=false;prepareHighModel(s);syncButtons();s.cableGroup.visible=false;
+        transitionMessage(state.restoreDoors?'ENCLOSURE OPENED / UNLOCKING SERVICE RAILS':'SERVICE HARNESS RELEASED / UNLOCKING RAILS');
+        const from=camera.position.clone(),targetFrom=controls.target.clone(),toTarget=s.position.clone().add(V(0,s.height*.55,shift*.53)),dir=from.clone().sub(targetFrom).normalize(),to=toTarget.clone().addScaledVector(dir,Math.max(s.cfg.d*1.85,15));
+        if(!await animate(1150,t=>{
+          const slide=clamp((t-.12)/.88,0,1);low.root.position.z=s.position.z+shift*slide;low.latches.forEach((l,i)=>l.rotation.y=(i===0?-1:1)*clamp(t*7,0,1)*1.08);
+          camera.position.lerpVectors(from,to,t);controls.target.lerpVectors(targetFrom,toTarget,t);if(t>.23)transitionMessage('EXTENDING TELESCOPIC RAILS / 74% TRAVEL');renderer.shadowMap.needsUpdate=true;
+        },token))return;
+        const pulled=low.root.getWorldPosition(V()),home=V(0,1.02,0),delta=home.clone().sub(pulled);
+        camera.position.add(delta);controls.target.add(delta);highModel.root.position.copy(home);highModel.root.visible=true;rack.visible=false;
+        low.root.position.copy(s.position);low.root.visible=true;low.latches.forEach(l=>l.rotation.y=0);s.cableGroup.visible=true;
+        state.mode='slice';state.preset='whole';state.cover=true;state.cutaway=s.cfg.u>=4;controls.minDistance=1.15;controls.maxDistance=55;
+        highModel.latches.forEach((l,i)=>l.rotation.y=(i===0?-1:1)*1.08);updateUI();
+        transitionMessage('ISOLATING THE CHASSIS / REMOVING THE COVER');
+        const from2=camera.position.clone(),target2=controls.target.clone(),solution=cameraForPreset('whole','slice');
+        if(!await animate(1100,t=>{camera.position.lerpVectors(from2,solution.position,t);controls.target.lerpVectors(target2,solution.target,t);applyModelPose(highModel,t,0,state.cutaway?t:0);renderer.shadowMap.needsUpdate=true;},token))return;
+        applyModelPose(highModel,1,0,state.cutaway?1:0);finishTransition();
+      }
+      async function returnToRack(){
+        if(state.transition||state.mode==='rack')return;
+        const token=++state.token,s=servers[state.selected],low=lowModels[state.selected],shift=s.cfg.d*.74;
+        state.transition=true;controls.enabled=false;state.cameraTween=null;renderComponent(null);state.hover=null;hoverOutline.visible=false;$('hover-tooltip').classList.add('hidden');$('right-panel').classList.remove('mobile-open');s.cableGroup.visible=false;
+        state.cover=false;state.cutaway=false;state.explode=false;syncButtons();transitionMessage('REASSEMBLING / SECURING THE SERVICE COVER');
+        const cp=highModel.coverValue,ep=highModel.explodeValue,cut=highModel.cutValue;
+        if(!await animate(850,t=>{applyModelPose(highModel,cp*(1-t),ep*(1-t),cut*(1-t));renderer.shadowMap.needsUpdate=true;},token))return;
+        low.root.visible=true;low.root.position.copy(s.position).add(V(0,0,shift));rack.visible=true;
+        const delta=low.root.position.clone().sub(highModel.root.position);camera.position.add(delta);controls.target.add(delta);highModel.root.visible=false;
+        state.mode='rack';state.preset=state.rackPreset||'threeQuarter';controls.minDistance=3;controls.maxDistance=85;updateUI();
+        transitionMessage('ALIGNING RACK UNITS / RETRACTING RAILS');
+        const from=camera.position.clone(),targetFrom=controls.target.clone(),solution=cameraForPreset(state.preset,'rack');
+        if(!await animate(1150,t=>{low.root.position.z=s.position.z+shift*(1-t);low.latches.forEach((l,i)=>l.rotation.y=(i===0?-1:1)*(1-t)*1.08);camera.position.lerpVectors(from,solution.position,t);controls.target.lerpVectors(targetFrom,solution.target,t);renderer.shadowMap.needsUpdate=true;},token))return;
+        low.root.position.copy(s.position);s.cableGroup.visible=true;state.doors=!!state.restoreDoors;rackDoors.visible=state.doors;finishTransition();
+      }
+      async function selectServer(index){
+        if(state.transition)return;index=(index+servers.length)%servers.length;if(index===state.selected)return;
+        state.selected=index;state.component=null;state.hover=null;hoverOutline.visible=false;$('hover-tooltip').classList.add('hidden');
+        if(state.mode==='rack'){updateUI();return;}
+        state.transition=true;controls.enabled=false;const token=++state.token;state.cameraTween=null;syncButtons();viewport.classList.add('switching');
+        if(!await animate(185,()=>{},token))return;
+        if(highModel){disposeModel(highModel);highModel=null;}
+        const s=servers[index];prepareHighModel(s);highModel.root.visible=true;
+        state.cover=true;state.explode=false;state.cutaway=s.cfg.u>=4;state.preset='whole';applyModelPose(highModel,1,0,state.cutaway?1:0);
+        moveCamera(cameraForPreset('whole','slice'),0);updateUI();viewport.classList.remove('switching');finishTransition();
+      }
+      function injectFailure(key){
+        if(state.transition)return;const s=servers[state.selected];if(key==='gpu'&&!s.cfg.gpu)return;
+        if(s.faults.has(key)){s.faults.delete(key);toast(`${faultDefinitions.find(f=>f[0]===key)[1]} cleared. Recovery is in progress.`);}else{s.faults.add(key);toast(s.type==='network'&&key==='drive'?'Boot SSD failed. The fabric keeps forwarding; replace it before rebooting.':faultDefinitions.find(f=>f[0]===key)[2]);}
+        updateIndicators(lowModels[s.index]);if(highModel&&highModel.server.index===s.index)updateIndicators(highModel);renderFailureOptions();renderHealth();updateGlobalHealth();syncButtons();
+      }
+      function restoreFailures(){servers.forEach(s=>s.faults.clear());lowModels.forEach(updateIndicators);if(highModel)updateIndicators(highModel);renderFailureOptions();renderHealth();updateGlobalHealth();syncButtons();toast('All faults cleared. Fans and temperatures are returning to normal.');}
+      function toggleTool(action){
+        if(action==='reset'){resetLab();return;}
+        if(state.transition)return;
+        if(action==='failures'){const open=$('failure-popover').classList.toggle('hidden')===false;$('failure-button').setAttribute('aria-expanded',open);renderFailureOptions();return;}
+        if(['cover','cutaway','explode'].includes(action)&&state.mode!=='slice')return;
+        if(action==='cover'){
+          state.cover=!state.cover;if(state.cover&&state.component?.kind==='cover')renderComponent(null);if(!state.cover){state.explode=false;state.cutaway=false;state.airflow=false;state.power=false;state.data=false;if(state.preset==='whole')moveCamera(cameraForPreset('whole'));}
+        }else if(action==='cutaway'){state.cutaway=!state.cutaway;if(state.cutaway)state.cover=true;}
+        else if(action==='explode'){
+          state.explode=!state.explode;if(state.explode){state.cover=true;state.cutaway=true;if(state.airflow||state.power||state.data)toast('Path overlays paused while the service assemblies are separated.');state.airflow=state.power=state.data=false;}
+          state.preset='whole';moveCamera(cameraForPreset('whole'));updateCameraUI();
+        }else if(['airflow','power','data'].includes(action)){
+          state[action]=!state[action];if(state[action]&&state.mode==='slice'){state.cover=true;if(state.explode){state.explode=false;moveCamera(cameraForPreset('whole'));toast('Reassembling so the connectivity paths align with their components.');}}
+          if(state[action]&&state.mode==='rack'&&action!=='airflow'){setPreset('rear');toast(action==='power'?'Rear view: independent PDU A and B feeds supply redundant PSUs.':'Rear view: organized network runs connect hosts to the fabric.');}
+        }
+        syncButtons();
+      }
+      function resetLab(){
+        ++state.token;state.transition=false;state.mode='rack';state.selected=0;state.preset='threeQuarter';state.cameraTween=null;state.component=null;state.hover=null;state.restoreDoors=false;
+        for(const key of ['cover','cutaway','explode','airflow','power','data','panels','doors'])state[key]=false;
+        servers.forEach(s=>{s.faults.clear();s.load=.68;s.health={cpu:64,cpu2:62,gpu:70,fan:s.cfg.fanRPM*.81,power:s.cfg.power*.8144,memory:s.cfg.ram*.62,network:s.cfg.net*.23};s.history=Array.from({length:48},(_,j)=>.8144+Math.sin(j*.35)*.007);s.cableGroup.visible=true;});
+        lowModels.forEach(m=>{m.root.position.copy(m.server.position);m.root.visible=true;m.latches.forEach(l=>l.rotation.y=0);updateIndicators(m);});
+        if(highModel){disposeModel(highModel);highModel=null;}
+        rack.visible=true;rackPanels.visible=false;rackDoors.visible=false;hoverOutline.visible=false;controls.enabled=true;controls.minDistance=3;controls.maxDistance=85;
+        viewport.classList.remove('switching');$('failure-popover').classList.add('hidden');$('failure-button').setAttribute('aria-expanded','false');$('hover-tooltip').classList.add('hidden');$('right-panel').classList.remove('mobile-open');transitionMessage('');
+        updateUI();updateGlobalHealth();moveCamera(cameraForPreset('threeQuarter','rack'));renderer.shadowMap.needsUpdate=true;toast('Lab reset. All systems restored to the original rack configuration.');
+      }
+      function buildComparison(){
+        const keys=['compute','virtual','gpu','storage','database'],rows=['CPU capability','GPU capability','Memory capacity','Storage capacity','Network capability','Power consumption','Cooling requirement','Design complexity'];
+        let html='<thead><tr><th>ARCHITECTURAL EMPHASIS</th>';
+        for(const k of keys){const c=configs[k];html+=`<th>${icon(c.icon)}${c.short}<small>${c.u}U / ${c.model}</small><button class="compare-inspect" data-inspect-type="${k}">Inspect architecture</button></th>`;}
+        html+='</tr></thead><tbody>';
+        rows.forEach((label,r)=>{html+=`<tr><td>${label}</td>`;for(const k of keys){const v=configs[k].bars[r];html+=`<td><div class="compare-bars" role="img" aria-label="${v} out of 5, conceptual emphasis">${Array.from({length:5},(_,i)=>`<i class="${i<v?'on':''}"></i>`).join('')}</div></td>`;}html+='</tr>';});
+        $('compare-table').innerHTML=html+'</tbody>';
+      }
+      const selectionRail=new THREE.Mesh(boxGeo,new THREE.MeshBasicMaterial({color:0x8ca966,transparent:true,opacity:.85}));scene.add(selectionRail);
+      function serverBounds(s,target){const model=lowModels[s.index];model.root.updateMatrixWorld(true);target.setFromCenterAndSize(V(0,s.cfg.u*U/2,0),V(4.83,s.cfg.u*U+.012,s.cfg.d+.15));target.applyMatrix4(model.root.matrixWorld);return target;}
+      function componentBounds(p,target){p.assembly.updateWorldMatrix(true,false);target.setFromCenterAndSize(p.center,p.size.clone().addScalar(.028));target.applyMatrix4(p.assembly.matrixWorld);return target;}
+      function updateSelections(){
+        if(state.mode==='rack'){
+          selectedOutline.visible=rack.visible;serverBounds(servers[state.selected],selectBox);
+          const s=servers[state.selected],m=lowModels[state.selected];selectionRail.visible=rack.visible&&!state.transition;selectionRail.position.set(-2.51,m.root.position.y+s.cfg.u*U/2,m.root.position.z+s.cfg.d/2+.13);selectionRail.scale.set(.055,s.cfg.u*U,.022);
+        }else{selectionRail.visible=false;selectedOutline.visible=!!state.component&&!state.transition;if(state.component)componentBounds(state.component,selectBox);}
+        if(state.hover&&!state.transition){
+          if(state.mode==='rack'){hoverOutline.visible=state.hover.index!==state.selected;serverBounds(state.hover,hoverBox);}
+          else{hoverOutline.visible=state.hover!==state.component;componentBounds(state.hover,hoverBox);}
+        }else hoverOutline.visible=false;
+      }
+      const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();let pointerDirty=false,pointerInside=false,mouseX=0,mouseY=0,downX=0,downY=0,dragged=false,pointerDown=false;
+      function visibleInScene(obj){while(obj){if(!obj.visible)return false;obj=obj.parent;}return true;}
+      function pickAt(clientX,clientY){
+        if(state.transition)return null;const rect=renderer.domElement.getBoundingClientRect();pointer.set((clientX-rect.left)/rect.width*2-1,-(clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);
+        const meshes=state.mode==='rack'?lowModels.flatMap(m=>m.picks):highModel?highModel.picks:[];
+        const hits=raycaster.intersectObjects(meshes,false);
+        for(const hit of hits){if(!visibleInScene(hit.object))continue;
+          if(state.mode==='rack'){let obj=hit.object;while(obj&&obj.userData.serverIndex===undefined)obj=obj.parent;if(obj)return servers[obj.userData.serverIndex];}
+          else{if(hit.object.material?.transparent&&hit.object.material.opacity<.3)continue;const p=hit.object.userData.parts?.[hit.instanceId??0]||hit.object.userData.part;if(p)return p;}
+        }return null;
+      }
+      function updateHover(){
+        if(!pointerDirty)return;pointerDirty=false;
+        if(!pointerInside||(pointerDown&&dragged)||state.transition){state.hover=null;$('hover-tooltip').classList.add('hidden');return;}
+        const hit=pickAt(mouseX,mouseY);state.hover=hit;renderer.domElement.style.cursor=hit?'pointer':'grab';
+        if(!hit){$('hover-tooltip').classList.add('hidden');return;}
+        const rect=viewport.getBoundingClientRect(),x=clamp(mouseX-rect.left+15,8,Math.max(8,rect.width-221)),y=clamp(mouseY-rect.top+18,12,rect.height-74);
+        $('hover-tooltip').innerHTML=`<strong>${hit.name}</strong><span>${state.mode==='rack'?`${hit.range} / ${hit.cfg.u}U / CLICK TO SELECT`:`${hit.kind.toUpperCase()} / CLICK TO INSPECT`}</span>`;
+        $('hover-tooltip').style.left=x+'px';$('hover-tooltip').style.top=y+'px';$('hover-tooltip').classList.remove('hidden');
+      }
+      renderer.domElement.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;dragged=false;pointerDown=true;});
+      renderer.domElement.addEventListener('pointermove',e=>{mouseX=e.clientX;mouseY=e.clientY;pointerInside=true;if(pointerDown&&Math.hypot(e.clientX-downX,e.clientY-downY)>5)dragged=true;pointerDirty=true;});
+      renderer.domElement.addEventListener('pointerleave',()=>{pointerInside=false;pointerDirty=true;state.hover=null;hoverOutline.visible=false;$('hover-tooltip').classList.add('hidden');});
+      window.addEventListener('pointerup',()=>{pointerDown=false;});
+      renderer.domElement.addEventListener('pointerup',e=>{
+        if(dragged||e.button!==0||state.transition)return;
+        const hit=pickAt(e.clientX,e.clientY);if(hit){if(state.mode==='rack')selectServer(hit.index);else renderComponent(hit);}else if(state.mode==='slice')renderComponent(null);
+      });
+      renderer.domElement.addEventListener('dblclick',async e=>{
+        if(state.transition)return;const hit=pickAt(e.clientX,e.clientY);if(!hit)return;
+        if(state.mode==='rack'){await selectServer(hit.index);enterSlice();}else{renderComponent(hit);const bounds=componentBounds(hit,new THREE.Box3()),direction=camera.position.clone().sub(controls.target);moveCamera(cameraFit(bounds,direction,1.55));}
+      });
+      controls.addEventListener('start',()=>{if(!state.transition)state.cameraTween=null;state.hover=null;$('hover-tooltip').classList.add('hidden');});
+      controls.addEventListener('end',()=>{pointerDirty=true;});
+      $('server-list').addEventListener('click',e=>{const b=e.target.closest('[data-server]');if(b)selectServer(Number(b.dataset.server));});
+      $('camera-select').addEventListener('change',e=>setPreset(e.target.value));
+      $('camera-shortcuts').addEventListener('click',e=>{const b=e.target.closest('[data-preset]');if(b)setPreset(b.dataset.preset);});
+      $('rack-view').onclick=()=>state.mode==='slice'?returnToRack():setPreset('threeQuarter');$('slice-view').onclick=()=>state.mode==='rack'?enterSlice():setPreset('whole');
+      $('inspect-button').onclick=()=>state.mode==='rack'?enterSlice():returnToRack();$('return-rack').onclick=returnToRack;
+      $('previous-server').onclick=()=>selectServer(state.selected-1);$('next-server').onclick=()=>selectServer(state.selected+1);
+      document.querySelectorAll('.tool-button').forEach(b=>b.addEventListener('click',()=>toggleTool(b.dataset.action)));
+      $('side-toggle').onclick=()=>{state.panels=!state.panels;rackPanels.visible=state.panels;renderer.shadowMap.needsUpdate=true;syncButtons();};
+      $('door-toggle').onclick=()=>{state.doors=!state.doors;rackDoors.visible=state.doors;renderer.shadowMap.needsUpdate=true;syncButtons();};
+      $('close-component').onclick=()=>renderComponent(null);
+      $('mobile-info').onclick=()=>{$('right-panel').classList.toggle('mobile-open');};
+      $('failure-options').addEventListener('click',e=>{const b=e.target.closest('[data-fault]');if(b&&!b.disabled)injectFailure(b.dataset.fault);});
+      $('restore-failures').onclick=restoreFailures;
+      $('workload-slider').addEventListener('input',e=>{servers[state.selected].load=Number(e.target.value)/100;$('workload-value').textContent=e.target.value+'%';});
+      function showLeftTab(power){$('equipment-tab').classList.toggle('active',!power);$('power-tab').classList.toggle('active',power);$('equipment-tab').setAttribute('aria-selected',!power);$('power-tab').setAttribute('aria-selected',power);$('equipment-content').classList.toggle('hidden',power);$('power-content').classList.toggle('hidden',!power);}
+      $('equipment-tab').onclick=()=>showLeftTab(false);$('power-tab').onclick=()=>showLeftTab(true);
+      function openCompare(){if(!$('comparison-dialog').open)$('comparison-dialog').showModal();}
+      $('compare-top').onclick=openCompare;$('compare-left').onclick=openCompare;$('help-button').onclick=()=>{$('help-dialog').showModal();};
+      document.querySelectorAll('[data-close-dialog]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+      document.querySelectorAll('dialog').forEach(d=>d.addEventListener('click',e=>{const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}));
+      $('compare-table').addEventListener('click',async e=>{
+        const b=e.target.closest('[data-inspect-type]');if(!b)return;$('comparison-dialog').close();if(state.transition){toast('The service transition is finishing. Please select the architecture again.');return;}
+        const index=servers.findIndex(s=>s.type===b.dataset.inspectType);await selectServer(index);if(state.mode==='rack')enterSlice();else{state.cover=true;state.explode=false;state.cutaway=servers[index].cfg.u>=4;setPreset('whole');syncButtons();}
+      });
+      document.addEventListener('pointerdown',e=>{if(!$('failure-popover').contains(e.target)&&!$('failure-button').contains(e.target)){$('failure-popover').classList.add('hidden');$('failure-button').setAttribute('aria-expanded','false');}});
+      document.addEventListener('keydown',e=>{
+        if(e.key==='Escape'){$('failure-popover').classList.add('hidden');$('failure-button').setAttribute('aria-expanded','false');$('right-panel').classList.remove('mobile-open');renderComponent(null);return;}
+        if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)||document.querySelector('dialog[open]')||e.ctrlKey||e.metaKey||e.altKey)return;
+        const key=e.key.toLowerCase();
+        if(key==='1'){e.preventDefault();state.mode==='slice'?returnToRack():setPreset('threeQuarter');}
+        else if(key==='2'){e.preventDefault();state.mode==='rack'?enterSlice():setPreset('whole');}
+        else if(key==='[')selectServer(state.selected-1);else if(key===']')selectServer(state.selected+1);
+        else if(key==='?')$('help-dialog').showModal();
+        else {const action={o:'cover',c:'cutaway',e:'explode',a:'airflow',p:'power',d:'data',r:'reset'}[key];if(action){e.preventDefault();toggleTool(action);}}
+      });
+      renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();$('loader-text').textContent='RESTORING THE GRAPHICS CONTEXT';$('loader').classList.remove('dismissed');});
+      renderer.domElement.addEventListener('webglcontextrestored',()=>{$('loader').classList.add('dismissed');renderer.shadowMap.needsUpdate=true;});
+      function validateArchitecture(){
+        const used=new Set();
+        for(const s of servers){
+          const c=s.cfg;if(c.populated*c.dimmGB!==c.ram||c.populated>c.slots)throw new Error(`${s.name}: inconsistent memory population`);
+          if(c.psus*c.psuW/2<c.power*940)throw new Error(`${s.name}: an individual A/B feed cannot carry design load`);
+          for(let u=s.bottom;u<s.bottom+c.u;u++){if(u<1||u>42||used.has(u))throw new Error(`${s.name}: invalid or overlapping rack units`);used.add(u);}
+        }
+        if(used.size!==19||new Set(servers.map(s=>s.type)).size<5)throw new Error('Rack archetype or occupancy invariant failed');
+      }
+      function validateModel(model){
+        const c=model.server.cfg,count=kind=>model.parts.filter(p=>p.kind===kind).length;
+        const expected={cpu:c.cpu,dimm:c.populated,gpu:c.gpu||0,drive:c.drives,psu:c.psus,fan:c.fans};
+        for(const [kind,n] of Object.entries(expected))if(count(kind)!==n)throw new Error(`${model.server.name}: ${kind} count mismatch`);
+        if(count('dimm')+count('dimm-slot')!==c.slots)throw new Error('Memory-slot geometry mismatch');
+      }
+      // Closed rack systems use light geometry; the component-level model is built only on inspection.
+      validateArchitecture();buildRack();buildRackFlows();buildComparison();
+      $('occupancy-track').innerHTML=Array.from({length:42},(_,i)=>`<i class="${i<19?'filled':''}"></i>`).join('');
+      $('power-breakdown').innerHTML=servers.map(s=>`<div class="power-row"><span>${s.name}</span><b>${s.cfg.power.toFixed(2)} kW</b></div>`).join('')+'<div class="power-row"><strong>Design total</strong><b>13.32 kW</b></div>';
+      updateUI();updateGlobalHealth();
+      function resize(){const w=viewport.clientWidth,h=viewport.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(!state.transition)moveCamera(cameraForPreset(state.preset),0);renderer.shadowMap.needsUpdate=true;}
+      const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(viewport);resize();
+      renderer.shadowMap.needsUpdate=true;
+      let lastTime=performance.now(),lastPerf=lastTime,frames=0,lastTelemetry=lastTime,frameNumber=0;
+      const smooth=t=>t*t*(3-2*t);
+      function frame(now){
+        requestAnimationFrame(frame);const dt=Math.min((now-lastTime)/1000,.05);lastTime=now;frameNumber++;
+        for(let i=animations.length-1;i>=0;i--){
+          const a=animations[i];if(a.token!==state.token){animations.splice(i,1);a.resolve(false);continue;}
+          const t=clamp((now-a.start)/a.duration,0,1);a.fn(smooth(t));if(t>=1){animations.splice(i,1);a.resolve(true);}
+        }
+        if(state.cameraTween){const a=state.cameraTween,t=clamp((now-a.start)/a.duration,0,1);camera.position.lerpVectors(a.from,a.to,smooth(t));controls.target.lerpVectors(a.targetFrom,a.targetTo,smooth(t));if(t>=1)state.cameraTween=null;}
+        controls.enableDamping=!(state.transition||state.cameraTween);controls.update();
+        if(highModel&&highModel.root.visible){
+          if(!state.transition){
+            const rate=reducedMotion?1:1-Math.exp(-dt*6),c=lerp(highModel.coverValue,state.cover?1:0,rate),e=lerp(highModel.explodeValue,state.explode?1:0,rate),cut=lerp(highModel.cutValue,state.cutaway?1:0,rate);
+            const moving=Math.abs(c-highModel.coverValue)+Math.abs(e-highModel.explodeValue)+Math.abs(cut-highModel.cutValue)>.00002;
+            if(moving){applyModelPose(highModel,Math.abs(c-(state.cover?1:0))<.001?(state.cover?1:0):c,Math.abs(e-(state.explode?1:0))<.001?(state.explode?1:0):e,Math.abs(cut-(state.cutaway?1:0))<.001?(state.cutaway?1:0):cut);renderer.shadowMap.needsUpdate=true;}
+          }
+          updateFans(highModel,dt);
+          for(const [kind,flow] of Object.entries(highModel.flows)){flow.root.visible=state[kind]&&!state.transition&&highModel.explodeValue<.02;updateFlow(flow,now/1000);}
+        }
+        for(const [kind,flow] of Object.entries(rackFlows)){flow.root.visible=state.mode==='rack'&&state[kind]&&!state.transition;updateFlow(flow,now/1000);}
+        updateSelections();if(frameNumber%2===0)updateHover();
+        if(now-lastTelemetry>=1000){updateTelemetry(Math.min((now-lastTelemetry)/1000,3),now/1000);lastTelemetry=now;}
+        renderer.render(scene,camera);frames++;
+        if(now-lastPerf>=1000){$('fps').textContent=Math.round(frames*1000/(now-lastPerf));$('draw-calls').textContent=renderer.info.render.calls;$('triangles').textContent=renderer.info.render.triangles>=1000?(renderer.info.render.triangles/1000).toFixed(1)+'k':renderer.info.render.triangles;lastPerf=now;frames=0;}
+      }
+      updateSelections();renderer.render(scene,camera);$('loader').classList.add('dismissed');requestAnimationFrame(frame);
+    }
+    startLab().catch(error=>{console.error(error);$('loader').classList.remove('dismissed');$('loader').innerHTML='<svg class="icon" style="width:30px;height:30px;color:#a87950"><use href="#i-failure"/></svg><p>THE 3D WORKSPACE COULD NOT START<br>Please check WebGL 2 support and your connection to the Three.js CDN.</p><button id="retry-renderer">Retry workspace</button>';$('retry-renderer').onclick=()=>location.reload();$('global-health').textContent='Renderer unavailable';});
+  </script>
+</body>
+</html>
