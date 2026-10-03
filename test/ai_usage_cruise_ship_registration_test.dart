@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +12,7 @@ import 'package:luma/features/plugins/installed/ai_usage/tests/hero_tile.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/model_banner.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/test_view_prefs.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/tests_tab.dart';
+import 'package:luma/features/plugins/installed/_shared/native_webview.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 Widget _app(AiBenchmarkRepository repository) => AiBenchmarkScope(
@@ -122,6 +125,43 @@ void main() {
     );
   });
 
+  testWidgets('cruise scene uses the native mouse-input host', (tester) async {
+    await tester.runAsync(
+      () => TestViewPrefs.saveBannerView('cruise_ship', false),
+    );
+    final repository = AiBenchmarkRepository.withManifest(
+      AiBenchmarkManifest.empty,
+    );
+    addTearDown(repository.dispose);
+    await tester.pumpWidget(_app(repository));
+    await _open(tester);
+    await tester.tap(find.text('GPT 6 Astra (Ultra)'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(NativeWebview), findsOneWidget);
+    final view = tester.widget<NativeWebview>(find.byType(NativeWebview));
+    view.onMessage('{"type":"cruise-ready"}');
+    await tester.pump();
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    view.onMessage('{"type":"cruise-error","message":"Graphics lost"}');
+    await tester.pump();
+    expect(find.text('Graphics lost'), findsOneWidget);
+    expect(
+      tester.widget<NativeWebview>(find.byType(NativeWebview)).visible,
+      false,
+    );
+    await tester.tap(find.text('Retry'));
+    await tester.pump();
+    expect(
+      tester.widget<NativeWebview>(find.byType(NativeWebview)).visible,
+      true,
+    );
+    view.onError?.call('Error from the disposed scene');
+    await tester.pump();
+    expect(find.text('Error from the disposed scene'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, skip: !Platform.isWindows);
+
   testWidgets('cruise list and banners fit a 320px window', (tester) async {
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
@@ -145,7 +185,7 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('Banners'));
     await tester.pumpAndSettle();
-    expect(find.byType(ModelBanner), findsOneWidget);
+    expect(find.byType(ModelBanner), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 }

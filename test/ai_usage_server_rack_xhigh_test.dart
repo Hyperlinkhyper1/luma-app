@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark.dart';
+import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_repository.dart';
+import 'package:luma/features/plugins/installed/ai_usage/tests/ai_benchmark_scope.dart';
 import 'package:luma/features/plugins/installed/ai_usage/tests/server_rack_test_page.dart';
 import 'package:luma/theme/luma_theme.dart';
 
@@ -82,8 +85,18 @@ void main() {
   testWidgets('the Server Rack Test lists the Sonnet 5.5 Xhigh entry', (
     tester,
   ) async {
+    final repository = AiBenchmarkRepository.withManifest(
+      AiBenchmarkManifest.empty,
+    );
+    addTearDown(repository.dispose);
     await tester.pumpWidget(
-      MaterialApp(theme: LumaTheme.dark, home: const ServerRackTestPage()),
+      AiBenchmarkScope(
+        repository: repository,
+        child: MaterialApp(
+          theme: LumaTheme.dark,
+          home: const ServerRackTestPage(),
+        ),
+      ),
     );
     expect(find.text('Sonnet 5.5 (Xhigh)'), findsOneWidget);
   });

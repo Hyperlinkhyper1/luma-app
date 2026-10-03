@@ -1,28 +1,36 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
-import '../features/plugins/plugin_icons.dart';
-import '../features/plugins/plugin_repository.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/luma_theme.dart';
 
-/// Browser-style strip of the plugins the user has opened, shown under the
-/// title bar so they can hop between them without going back through the
-/// rail. Each tab keeps its plugin alive in the shell until it is closed.
+class ShellTabItem {
+  const ShellTabItem({
+    required this.id,
+    required this.title,
+    required this.icon,
+  });
+
+  final String id;
+  final String title;
+  final IconData icon;
+}
+
+/// Scrollable navigation tabs embedded in the window title bar.
 class PluginTabBar extends StatelessWidget {
   const PluginTabBar({
     super.key,
     required this.tabs,
-    required this.activePluginId,
+    required this.activeTabId,
     required this.onSelect,
     required this.onClose,
     required this.onAdd,
   });
 
-  final List<InstalledPluginRecord> tabs;
+  final List<ShellTabItem> tabs;
 
-  /// Null while a fixed section (Home, Finance…) is showing instead.
-  final String? activePluginId;
+  /// The selected navigation slot.
+  final String? activeTabId;
   final ValueChanged<String> onSelect;
   final ValueChanged<String> onClose;
   final VoidCallback onAdd;
@@ -32,11 +40,8 @@ class PluginTabBar extends StatelessWidget {
     final luma = context.luma;
     final t = L.of(context);
     return Container(
-      height: 38,
-      decoration: BoxDecoration(
-        color: luma.rail,
-        border: Border(bottom: BorderSide(color: luma.border)),
-      ),
+      height: 46,
+      color: luma.background,
       padding: const EdgeInsets.only(left: 6, top: 5),
       child: Row(
         children: [
@@ -48,12 +53,12 @@ class PluginTabBar extends StatelessWidget {
                 children: [
                   for (final tab in tabs)
                     _PluginTab(
-                      key: ValueKey(tab.pluginId),
+                      key: ValueKey(tab.id),
                       plugin: tab,
-                      selected: tab.pluginId == activePluginId,
+                      selected: tab.id == activeTabId,
                       closeTooltip: t.tabClose,
-                      onTap: () => onSelect(tab.pluginId),
-                      onClose: () => onClose(tab.pluginId),
+                      onTap: () => onSelect(tab.id),
+                      onClose: () => onClose(tab.id),
                     ),
                 ],
               ),
@@ -62,7 +67,7 @@ class PluginTabBar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 2, bottom: 5),
             child: IconButton(
-              tooltip: t.tabOpenPlugin,
+              tooltip: t.tabNew,
               onPressed: onAdd,
               icon: const Icon(Icons.add_rounded, size: 18),
               color: luma.textSecondary,
@@ -87,7 +92,7 @@ class _PluginTab extends StatefulWidget {
     required this.onClose,
   });
 
-  final InstalledPluginRecord plugin;
+  final ShellTabItem plugin;
   final bool selected;
   final String closeTooltip;
   final VoidCallback onTap;
@@ -130,7 +135,7 @@ class _PluginTabState extends State<_PluginTab> {
                 top: Radius.circular(8),
               ),
               child: Container(
-                height: 33,
+                height: 40,
                 constraints: const BoxConstraints(minWidth: 120, maxWidth: 200),
                 padding: const EdgeInsets.only(left: 10, right: 4),
                 decoration: BoxDecoration(
@@ -147,14 +152,14 @@ class _PluginTabState extends State<_PluginTab> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      pluginIconFor(widget.plugin.icon),
+                      widget.plugin.icon,
                       size: 16,
                       color: selected ? luma.accent : fg,
                     ),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        widget.plugin.name,
+                        widget.plugin.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(

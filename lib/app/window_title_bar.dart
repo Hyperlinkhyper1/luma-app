@@ -11,13 +11,14 @@ import 'window_controls.dart';
 /// the right. Replaces the stacked "native title bar + section header" so the
 /// top reads as one clean strip (Modrinth / Discord style).
 ///
-/// The whole strip (except the caption buttons) is a drag handle for moving the
-/// window; double-clicking it toggles maximize.
+/// The brand and reserved empty area move the window; double-clicking them
+/// toggles maximize. Tabs and caption buttons handle their own input.
 class WindowTitleBar extends StatefulWidget {
   WindowTitleBar({
     super.key,
     required this.title,
     this.trailing,
+    this.tabs,
     bool? showWindowControls,
   }) : showWindowControls = showWindowControls ?? hasCustomTitleBar;
 
@@ -28,6 +29,9 @@ class WindowTitleBar extends StatefulWidget {
   /// caption buttons (e.g. the family inbox icon) — visible on every screen,
   /// since this bar is shared across the whole app.
   final Widget? trailing;
+
+  /// Interactive navigation tabs, outside the window drag region.
+  final Widget? tabs;
 
   /// Whether to render the minimize/maximize/close buttons and enable window
   /// dragging. Defaults to whether this platform has an OS window we own.
@@ -89,18 +93,19 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
           Container(width: 1, height: 18, color: luma.border),
           const SizedBox(width: 16),
         ],
-        Flexible(
-          child: Text(
-            widget.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: luma.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+        if (widget.tabs == null)
+          Flexible(
+            child: Text(
+              widget.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: luma.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
       ],
     );
 
@@ -119,11 +124,24 @@ class _WindowTitleBarState extends State<WindowTitleBar> {
         height: WindowTitleBar.height,
         child: Row(
           children: [
-            Expanded(
-              child: widget.showWindowControls
-                  ? _DragRegion(child: content)
-                  : content,
-            ),
+            if (widget.tabs == null)
+              Expanded(
+                child: widget.showWindowControls
+                    ? _DragRegion(child: content)
+                    : content,
+              )
+            else ...[
+              if (!compact)
+                widget.showWindowControls
+                    ? _DragRegion(child: content)
+                    : content,
+              Expanded(child: widget.tabs!),
+              if (widget.showWindowControls && !compact)
+                const SizedBox(
+                  width: 48,
+                  child: _DragRegion(child: SizedBox.expand()),
+                ),
+            ],
             if (widget.trailing != null) widget.trailing!,
             if (widget.showWindowControls) ...[
               _CaptionButton(

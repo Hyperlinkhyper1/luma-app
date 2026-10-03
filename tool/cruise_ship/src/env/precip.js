@@ -200,7 +200,7 @@ export class Lightning {
       const pulse = Math.max(0, Math.sin(s.t * 38) * Math.exp(-s.t * 5)) + Math.exp(-s.t * 9) * 0.6;
       flash = pulse * s.power;
       this.intensity.value = flash;
-      cloud.flash.value = flash * 6;
+      cloud.flash.value = flash * 2.2;
       if (s.t > 0.9) { this.strike = null; if (this.mesh) this.mesh.visible = false; }
     } else {
       this.intensity.value = 0;
@@ -214,7 +214,7 @@ export class Lightning {
       }
     }
     // Close strikes brighten everything for an instant.
-    postU.flash.value = this.strike ? flash * this.strike.near * 1.6 : 0;
+    postU.flash.value = this.strike ? flash * this.strike.near * this.strike.near * 0.7 : 0;
   }
 
   _spawn(cameraPos, weather) {
@@ -229,7 +229,7 @@ export class Lightning {
     else { this.mesh = new THREE.Mesh(g, this.mat); this.mesh.frustumCulled = false; this.mesh.renderOrder = 6; this.scene.add(this.mesh); }
     this.mesh.visible = Math.random() < 0.75;    // some strikes stay hidden in cloud
     const power = 0.6 + Math.random() * 0.8;
-    this.strike = { t: 0, power, near: Math.max(0, 1 - dist / 6000) };
+    this.strike = { t: 0, power, near: Math.max(0, 1 - dist / 5000) };
     cloud.flashPos.value.set(x / 1000, weather.current.base + weather.current.thick * 0.35, z / 1000);
     this.onStrike?.(dist, power);
   }

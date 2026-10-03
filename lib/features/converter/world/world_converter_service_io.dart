@@ -5,15 +5,25 @@ import 'dart:isolate';
 import 'world_conversion.dart';
 
 typedef WorldWorker = Future<WorldCensus> Function(List<String> arguments);
+typedef WorldVersionWorker =
+    Future<void> Function(
+      String source,
+      String destination,
+      WorldTarget target,
+      bool preserveRecords,
+    );
 
 class WorldConverterService {
-  WorldConverterService({WorldWorker? worker}) : this._(worker);
-  WorldConverterService._(this._worker);
+  WorldConverterService({
+    WorldWorker? worker,
+    WorldVersionWorker? versionWorker,
+  }) : this._(worker, versionWorker);
+  WorldConverterService._(this._worker, this._versionWorker);
   final WorldWorker? _worker;
+  final WorldVersionWorker? _versionWorker;
   bool get supported => Platform.isWindows || Platform.isLinux;
 
-  Future<WorldCensus> _run(List<String> arguments) async {
-    if (_worker != null) return _worker(arguments);
+  Future<File> _executable() async {
     if (!supported) {
       throw UnsupportedError('World conversion requires Windows or Linux.');
     }
@@ -35,7 +45,13 @@ class WorldConverterService {
         'Install a desktop build containing the world converter.',
       );
     }
-    final result = await Process.run(executable.absolute.path, arguments);
+    return executable.absolute;
+  }
+
+  Future<WorldCensus> _run(List<String> arguments) async {
+    if (_worker != null) return _worker(arguments);
+    final executable = await _executable();
+    final result = await Process.run(executable.path, arguments);
     if (result.exitCode != 0) {
       throw FormatException(result.stderr.toString().trim());
     }
@@ -45,6 +61,54 @@ class WorldConverterService {
       orElse: () => throw const FormatException('Missing saved-world audit.'),
     );
     return WorldCensus.fromJson(jsonDecode(payload) as Map<String, dynamic>);
+  }
+
+  Future<void> _versionConvert(
+    String source,
+    String destination,
+    WorldTarget target, {
+    required bool preserveRecords,
+  }) async {
+    if (_versionWorker != null) {
+      await _versionWorker(source, destination, target, preserveRecords);
+      return;
+    }
+    final engine = await _executable();
+    final root = engine.parent;
+    final jar = File('${root.path}/chunker.jar');
+    final suffix = Platform.isWindows ? '.exe' : '';
+    final java = File('${root.path}/java/bin/java$suffix');
+    if (!await jar.exists() || !await java.exists()) {
+      throw const FormatException(
+        'The Minecraft version engine is missing from this build. '
+        'Install a desktop build containing both world conversion engines.',
+      );
+    }
+    if (preserveRecords) {
+      await _copyTree(Directory(source), Directory(destination));
+    } else {
+      await Directory(destination).create();
+    }
+    final result = await Process.run(java.path, [
+      '-Xmx4G',
+      '-Dfile.encoding=UTF-8',
+      '-jar',
+      jar.path,
+      '-i',
+      Directory(source).absolute.path,
+      '-o',
+      Directory(destination).absolute.path,
+      '-f',
+      target.format,
+      if (preserveRecords) '-k',
+    ]);
+    if (result.exitCode != 0 ||
+        !result.stdout.toString().contains('Conversion complete!') ||
+        !await File('$destination/level.dat').exists()) {
+      throw FormatException(
+        'Version conversion failed: ${result.stderr.toString().trim()}',
+      );
+    }
   }
 
   Future<WorldCensus> inspect(String path) async {
@@ -106,27 +170,152 @@ class WorldConverterService {
       if (before.edition == options.target.edition) {
         throw const FormatException('Choose the other Minecraft edition.');
       }
+      if (options.entities) verifyWorldEntityTarget(before, options.target);
       if (options.players && before.remotePlayers != 0) {
         throw const FormatException(
           'Additional players need Java UUID / Bedrock XUID mappings. '
           'Player conversion currently supports single-player worlds.',
         );
       }
+      if (options.target.edition == WorldEdition.bedrock) {
+        final version = options.target.savedVersion as List<int>;
+        final legacyRecords =
+            version[1] < 18 || (version[1] == 18 && version[2] < 30);
+        if (legacyRecords &&
+            ((options.entities && before.entities.isNotEmpty) ||
+                (options.players && before.localPlayer))) {
+          throw const FormatException(
+            'Bedrock targets before 1.18.30 require older entity/player '
+            'storage that this converter cannot safely write. Choose a newer '
+            'target or exclude those records. The original world has not changed.',
+          );
+        }
+      }
       final output = Directory('${staging.path}/converted');
       onProgress?.call('Converting terrain, containers and selected records…');
-      final after = await _run([
-        'convert',
-        copy.path,
-        output.path,
-        options.target.edition.name,
-        options.entities ? '1' : '0',
-        options.players ? '1' : '0',
-      ]);
+      final usesJavaSchema =
+          options.target.edition == WorldEdition.java &&
+          (options.target.savedVersion as int) >= 1519 &&
+          (options.target.savedVersion as int) <= 4556;
+      final baseline = usesJavaSchema
+          ? options.target
+          : WorldTarget(
+              options.target.edition,
+              options.target.edition == WorldEdition.java
+                  ? '1.21.10'
+                  : '1.21.120',
+            );
+      final broadVersion =
+          options.target.version !=
+              (options.target.edition == WorldEdition.java
+                  ? '1.21.10'
+                  : '1.21.120') ||
+          (before.edition == WorldEdition.java && before.version != 4556) ||
+          (before.edition == WorldEdition.bedrock &&
+              before.version.toString() != '[1, 21, 120]');
+      // Terrain is converted directly from the original version, so newer blocks
+      // never travel through the older entity engine's terrain representation.
+      if (broadVersion) {
+        onProgress?.call('Converting terrain to ${options.target.label}…');
+        await _versionConvert(
+          copy.path,
+          output.path,
+          options.target,
+          preserveRecords: false,
+        );
+      }
+      var recordsInput = copy;
+      if (broadVersion &&
+          (options.entities || options.players) &&
+          before.edition == WorldEdition.java &&
+          before.version != 4556) {
+        recordsInput = Directory('${staging.path}/normalized');
+        await _versionConvert(
+          copy.path,
+          recordsInput.path,
+          const WorldTarget(WorldEdition.java, '1.21.10'),
+          preserveRecords: true,
+        );
+        if (options.players && before.localPlayer) {
+          await _run(['restore-player', copy.path, recordsInput.path]);
+        }
+      }
+      final bridge = broadVersion
+          ? Directory('${staging.path}/records')
+          : output;
+      // For terrain-only conversions the version engine is sufficient.
+      WorldCensus after;
+      if (broadVersion && !options.entities && !options.players) {
+        after = await _run(['strip', output.path, '1', '1']);
+      } else {
+        final bridged = await _run([
+          'convert',
+          recordsInput.path,
+          bridge.path,
+          options.target.edition.name,
+          options.entities ? '1' : '0',
+          options.players ? '1' : '0',
+          if (usesJavaSchema && options.target.version != '1.21.10')
+            options.target.savedVersion.toString(),
+        ]);
+        if (broadVersion) {
+          await Isolate.run(
+            () => verifyWorldConversion(
+              before,
+              bridged,
+              WorldConversionOptions(
+                target: baseline,
+                entities: options.entities,
+                players: options.players,
+                statistics: options.statistics,
+              ),
+            ),
+          );
+          var records = bridge;
+          if (usesJavaSchema && options.target.version != '1.21.10') {
+            await _run(['identity', bridge.path, baseline.version]);
+          }
+          if (options.target.version != baseline.version) {
+            if (options.target.edition == WorldEdition.java &&
+                (options.target.savedVersion as int) < 1519 &&
+                ((options.entities && bridged.entities.isNotEmpty) ||
+                    (options.players && bridged.localPlayer))) {
+              throw const FormatException(
+                'This older Java target cannot safely read the selected newer '
+                'entity/player schemas. Choose a newer Java version or exclude '
+                'those records. The original world has not changed.',
+              );
+            }
+            records = Directory('${staging.path}/versioned-records');
+            if (options.target.edition == WorldEdition.java) {
+              await _run(['identity', bridge.path, baseline.version]);
+            }
+            onProgress?.call(
+              'Adapting selected records to ${options.target.label}…',
+            );
+            await _versionConvert(
+              bridge.path,
+              records.path,
+              options.target,
+              preserveRecords: true,
+            );
+          }
+          after = await _run([
+            'overlay',
+            records.path,
+            output.path,
+            options.entities ? '1' : '0',
+            options.players ? '1' : '0',
+          ]);
+        } else {
+          after = bridged;
+        }
+      }
       onProgress?.call('Verifying entities in the saved world…');
       await Isolate.run(() => verifyWorldConversion(before, after, options));
       final notes = <String>[];
       if (options.statistics) {
-        await _statistics(copy, output, options.target.edition, notes);
+        await _statistics(copy, output, options.target, notes);
       }
       await File('${output.path}/luma-conversion-report.json').writeAsString(
         const JsonEncoder.withIndent('  ').convert({
@@ -195,10 +384,13 @@ class WorldConverterService {
   Future<void> _statistics(
     Directory source,
     Directory output,
-    WorldEdition target,
+    WorldTarget target,
     List<String> notes,
   ) async {
-    final stats = Directory('${source.path}/stats');
+    final modernStats = Directory('${source.path}/players/stats');
+    final stats = await modernStats.exists()
+        ? modernStats
+        : Directory('${source.path}/stats');
     final archive = Directory('${source.path}/luma-java-statistics');
     final existing = await stats.exists() ? stats : archive;
     if (!await existing.exists()) {
@@ -208,11 +400,11 @@ class WorldConverterService {
       return;
     }
     final saved = Directory(
-      '${output.path}/${target == WorldEdition.java ? 'stats' : 'luma-java-statistics'}',
+      '${output.path}/${target.edition == WorldEdition.java ? ((target.savedVersion as int) >= 4786 ? 'players/stats' : 'stats') : 'luma-java-statistics'}',
     );
     await _copyTree(existing, saved);
     notes.add(
-      target == WorldEdition.java
+      target.edition == WorldEdition.java
           ? 'Java statistics restored from the archive.'
           : 'Java statistics archived for a later conversion back to Java. Bedrock cannot display them.',
     );

@@ -83,6 +83,7 @@ import 'bottom_nav.dart';
 import 'home_widgets.dart';
 import 'nav_rail.dart';
 import 'plugin_tab_bar.dart';
+import 'shell_tabs.dart';
 import 'widgets.dart';
 import 'window_title_bar.dart';
 import 'window_controls.dart';
@@ -105,7 +106,9 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   // Null until the user navigates: the active section then defaults to the
   // configured start screen.
-  int? _selectedIndex;
+  final _tabs = ShellTabs();
+  int? get _selectedIndex => _tabs.active.index;
+  set _selectedIndex(int? value) => _tabs.active.index = value;
   int _homeEditRevision = 0;
   bool _homeEditRequested = false;
 
@@ -121,11 +124,8 @@ class _AppShellState extends State<AppShell> {
 
   // Non-null while an installed plugin's page is being shown, taking
   // priority over [_selectedIndex].
-  String? _selectedPluginId;
-
-  // Plugins open as tabs along the top, in tab order. Each stays mounted
-  // (state, scroll, running games) until its tab is closed.
-  final List<String> _openTabs = [];
+  String? get _selectedPluginId => _tabs.active.pluginId;
+  set _selectedPluginId(String? value) => _tabs.active.pluginId = value;
 
   PetRepository? _petRepository;
   AutoClickerRepository? _autoClickerRepository;
@@ -143,9 +143,11 @@ class _AppShellState extends State<AppShell> {
     if (PluginHomeWidgets.supported) {
       final widgets = PluginHomeWidgets.instance;
       _widgetLaunches = widgets.launches.listen(_openFromHomeWidget);
-      unawaited(widgets.takeLaunchPlugin().then((id) {
-        if (id != null) _openFromHomeWidget(id);
-      }));
+      unawaited(
+        widgets.takeLaunchPlugin().then((id) {
+          if (id != null) _openFromHomeWidget(id);
+        }),
+      );
     }
   }
 
@@ -393,7 +395,36 @@ class _AppShellState extends State<AppShell> {
     t.navAccount,
   ];
 
-  _NavEntry get _currentEntry => _NavEntry(_selectedIndex, _selectedPluginId);
+  ShellTabItem _tabItem(
+    ShellTab tab,
+    List<InstalledPluginRecord> installed,
+    List<String> titles,
+    int startIndex,
+  ) {
+    final plugin = installed
+        .where((plugin) => plugin.pluginId == tab.pluginId)
+        .firstOrNull;
+    final index = tab.index ?? startIndex;
+    const icons = [
+      Icons.dashboard_rounded,
+      Icons.transform_rounded,
+      Icons.account_balance_wallet_rounded,
+      Icons.lock_rounded,
+      Icons.note_rounded,
+      Icons.chat_rounded,
+      Icons.extension_rounded,
+      Icons.settings_rounded,
+      Icons.person_rounded,
+    ];
+    return ShellTabItem(
+      id: tab.id,
+      title: plugin?.name ?? titles[index],
+      icon: plugin == null ? icons[index] : pluginIconFor(plugin.icon),
+    );
+  }
+
+  _NavEntry get _currentEntry =>
+      _NavEntry(_selectedIndex, _selectedPluginId, _tabs.active.id);
 
   // Record the screen we're leaving so Back can return to it. Consecutive
   // duplicates are collapsed so tapping the same tab twice doesn't stack.
@@ -415,32 +446,29 @@ class _AppShellState extends State<AppShell> {
     if (_selectedPluginId == id) return;
     setState(() {
       _pushHistory();
-      _selectedPluginId = id;
-      if (!_openTabs.contains(id)) _openTabs.add(id);
+      _tabs.openPlugin(id);
     });
   }
 
-  // Closing the active tab moves to its neighbour, like a browser; closing
-  // the last one falls back to wherever the user was before plugins.
-  void _closeTab(String id) {
-    final i = _openTabs.indexOf(id);
-    if (i < 0) return;
+  void _addTab() {
     setState(() {
-      _openTabs.removeAt(i);
-      _history.removeWhere((e) => e.pluginId == id);
-      if (_selectedPluginId != id) return;
-      if (_openTabs.isNotEmpty) {
-        _selectedPluginId = _openTabs[i.clamp(0, _openTabs.length - 1)];
-        return;
-      }
-      _selectedPluginId = null;
-      while (_history.isNotEmpty) {
-        final prev = _history.removeLast();
-        if (prev.pluginId == null) {
-          _selectedIndex = prev.index;
-          break;
-        }
-      }
+      _pushHistory();
+      _tabs.add();
+    });
+  }
+
+  void _selectTab(String id) {
+    if (_tabs.active.id == id) return;
+    setState(() {
+      _pushHistory();
+      _tabs.select(id);
+    });
+  }
+
+  void _closeTab(String id) {
+    setState(() {
+      _tabs.close(id);
+      _history.removeWhere((entry) => entry.tabId == id);
     });
   }
 
@@ -449,10 +477,9 @@ class _AppShellState extends State<AppShell> {
     if (_history.isEmpty) return false;
     final prev = _history.removeLast();
     setState(() {
+      _tabs.select(prev.tabId);
       _selectedIndex = prev.index;
       _selectedPluginId = prev.pluginId;
-      final id = prev.pluginId;
-      if (id != null && !_openTabs.contains(id)) _openTabs.add(id);
     });
     return true;
   }
@@ -493,11 +520,13 @@ class _AppShellState extends State<AppShell> {
         final installed = snapshot.data ?? const <InstalledPluginRecord>[];
         _latestPetTargets = _petTargets(t, installed);
         if (PluginHomeWidgets.supported && snapshot.hasData) {
-          unawaited(PluginHomeWidgets.instance.sync(
-            installed,
-            background: luma.accent,
-            foreground: luma.onAccent,
-          ));
+          unawaited(
+            PluginHomeWidgets.instance.sync(
+              installed,
+              background: luma.accent,
+              foreground: luma.onAccent,
+            ),
+          );
         }
         if (pet.visible &&
             hasCustomTitleBar &&
@@ -517,16 +546,9 @@ class _AppShellState extends State<AppShell> {
           }
         }
         final showingPlugin = activePlugin != null;
-        // Filtered rather than pruned: the install list is briefly empty
-        // before the first stream event, and an uninstalled plugin simply
-        // drops out of the strip.
-        final tabs = [
-          for (final id in _openTabs)
-            for (final p in installed)
-              if (p.pluginId == id) p,
-        ];
+        final tabs = _tabs.tabs;
         final activeTab = showingPlugin
-            ? tabs.indexWhere((p) => p.pluginId == activePlugin!.pluginId)
+            ? tabs.indexWhere((tab) => tab.id == _tabs.active.id)
             : -1;
         final title = showingPlugin ? activePlugin.name : titles[index];
         final isPhone = shellSize.width < _phoneBreakpoint;
@@ -598,9 +620,17 @@ class _AppShellState extends State<AppShell> {
                 ),
                 for (var i = 0; i < tabs.length; i++)
                   TickerMode(
-                    key: ValueKey('tab:${tabs[i].pluginId}'),
+                    key: ValueKey(
+                      'tab:${tabs[i].id}:${tabs[i].mountedPluginId}',
+                    ),
                     enabled: i == activeTab,
-                    child: _pluginPageFor(tabs[i].pluginId, t),
+                    child:
+                        !installed.any(
+                          (plugin) =>
+                              plugin.pluginId == tabs[i].mountedPluginId,
+                        )
+                        ? const SizedBox.shrink()
+                        : _pluginPageFor(tabs[i].mountedPluginId!, t),
                   ),
               ],
             ),
@@ -613,18 +643,25 @@ class _AppShellState extends State<AppShell> {
               if (!immersive)
                 WindowTitleBar(
                   title: title,
+                  tabs: PluginTabBar(
+                    tabs: [
+                      for (final tab in tabs)
+                        _tabItem(
+                          tab,
+                          installed,
+                          titles,
+                          _startIndex(settings.startScreen),
+                        ),
+                    ],
+                    activeTabId: _tabs.active.id,
+                    onSelect: _selectTab,
+                    onClose: _closeTab,
+                    onAdd: _addTab,
+                  ),
                   trailing: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [PetSummonButton(), InboxButton()],
                   ),
-                ),
-              if (!immersive && tabs.isNotEmpty)
-                PluginTabBar(
-                  tabs: tabs,
-                  activePluginId: showingPlugin ? activePlugin.pluginId : null,
-                  onSelect: _selectPlugin,
-                  onClose: _closeTab,
-                  onAdd: () => _selectFixed(6),
                 ),
               Expanded(
                 child: immersive
@@ -876,16 +913,20 @@ class _AppShellState extends State<AppShell> {
 /// A single step in [_AppShellState._history]: the fixed-section index (null
 /// means the configured start screen) and any plugin that was open.
 class _NavEntry {
-  const _NavEntry(this.index, this.pluginId);
+  const _NavEntry(this.index, this.pluginId, this.tabId);
+  final String tabId;
   final int? index;
   final String? pluginId;
 
   @override
   bool operator ==(Object other) =>
-      other is _NavEntry && other.index == index && other.pluginId == pluginId;
+      other is _NavEntry &&
+      other.index == index &&
+      other.pluginId == pluginId &&
+      other.tabId == tabId;
 
   @override
-  int get hashCode => Object.hash(index, pluginId);
+  int get hashCode => Object.hash(index, pluginId, tabId);
 }
 
 /// Floating exit affordance for immersive phone plugins (see

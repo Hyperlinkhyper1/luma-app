@@ -24,6 +24,15 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'World converter layout');
       expect(find.byType(WorldConverterView), findsOneWidget);
       expect(find.text('Target Minecraft version'), findsOneWidget);
+      expect(find.text('1.26.60'), findsOneWidget);
+      await tester.ensureVisible(find.text('1.26.60'));
+      await tester.tap(find.text('1.26.60'));
+      await tester.pumpAndSettle();
+      expect(find.text('1.21.130'), findsOneWidget);
+      expect(find.text('1.21.120'), findsOneWidget);
+      await tester.tap(find.text('1.21.130'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'Expanded version menu');
       final entitySwitch = tester.widget<SwitchListTile>(
         find.widgetWithText(SwitchListTile, 'Convert entities'),
       );

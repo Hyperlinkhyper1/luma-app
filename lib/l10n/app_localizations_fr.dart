@@ -39,6 +39,9 @@ class LFr extends L {
   String get tabClose => 'Fermer l\'onglet';
 
   @override
+  String get tabNew => 'Nouvel onglet';
+
+  @override
   String get tabOpenPlugin => 'Ouvrir un autre plugin';
 
   @override

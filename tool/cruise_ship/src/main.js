@@ -25,6 +25,7 @@ import { describe } from './ship/areas.js';
 import { Hud } from './ui/hud.js';
 import { Menu } from './ui/menu.js';
 import { DeckMap } from './ui/map.js';
+import { tellHost } from './core/host.js';
 
 const $ = (id) => document.getElementById(id);
 // Yields so the loading bar can paint. Not tied to requestAnimationFrame,
@@ -40,6 +41,7 @@ function fatal(msg) {
   $('loading').hidden = true;
   $('fatal').hidden = false;
   $('fatalMsg').textContent = msg;
+  tellHost('cruise-error', { message: String(msg).split('\n')[0] });
 }
 
 const KNOT = 0.514444;
@@ -126,7 +128,11 @@ class App {
     $('board').hidden = false;
     $('backendNote').textContent = `Rendering with ${backend}${backend === 'WebGPU' ? '' : ' (WebGPU unavailable)'}.`;
     $('boardBtn').onclick = () => this.board();
+    renderer.backend.device?.lost?.then((info) => {
+      if (info.reason !== 'destroyed') fatal(`The graphics device was lost: ${info.message || info.reason}`);
+    });
     renderer.setAnimationLoop(() => this.frame());
+    tellHost('cruise-ready', { backend });
   }
 
   board() {

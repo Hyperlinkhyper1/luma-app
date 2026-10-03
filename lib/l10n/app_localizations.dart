@@ -163,6 +163,12 @@ abstract class L {
   /// **'Close tab'**
   String get tabClose;
 
+  /// No description provided for @tabNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New tab'**
+  String get tabNew;
+
   /// No description provided for @tabOpenPlugin.
   ///
   /// In en, this message translates to:

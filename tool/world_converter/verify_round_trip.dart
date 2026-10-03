@@ -34,7 +34,7 @@ void check(bool condition, String message) {
 Future<void> main(List<String> args) async {
   final executable = args.isEmpty
       ? 'build/world_converter/Release/luma-world-converter.exe'
-      : args.single;
+      : args.first;
   final root = await Directory('.dart_tool').createTemp('world-round-trip-');
   try {
     final source = await Directory('${root.path}/source').create();
@@ -113,6 +113,7 @@ Future<void> main(List<String> args) async {
     final entities = [
       mob('cow', 1, 2),
       mob('cow', 2, 3),
+      mob('zombified_piglin', 10, 3),
       mob(
         'villager',
         3,
@@ -213,7 +214,7 @@ Future<void> main(List<String> args) async {
     );
     final before = await service.inspect(source.path);
     check(
-      before.entities.length == 9,
+      before.entities.length == 10,
       'Source census must include both cows, passengers and item frame',
     );
     final bedrock = await service.convert(
@@ -231,7 +232,7 @@ Future<void> main(List<String> args) async {
       ),
     );
     final after = await service.inspect(java.path);
-    check(after.entities.length >= 9, 'Round trip dropped entities');
+    check(after.entities.length >= 10, 'Round trip dropped entities');
     check(after.localPlayer, 'Round trip dropped local player');
     final savedPlayer = Nbt.read(
       Uint8List.fromList(await File('${java.path}/level.dat').readAsBytes()),
@@ -273,6 +274,176 @@ Future<void> main(List<String> args) async {
       !(await service.inspect(excluded.path)).localPlayer,
       'Excluded player remains',
     );
+    if (args.contains('--versions') || args.contains('--matrix')) {
+      stdout.writeln('Checking latest Bedrock target…');
+      final latestBedrock = await service.convert(
+        source: source.path,
+        destination: '${root.path}/latest-bedrock',
+        options: WorldConversionOptions(
+          target: WorldTarget.latest(WorldEdition.bedrock),
+        ),
+      );
+      stdout.writeln('Checking latest Java target…');
+      final latestJava = await service.convert(
+        source: latestBedrock.path,
+        destination: '${root.path}/latest-java',
+        options: WorldConversionOptions(
+          target: WorldTarget.latest(WorldEdition.java),
+        ),
+      );
+      check(
+        latestJava.entityCount >= 10,
+        'Latest version conversion lost entities',
+      );
+      check(
+        await File('${latestJava.path}/players/stats/player.json').exists(),
+        'Latest Java statistics must use the new players/stats path',
+      );
+      final entityChunk = await readChunk(
+        File(
+          '${latestJava.path}/dimensions/minecraft/overworld/entities/r.0.0.mca',
+        ),
+      );
+      check(
+        entityChunk.intValue('DataVersion') == 4556,
+        'Native entity records must retain their real schema version for Minecraft upgrades',
+      );
+      // A post-1.21.10 block must bypass the entity engine's older block table.
+      final newRegion = File(
+        '${latestJava.path}/dimensions/minecraft/overworld/region/r.0.0.mca',
+      );
+      final newChunk = await readChunk(newRegion);
+      final section = newChunk
+          .list('sections')!
+          .items
+          .cast<NbtCompound>()
+          .firstWhere((s) => s.intValue('Y') == 5);
+      section.values['block_states'] = NbtCompound({
+        'palette': NbtList.of([const NbtString('minecraft:cinnabar')]),
+      });
+      await newRegion.writeAsBytes(region(newChunk));
+      stdout.writeln('Checking latest Java source…');
+      final newBedrock = await service.convert(
+        source: latestJava.path,
+        destination: '${root.path}/latest-return',
+        options: WorldConversionOptions(
+          target: WorldTarget.latest(WorldEdition.bedrock),
+        ),
+      );
+      final terrainReturn = await service.convert(
+        source: newBedrock.path,
+        destination: '${root.path}/new-block-return',
+        options: WorldConversionOptions(
+          target: WorldTarget.latest(WorldEdition.java),
+          entities: false,
+          players: false,
+          statistics: false,
+        ),
+      );
+      final returnedChunk = await readChunk(
+        File(
+          '${terrainReturn.path}/dimensions/minecraft/overworld/region/r.0.0.mca',
+        ),
+      );
+      check(
+        returnedChunk
+            .list('sections')!
+            .items
+            .cast<NbtCompound>()
+            .any(
+              (s) => s
+                  .compound('block_states')!
+                  .list('palette')!
+                  .items
+                  .any((b) => blockName(b) == 'minecraft:cinnabar'),
+            ),
+        'The newest block was lost by routing terrain through the older entity engine',
+      );
+      stdout.writeln(
+        'PASS: newest Java / Bedrock sources and targets with entities and players.',
+      );
+      for (final version in ['1.21.5', '1.20.6', '1.20.4', '1.15.2']) {
+        final historical = await service.convert(
+          source: bedrock.path,
+          destination: '${root.path}/entities-$version',
+          options: WorldConversionOptions(
+            target: WorldTarget(WorldEdition.java, version),
+          ),
+        );
+        check(
+          historical.entityCount >= 10,
+          'Older Java entity schema lost records',
+        );
+        final player = Nbt.read(
+          Uint8List.fromList(
+            await File('${historical.path}/level.dat').readAsBytes(),
+          ),
+        ).asCompound.compound('Data')!.compound('Player')!;
+        final diamonds = player
+            .list('Inventory')!
+            .items
+            .cast<NbtCompound>()
+            .firstWhere(
+              (item) => item.stringValue('id') == 'minecraft:diamond',
+            );
+        check(
+          (diamonds.intValue('count') ?? diamonds.intValue('Count')) == 3,
+          'Older Java player inventory was lost',
+        );
+        stdout.writeln(
+          'PASS: Java $version with entities and player inventory',
+        );
+      }
+      final targets = args.contains('--matrix')
+          ? WorldTarget.supported
+          : [
+              const WorldTarget(WorldEdition.java, '1.8.8'),
+              const WorldTarget(WorldEdition.java, '1.12.2'),
+              const WorldTarget(WorldEdition.java, '1.20.6'),
+              const WorldTarget(WorldEdition.bedrock, '1.12.0'),
+              const WorldTarget(WorldEdition.bedrock, '1.18.30'),
+            ];
+      for (final target in targets) {
+        final converted = await service.convert(
+          source: target.edition == WorldEdition.java
+              ? bedrock.path
+              : source.path,
+          destination: '${root.path}/format-${target.format}',
+          options: WorldConversionOptions(
+            target: target,
+            entities: false,
+            players: false,
+            statistics: false,
+          ),
+        );
+        final census = await service.inspect(converted.path);
+        check(
+          census.version.toString() == target.savedVersion.toString(),
+          'Incorrect saved version for ${target.label}',
+        );
+        check(
+          converted.entityCount == 0 && !census.localPlayer,
+          'Excluded records in ${target.label}',
+        );
+        if (args.contains('--matrix')) {
+          await service.convert(
+            source: converted.path,
+            destination: '${root.path}/source-${target.format}',
+            options: WorldConversionOptions(
+              target: WorldTarget.latest(
+                target.edition == WorldEdition.java
+                    ? WorldEdition.bedrock
+                    : WorldEdition.java,
+              ),
+              entities: false,
+              players: false,
+              statistics: false,
+            ),
+          );
+        }
+        stdout.writeln('PASS: ${target.label}');
+      }
+    }
     entities.add(mob('luma:unsupported', 999, 10));
     // A namespaced entity unknown to the engine must fail instead of disappearing.
     entities.last.values['id'] = const NbtString('luma:unsupported');
@@ -331,3 +502,23 @@ Uint8List region(NbtCompound chunk) {
   bytes.setRange(8197, 8197 + compressed.length, compressed);
   return bytes;
 }
+
+Future<NbtCompound> readChunk(File file) async {
+  final bytes = Uint8List.fromList(await file.readAsBytes());
+  final data = ByteData.sublistView(bytes);
+  final offset = (data.getUint32(0, Endian.big) >> 8) * 4096;
+  final length = data.getUint32(offset, Endian.big);
+  check(bytes[offset + 4] == 2, 'Fixture expected a zlib region');
+  return Nbt.read(
+    Uint8List.sublistView(bytes, offset + 5, offset + 4 + length),
+  ).asCompound;
+}
+
+String? blockName(NbtTag tag) => switch (tag) {
+  NbtString() => tag.value,
+  NbtCompound() =>
+    tag.stringValue('id') ??
+        tag.stringValue('Name') ??
+        (tag.values[''] == null ? null : blockName(tag.values['']!)),
+  _ => null,
+};

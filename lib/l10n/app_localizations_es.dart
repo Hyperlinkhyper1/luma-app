@@ -39,6 +39,9 @@ class LEs extends L {
   String get tabClose => 'Cerrar pestaña';
 
   @override
+  String get tabNew => 'Nueva pestaña';
+
+  @override
   String get tabOpenPlugin => 'Abrir otro plugin';
 
   @override

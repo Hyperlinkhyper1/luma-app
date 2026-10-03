@@ -10,12 +10,22 @@ FetchContent_Declare(je2be
   GIT_REPOSITORY https://github.com/kbinani/je2be-core.git
   GIT_TAG 8dfc4de1ba5c7f72e804abea8663380c0dbd5680)
 FetchContent_MakeAvailable(je2be)
+include(enable_java_versions.cmake)
 add_executable(luma-world-converter main.cpp)
 target_link_libraries(luma-world-converter PRIVATE je2be)
 target_include_directories(luma-world-converter PRIVATE "${je2be_SOURCE_DIR}/src")
 install(TARGETS luma-world-converter RUNTIME DESTINATION world_converter COMPONENT WorldConverter)
 install(FILES "${je2be_SOURCE_DIR}/LICENSE" DESTINATION world_converter RENAME je2be-LICENSE.txt COMPONENT WorldConverter)
-install(FILES README.md DESTINATION world_converter COMPONENT WorldConverter)
+install(FILES README.md enable_java_versions.cmake DESTINATION world_converter COMPONENT WorldConverter)
+if(WIN32)
+  set(version_engine_dir "${CMAKE_BINARY_DIR}/Release")
+else()
+  set(version_engine_dir "${CMAKE_BINARY_DIR}")
+endif()
+install(FILES "${version_engine_dir}/chunker.jar" "${version_engine_dir}/Chunker-LICENSE.txt"
+  DESTINATION world_converter COMPONENT WorldConverter)
+install(DIRECTORY "${version_engine_dir}/java" DESTINATION world_converter
+  USE_SOURCE_PERMISSIONS COMPONENT WorldConverter)
 file(GLOB dependency_roots LIST_DIRECTORIES true "${FETCHCONTENT_BASE_DIR}/*-src")
 foreach(dependency_root IN LISTS dependency_roots)
   get_filename_component(dependency_name "${dependency_root}" NAME)

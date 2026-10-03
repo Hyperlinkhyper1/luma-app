@@ -40,8 +40,13 @@ void main() {
       expect(pagodaVendorKey('Seed 2.1 Pro'), 'seed');
     });
 
+    test('hy4 is Tencent Hunyuan', () {
+      expect(pagodaVendorKey('hy4'), 'hy4');
+      expect(pagodaVendorName('HY4 Turbo'), 'Tencent Hunyuan');
+    });
+
     test('unknown models get the fallback cube', () {
-      expect(pagodaVendorKey('hy4'), isNull);
+      expect(pagodaVendorKey('Totally Unknown 9'), isNull);
     });
   });
 

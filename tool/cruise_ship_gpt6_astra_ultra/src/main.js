@@ -10,6 +10,7 @@ import { buildShip } from './ship.js';
 import { createEnvironment } from './environment.js';
 import { CruiseAudio } from './audio.js';
 import { Navigator } from './navigation.js';
+import { captureMouse, sendHostMessage } from './host.js';
 
 const $ = id => document.getElementById(id);
 const DEFAULTS = { hour: 16.5, paused: false, dayLength: 24, weather: 'auto', lightning: true, quality: 'high', resolution: 1, fov: 70, volume: .55, headBob: false, cameraRoll: true, showFps: false };
@@ -28,7 +29,7 @@ try {
   }
 } catch {}
 const save = () => { try { localStorage.setItem(STORAGE, JSON.stringify(settings)); } catch {} };
-const bridge = data => { try { window.chrome?.webview?.postMessage(data); } catch {} };
+const bridge = sendHostMessage;
 let failed = false;
 function fatal(error) {
   if (failed) return;
@@ -172,11 +173,7 @@ async function boot() {
 
   function lockMouse() {
     if (uiOpen || !boarded) return;
-    try {
-      const p = canvas.requestPointerLock?.();
-      p?.catch?.(() => { $('hint').textContent = 'Drag to look around · WASD to walk'; });
-    } catch { $('hint').textContent = 'Drag to look around · WASD to walk'; }
-    canvas.focus();
+    captureMouse(canvas, () => { $('hint').textContent = 'Click the scene to capture the mouse · Drag to look if capture is unavailable'; });
   }
 
   function setMode(next) {
@@ -198,7 +195,7 @@ async function boot() {
     yaw = spot.yaw ?? 0;
     pitch = spot.pitch ?? .05;
     savedLook = { yaw, pitch };
-    closeUI();
+    closeUI(true);
     return true;
   }
 
@@ -310,7 +307,7 @@ async function boot() {
   $('mapButton').onclick = () => openUI('map');
   $('modeButton').onclick = () => setMode(['walk', 'tender', 'free'][(['walk', 'tender', 'free'].indexOf(mode) + 1) % 3]);
   document.querySelectorAll('[data-close]').forEach(b => { b.onclick = () => closeUI(true); });
-  document.querySelectorAll('[data-mode]').forEach(b => { b.onclick = () => { setMode(b.dataset.mode); closeUI(); }; });
+  document.querySelectorAll('[data-mode]').forEach(b => { b.onclick = () => { setMode(b.dataset.mode); closeUI(true); }; });
   for (const spot of ship.spots) {
     if (spot.id.startsWith('stairs-')) continue;
     const b = document.createElement('button');

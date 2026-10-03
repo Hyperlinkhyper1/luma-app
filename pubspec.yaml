@@ -150,6 +150,7 @@ flutter:
     - assets/ai_usage/server_rack_tests/
     - server/benchmarks/scenes/engine_gpt61_sol_xhigh/index.html
     - server/benchmarks/scenes/cruise_ship_gpt6_astra_ultra/index.html
+    - assets/ai_usage/cruise_ship_tests/opus_5_5_ultracode.html
     - assets/ai_usage/pc_tests/gpt61_sol_xhigh/index.html
     - assets/city_planner/
     - assets/subway_builder/

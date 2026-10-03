@@ -39,6 +39,9 @@ class LZh extends L {
   String get tabClose => '关闭标签页';
 
   @override
+  String get tabNew => '新标签页';
+
+  @override
   String get tabOpenPlugin => '打开其他插件';
 
   @override

@@ -39,6 +39,9 @@ class LNl extends L {
   String get tabClose => 'Tabblad sluiten';
 
   @override
+  String get tabNew => 'Nieuw tabblad';
+
+  @override
   String get tabOpenPlugin => 'Andere plugin openen';
 
   @override

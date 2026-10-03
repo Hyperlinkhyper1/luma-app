@@ -114,6 +114,22 @@ class WorthCounterStore extends ChangeNotifier {
     } catch (_) {}
   }
 
+  int _lastId = 0;
+
+  /// A timestamp id that is never reused, even when two products are added
+  /// within the same clock tick — a shared id would make + on one row count
+  /// the other.
+  String _newId() {
+    var id = DateTime.now().microsecondsSinceEpoch;
+    for (final product in _products) {
+      final existing = int.tryParse(product.id);
+      if (existing != null && existing > _lastId) _lastId = existing;
+    }
+    if (id <= _lastId) id = _lastId + 1;
+    _lastId = id;
+    return '$id';
+  }
+
   Future<void> add({
     required String name,
     required double price,
@@ -122,7 +138,7 @@ class WorthCounterStore extends ChangeNotifier {
   }) async {
     _products.add(
       WorthProduct(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        id: _newId(),
         name: name,
         price: price,
         count: count,

@@ -72,6 +72,9 @@ void main() {
       (name: 'Coffee', price: 2),
       (name: 'Cake', price: 3.5),
     ]);
+    // Added back to back, so a timestamp-only id could collide and make +
+    // on Cake count Coffee instead.
+    expect(store.products.map((p) => p.id).toSet(), hasLength(2));
 
     await tester.pumpWidget(_app());
     await tester.pump();

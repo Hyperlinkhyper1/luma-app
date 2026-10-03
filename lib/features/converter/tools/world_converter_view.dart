@@ -19,7 +19,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
   String? _source;
   String? _outputParent;
   WorldCensus? _census;
-  WorldTarget _target = WorldTarget.supported.last;
+  WorldTarget _target = WorldTarget.latest(WorldEdition.bedrock);
   bool _entities = true;
   bool _players = true;
   bool _statistics = true;
@@ -199,8 +199,10 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                   items: WorldTarget.supported
                       .where((t) => t.edition == _target.edition)
                       .map(
-                        (t) =>
-                            DropdownMenuItem(value: t, child: Text(t.version)),
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(t.displayVersion),
+                        ),
                       )
                       .toList(),
                   onChanged: _busy
@@ -216,7 +218,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Currently writes Java 1.21.10 or Bedrock 1.21.120. Newer source versions and custom dimensions are refused.',
+                  'Java 1.8.8–26.3 and Bedrock 1.12–1.26.60 release formats. Targets before Java 1.13 or Bedrock 1.18.30 require excluding entities and players. Incompatible selected records cause an error. Custom dimensions are refused.',
                   style: TextStyle(color: luma.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: 12),

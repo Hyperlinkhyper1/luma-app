@@ -2,6 +2,14 @@
 
 Recorded on 2026-10-03 for **GPT 6 Astra (Ultra)**.
 
+## Mouse capture repair
+
+The cruise page now uses Luma's native child-window WebView2 host for direct mouse input. The scene focuses its canvas before requesting pointer lock, recaptures the mouse after choosing a map destination or movement mode, and sends JSON strings compatible with the native readiness/error bridge. Native errors hide the child window so Flutter's Retry action remains accessible.
+
+After this repair: 14 Node tests, 5 focused cruise Flutter tests and 4 artifact registration tests passed; changed-path Dart analysis was clean. The host-selection regression failed against the previous offscreen host and passed with the native host. Readiness, error-window visibility and stale retry callbacks have widget coverage. Chrome runtime checks confirmed boarding captures the cursor, Escape releases it, and a deck-map selection restores capture. The complete Flutter embedding's pointer capture has not been exercised on the desktop in this repair run.
+
+Current HTML SHA-256: `90a709a9e5197fac920b2c4c2c8b761a5eec0b8ac2ccbe0f67e56c7130e45452`. The performance measurements below describe the earlier artifact, before this input-host repair.
+
 ## Automated checks
 
 | Check | Result |

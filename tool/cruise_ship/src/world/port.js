@@ -14,6 +14,16 @@ import { shipU } from '../ship/materials.js';
 
 const QY = 2.6;            // quay level above the water
 const QZ = 24.2;           // quay edge (hull + fenders)
+const QX0 = -420, QX1 = 430, QZ1 = 140;     // quay extent
+const CX0 = 210, CX1 = 420, CBEAM = 42;     // container berth ahead of the bow
+const HZ = -760;                            // the old city across the harbour
+
+/** Plan rectangles [x0, z0, x1, z1] in the ship frame that boats keep out of. */
+export const PORT_BLOCKS = [
+  [QX0, QZ - 1.2, QX1, QZ1],                                   // quay and fenders
+  [CX0 + 5, QZ - 0.8 - CBEAM, CX1 - 5, QZ - 0.8],              // container ship
+  [-900, HZ + 40, 900, HZ + 70],                               // harbour wall
+];
 
 const hash = (p) => fract(sin(dot(p, vec2(127.1, 311.7))).mul(43758.5453));
 
@@ -98,7 +108,7 @@ export class Port {
     };
 
     // --- quay -------------------------------------------------------------------
-    const qx0 = -420, qx1 = 430, qz1 = 140;
+    const qx0 = QX0, qx1 = QX1, qz1 = QZ1;
     B.boxMM('concrete', qx0, -6, QZ, qx1, QY, qz1);
     col.boxMM(qx0, -6, QZ, qx1, QY, qz1);
     // Edge kerb, fenders, bollards.
@@ -257,10 +267,10 @@ export class Port {
 
     // --- container terminal: cranes and a berthed container ship (photo 10) -------
     {
-      const cx0 = 210, cx1 = 420;
+      const cx0 = CX0, cx1 = CX1;
       // Container ship alongside ahead of the cruise ship.
       // Same berth line as the cruise ship, just ahead of her bow.
-      const L = cx1 - cx0 - 10, Bm = 42;
+      const L = cx1 - cx0 - 10, Bm = CBEAM;
       const zs = QZ - 0.8, zp = zs - Bm;
       B.boxMM('cshipHull', cx0 + 5, -1, zp, cx0 + 5 + L, 11, zs);
       B.boxMM('cshipRed', cx0 + 5, -9, zp + 0.2, cx0 + 5 + L, -1, zs - 0.2);
@@ -290,7 +300,7 @@ export class Port {
     {
       let s = 9;
       const rnd = () => { s = (Math.imul(s, 1103515245) + 12345) | 0; return ((s >>> 0) % 10000) / 10000; };
-      const zc = -760;
+      const zc = HZ;
       // Harbour wall.
       B.boxMM('concrete', -900, -4, zc + 40, 900, 3.2, zc + 70);
       for (let x = -880; x < 880; x += 9 + rnd() * 14) {

@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../app/widgets.dart';
 import '../../../../../theme/luma_theme.dart';
-import '../../_shared/windows_webview.dart';
+import '../../_shared/native_webview.dart';
+import '../../_shared/windows_webview.dart' show windowsAssetPath;
 import 'ai_benchmark.dart';
 import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
@@ -29,6 +31,50 @@ const cruiseShipBenchmark = AiBenchmark(
 
 const cruiseShipAsset =
     'server/benchmarks/scenes/cruise_ship_gpt6_astra_ultra/index.html';
+
+const cruiseShipOpusBenchmark = AiBenchmark(
+  id: 'cruise_ship_opus55_ultracode',
+  kind: 'cruise_ship',
+  model: 'Opus 5.5 (Ultracode)',
+  vendor: 'anthropic',
+  description:
+      'MSC Virtuosa at true scale on a WebGPU sea: walk the outside decks '
+      'and the Deck 7 lifeboat promenade, ride a tender at sea level, fly a '
+      'drone or moor in port, with a day/night cycle, volumetric clouds, '
+      'rain, fog and thunderstorms.',
+  sizeBytes: 0,
+  sha256: '',
+);
+
+const cruiseShipOpusAsset =
+    'assets/ai_usage/cruise_ship_tests/opus_5_5_ultracode.html';
+
+/// Contestants bundled with the app, so they work with no server. A server
+/// entry with the same id replaces its fallback.
+const _bundledCruiseShips = [cruiseShipBenchmark, cruiseShipOpusBenchmark];
+
+const _bundledCruiseScenes = {
+  'cruise_ship_gpt6_astra_ultra': cruiseShipAsset,
+  'cruise_ship_opus55_ultracode': cruiseShipOpusAsset,
+};
+
+/// Where a contestant's scene lives on disk: the bundled copy while the
+/// server has no published file for it, otherwise the verified download.
+Future<String> _cruiseScenePath(
+  AiBenchmarkRepository repository,
+  AiBenchmark benchmark,
+) async {
+  final bundled = _bundledCruiseScenes[benchmark.id];
+  if (bundled != null && benchmark.sha256.isEmpty) {
+    return windowsAssetPath(bundled);
+  }
+  try {
+    return (await repository.sceneFile(benchmark.id)).path;
+  } catch (_) {
+    if (bundled != null) return windowsAssetPath(bundled);
+    rethrow;
+  }
+}
 
 class CruiseShipTestPage extends StatefulWidget {
   const CruiseShipTestPage({super.key});
@@ -61,6 +107,29 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
     super.dispose();
   }
 
+  /// Opens the scene in the default browser, outside the app window.
+  Future<void> _openInBrowser(
+    AiBenchmarkRepository repository,
+    AiBenchmark benchmark,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    var opened = false;
+    try {
+      final path = await _cruiseScenePath(repository, benchmark);
+      opened = await launchUrl(
+        Uri.file(path),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not open a browser.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = AiBenchmarkScope.of(context);
@@ -70,8 +139,9 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
       builder: (context, _) {
         final serverEntries = repo.benchmarksOfKind('cruise_ship');
         final benchmarks = [
-          if (!serverEntries.any((entry) => entry.id == cruiseShipBenchmark.id))
-            cruiseShipBenchmark,
+          for (final fallback in _bundledCruiseShips)
+            if (!serverEntries.any((entry) => entry.id == fallback.id))
+              fallback,
           ...serverEntries,
         ];
         final selected = benchmarks
@@ -93,6 +163,17 @@ class _CruiseShipTestPageState extends State<CruiseShipTestPage> {
                     icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => setState(() => _selectedId = null),
                   ),
+            actions: [
+              if (selected != null && Platform.isWindows)
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    label: const Text('Open in browser'),
+                    onPressed: () => _openInBrowser(repo, selected),
+                  ),
+                ),
+            ],
           ),
           body: selected == null
               ? SingleChildScrollView(
@@ -217,18 +298,8 @@ class _CruiseSceneLoader extends StatefulWidget {
 class _CruiseSceneLoaderState extends State<_CruiseSceneLoader> {
   late Future<String> _path = _load();
 
-  Future<String> _load() async {
-    final bundled = widget.benchmark.id == cruiseShipBenchmark.id;
-    if (bundled && widget.benchmark.sha256.isEmpty) {
-      return windowsAssetPath(cruiseShipAsset);
-    }
-    try {
-      return (await widget.repository.sceneFile(widget.benchmark.id)).path;
-    } catch (_) {
-      if (bundled) return windowsAssetPath(cruiseShipAsset);
-      rethrow;
-    }
-  }
+  Future<String> _load() =>
+      _cruiseScenePath(widget.repository, widget.benchmark);
 
   @override
   Widget build(BuildContext context) => FutureBuilder<String>(
@@ -265,7 +336,6 @@ class _CruiseSceneWebview extends StatefulWidget {
 }
 
 class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
-  StreamSubscription<dynamic>? _messages;
   Timer? _timeout;
   bool _ready = false;
   String? _error;
@@ -312,8 +382,6 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
 
   void _retry() {
     _timeout?.cancel();
-    _messages?.cancel();
-    _messages = null;
     setState(() {
       _attempt++;
       _ready = false;
@@ -325,7 +393,6 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
   @override
   void dispose() {
     _timeout?.cancel();
-    _messages?.cancel();
     super.dispose();
   }
 
@@ -335,14 +402,17 @@ class _CruiseSceneWebviewState extends State<_CruiseSceneWebview> {
     return Stack(
       children: [
         Positioned.fill(
-          child: WindowsWebview(
+          child: NativeWebview(
             key: ValueKey('${widget.path}:$_attempt'),
             fileUrl: Uri.file(widget.path).toString(),
-            onController: (controller) {
+            visible: _error == null,
+            background: context.luma.background,
+            onMessage: (message) {
+              if (mounted && attempt == _attempt) _receive(message);
+            },
+            onError: (message) {
               if (!mounted || attempt != _attempt) return;
-              _messages = controller.webMessage.listen((message) {
-                if (mounted && attempt == _attempt) _receive(message);
-              });
+              _receive({'type': 'cruise-error', 'message': message});
             },
           ),
         ),

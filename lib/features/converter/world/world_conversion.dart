@@ -1,3 +1,5 @@
+import 'world_versions.dart';
+
 enum WorldEdition {
   java('Java Edition'),
   bedrock('Bedrock Edition');
@@ -11,12 +13,28 @@ class WorldTarget {
   final WorldEdition edition;
   final String version;
 
-  static const supported = [
-    WorldTarget(WorldEdition.java, '1.21.10'),
-    WorldTarget(WorldEdition.bedrock, '1.21.120'),
-  ];
+  static final supported = List<WorldTarget>.unmodifiable([
+    for (final version in javaWorldVersions.keys.toList().reversed)
+      WorldTarget(WorldEdition.java, version),
+    for (final version in bedrockWorldVersions.reversed)
+      WorldTarget(WorldEdition.bedrock, version),
+  ]);
 
-  String get label => '${edition.label} $version';
+  static WorldTarget latest(WorldEdition edition) =>
+      supported.firstWhere((t) => t.edition == edition);
+
+  Object get savedVersion => edition == WorldEdition.java
+      ? javaWorldVersions[version] ?? -1
+      : version.split('.').map(int.parse).toList();
+
+  String get format =>
+      '${edition.name.toUpperCase()}_${version.replaceAll('.', '_')}';
+
+  String get displayVersion =>
+      edition == WorldEdition.java && version.endsWith('.0')
+      ? version.substring(0, version.length - 2)
+      : version;
+  String get label => '${edition.label} $displayVersion';
 }
 
 class WorldConversionOptions {
@@ -53,7 +71,13 @@ class WorldEntityRecord {
   }
 
   String get canonicalType {
-    final name = type.replaceFirst('minecraft:', '');
+    final name = type
+        .replaceFirst('minecraft:', '')
+        .replaceAllMapped(
+          RegExp(r'([a-z0-9])([A-Z])'),
+          (m) => '${m[1]}_${m[2]}',
+        )
+        .toLowerCase();
     if (name.endsWith('_chest_boat') ||
         name == 'chest_boat' ||
         name == 'bamboo_chest_raft') {
@@ -72,6 +96,13 @@ class WorldEntityRecord {
       'xp_bottle' => 'experience_bottle',
       'tropicalfish' => 'tropical_fish',
       'zombie_pigman' => 'zombified_piglin',
+      'pig_zombie' => 'zombified_piglin',
+      'lava_slime' => 'magma_cube',
+      'mushroom_cow' => 'mooshroom',
+      'ozelot' => 'ocelot',
+      'villager_golem' => 'iron_golem',
+      'snow_man' => 'snow_golem',
+      'entity_horse' => 'horse',
       'leash_knot' => 'leash_knot',
       _ => name,
     };
@@ -103,6 +134,95 @@ class WorldCensus {
   );
 }
 
+/// Reject entities absent from the destination's release schema.
+void verifyWorldEntityTarget(WorldCensus source, WorldTarget target) {
+  final targetParts = target.version.split('.').map(int.parse).toList();
+  for (final entity in source.entities) {
+    final type = entity.canonicalType.replaceFirst('@hive', '');
+    final minimum = target.edition == WorldEdition.java
+        ? switch (type) {
+            'cat' ||
+            'fox' ||
+            'panda' ||
+            'pillager' ||
+            'ravager' ||
+            'trader_llama' ||
+            'wandering_trader' => '1.14.0',
+            'bee' => '1.15.0',
+            'hoglin' || 'piglin' || 'zoglin' || 'strider' => '1.16.0',
+            'piglin_brute' => '1.16.2',
+            'axolotl' ||
+            'goat' ||
+            'glow_squid' ||
+            'glow_item_frame' ||
+            'marker' => '1.17.0',
+            'allay' ||
+            'frog' ||
+            'tadpole' ||
+            'warden' ||
+            'chest_boat' => '1.19.0',
+            'interaction' ||
+            'item_display' ||
+            'block_display' ||
+            'text_display' => '1.19.4',
+            'camel' || 'sniffer' => '1.20.0',
+            'armadillo' => '1.20.5',
+            'breeze' ||
+            'bogged' ||
+            'wind_charge' ||
+            'breeze_wind_charge' ||
+            'ominous_item_spawner' => '1.21.0',
+            'creaking' => '1.21.2',
+            'happy_ghast' => '1.21.6',
+            'copper_golem' || 'mannequin' => '1.21.9',
+            'camel_husk' ||
+            'nautilus' ||
+            'zombie_nautilus' ||
+            'parched' => '1.21.11',
+            'sulfur_cube' => '26.2.0',
+            'cushion' => '26.3.0',
+            _ => null,
+          }
+        : switch (type) {
+            'allay' ||
+            'frog' ||
+            'tadpole' ||
+            'warden' ||
+            'chest_boat' => '1.19.0',
+            'trader_llama' => '1.19.10',
+            'camel' || 'sniffer' => '1.20.0',
+            'armadillo' => '1.20.80',
+            'breeze' ||
+            'bogged' ||
+            'wind_charge_projectile' ||
+            'breeze_wind_charge_projectile' ||
+            'ominous_item_spawner' => '1.21.0',
+            'creaking' => '1.21.50',
+            'happy_ghast' => '1.21.80',
+            'copper_golem' => '1.21.100',
+            'camel_husk' ||
+            'nautilus' ||
+            'zombie_nautilus' ||
+            'parched' => '1.21.130',
+            'sulfur_cube' => '1.26.20',
+            'cushion' => '1.26.40',
+            'frostbite' => '1.26.60',
+            _ => null,
+          };
+    if (minimum == null) continue;
+    final parts = minimum.split('.').map(int.parse).toList();
+    for (var i = 0; i < 3; i++) {
+      if (targetParts[i] > parts[i]) break;
+      if (targetParts[i] < parts[i]) {
+        throw FormatException(
+          '${target.label} cannot represent ${entity.type}. '
+          'Choose $minimum or newer, or exclude entities.',
+        );
+      }
+    }
+  }
+}
+
 /// Check saved records, including multiplicity, rather than trusting an exit code.
 void verifyWorldConversion(
   WorldCensus source,
@@ -110,9 +230,7 @@ void verifyWorldConversion(
   WorldConversionOptions options,
 ) {
   if (output.edition != options.target.edition ||
-      (output.edition == WorldEdition.java && output.version != 4556) ||
-      (output.edition == WorldEdition.bedrock &&
-          output.version.toString() != '[1, 21, 120]')) {
+      output.version.toString() != options.target.savedVersion.toString()) {
     throw const FormatException(
       'The saved world has the wrong target version.',
     );
@@ -137,6 +255,7 @@ void verifyWorldConversion(
     }
     return;
   }
+  verifyWorldEntityTarget(output, options.target);
   String bucket(WorldEntityRecord e, int x, int y, int z) =>
       '${e.canonicalType}:${e.dimension}:$x:$y:$z';
   final remaining = <String, List<WorldEntityRecord>>{};

@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
 import { boatParts, boatHullMaterial, BOAT } from '../ship/lifeboat.js';
-import { hullHalf } from '../ship/dims.js';
+import { hullHalf, BOW_X, STERN_X } from '../ship/dims.js';
 import { settings } from '../core/settings.js';
+import { PORT_BLOCKS } from '../world/port.js';
 
 // The tender: an orange boat at sea level beside the hull, the closest
 // thing to standing on the pier in the reference photos and looking up a
@@ -17,6 +18,36 @@ const _e = new THREE.Euler();
 const _v = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
+const _push = new THREE.Vector2();
+
+// Points along the boat's centreline tested for contact, and how far each
+// must stay from anything solid (half the beam plus a fender).
+const SAMPLES = [-0.42 * BOAT.L, 0, 0.42 * BOAT.L];
+const GAP = BOAT.B / 2 + 0.7;
+
+/**
+ * If (x, z) is closer than GAP to something solid, sets `out` to the
+ * smallest move that clears it and returns true.
+ */
+function clear(x, z, port, out) {
+  out.set(0, 0);
+  if (x > STERN_X && x < BOW_X) {
+    const hh = hullHalf(x, 0.5) + GAP;
+    if (Math.abs(z) < hh) out.y = (z < 0 ? -hh : hh) - z;
+  }
+  if (port) {
+    for (const [x0, z0, x1, z1] of PORT_BLOCKS) {
+      if (x < x0 - GAP || x > x1 + GAP || z < z0 - GAP || z > z1 + GAP) continue;
+      // Out through the nearest side.
+      const moves = [x0 - GAP - x, x1 + GAP - x, z0 - GAP - z, z1 + GAP - z];
+      let best = 0;
+      for (let i = 1; i < 4; i++) if (Math.abs(moves[i]) < Math.abs(moves[best])) best = i;
+      if (best < 2) out.x += moves[best];
+      else out.y += moves[best];
+    }
+  }
+  return out.x !== 0 || out.y !== 0;
+}
 
 export class Tender {
   constructor(scene, ocean, materials) {
@@ -83,17 +114,21 @@ export class Tender {
     this.pos.x += Math.cos(this.heading) * this.speed * dt;
     this.pos.y += Math.sin(this.heading) * this.speed * dt;
 
-    // Keep clear of the hull (with fenders' worth of margin) and the ends.
-    const hh = hullHalf(this.pos.x, 0.5) + 4.5;
-    if (Math.abs(this.pos.y) < hh && this.pos.x > -172 && this.pos.x < 172) {
-      this.pos.y = Math.sign(this.pos.y || 1) * hh;
-      this.speed *= 0.6;
+    // Keep clear of the hull and, in port, the quay, the container ship and
+    // the harbour wall. Bow, middle and stern are each pushed out, so the
+    // boat can't nose into anything either; touching scrubs off speed.
+    const port = settings.get().sea.location === 'port';
+    let touched = false;
+    for (let pass = 0; pass < 2; pass++) {
+      const ch = Math.cos(this.heading), sh = Math.sin(this.heading);
+      for (const s of SAMPLES) {
+        if (clear(this.pos.x + ch * s, this.pos.y + sh * s, port, _push)) {
+          this.pos.add(_push);
+          touched = true;
+        }
+      }
     }
-    // In port the starboard side is the quay.
-    if (settings.get().sea.location === 'port' && this.pos.x > -425 && this.pos.x < 435 && this.pos.y > -26) {
-      if (this.pos.y > 0 || Math.abs(this.pos.x) > 172) this.pos.y = Math.min(this.pos.y, 22.6);
-      if (Math.abs(this.pos.x) > 172 && this.pos.y > 21) { this.pos.y = 21; this.speed *= 0.5; }
-    }
+    if (touched) this.speed *= Math.max(0, 1 - dt * 5);
     const r = Math.hypot(this.pos.x, this.pos.y);
     if (r > 1400) this.pos.multiplyScalar(1400 / r);
 

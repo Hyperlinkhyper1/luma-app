@@ -39,6 +39,9 @@ class LEn extends L {
   String get tabClose => 'Close tab';
 
   @override
+  String get tabNew => 'New tab';
+
+  @override
   String get tabOpenPlugin => 'Open another plugin';
 
   @override

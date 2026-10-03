@@ -22,6 +22,39 @@ const options = WorldConversionOptions(
 );
 
 void main() {
+  test('catalog includes historical and newest actual release schemas', () {
+    expect(WorldTarget.supported.length, 124);
+    expect(WorldTarget.latest(WorldEdition.java).version, '26.3.0');
+    expect(WorldTarget.latest(WorldEdition.bedrock).version, '1.26.60');
+    expect(const WorldTarget(WorldEdition.java, '26.3.0').savedVersion, 5017);
+    expect(const WorldTarget(WorldEdition.java, '1.8.8').savedVersion, 0);
+    expect(const WorldTarget(WorldEdition.java, '1.21.11').savedVersion, 4671);
+    expect(
+      const WorldTarget(WorldEdition.bedrock, '1.26.60').format,
+      'BEDROCK_1_26_60',
+    );
+  });
+  test(
+    'verification uses the selected version rather than the old fixed version',
+    () {
+      final source = census([cow]);
+      final output = WorldCensus(
+        edition: WorldEdition.java,
+        entities: [cow],
+        localPlayer: true,
+        remotePlayers: 0,
+        version: 5017,
+      );
+      final options = WorldConversionOptions(
+        target: WorldTarget.latest(WorldEdition.java),
+      );
+      verifyWorldConversion(source, output, options);
+      expect(
+        () => verifyWorldConversion(source, census([cow]), options),
+        throwsFormatException,
+      );
+    },
+  );
   test('rejects a successful engine result that lost an entity', () {
     expect(
       () => verifyWorldConversion(
@@ -32,6 +65,37 @@ void main() {
       throwsFormatException,
     );
   });
+  test(
+    'matching records cannot mask entities absent from the selected release',
+    () {
+      final entity = WorldEntityRecord('minecraft:armadillo', 0, [2, 64, 2]);
+      expect(
+        () => verifyWorldEntityTarget(
+          census([entity]),
+          const WorldTarget(WorldEdition.java, '1.20.4'),
+        ),
+        throwsFormatException,
+      );
+      verifyWorldEntityTarget(
+        census([entity]),
+        const WorldTarget(WorldEdition.java, '1.20.5'),
+      );
+      final bees = census([
+        WorldEntityRecord('minecraft:bee@hive', 0, [2, 64, 2]),
+      ]);
+      expect(
+        () => verifyWorldEntityTarget(
+          bees,
+          const WorldTarget(WorldEdition.java, '1.14.4'),
+        ),
+        throwsFormatException,
+      );
+      verifyWorldEntityTarget(
+        bees,
+        const WorldTarget(WorldEdition.java, '1.15.2'),
+      );
+    },
+  );
   test('equal counts cannot mask changed kinds, dimensions or positions', () {
     for (final replacement in [
       const WorldEntityRecord('minecraft:zombie', 0, [2, 64, 2]),
@@ -205,6 +269,36 @@ void main() {
         await Directory('${excluded.path}/luma-java-statistics').exists(),
         false,
       );
+    },
+  );
+  test(
+    'legacy Bedrock refuses selected records before invoking an engine',
+    () async {
+      final root = await Directory.systemTemp.createTemp('luma-world-legacy-');
+      addTearDown(() => root.delete(recursive: true));
+      final source = await Directory('${root.path}/source').create();
+      await File('${source.path}/level.dat').writeAsString('source');
+      final service = WorldConverterService(
+        worker: (args) async {
+          expect(args.first, 'scan');
+          return census([cow]);
+        },
+        versionWorker: (_, _, _, _) async =>
+            fail('Unsafe record conversion invoked'),
+      );
+      await expectLater(
+        service.convert(
+          source: source.path,
+          destination: '${root.path}/result',
+          options: const WorldConversionOptions(
+            target: WorldTarget(WorldEdition.bedrock, '1.12.0'),
+          ),
+        ),
+        throwsFormatException,
+      );
+      expect(await Directory('${root.path}/result').exists(), false);
+      expect(await File('${source.path}/level.dat').readAsString(), 'source');
+      expect(await root.list().length, 1);
     },
   );
 }
