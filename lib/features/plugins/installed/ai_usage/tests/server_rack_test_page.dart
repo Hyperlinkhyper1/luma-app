@@ -34,6 +34,33 @@ const _bundledRackTests = <_BundledRackTest>[
         'cutaway and airflow modes.',
     asset: 'assets/ai_usage/server_rack_tests/sonnet_5_5_xhigh.html',
   ),
+  _BundledRackTest(
+    model: 'Sonnet 5.5 (High)',
+    description: 'A 42U rack with labelled units that opens into a '
+        'per-server detail view with airflow simulation.',
+    asset: 'assets/ai_usage/server_rack_tests/sonnet_5_5_high.html',
+  ),
+  _BundledRackTest(
+    model: 'Opus 5.5 (Low)',
+    description: 'A cabled 42U rack of nine servers across five archetypes; '
+        'each slides out into an open-chassis slice with exploded, '
+        'cutaway and obstacle-aware airflow views.',
+    asset: 'assets/ai_usage/server_rack_tests/opus_5_5_low.html',
+  ),
+  _BundledRackTest(
+    model: 'Opus 5.5 (XHigh)',
+    description: 'A cabled, power-budgeted 42U rack of nine servers with '
+        'nine different layouts; each unlatches, slides out on its rails '
+        'and opens into a hoverable slice with exploded, cutaway and '
+        'solved-airflow views.',
+    asset: 'assets/ai_usage/server_rack_tests/opus_5_5_xhigh.html',
+  ),
+  _BundledRackTest(
+    model: 'Muse Spark 1.3 (Max)',
+    description: 'RACKSCOPE·42U: a cabled rack with a unit browser and '
+        'an inspectable single-slice server view.',
+    asset: 'assets/ai_usage/server_rack_tests/muse_spark_1_3_max.html',
+  ),
 ];
 
 /// The **Server Rack Test** page: a 42U rack that opens into a single,

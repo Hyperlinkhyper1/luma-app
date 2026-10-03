@@ -1,0 +1,967 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>42U Rack · Opus 5.5 Low</title>
+<style>
+  :root { --bg:#14171b; --panel:rgba(16,20,25,.88); --line:#2c343e; --ink:#d9e0e8; --dim:#8794a3; --acc:#4fa3e0; --warn:#e0a24f; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:13px/1.35 "Segoe UI",system-ui,sans-serif; overflow:hidden; user-select:none; }
+  canvas { display:block; }
+  .panel { position:absolute; background:var(--panel); border:1px solid var(--line); border-radius:8px; backdrop-filter:blur(6px); }
+  #title { left:14px; top:12px; padding:8px 12px; }
+  #title b { letter-spacing:.08em; }
+  #title small { display:block; color:var(--dim); }
+  #bar { left:50%; transform:translateX(-50%); bottom:14px; padding:6px; display:flex; flex-wrap:wrap; gap:4px; justify-content:center; max-width:calc(100% - 28px); }
+  button { background:#1f262e; color:var(--ink); border:1px solid #333d48; border-radius:5px; padding:6px 9px; font:600 11px "Segoe UI",sans-serif; letter-spacing:.05em; cursor:pointer; }
+  button:hover { border-color:var(--acc); }
+  button.on { background:#1d3a52; border-color:var(--acc); color:#fff; }
+  button.big { background:#24557c; border-color:#4fa3e0; }
+  .sep { width:1px; background:var(--line); margin:0 3px; }
+  #tip { position:absolute; pointer-events:none; padding:6px 9px; display:none; font-weight:600; line-height:1.3; }
+  #tip span { color:var(--dim); font-weight:400; }
+  #card { right:14px; top:12px; width:250px; padding:12px; display:none; }
+  #card h3 { margin:0 0 4px; font-size:14px; letter-spacing:.06em; }
+  #card .k { color:var(--dim); }
+  #card button { margin-top:10px; width:100%; }
+  #slicebar { left:50%; top:12px; transform:translateX(-50%); padding:6px 8px; display:none; align-items:center; gap:10px; }
+  #slicebar .mid { text-align:center; min-width:190px; }
+  #slicebar .mid b { display:block; letter-spacing:.07em; }
+  #slicebar .mid span { color:var(--dim); font-size:12px; }
+  #notes { right:14px; top:12px; width:270px; padding:10px 12px; display:none; font-size:12px; }
+  #notes h4 { margin:0 0 6px; font-size:12px; letter-spacing:.08em; color:var(--acc); }
+  #notes p { margin:0 0 6px; color:#b9c3cf; }
+  #spec { left:14px; top:70px; width:230px; padding:10px 12px; display:none; font-size:12px; }
+  #spec div { display:flex; justify-content:space-between; border-bottom:1px solid #222a33; padding:2px 0; }
+  #spec div span:first-child { color:var(--dim); }
+  #legend { left:14px; bottom:70px; padding:8px 10px; font-size:11px; color:var(--dim); display:none; }
+  .sw { display:inline-block; width:22px; height:6px; border-radius:3px; vertical-align:middle; margin-right:5px; background:linear-gradient(90deg,#3d8cff,#f2c14e,#ff4b3a); }
+</style>
+</head>
+<body>
+<div id="title" class="panel"><b>42U RACK · OPUS 5.5 (LOW)</b><small id="modeName">FULL RACK MODE — hover a server, click to inspect</small></div>
+<div id="tip" class="panel"></div>
+<div id="card" class="panel"></div>
+<div id="slicebar" class="panel">
+  <button id="prev">&lt; PREVIOUS SERVER</button>
+  <div class="mid"><b id="sIdx">SERVER 01 / 09</b><span id="sName"></span></div>
+  <button id="next">NEXT SERVER &gt;</button>
+</div>
+<div id="spec" class="panel"></div>
+<div id="notes" class="panel"></div>
+<div id="legend" class="panel"><span class="sw"></span>air temperature: cool intake → hot exhaust</div>
+<div id="bar" class="panel"></div>
+
+<script src="../../airline_tycoon/scene/vendor/three-0.160.1.min.js"></script>
+<script>
+if (!window.THREE) {
+  document.body.insertAdjacentHTML('beforeend', '<div class="panel" style="left:30%;top:40%;padding:16px">three.js could not be loaded from ../../airline_tycoon/scene/vendor/.</div>');
+  throw new Error('three missing');
+}
+const V3 = THREE.Vector3;
+
+// ───────────────────────────── renderer / scene
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x14171b);
+const camera = new THREE.PerspectiveCamera(30, 1, 0.05, 400);
+
+(() => {
+  const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
+  es.add(new THREE.Mesh(new THREE.BoxGeometry(60, 30, 60), new THREE.MeshBasicMaterial({ color: 0x262c34, side: THREE.BackSide })));
+  const lp = (c, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), new THREE.MeshBasicMaterial({ color: new THREE.Color(c, c, c) })); m.position.set(x, y, z); es.add(m); };
+  lp(6, 0, 14, 0, 30, 1, 8); lp(3, -28, 6, 0, 1, 10, 30); lp(2, 28, 4, 10, 1, 6, 20); lp(1.5, 0, 6, 28, 30, 6, 1);
+  scene.environment = pm.fromScene(es, 0.04).texture;
+})();
+scene.add(new THREE.HemisphereLight(0xdfe8f0, 0x1c2026, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 1.5); key.position.set(10, 24, 16); scene.add(key);
+const fill = new THREE.DirectionalLight(0xbcd2ff, 0.45); fill.position.set(-14, 8, -10); scene.add(fill);
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x1a1e23, roughness: .9, metalness: 0 }));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const grid = new THREE.GridHelper(120, 120, 0x2a3138, 0x20262c); grid.position.y = 0.002; scene.add(grid);
+
+// ───────────────────────────── materials + instancing kit
+function makeMats() {
+  const s = (c, m, r) => new THREE.MeshStandardMaterial({ color: c, metalness: m, roughness: r });
+  const e = (c, i = 2.2) => new THREE.MeshStandardMaterial({ color: 0x111111, emissive: c, emissiveIntensity: i });
+  const duct = s(0x15171a, .1, .6); duct.transparent = true; duct.opacity = .42; duct.depthWrite = false;
+  return {
+    chassis: s(0x3a3f46, .75, .42), wall: s(0x484e57, .78, .38), cover: s(0x50565f, .75, .4), silver: s(0xb7bcc3, .92, .28),
+    alu: s(0xcdd1d6, .88, .3), dark: s(0x1c1f23, .4, .6), black: s(0x0e0f11, .1, .7), plastic: s(0x2a2c30, .1, .55),
+    pcb: s(0x1d4a2b, .15, .5), pcbDark: s(0x161c19, .2, .5), gold: s(0xd2a54a, 1, .25), copper: s(0xb8733a, 1, .3),
+    spreader: s(0x2a2e35, .7, .35), fan: s(0x131416, .1, .6), grille: s(0x08090a, .3, .7), psu: s(0x5d636b, .8, .4),
+    label: s(0xd8dce1, 0, .8), blue: s(0x2a6fb8, 0, .55), yellow: s(0xc6a02a, 0, .55), orange: s(0xc0651f, 0, .55),
+    pcable: s(0x18191b, 0, .75), rackFrame: s(0x23272c, .7, .45), rail: s(0x8e949b, .85, .35), blank: s(0x1e2125, .5, .55),
+    pdu: s(0x141619, .3, .55), duct,
+    ledG: e(0x37ff6e), ledB: e(0x3aa0ff), ledA: e(0xffaa2a), ledW: e(0xe8f2ff, 1.6)
+  };
+}
+const UB = new THREE.BoxGeometry(1, 1, 1), UC = new THREE.CylinderGeometry(.5, .5, 1, 14);
+class Kit {
+  constructor(group, mats) { this.g = group; this.m = mats; this.b = {}; }
+  add(geo, mk, x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) {
+    const k = (geo === UB ? 'b' : 'c') + mk;
+    (this.b[k] || (this.b[k] = { geo, mk, list: [] })).list.push([x, y, z, sx, sy, sz, rx, ry, rz]);
+  }
+  box(w, h, d, x, y, z, mk, rx, ry, rz) { this.add(UB, mk, x, y + h / 2, z, w, h, d, rx, ry, rz); }
+  cyl(r, h, x, y, z, mk, axis = 'y') { this.add(UC, mk, x, y, z, 2 * r, h, 2 * r, axis === 'z' ? Math.PI / 2 : 0, 0, axis === 'x' ? Math.PI / 2 : 0); }
+  flush() {
+    const o = new THREE.Object3D();
+    for (const k in this.b) {
+      const { geo, mk, list } = this.b[k];
+      const im = new THREE.InstancedMesh(geo, this.m[mk], list.length);
+      list.forEach((p, i) => { o.position.set(p[0], p[1], p[2]); o.rotation.set(p[6], p[7], p[8]); o.scale.set(p[3], p[4], p[5]); o.updateMatrix(); im.setMatrixAt(i, o.matrix); });
+      im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); this.g.add(im);
+    }
+    this.b = {};
+  }
+}
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function label(txt, h = .3, col = '#dfe6ee', border = '#4a90c8') {
+  const c = document.createElement('canvas'), x = c.getContext('2d'), fs = 44, lines = txt.split('\n');
+  x.font = `600 ${fs}px Segoe UI, sans-serif`;
+  const w = Math.ceil(Math.max(...lines.map(l => x.measureText(l).width)) + 36), hh = Math.ceil(lines.length * fs * 1.2 + 20);
+  c.width = w; c.height = hh;
+  x.fillStyle = 'rgba(12,16,20,.85)'; x.beginPath(); x.roundRect(2, 2, w - 4, hh - 4, 12); x.fill();
+  x.strokeStyle = border; x.lineWidth = 3; x.stroke();
+  x.font = `600 ${fs}px Segoe UI, sans-serif`; x.fillStyle = col; x.textBaseline = 'top';
+  lines.forEach((l, i) => x.fillText(l, 18, 12 + i * fs * 1.2));
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
+  const H = h * lines.length; s.scale.set(H * w / hh, H, 1); s.renderOrder = 20; return s;
+}
+
+// ───────────────────────────── rack geometry constants
+const U = 0.445, RAIL_W = 4.82, RACK_W = 6.4, RACK_D = 10.6, BASE = 0.9, RACK_H = 42 * U;
+const ZF = 4.8, W = 4.3, BT = .12;              // server front plane in rack, chassis width, mainboard top
+const uY = n => BASE + (n - 1) * U;
+const STAGE = new V3(0, 1.0, 17);
+
+const TYPES = {
+  gp:      { D: 6.6, info: '1U · compact & shallow · 2 CPU · 16 DIMM · 1 LP PCIe', role: 'Web / app tier' },
+  virt:    { D: 7.2, info: '2U · CPU-heavy · 2 CPU · 32 DIMM · 2 risers', role: 'Hypervisor (VM density)' },
+  db:      { D: 7.2, info: '2U · 24× NVMe U.2 · 32 DIMM · 4× 100G', role: 'OLTP database' },
+  gpu:     { D: 8.6, info: '4U · 8× SXM accelerators · 10-fan wall · 6 PSU', role: 'Training / inference' },
+  storage: { D: 8.2, info: '4U · 24× 3.5" LFF · SAS backplane · HBA', role: 'Object / backup storage' }
+};
+const SERVERS = [
+  { name: 'AI COMPUTE NODE', type: 'gpu', top: 39, u: 4, host: 'gpu-01' },
+  { name: 'DATABASE SERVER', type: 'db', top: 34, u: 2, host: 'db-01' },
+  { name: 'VIRTUALIZATION HOST', type: 'virt', top: 32, u: 2, host: 'vmh-01' },
+  { name: 'VIRTUALIZATION HOST', type: 'virt', top: 30, u: 2, host: 'vmh-02' },
+  { name: 'GENERAL PURPOSE', type: 'gp', top: 28, u: 1, host: 'app-01' },
+  { name: 'GENERAL PURPOSE', type: 'gp', top: 27, u: 1, host: 'app-02' },
+  { name: 'GENERAL PURPOSE', type: 'gp', top: 26, u: 1, host: 'app-03' },
+  { name: 'STORAGE NODE', type: 'storage', top: 8, u: 4, host: 'stor-01' },
+  { name: 'AI COMPUTE NODE', type: 'gpu', top: 4, u: 4, host: 'gpu-02' }
+];
+SERVERS.forEach(s => { s.bottom = s.top - s.u + 1; s.D = TYPES[s.type].D; s.range = `U${s.bottom}-U${s.top}`; if (s.u === 1) s.range = `U${s.top}`; });
+const SWITCHES = [
+  { name: 'TOR SWITCH A', u: 42, ports: 'blue', info: '48× 25G SFP28 · 8× 100G' },
+  { name: 'TOR SWITCH B', u: 41, ports: 'yellow', info: '48× 25G SFP28 · 8× 100G' },
+  { name: 'MGMT SWITCH', u: 21, ports: 'orange', info: '48× 1G RJ45 (BMC network)' }
+];
+const BLANKS = [35, 25, 24, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 21];
+const OPEN = [22, 23];
+
+const rackMats = makeMats();
+
+// ───────────────────────────── server builder (shared by rack LOD and slice LOD)
+const LAYERS = ['base', 'rear', 'storage', 'board', 'fans', 'cpumem', 'duct', 'pcie', 'cover'];
+const EXPLODE_IDX = { base: 0, rear: 0, storage: 1, board: 2, fans: 3, cpumem: 4, duct: 5, pcie: 6, cover: 7 };
+const EXPLODE_NAME = { storage: 'STORAGE BACKPLANE', board: 'MAINBOARD', fans: 'FAN WALL', cpumem: 'CPU + MEMORY', duct: 'AIR DUCT', pcie: 'GPU / PCIe ASSEMBLY', cover: 'TOP COVER', base: 'BASE CHASSIS' };
+
+function buildServer(spec, hi) {
+  const H = spec.u * U - .02, D = spec.D, mats = hi ? makeMats() : rackMats;
+  const root = new THREE.Group(), L = {}, kits = {};
+  for (const n of LAYERS) { L[n] = new THREE.Group(); root.add(L[n]); kits[n] = new Kit(L[n], mats); }
+  const c = { spec, hi, H, D, f: D / 2, r: -D / 2, K: n => kits[n], L, mats, obs: [], rotors: [], zones: {}, vents: [], rnd: rng(spec.top * 97 + spec.u) };
+  const k = c.K('base');
+  if (!hi) k.box(W, H, D - .04, 0, 0, 0, 'chassis');
+  else {
+    k.box(W, .04, D, 0, 0, 0, 'chassis');
+    for (const sx of [-1, 1]) {
+      k.box(.04, H, D, sx * (W / 2 - .02), 0, 0, 'wall');
+      k.box(.05, .16, D * .94, sx * (W / 2 + .045), H / 2 - .08, 0, 'silver');
+      for (let z = -D / 2 + .4; z < D / 2; z += 1.2) k.cyl(.025, .03, sx * (W / 2 + .07), H / 2, z, 'silver', 'x');
+      k.box(.18, .03, D - .1, sx * (W / 2 - .13), H - .05, 0, 'wall');
+    }
+    for (const z of [c.f - .25, c.r + .25]) k.box(W, .05, .04, 0, H - .07, z, 'wall');
+    const cv = c.K('cover');
+    cv.box(W + .02, .03, D, 0, H, 0, 'cover');
+    for (let i = 0; i < 9; i++) cv.box(.9, .006, .05, .9, H + .03, c.r + .5 + i * .12, 'grille');
+    for (let z = -D / 2 + .3; z < D / 2; z += .9) for (const sx of [-1, 1]) cv.cyl(.035, .02, sx * (W / 2 - .1), H + .035, z, 'silver');
+  }
+  for (const sx of [-1, 1]) {
+    k.box(.42, H, .07, sx * (W / 2 + .2), 0, c.f - .035, 'chassis');
+    k.cyl(.045, .1, sx * (W / 2 + .26), H / 2, c.f + .02, 'silver', 'z');
+    if (spec.u > 1) { k.box(.05, H * .6, .05, sx * (W / 2 + .3), H * .2, c.f + .09, 'silver'); }
+  }
+  k.box(.18, .05, .01, -W / 2 - .18, H - .09, c.f + .002, 'label');
+  BUILD[spec.type](c);
+  if (hi) {
+    const rp = c.K('base');
+    rp.box(W - .08, H - .05, .025, 0, .03, c.r + .015, 'wall');
+    for (const [x0, x1, y0, y1] of c.vents)
+      for (let x = x0 + .04; x < x1 - .03; x += .09) for (let y = y0 + .04; y < y1 - .03; y += .09) rp.box(.055, .055, .006, x, y, c.r - .001, 'grille');
+  }
+  for (const n of LAYERS) kits[n].flush();
+  root.userData.ctx = c;
+  return c;
+}
+
+// ── shared parts
+const ob = (c, x0, x1, y0, y1, z0, z1, kind, heat = 0) => c.hi && c.obs.push({ x0, x1, y0, y1, z0: Math.min(z0, z1), z1: Math.max(z0, z1), kind, heat });
+
+function drive(c, x, y, w, h, len, lff) {
+  const k = c.K('storage');
+  k.box(w, h, .06, x, y, c.f + .03, 'dark');
+  k.box(w * (lff ? .9 : .28), h * (lff ? .22 : .86), .02, x + (lff ? 0 : w * .28), y + h * (lff ? .62 : .07), c.f + .065, 'silver');
+  k.cyl(.018, .02, x - w * (lff ? .42 : .25), y + h * .82, c.f + .07, c.rnd() < .9 ? 'ledG' : 'ledA', 'z');
+  if (lff) for (let i = 0; i < 5; i++) k.box(.1, h * .12, .01, x - w * .3 + i * .15, y + h * .2, c.f + .065, 'grille');
+  if (c.hi) {
+    k.box(w * .92, h * .86, len, x, y + h * .07, c.f - len / 2, lff ? 'alu' : 'spreader');
+    k.box(w * .9, .01, len * .5, x, y + h * .93, c.f - len * .4, 'pcb');
+  }
+}
+function backplane(c, z, x0, x1, h, slots) {
+  const k = c.K('storage'), n = slots, sw = (x1 - x0) / n;
+  for (let i = 0; i < n; i++) {
+    const a = x0 + i * sw, w = sw * .55;
+    k.box(w, h, .035, a + w / 2, .06, z, 'pcb');
+    k.box(w * .7, .05, .06, a + w / 2, .2, z + .04, 'black');
+    k.box(w * .5, .04, .05, a + w / 2, h * .7, z - .03, 'plastic');
+    ob(c, a, a + w, 0, h + .06, z - .05, z + .05, 'solid');
+  }
+  k.box(x1 - x0, .05, .035, (x0 + x1) / 2, .06, z, 'pcb');
+  k.box(x1 - x0, .05, .035, (x0 + x1) / 2, h + .01, z, 'pcb');
+  for (let i = 0; i < n; i += 2) k.cyl(.012, .01, x0 + i * sw + .08, h * .9, z + .02, 'ledG', 'z');
+  c.zones.backplane = z;
+}
+function fanWall(c, z, cols, rows, size, depth) {
+  const k = c.K('fans'), x0 = -(cols - 1) / 2 * (size + .04), yb = .06, ys = (c.H - .1 - yb) / rows;
+  k.box(W - .12, .05, depth + .1, 0, c.H - .1, z, 'silver');
+  k.box(W - .12, .04, depth + .1, 0, .04, z, 'silver');
+  for (let i = 0; i <= cols; i++) k.box(.03, c.H - .12, depth + .08, x0 - (size + .04) / 2 + i * (size + .04), .06, z, 'silver');
+  const bladeGeo = new THREE.BoxGeometry(size * .34, size * .13, .015);
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const x = x0 + i * (size + .04), yc = yb + ys * (j + .5), t = .05;
+    k.box(size, t, depth, x, yc - size / 2, z, 'fan'); k.box(size, t, depth, x, yc + size / 2 - t, z, 'fan');
+    k.box(t, size, depth, x - size / 2 + t / 2, yc - size / 2, z, 'fan'); k.box(t, size, depth, x + size / 2 - t / 2, yc - size / 2, z, 'fan');
+    for (const a of [.785, 2.356]) k.box(size * 1.25, .02, .02, x, yc, z + depth / 2 + .01, 'fan', 0, 0, a);
+    k.cyl(size * .17, depth * .6, x, yc, z, 'fan', 'z');
+    k.cyl(.015, .02, x + size * .38, yc + size * .38, z + depth / 2 + .02, 'ledG', 'z');
+    if (c.hi) {
+      const rot = new THREE.Group(); rot.position.set(x, yc, z + depth * .1);
+      for (let b = 0; b < 7; b++) {
+        const piv = new THREE.Group(); piv.rotation.z = b / 7 * Math.PI * 2;
+        const m = new THREE.Mesh(bladeGeo, c.mats.fan); m.position.x = size * .27; m.rotation.x = .45; piv.add(m); rot.add(piv);
+      }
+      c.L.fans.add(rot); c.rotors.push(rot);
+      k.box(.06, .03, .12, x + size * .3, .04, z - depth / 2 - .08, 'plastic');
+    }
+  }
+  ob(c, -W / 2, W / 2, 0, c.H, z - depth / 2, z + depth / 2, 'fan');
+  c.zones.fans = z;
+}
+function board(c, z0, z1) {
+  const k = c.K('board'), len = z0 - z1, zc = (z0 + z1) / 2, bw = W - .3, R = c.rnd;
+  k.box(bw, .02, len, 0, .1, zc, 'pcbDark');
+  for (let x = -bw / 2 + .15; x <= bw / 2; x += bw / 3 - .1) for (let z = z1 + .15; z <= z0; z += len / 3 - .1) { k.cyl(.04, .06, x, .07, z, 'silver'); k.cyl(.03, .015, x, BT + .007, z, 'silver'); }
+  for (let i = 0; i < 160; i++) {
+    const along = R() < .5, l = .3 + R() * 1.4, x = (R() - .5) * (bw - .3), z = z1 + .2 + R() * (len - .4);
+    k.box(along ? .008 : l, .002, along ? l : .008, x, BT, z, R() < .7 ? 'copper' : 'gold');
+  }
+  for (let i = 0; i < 90; i++) {
+    const x = (R() - .5) * (bw - .3), z = z1 + .2 + R() * (len - .4), r = .018 + R() * .02;
+    k.cyl(r, .05, x, BT + .025, z, 'black'); k.cyl(r * .9, .006, x, BT + .053, z, 'silver');
+  }
+  for (let i = 0; i < 40; i++) k.box(.05, .012, .03, (R() - .5) * (bw - .3), BT, z1 + .2 + R() * (len - .4), 'spreader');
+  const pchX = W / 2 - .7, pchZ = z1 + len * .35;
+  k.box(.42, .03, .42, pchX, BT, pchZ, 'black');
+  for (let i = 0; i < 9; i++) k.box(.02, .1, .4, pchX - .18 + i * .045, BT + .03, pchZ, 'alu');
+  k.box(.18, .02, .18, pchX - .6, BT, pchZ + .4, 'black');
+  k.cyl(.11, .02, pchX - .55, BT + .01, pchZ - .45, 'silver');
+  k.box(.12, .015, .9, -W / 2 + .5, BT, z1 + .9, 'black');
+  k.box(.11, .012, .85, -W / 2 + .5, BT + .02, z1 + .92, 'pcb');
+  for (let i = 0; i < 4; i++) k.box(.08, .01, .14, -W / 2 + .5, BT + .032, z1 + .6 + i * .19, 'black');
+  k.box(.55, .1, .12, W / 2 - .45, BT, z0 - .25, 'black');
+  for (let i = 0; i < 6; i++) k.box(.1, .05, .06, -1.6 + i * .6, BT, z0 - .12, 'plastic');
+  for (let i = 0; i < 5; i++) k.cyl(.012, .012, pchX + .3, BT + .006, pchZ - .3 + i * .06, i % 2 ? 'ledG' : 'ledB');
+}
+function cpu(c, x, zc, hs, ducted) {
+  const k = c.K('cpumem');
+  k.box(.95, .03, 1.05, x, BT, zc, 'black');
+  for (const s of [-1, 1]) k.box(1.0, .025, .07, x, BT + .03, zc + s * .52, 'silver');
+  k.box(.84, .06, .92, x, BT + .03, zc, 'copper');
+  for (let i = 0; i < 4; i++) k.cyl(.035, .84, x, BT + .1, zc - .3 + i * .2, 'copper', 'x');
+  const n = Math.round(.84 / .034);
+  for (let i = 0; i < n; i++) k.box(.012, hs, .96, x - .41 + i * .034, BT + .09, zc, 'alu');
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.cyl(.035, hs + .1, x + sx * .38, BT + (hs + .1) / 2, zc + sz * .42, 'silver');
+  for (let i = 0; i < 9; i++) { k.box(.075, .07, .075, x - .38 + i * .095, BT, zc + .66, 'spreader'); k.box(.04, .015, .05, x - .38 + i * .095, BT, zc + .78, 'black'); }
+  k.box(.88, .05, .1, x, BT + .07, zc + .66, 'alu');
+  ob(c, x - .45, x + .45, BT, BT + .09 + hs, zc - .5, zc + .5, 'heat', 1.3);
+}
+function dimms(c, x0, zc, n, pitch) {
+  const k = c.K('cpumem'), len = 1.33, hd = Math.min(c.H - BT - .1, .33);
+  for (let i = 0; i < n; i++) {
+    const x = x0 + i * pitch;
+    k.box(.065, .07, len + .08, x, BT, zc, 'black');
+    k.box(.04, .09, .05, x, BT, zc + len / 2 + .05, 'plastic'); k.box(.04, .09, .05, x, BT, zc - len / 2 - .05, 'plastic');
+    k.box(.012, hd, len, x, BT + .05, zc, 'pcb');
+    k.box(.034, hd * .78, len * .9, x, BT + .1, zc, 'spreader');
+    k.box(.014, .025, len * .96, x, BT + .05, zc, 'gold');
+    for (let j = 0; j < 5; j++) k.box(.036, hd * .3, .1, x, BT + .1 + hd * .2, zc - len * .36 + j * len * .18, 'dark');
+  }
+  ob(c, x0 - .04, x0 + (n - 1) * pitch + .04, BT, BT + hd, zc - len / 2, zc + len / 2, 'heat', .35);
+}
+function duct(c, z0, z1, h) {
+  const k = c.K('duct'), zc = (z0 + z1) / 2, l = z0 - z1;
+  k.box(W - .3, .02, l, 0, h, zc, 'duct');
+  for (const sx of [-1, 1]) k.box(.02, h - BT, l, sx * (W / 2 - .16), BT, zc, 'duct');
+  k.box(W - .3, .02, .5, 0, h + .01, z0 + .2, 'duct', -.5);
+}
+function riser(c, x, z0, cards, cw, kind) {
+  const k = c.K('pcie'), cl = 1.75, h = c.H;
+  k.box(.04, Math.min(h - .2, .2 + cards * .32), cl * .6, x, BT, c.r + cl * .3 + .05, 'pcb');
+  k.box(.05, .06, cl * .55, x, BT, c.r + cl * .3 + .05, 'black');
+  for (let i = 0; i < cards; i++) {
+    const y = BT + .14 + i * Math.min(.3, (h - .3) / cards), zc = c.r + cl / 2 + .05, cx = x + cw / 2 + .04;
+    k.box(cw, .018, cl, cx, y, zc, 'pcb');
+    k.box(.04, .025, cl * .55, x + .03, y - .01, zc - cl * .1, 'gold');
+    k.box(cw + .02, .04, .02, cx, y - .02, c.r + .02, 'silver');
+    if (kind === 'nic') {
+      k.box(.35, .03, .35, cx, y + .018, zc, 'black');
+      for (let f = 0; f < 10; f++) k.box(.012, .09, .34, cx - .16 + f * .035, y + .05, zc, 'alu');
+      for (let p = 0; p < 2; p++) k.box(.2, .1, .3, cx - cw / 4 + p * cw / 2, y + .02, c.r - .02, 'silver');
+    } else if (kind === 'hba') {
+      k.box(.3, .03, .3, cx, y + .018, zc + .2, 'black');
+      for (let f = 0; f < 8; f++) k.box(.012, .07, .3, cx - .12 + f * .035, y + .05, zc + .2, 'alu');
+      for (let p = 0; p < 4; p++) k.box(.09, .06, .12, cx - .2 + p * .13, y + .02, zc + cl / 2 - .1, 'black');
+    } else {
+      k.box(.25, .025, .25, cx, y + .018, zc, 'black');
+      for (let p = 0; p < 2; p++) k.box(.15, .11, .06, cx - .15 + p * .25, y + .02, c.r - .02, 'black');
+    }
+    for (let q = 0; q < 8; q++) k.box(.04, .01, .04, cx - cw / 2 + .08 + (q % 4) * .12, y + .018, zc - .5 + (q >> 2) * .15, 'spreader');
+  }
+  k.box(cw + .1, .02, cl, x + cw / 2 + .04, Math.min(h - .1, BT + .2 + cards * .3), c.r + cl / 2 + .05, 'silver');
+  ob(c, x, x + cw + .1, BT, h, c.r, c.r + cl, 'heat', .3);
+}
+function psu(c, x, y, w, h, len) {
+  const k = c.K('rear'), zc = c.r + len / 2 - .07;
+  k.box(w, h, len, x, y, zc, 'psu');
+  k.box(w * .7, .03, .12, x, y + h * .78, c.r - .12, 'black');
+  for (const s of [-1, 1]) k.box(.03, h * .55, .12, x + s * w * .34, y + h * .25, c.r - .12, 'black');
+  k.cyl(Math.min(w, h) * .36, .01, x - w * .15, y + h / 2, c.r - .075, 'grille', 'z');
+  for (const a of [0, 1.57]) k.box(Math.min(w, h) * .7, .012, .01, x - w * .15, y + h / 2, c.r - .085, 'silver', 0, 0, a);
+  k.box(.14, .1, .04, x + w * .28, y + h * .2, c.r - .08, 'black');
+  k.cyl(.018, .02, x + w * .28, y + h * .7, c.r - .08, 'ledG', 'z');
+  if (c.hi) { k.box(w * .9, .02, .3, x, y + h + .005, c.r + len - .2, 'pcb'); k.box(w * .5, h * .5, .1, x, y + h * .25, c.r + len - .02, 'black'); }
+  ob(c, x - w / 2, x + w / 2, y, y + h, c.r, c.r + len, 'heat', .7);
+  c.psus = (c.psus || []).concat([[x + w * .28, y + h * .2]]);
+}
+function ports(c, x, y, kind, n, gap) {
+  const k = c.K('rear'), z = c.r - .03;
+  for (let i = 0; i < n; i++) {
+    const px = x + i * gap;
+    if (kind === 'rj') { k.box(.15, .12, .05, px, y, z, 'black'); k.box(.11, .08, .01, px, y + .02, z - .026, 'grille'); k.box(.025, .02, .01, px - .05, y + .1, z - .026, 'ledG'); k.box(.025, .02, .01, px + .05, y + .1, z - .026, 'ledA'); }
+    else if (kind === 'qsfp') { k.box(.2, .1, .1, px, y, z, 'silver'); k.box(.16, .06, .01, px, y + .02, z - .051, 'grille'); }
+    else if (kind === 'sfp') { k.box(.13, .1, .08, px, y, z, 'silver'); k.box(.1, .06, .01, px, y + .02, z - .041, 'grille'); }
+    else if (kind === 'usb') { k.box(.13, .06, .05, px, y, z, 'black'); k.box(.1, .02, .01, px, y + .02, z - .026, 'ledB'); }
+    else if (kind === 'vga') { k.box(.3, .12, .04, px, y, z, 'blue'); }
+    else if (kind === 'bmc') { k.box(.15, .12, .05, px, y, z, 'black'); k.box(.11, .08, .01, px, y + .02, z - .026, 'orange'); }
+  }
+  c.nics = (c.nics || []).concat([[x, y]]);
+}
+function cable(c, layer, pts, r, mk) {
+  const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p)), false, 'centripetal'), 30, r, 6);
+  c.L[layer].add(new THREE.Mesh(g, c.mats[mk]));
+}
+function frontPanel(c, x, w) {
+  const k = c.K('base'), h = c.H;
+  k.box(w, h - .06, .06, x, .03, c.f + .03, 'plastic');
+  k.cyl(.05, .03, x - w / 2 + .12, h * .7, c.f + .07, 'ledB', 'z');
+  k.cyl(.025, .02, x - w / 2 + .26, h * .7, c.f + .07, 'ledG', 'z');
+  k.box(.13, .06, .02, x + w / 2 - .15, h * .25, c.f + .065, 'black');
+  k.box(.08, .04, .02, x + w / 2 - .32, h * .25, c.f + .065, 'dark');
+  if (c.hi) k.box(w * .8, .02, .5, x, .1, c.f - .3, 'pcb');
+  ob(c, x - w / 2, x + w / 2, 0, h, c.f - .4, c.f, 'solid');
+}
+
+// ── per-archetype layouts
+const BUILD = {
+  gp(c) {
+    const { f, r, H } = c;
+    for (let i = 0; i < 8; i++) drive(c, -1.86 + i * .385, .04, .35, .34, .95, false);
+    ob(c, -2.1, 1.1, 0, H, f - 1, f, 'porous', .12);
+    frontPanel(c, 1.62, .9);
+    c.zones.storage = f - .6;
+    if (c.hi) {
+      backplane(c, f - 1.08, -2.05, 1.1, H - .12, 6);
+      fanWall(c, f - 1.5, 7, 1, .36, .38);
+      board(c, f - 1.78, r + .05);
+      for (const x of [-1.08, 1.08]) { cpu(c, x, f - 3.0, H - BT - .17, true); dimms(c, x - .43 - .33 - 4 * .085 + .085, f - 3.0, 4, .085); dimms(c, x + .43 + .1, f - 3.0, 4, .085); }
+      duct(c, f - 2.1, f - 3.9, H - .07);
+      riser(c, -2.05, r, 1, .65, 'nic');
+      c.zones.cpu = f - 3.0; c.zones.gpu = r + 1.0;
+      cable(c, 'board', [[1.4, BT + .02, r + 2.4], [1.2, BT + .05, r + 3.2], [1.2, BT + .06, f - 1.9]], .025, 'black');
+    }
+    psu(c, 1.12, .03, .64, .37, 2.3); psu(c, 1.8, .03, .64, .37, 2.3);
+    ports(c, -.55, .08, 'rj', 2, .19); ports(c, -.05, .08, 'bmc', 1, 0); ports(c, .25, .08, 'usb', 2, .15);
+    ports(c, -1.2, .08, 'sfp', 2, .16);
+    c.vents.push([-2.1, -1.35, .2, H - .03], [-.7, .75, .22, H - .03]);
+    c.zones.rear = r + 1.0;
+  },
+  virt(c) {
+    const { f, r, H } = c;
+    for (let i = 0; i < 12; i++) drive(c, -1.95 + i * .262, .05, .24, .76, 1.0, false);
+    ob(c, -2.1, 1.0, 0, H, f - 1.05, f, 'porous', .12);
+    frontPanel(c, 1.6, 1.0);
+    c.zones.storage = f - .6;
+    if (c.hi) {
+      backplane(c, f - 1.12, -2.08, 1.05, H - .14, 8);
+      fanWall(c, f - 1.65, 6, 1, .62, .5);
+      board(c, f - 2.0, r + .05);
+      for (const x of [-1.03, 1.03]) { cpu(c, x, f - 3.35, Math.min(.55, H - BT - .2), true); dimms(c, x - .47 - 8 * .072 + .036, f - 3.35, 8, .072); dimms(c, x + .47 + .036, f - 3.35, 8, .072); }
+      duct(c, f - 2.3, f - 4.35, H - .1);
+      riser(c, -2.05, r, 3, .9, 'card'); riser(c, -.95, r, 3, .9, 'nic');
+      c.zones.cpu = f - 3.35; c.zones.gpu = r + 1.0;
+      cable(c, 'board', [[-1.6, H - .3, f - 1.1], [-1.6, BT + .2, f - 1.8], [-1.6, BT + .1, f - 2.3]], .03, 'black');
+      cable(c, 'board', [[.6, H - .3, f - 1.1], [.4, BT + .2, f - 1.8], [.3, BT + .1, f - 2.4]], .03, 'black');
+    }
+    psu(c, 1.25, .03, .75, .4, 2.4); psu(c, 1.25, .45, .75, .4, 2.4);
+    ports(c, .2, .08, 'rj', 2, .19); ports(c, .2, .3, 'bmc', 1, 0); ports(c, .45, .3, 'usb', 2, .15); ports(c, .55, .55, 'vga', 1, 0);
+    c.vents.push([-.05, .82, .62, H - .03], [-.05, .3, .05, .55]);
+    c.zones.rear = r + 1.0;
+  },
+  db(c) {
+    const { f, r, H } = c;
+    for (let i = 0; i < 24; i++) drive(c, -2.0 + i * .174, .05, .155, .76, 1.0, false);
+    ob(c, -2.1, 2.1, 0, H, f - 1.05, f, 'porous', .18);
+    c.zones.storage = f - .6;
+    if (c.hi) {
+      backplane(c, f - 1.12, -2.08, 2.08, H - .14, 10);
+      fanWall(c, f - 1.65, 6, 1, .62, .5);
+      board(c, f - 2.0, r + .05);
+      for (const x of [-1.03, 1.03]) { cpu(c, x, f - 3.35, Math.min(.55, H - BT - .2), true); dimms(c, x - .47 - 8 * .072 + .036, f - 3.35, 8, .072); dimms(c, x + .47 + .036, f - 3.35, 8, .072); }
+      duct(c, f - 2.3, f - 4.35, H - .1);
+      riser(c, -2.05, r, 2, .9, 'nic'); riser(c, -.95, r, 2, .9, 'nic');
+      for (let i = 0; i < 8; i++) {
+        const x = -1.9 + i * .52;
+        cable(c, 'board', [[x, .5, f - 1.18], [x * .9, .55, f - 1.45], [x * .7, H - .12, f - 2.0], [x * .5, H - .15, f - 4.6], [-.4 + i * .1, BT + .12, f - 4.9]], .022, 'black');
+      }
+      c.zones.cpu = f - 3.35; c.zones.gpu = r + 1.0;
+    }
+    psu(c, 1.25, .03, .75, .4, 2.4); psu(c, 1.25, .45, .75, .4, 2.4);
+    ports(c, .2, .08, 'bmc', 1, 0); ports(c, .45, .08, 'usb', 2, .15); ports(c, .2, .3, 'sfp', 2, .17);
+    c.vents.push([-.05, .82, .55, H - .03]);
+    c.zones.rear = r + 1.0;
+  },
+  gpu(c) {
+    const { f, r, H } = c, k = c.K('base');
+    for (let i = 0; i < 8; i++) drive(c, -1.95 + i * .36, H - .82, .32, .76, 1.0, false);
+    k.box(W - .1, H - .95, .05, 0, .06, f + .025, 'grille');
+    for (let x = -1.95; x < 2; x += .14) for (let y = .12; y < H - .95; y += .14) k.box(.09, .09, .01, x, y, f + .052, 'dark');
+    frontPanel(c, 1.62, .9); c.K('base');
+    ob(c, -2.1, 1.1, H - .82, H, f - 1.05, f, 'porous', .12);
+    c.zones.storage = f - .6;
+    if (c.hi) {
+      backplane(c, f - 1.1, -2.08, 1.1, .76, 6);
+      c.L.storage.children.length;
+      fanWall(c, f - 1.65, 5, 2, .78, .55);
+      board(c, f - 2.0, f - 4.0);
+      for (const x of [-1.08, 1.08]) { cpu(c, x, f - 3.0, .7, true); dimms(c, x - .47 - 4 * .085 + .042, f - 3.0, 4, .085); dimms(c, x + .47 + .042, f - 3.0, 4, .085); }
+      duct(c, f - 2.2, f - 3.8, 1.0);
+      const g = c.K('pcie'), gz0 = f - 4.15, gz1 = r + 1.35, gl = gz0 - gz1, gzc = (gz0 + gz1) / 2;
+      g.box(W - .3, .03, gl, 0, .1, gzc, 'pcb');
+      for (let row = 0; row < 2; row++) for (let i = 0; i < 4; i++) {
+        const x = -1.53 + i * 1.02, zc = gz0 - gl * (.27 + row * .46), hs = Math.min(1.15, H - .5);
+        g.box(.95, .03, 1.35, x, .13, zc, 'pcbDark');
+        g.box(.82, .05, 1.2, x, .16, zc, 'copper');
+        for (let fi = 0; fi < 26; fi++) g.box(.012, hs, 1.25, x - .4 + fi * .032, .21, zc, 'alu');
+        for (const ez of [-.6, .6]) g.box(.9, .04, .05, x, .21 + hs - .04, zc + ez, 'silver');
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.cyl(.03, hs + .1, x + sx * .43, .16 + (hs + .1) / 2, zc + sz * .6, 'silver');
+        g.box(.12, .04, .02, x, .25, zc + .68, 'label');
+        ob(c, x - .47, x + .47, .13, .21 + hs, zc - .65, zc + .65, 'heat', 2.1);
+      }
+      const nz = gz0 - gl * .5;
+      for (let i = 0; i < 4; i++) { const x = -1.53 + i * 1.02; g.box(.35, .03, .25, x, .13, nz, 'black'); for (let fi = 0; fi < 8; fi++) g.box(.012, .18, .22, x - .13 + fi * .036, .16, nz, 'alu'); }
+      for (const sx of [-1, 1]) g.box(.08, .12, gl + 1.2, sx * (W / 2 - .17), .1, gzc - .55, 'copper');
+      for (let i = 0; i < 8; i++) {
+        const x = -1.9 + i * .52;
+        g.box(.42, .02, 1.0, x, H - .5, r + .62, 'pcb');
+        g.box(.2, .03, .2, x, H - .48, r + .7, 'black');
+        g.box(.44, .05, .02, x, H - .52, r + .02, 'silver');
+        cable(c, 'pcie', [[x, H - .5, r + 1.1], [x, H - .35, r + 1.5], [x * .8, .45, gz1 + .2]], .02, 'black');
+      }
+      ob(c, -2.1, 2.1, H - .6, H, r, r + 1.2, 'heat', .3);
+      c.zones.cpu = f - 3.0; c.zones.gpu = gzc;
+    }
+    for (let i = 0; i < 6; i++) psu(c, -1.75 + i * .7, .03, .66, .42, 2.0);
+    for (let i = 0; i < 8; i++) ports(c, -1.9 + i * .52, H - .58, 'qsfp', 1, 0);
+    ports(c, -1.2, .6, 'bmc', 1, 0); ports(c, -.95, .6, 'usb', 2, .15); ports(c, -.55, .6, 'rj', 2, .19);
+    c.vents.push([-2.1, 2.1, .52, H - .66]);
+    c.zones.rear = r + 1.0;
+  },
+  storage(c) {
+    const { f, r, H } = c;
+    for (let row = 0; row < 6; row++) for (let col = 0; col < 4; col++) drive(c, -1.56 + col * 1.04, .05 + row * .283, 1.0, .27, 1.5, true);
+    ob(c, -2.1, 2.1, 0, H, f - 1.55, f, 'porous', .25);
+    c.zones.storage = f - .9;
+    if (c.hi) {
+      backplane(c, f - 1.62, -2.08, 2.08, H - .14, 8);
+      for (let i = 0; i < 3; i++) { const k = c.K('storage'); k.box(.3, .03, .3, -1.2 + i * 1.2, .9, f - 1.68, 'black'); for (let fi = 0; fi < 7; fi++) k.box(.25, .25, .012, -1.2 + i * 1.2, .8, f - 1.72 - fi * .03, 'alu'); }
+      fanWall(c, f - 2.15, 4, 2, .8, .55);
+      board(c, f - 2.5, r + .05);
+      cpu(c, -.8, f - 3.7, .7, true); dimms(c, -.8 - .47 - 4 * .085 + .042, f - 3.7, 4, .085); dimms(c, -.8 + .47 + .042, f - 3.7, 4, .085);
+      duct(c, f - 2.8, f - 4.6, 1.0);
+      riser(c, -2.05, r, 3, .9, 'hba'); riser(c, -.95, r, 2, .9, 'nic');
+      for (let i = 0; i < 6; i++) {
+        const x0 = -1.5 + (i % 3) * .3, y0 = BT + .14 + Math.floor(i / 3) * .3;
+        cable(c, 'pcie', [[x0, y0 + .05, r + 1.75], [x0 + .2, y0 + .4, r + 2.6], [x0 + .5, H - .25, f - 3], [-1.8 + i * .7, H - .3, f - 1.7]], .03, 'black');
+      }
+      for (let i = 0; i < 2; i++) drive(c, 1.6 - i * .5, H - .35, .42, .28, .9, false);
+      c.zones.cpu = f - 3.7; c.zones.gpu = r + 1.0;
+    }
+    psu(c, 1.25, .03, .75, .42, 2.3); psu(c, 1.25, .47, .75, .42, 2.3);
+    ports(c, .2, .08, 'rj', 2, .19); ports(c, .2, .3, 'bmc', 1, 0); ports(c, .45, .3, 'usb', 2, .15); ports(c, .5, .55, 'vga', 1, 0);
+    c.vents.push([-.05, 2.08, .95, H - .03]);
+    c.zones.rear = r + 1.0;
+  }
+};
+
+// ───────────────────────────── rack
+const rack = new THREE.Group(); scene.add(rack);
+const lowRoots = [];
+function railNumbers(x, z, rotY) {
+  const cv = document.createElement('canvas'), g = cv.getContext('2d'); cv.width = 64; cv.height = 42 * 40;
+  g.fillStyle = '#c9d2dc'; g.font = '600 22px Segoe UI, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let i = 1; i <= 42; i++) { g.fillText(String(i), 32, (42 - i) * 40 + 20); g.fillRect(4, (42 - i) * 40, 56, 1); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(.2, RACK_H), new THREE.MeshBasicMaterial({ map: t, transparent: true }));
+  m.position.set(x, BASE + RACK_H / 2, z); m.rotation.y = rotY; rack.add(m); return m;
+}
+const rackLabels = [];
+function buildRack() {
+  const k = new Kit(rack, rackMats), px = RACK_W / 2 - .15, pz = RACK_D / 2 - .15, top = BASE + RACK_H;
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    k.box(.3, top + .1 - (BASE - .25), .3, sx * px, BASE - .25, sz * pz, 'rackFrame');
+    k.cyl(.12, .14, sx * px, .14, sz * pz, 'black'); k.cyl(.04, .2, sx * px, .3, sz * pz, 'silver');
+  }
+  k.box(RACK_W, .14, RACK_D, 0, top + .1, 0, 'rackFrame');
+  k.box(RACK_W, .16, RACK_D, 0, BASE - .4, 0, 'rackFrame');
+  for (let x = -2.4; x <= 2.4; x += .2) for (let z = -4.4; z <= 4.4; z += .4) k.box(.1, .01, .25, x, top + .24, z, 'grille');
+  for (const sx of [-1, 1]) {
+    for (const y of [BASE - .2, top - .02, BASE + RACK_H / 2]) k.box(.12, .12, RACK_D - .3, sx * px, y, 0, 'rackFrame');
+    for (const [z, rot] of [[ZF - .06, 0], [-4.62, Math.PI]]) {
+      const rx = sx * (RAIL_W / 2 + .1);
+      k.box(.22, RACK_H, .06, rx, BASE, z, 'rail');
+      k.box(.04, RACK_H, .5, rx + sx * .11, BASE, z - .25 * (rot ? -1 : 1), 'rail');
+      for (let u = 1; u <= 42; u++) for (const o of [.07, .22, .37]) k.box(.06, .06, .01, rx, uY(u) + o, z + (rot ? -.031 : .031), 'grille');
+      rackLabels.push(railNumbers(sx * (RAIL_W / 2 + .32), z + (rot ? -.04 : .04), rot));
+      k.box(.6, .1, .06, sx * (RAIL_W / 2 + .5), top - .4, z, 'rail'); k.box(.6, .1, .06, sx * (RAIL_W / 2 + .5), BASE + .3, z, 'rail');
+    }
+    for (let u = 1; u <= 42; u++) k.box(.22, .04, .3, sx * (RACK_W / 2 - .25), uY(u) + .2, RACK_D / 2 + .08, 'black');
+    k.box(.05, RACK_H, .3, sx * (RACK_W / 2 - .12), BASE, RACK_D / 2 + .08, 'black');
+    const pdx = sx * (RACK_W / 2 - .45), pdz = -RACK_D / 2 + .3, y0 = uY(3), y1 = uY(41);
+    k.box(.24, y1 - y0, .22, pdx, y0, pdz, 'pdu');
+    for (let i = 0; i < 24; i++) { k.box(.12, .12, .04, pdx, y0 + .5 + i * ((y1 - y0 - 1.2) / 23), pdz + .12, 'black'); k.box(.04, .03, .01, pdx + .05, y0 + .58 + i * ((y1 - y0 - 1.2) / 23), pdz + .145, 'ledG'); }
+    k.box(.16, .3, .02, pdx, y1 - .5, pdz - .12, 'ledB');
+    k.cyl(.05, BASE + .1, pdx, y0 / 2, pdz, 'pcable');
+  }
+  for (const u of BLANKS) {
+    k.box(RAIL_W + .2, U - .01, .03, 0, uY(u) + .005, ZF + .02, 'blank');
+    if (u === 21) for (let x = -2.2; x < 2.2; x += .05) k.box(.012, U * .7, .02, x, uY(u) + .08, ZF + .04, 'black');
+  }
+  const cm = uY(40);
+  k.box(RAIL_W + .3, U - .01, .05, 0, cm, -4.68, 'black');
+  for (let i = 0; i < 6; i++) k.box(.1, .3, .25, -2 + i * .8, cm + .07, -4.85, 'black');
+  k.box(RAIL_W + .3, U - .01, .05, 0, cm, ZF + .02, 'black');
+  for (let i = 0; i < 5; i++) k.box(.25, .3, .1, -1.8 + i * .9, cm + .07, ZF + .1, 'black');
+  for (const sw of SWITCHES) {
+    const y = uY(sw.u) + .01, zr = -4.66, d = 4.5, g = new THREE.Group(); g.userData.sw = sw;
+    const sk = new Kit(g, rackMats);
+    sk.box(W, U - .02, d, 0, y, zr + d / 2, 'chassis');
+    for (const sx of [-1, 1]) sk.box(.42, U - .02, .06, sx * (W / 2 + .2), y, zr - .02, 'chassis');
+    const n = sw.ports === 'orange' ? 'rj' : 'sfp';
+    for (let i = 0; i < 24; i++) for (let j = 0; j < 2; j++) {
+      const x = -1.95 + i * .135 + Math.floor(i / 6) * .03;
+      sk.box(.12, .14, .04, x, y + .05 + j * .17, zr - .03, n === 'rj' ? 'black' : 'silver');
+      sk.box(.03, .02, .01, x, y + .17 + j * .17, zr - .052, (i * 7 + j) % 5 ? 'ledG' : 'ledA');
+    }
+    if (n === 'sfp') for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) sk.box(.2, .14, .05, 1.6 + i * .16 - .1, y + .05 + j * .17, zr - .03, 'silver');
+    for (let i = 0; i < 4; i++) sk.box(.38, U * .7, .02, -1.5 + i * 1, y + .06, zr + d + .01, 'grille');
+    sk.flush(); rack.add(g); lowRoots.push(g);
+    sw.y = y;
+  }
+  k.flush();
+}
+buildRack();
+
+for (const s of SERVERS) {
+  const c = buildServer(s, false), g = c.L.base.parent;
+  s.home = new V3(0, uY(s.bottom) + .01, ZF - s.D / 2); g.position.copy(s.home);
+  g.userData.spec = s; s.low = g; s.lowCtx = c; rack.add(g); lowRoots.push(g);
+}
+
+// rack cabling: data to the ToR pair, BMC to mgmt, PSU power to the PDUs
+function rackCable(pts, mk, r = .035) {
+  const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new V3(...p)), false, 'centripetal'), 48, r, 6);
+  rack.add(new THREE.Mesh(g, rackMats[mk]));
+}
+const sideX = RAIL_W / 2 + .38, cz = -5.0;
+for (const s of SERVERS) {
+  const c = s.lowCtx, zr = s.home.z + c.r - .05, base = s.home.y;
+  c.nics.forEach(([x, y], i) => {
+    const sw = SWITCHES[i === 0 && c.nics.length > 1 ? 2 : (i % 2)], sy = sw.y + .15 + (i % 2) * .17, side = i % 2 ? 1 : -1;
+    rackCable([[x, base + y + .06, zr], [x, base + y + .06, zr - .35], [side * sideX, base + y + .1, cz], [side * sideX, (base + sy) / 2, cz - .05], [side * sideX, sy, cz], [x * .4 + side * .4, sy, -4.95], [x * .3 + side * .5, sy, -4.75]], sw.ports, .03);
+  });
+  (c.psus || []).forEach(([x, y], i) => {
+    const side = i % 2 ? 1 : -1, pdx = side * (RACK_W / 2 - .45);
+    rackCable([[x, base + y + .05, zr], [x, base + y + .05, zr - .3], [pdx * .8, base + y - .1, -5.05], [pdx, base + y - .15, -4.9]], 'pcable', .04);
+  });
+}
+
+// rack selection highlight
+const hl = new THREE.Group();
+hl.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0x4fa3e0, transparent: true, opacity: .14, depthWrite: false })));
+hl.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color: 0x7cc4ff })));
+hl.visible = false; scene.add(hl);
+function showHL(bottomU, u) { hl.visible = true; hl.scale.set(RAIL_W + .5, u * U, RACK_D - .5); hl.position.set(0, uY(bottomU) + u * U / 2, 0); }
+
+// ───────────────────────────── stage (inspection environment)
+const stage = new THREE.Group(); scene.add(stage);
+const stageMats = [];
+{
+  const m1 = new THREE.MeshStandardMaterial({ color: 0x1f2329, metalness: .3, roughness: .5, transparent: true });
+  const m2 = new THREE.MeshBasicMaterial({ color: 0x3c7fb5, transparent: true });
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 7.6, STAGE.y, 64), m1); p.position.set(STAGE.x, STAGE.y / 2, STAGE.z);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(7.0, 7.1, 96), m2); ring.rotation.x = -Math.PI / 2; ring.position.set(STAGE.x, STAGE.y + .004, STAGE.z);
+  stage.add(p, ring); stageMats.push(m1, m2);
+}
+function setStage(a) { stageMats.forEach(m => m.opacity = a); stage.visible = a > .01; }
+setStage(0);
+
+let fadeLevel = 1;
+const allRackMats = () => Object.values(rackMats).concat(rackLabels.map(m => m.material));
+function setRackFade(a) {
+  fadeLevel = a;
+  for (const m of allRackMats()) { const tr = a < .999 || m === rackMats.duct; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = m === rackMats.duct ? .42 * a : a; m.depthWrite = a > .5; }
+  rack.visible = a > .01;
+}
+
+// ───────────────────────────── camera / orbit
+const cam = { t: new V3(0, 10, 0), r: 50, th: .6, ph: .2 };
+function applyCam() {
+  camera.position.set(cam.t.x + cam.r * Math.cos(cam.ph) * Math.sin(cam.th), cam.t.y + cam.r * Math.sin(cam.ph), cam.t.z + cam.r * Math.cos(cam.ph) * Math.cos(cam.th));
+  camera.lookAt(cam.t);
+}
+function fitR(rad) { const v = camera.fov * Math.PI / 180, h = 2 * Math.atan(Math.tan(v / 2) * camera.aspect); return rad / Math.sin(Math.min(v, h) / 2); }
+const RACK_C = new V3(0, (BASE + RACK_H) / 2 + .1, 0), RACK_R = Math.hypot(RACK_W, BASE + RACK_H + .3, RACK_D) / 2;
+const RACK_PRESETS = {
+  'FULL RACK FRONT': () => ({ t: RACK_C.clone(), r: fitR(Math.hypot(RACK_W, RACK_H + 1.4) / 2) * 1.02, th: 0, ph: .04 }),
+  'FULL RACK 3/4': () => ({ t: RACK_C.clone(), r: fitR(RACK_R) * 1.08, th: .72, ph: .24 }),
+  'FULL RACK SIDE': () => ({ t: RACK_C.clone(), r: fitR(Math.hypot(RACK_D, RACK_H + 1.4) / 2) * 1.02, th: Math.PI / 2, ph: .04 }),
+  'FULL RACK REAR': () => ({ t: RACK_C.clone(), r: fitR(Math.hypot(RACK_W, RACK_H + 1.4) / 2) * 1.02, th: Math.PI, ph: .06 })
+};
+function slicePreset(name, c) {
+  const P = STAGE, z = c.zones, ex = state.explode * 7 * spacing(c);
+  const base = new V3(P.x, P.y + c.H / 2 + ex / 2, P.z), R = Math.hypot(W + .9, c.H + ex, c.D) / 2;
+  const at = (zz, y = c.H * .45) => new V3(P.x, P.y + y, P.z + zz);
+  switch (name) {
+    case 'TOP DOWN': return { t: base, r: fitR(R) * 1.0, th: .0001, ph: 1.52 };
+    case '3/4 ENGINEERING VIEW': return { t: base, r: fitR(R) * .95, th: -.8, ph: .6 };
+    case 'FRONT INTERNALS': return { t: at(z.fans ?? c.f - 1.5), r: fitR(2.6), th: .18, ph: .42 };
+    case 'REAR INTERNALS': return { t: at(z.rear), r: fitR(2.7), th: Math.PI - .4, ph: .5 };
+    case 'CPU + MEMORY': return { t: at(z.cpu ?? 0, BT + .25), r: fitR(2.5), th: .35, ph: 1.0 };
+    case 'GPU AREA': return { t: at(z.gpu ?? z.rear, c.H * .4), r: fitR(c.spec.type === 'gpu' ? 3.0 : 2.3), th: -.45, ph: .85 };
+    case 'STORAGE AREA': return { t: at(z.storage, c.H * .5), r: fitR(2.6), th: .5, ph: .5 };
+    default: return { t: base, r: fitR(R) * 1.0, th: .62, ph: .62 };
+  }
+}
+function camTo(g, d = 1.2) {
+  const s = { t: cam.t.clone(), r: cam.r, th: cam.th, ph: cam.ph };
+  let dth = g.th - s.th; dth = Math.atan2(Math.sin(dth), Math.cos(dth));
+  return tween(d, k => { k = ease(k); cam.t.lerpVectors(s.t, g.t, k); cam.r = s.r + (g.r - s.r) * k; cam.th = s.th + dth * k; cam.ph = s.ph + (g.ph - s.ph) * k; });
+}
+
+const tweens = [];
+const ease = k => k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+function tween(d, f) { return new Promise(res => tweens.push({ t: 0, d, f, res })); }
+
+// ───────────────────────────── slice state
+const state = { coverOff: 0, explode: 0, cut: 0, airflow: false, rackAir: false, preset: 'WHOLE SLICE' };
+let mode = 'rack', busy = false, cur = 0, curHi = null;
+const live = [];
+const spacing = c => .38 + c.H * .3;
+
+function makeHi(s) {
+  const c = buildServer(s, true), root = c.L.base.parent;
+  root.userData.ctx = c; c.root = root;
+  const xl = new THREE.Group(); root.add(xl); c.xl = xl;
+  for (const n of LAYERS) if (EXPLODE_NAME[n] && n !== 'rear') { const sp = label(EXPLODE_NAME[n], .2); sp.userData.n = n; xl.add(sp); }
+  const fl = label('FRONT', .26, '#9fd0ff'), rl = label('REAR', .26, '#ffb59a', '#c8704a');
+  fl.position.set(0, .05, c.f + .9); rl.position.set(0, .05, c.r - .9); c.fr = [fl, rl]; root.add(fl, rl);
+  c.air = buildAir(c); root.add(c.air.group);
+  live.push(c); return c;
+}
+function disposeHi(c) {
+  c.root.parent && c.root.parent.remove(c.root);
+  c.root.traverse(o => { if (o.geometry && o.geometry !== UB && o.geometry !== UC) o.geometry.dispose(); if (o.material && o.material.map) o.material.map.dispose(); });
+  Object.values(c.mats).forEach(m => m.dispose());
+  live.splice(live.indexOf(c), 1);
+}
+function applyState(c) {
+  const sp = spacing(c), e = state.explode;
+  for (const n of LAYERS) c.L[n].position.y = EXPLODE_IDX[n] * sp * e;
+  const lift = c.H + 2.2, co = state.coverOff;
+  c.L.cover.position.y = Math.max(lift * co, 7 * sp * e) + (co > 0 && e < .01 ? 0 : 0);
+  const op = 1 - co * (1 - .35 * e);
+  setOp(c.mats.cover, op); c.L.cover.visible = op > .01;
+  setOp(c.mats.wall, 1 - .86 * state.cut);
+  setOp(c.mats.chassis, 1 - .5 * state.cut);
+  for (const sp2 of c.xl.children) { const n = sp2.userData.n; sp2.position.set(-W / 2 - 1.6, EXPLODE_IDX[n] * sp * e + (n === 'cover' ? c.H : c.H * .4), n === 'storage' ? c.f - .6 : n === 'fans' ? c.zones.fans : n === 'cover' ? 0 : n === 'pcie' ? c.zones.gpu : n === 'base' ? c.r + 1 : (c.zones.cpu ?? 0)); sp2.material.opacity = e; sp2.visible = e > .05; }
+  c.fr.forEach(l => l.visible = mode !== 'rack');
+  c.air.group.visible = state.airflow;
+}
+function setOp(m, a) { const tr = a < .999; if (m.transparent !== tr) { m.transparent = tr; m.needsUpdate = true; } m.opacity = a; m.depthWrite = !tr || a > .6; }
+
+// ───────────────────────────── airflow (slice): particles marching through the real obstacle list
+function buildAir(c) {
+  const N = c.spec.u === 1 ? 900 : 1600, pos = new Float32Array(N * 3), col = new Float32Array(N * 3), P = [];
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: c.spec.u === 1 ? .05 : .07, vertexColors: true, transparent: true, opacity: .95, depthWrite: false }));
+  const group = new THREE.Group(); group.add(pts);
+  const spawn = (p, anywhere) => { p.x = (Math.random() - .5) * (W - .3); p.y = .1 + Math.random() * (c.H - .18); p.z = anywhere ? c.r - .8 + Math.random() * (c.D + 2) : c.f + 1 + Math.random() * .3; p.t = 0; p.b = 1; p.lx = p.x; p.ly = p.y; };
+  for (let i = 0; i < N; i++) { const p = {}; spawn(p, true); P.push(p); }
+  const zl = c.zones, marks = [['FRONT INTAKE', c.f + .8], ['DRIVES', zl.storage], ['FAN WALL', zl.fans], ['CPU / RAM', zl.cpu], [c.spec.type === 'gpu' ? 'GPU / ACCELERATORS' : 'PCIe / RISERS', c.spec.type === 'gpu' ? zl.gpu : zl.gpu - .3], ['PSU / REAR EXHAUST', c.r - .9]];
+  marks.forEach(([t, z], i) => { if (z == null) return; const l = label(t, .17, i < 2 ? '#9fd0ff' : i > 3 ? '#ffb59a' : '#ffe08a', i < 2 ? '#3d8cff' : i > 3 ? '#e0603a' : '#c9a326'); l.position.set(W / 2 + 1.2, c.H + .25, z); group.add(l); });
+  const arrowMat = new THREE.MeshBasicMaterial({ color: 0x6fb6ff, transparent: true, opacity: .55 });
+  for (let i = 0; i < 4; i++) { const a = new THREE.Mesh(new THREE.ConeGeometry(.12, .35, 12), arrowMat); a.rotation.x = -Math.PI / 2; a.position.set(-1.5 + i, c.H / 2, c.f + 1.6); group.add(a); }
+  const tmp = new THREE.Color(), cA = new THREE.Color(0x3d8cff), cB = new THREE.Color(0xf2c14e), cC = new THREE.Color(0xff4b3a);
+  function step(dt) {
+    for (let i = 0; i < N; i++) {
+      const p = P[i]; let sp = 1.7 * p.b, steered = false;
+      for (const o of c.obs) {
+        const inX = p.x > o.x0 - .03 && p.x < o.x1 + .03, inY = p.y > o.y0 - .03 && p.y < o.y1 + .03;
+        if (!inX || !inY) continue;
+        if (o.kind === 'solid' && p.z - .45 < o.z1 && p.z > o.z0) {
+          const dx0 = p.x - o.x0, dx1 = o.x1 - p.x, dy0 = p.y - o.y0, dy1 = o.y1 - p.y, m = Math.min(dx0, dx1, dy1 + (o.y1 > c.H - .1 ? 9 : 0), dy0 + (o.y0 < .1 ? 9 : 0));
+          const v = 2.6 * dt;
+          if (m === dx0) p.x -= v; else if (m === dx1) p.x += v; else if (m === dy0) p.y -= v; else p.y += v;
+          steered = true; if (p.z < o.z1 + .05) sp *= .25;
+        } else if (p.z < o.z1 && p.z > o.z0) {
+          if (o.kind === 'porous') sp *= .55;
+          else if (o.kind === 'fan') p.b = 1.8;
+          else if (o.kind === 'heat') { sp *= .7; p.t += o.heat * dt * .9; }
+        }
+      }
+      if (!steered) { p.x += (p.lx - p.x) * dt * .25; }
+      p.z -= sp * dt;
+      if (p.z < c.r) { p.x *= 1 + dt * .15; p.y += dt * .05; }
+      p.x = Math.max(-W / 2 + .06, Math.min(W / 2 - .06, p.x)); if (p.z < c.f && p.z > c.r) p.y = Math.max(.07, Math.min(c.H - .03, p.y));
+      if (p.z < c.r - 1.4) spawn(p, false);
+      pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+      const t = Math.min(1, p.t);
+      if (t < .5) tmp.lerpColors(cA, cB, t * 2); else tmp.lerpColors(cB, cC, (t - .5) * 2);
+      col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
+    }
+    g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
+  }
+  return { group, step };
+}
+
+// rack-level airflow: cold aisle in front, hot aisle behind, recirculation through open units
+const rackAir = (() => {
+  const lanes = [];
+  for (const s of SERVERS) lanes.push({ y0: uY(s.bottom), y1: uY(s.top + 1), z0: ZF + 1.5, z1: ZF - s.D, dir: -1 });
+  for (const sw of SWITCHES) lanes.push({ y0: sw.y, y1: sw.y + U, z0: ZF + 1.5, z1: -4.6, dir: -1 });
+  for (const u of OPEN) lanes.push({ y0: uY(u), y1: uY(u + 1), z0: -5.6, z1: ZF + .6, dir: 1, open: true });
+  const N = 1800, pos = new Float32Array(N * 3), col = new Float32Array(N * 3), P = [];
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: .09, vertexColors: true, transparent: true, opacity: .85, depthWrite: false, blending: THREE.AdditiveBlending }));
+  const spawn = (p, any) => { const l = lanes[Math.random() < .06 ? lanes.length - 1 - Math.floor(Math.random() * OPEN.length) : Math.floor(Math.random() * lanes.length)]; p.l = l; p.x = (Math.random() - .5) * (W - .2); p.y = l.y0 + .05 + Math.random() * (l.y1 - l.y0 - .1); p.z = any ? l.z1 + Math.random() * (l.z0 - l.z1) : (l.dir < 0 ? l.z0 + Math.random() * 1.5 : l.z0); p.v = 0; };
+  for (let i = 0; i < N; i++) { const p = {}; spawn(p, true); P.push(p); }
+  const tmp = new THREE.Color(), cA = new THREE.Color(0x3d8cff), cC = new THREE.Color(0xff4b3a);
+  return {
+    pts, step(dt) {
+      for (let i = 0; i < N; i++) {
+        const p = P[i], l = p.l;
+        if (l.dir < 0) { p.z -= 2.8 * dt; if (p.z < l.z1) { p.v += dt * 1.2; p.y += p.v * dt * 2; p.z -= dt * .5; } if (p.z < -7.5 || p.y > BASE + RACK_H + 1.5) spawn(p, false); }
+        else { p.z += 2.4 * dt; if (p.z > l.z1 + 1.2) spawn(p, false); }
+        const hot = l.dir < 0 ? Math.max(0, Math.min(1, (l.z0 - 1 - p.z) / (l.z0 - l.z1))) : 1;
+        tmp.lerpColors(cA, cC, hot);
+        pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z; col[i * 3] = tmp.r; col[i * 3 + 1] = tmp.g; col[i * 3 + 2] = tmp.b;
+      }
+      g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true;
+    }
+  };
+})();
+rackAir.pts.visible = false; scene.add(rackAir.pts);
+
+// ───────────────────────────── transitions
+async function inspect(i) {
+  if (busy) return; busy = true; hideCard(); hl.visible = false; tip.style.display = 'none';
+  const s = SERVERS[i]; cur = i; mode = 'trans'; state.explode = 0; state.cut = 0; state.xOn = false; state.cOn = false; state.airflow = false; state.coverOff = 0; state.preset = 'WHOLE SLICE';
+  rackAir.pts.visible = false; ui();
+  const low = s.low, p0 = s.home.clone();
+  await tween(.35, k => low.position.z = p0.z + Math.sin(k * Math.PI) * .05 - Math.sin(k * Math.PI * 3) * .015);
+  const p1 = p0.clone(); p1.z += .7 * s.D;
+  await Promise.all([tween(1.1, k => low.position.z = p0.z + .7 * s.D * ease(k)), camTo({ t: new V3(0, p1.y + .4, p1.z - .5), r: fitR(s.D * .7), th: .75, ph: .32 }, 1.3)]);
+  const c = makeHi(s); curHi = c; c.root.position.copy(p1); scene.add(c.root); low.visible = false; applyState(c);
+  const goal = slicePreset('WHOLE SLICE', c);
+  await Promise.all([tween(1.8, k => {
+    const kz = ease(Math.min(1, k * 1.5)), ky = ease(Math.max(0, (k - .2) / .8));
+    c.root.position.set(p1.x + (STAGE.x - p1.x) * kz, p1.y + (STAGE.y - p1.y) * ky, p1.z + (STAGE.z - p1.z) * kz);
+    setRackFade(1 - k); setStage(k);
+  }), camTo(goal, 1.9)]);
+  await tween(1.0, k => { state.coverOff = ease(k); });
+  mode = 'slice'; busy = false; ui();
+}
+async function backToRack() {
+  if (busy || mode !== 'slice') return; busy = true;
+  const c = curHi, s = SERVERS[cur], e0 = state.explode, cut0 = state.cut;
+  state.airflow = false; state.xOn = false; state.cOn = false; mode = 'trans'; ui();
+  if (e0 > 0 || cut0 > 0) await tween(.7, k => { state.explode = e0 * (1 - ease(k)); state.cut = cut0 * (1 - k); });
+  await tween(.8, k => state.coverOff = 1 - ease(k));
+  const p1 = s.home.clone(); p1.z += .7 * s.D; const st = c.root.position.clone();
+  await Promise.all([tween(1.8, k => {
+    const ky = ease(Math.min(1, k * 1.4)), kz = ease(Math.max(0, (k - .25) / .75));
+    c.root.position.set(st.x + (p1.x - st.x) * kz, st.y + (p1.y - st.y) * ky, st.z + (p1.z - st.z) * kz);
+    setRackFade(k); setStage(1 - k);
+  }), camTo({ t: new V3(0, p1.y + .4, p1.z - .5), r: fitR(s.D * .7), th: .75, ph: .32 }, 1.8)]);
+  s.low.position.copy(p1); s.low.visible = true; disposeHi(c); curHi = null;
+  await tween(1.0, k => s.low.position.z = p1.z - .7 * s.D * ease(k));
+  await camTo(RACK_PRESETS['FULL RACK 3/4'](), 1.3);
+  mode = 'rack'; busy = false; ui();
+}
+async function switchTo(d) {
+  if (busy || mode !== 'slice') return; busy = true;
+  const old = curHi, os = SERVERS[cur], n = (cur + d + SERVERS.length) % SERVERS.length, ns = SERVERS[n];
+  os.low.position.copy(os.home); os.low.visible = true; ns.low.visible = false;
+  const c = makeHi(ns); c.root.position.copy(STAGE); c.root.position.x += d * 14; scene.add(c.root);
+  cur = n; curHi = c; ui();
+  await Promise.all([tween(1.0, k => { const e = ease(k); old.root.position.x = STAGE.x - d * 14 * e; c.root.position.x = STAGE.x + d * 14 * (1 - e); }), camTo(slicePreset(state.preset, c), 1.0)]);
+  disposeHi(old); busy = false; ui();
+}
+
+// ───────────────────────────── UI
+const bar = document.getElementById('bar'), tip = document.getElementById('tip'), card = document.getElementById('card');
+const sb = document.getElementById('slicebar'), notes = document.getElementById('notes'), spec = document.getElementById('spec'), legend = document.getElementById('legend');
+let rackPreset = 'FULL RACK 3/4';
+const NOTES = {
+  gp: 'Shallow 1U: 40 mm fans spin fast to push air through a 43 mm tall gap. Low-profile heatsinks use many thin fins so the short air column still picks up heat.',
+  virt: 'Thirty-two DIMMs stand parallel to the airflow so air runs down the channels between them; the black duct forces fan air through the CPU fins instead of around them.',
+  db: 'Twenty-four NVMe bays choke the intake: air leaks through carrier gaps and the slotted backplane, which is why the fan wall sits right behind it.',
+  gpu: 'Ten 80 mm fans in two rows pressurise the chassis. GPU heatsinks have tall fins running front-to-rear — channels — so air gets hotter row by row and leaves through the rear.',
+  storage: 'Thirty-two millimetres of drive face per bay: perforated carriers let air slip between drives, the backplane has cut-outs, and the fans pull rather than push.'
+};
+function btn(t, on, f, cls = '') { const b = document.createElement('button'); b.textContent = t; if (on) b.classList.add('on'); if (cls) b.classList.add(cls); b.onclick = f; bar.appendChild(b); return b; }
+function sep() { const d = document.createElement('div'); d.className = 'sep'; bar.appendChild(d); }
+function ui() {
+  bar.innerHTML = '';
+  const slice = mode === 'slice';
+  document.getElementById('modeName').textContent = mode === 'rack' ? 'FULL RACK MODE — hover a server, click to inspect' : slice ? 'SINGLE SLICE MODE — drag to orbit, scroll to zoom' : 'TRANSITION…';
+  sb.style.display = slice ? 'flex' : 'none';
+  spec.style.display = slice ? 'block' : 'none';
+  notes.style.display = slice && state.airflow ? 'block' : 'none';
+  legend.style.display = (slice && state.airflow) || (mode === 'rack' && state.rackAir) ? 'block' : 'none';
+  if (mode === 'rack') {
+    for (const n of Object.keys(RACK_PRESETS)) btn(n, rackPreset === n, () => { rackPreset = n; camTo(RACK_PRESETS[n](), 1.1); ui(); });
+    sep(); btn('SHOW AIRFLOW', state.rackAir, () => { state.rackAir = !state.rackAir; rackAir.pts.visible = state.rackAir; ui(); });
+  } else if (slice) {
+    for (const n of ['WHOLE SLICE', 'TOP DOWN', '3/4 ENGINEERING VIEW', 'FRONT INTERNALS', 'REAR INTERNALS', 'CPU + MEMORY', 'GPU AREA', 'STORAGE AREA'])
+      btn(n, state.preset === n, () => { state.preset = n; camTo(slicePreset(n, curHi), 1.0); ui(); });
+    sep();
+    btn('EXPLODED VIEW', state.xOn, () => { if (busy) return; state.xOn = !state.xOn; const a = state.explode, b = state.xOn ? 1 : 0; tween(1.2, k => state.explode = a + (b - a) * ease(k)).then(() => camTo(slicePreset(state.preset, curHi), .7)); ui(); });
+    btn('CHASSIS CUTAWAY', state.cOn, () => { state.cOn = !state.cOn; const a = state.cut, b = state.cOn ? 1 : 0; tween(.6, k => state.cut = a + (b - a) * k); ui(); });
+    btn('SHOW AIRFLOW', state.airflow, () => { state.airflow = !state.airflow; ui(); });
+    sep(); btn('RETURN TO RACK', false, backToRack, 'big');
+    const s = SERVERS[cur], c = curHi.spec ? curHi : null;
+    document.getElementById('sIdx').textContent = `SERVER ${String(cur + 1).padStart(2, '0')} / ${String(SERVERS.length).padStart(2, '0')}`;
+    document.getElementById('sName').innerHTML = `${s.name}<br>${s.u}U · ${s.range}`;
+    const T = TYPES[s.type];
+    spec.innerHTML = `<div><span>Host</span><span>${s.host}</span></div><div><span>Role</span><span>${T.role}</span></div><div><span>Size</span><span>${s.u}U · ${s.range}</span></div><div><span>Depth</span><span>${Math.round(s.D * 100)} mm</span></div><div style="border:0;display:block;color:#b9c3cf;margin-top:4px">${T.info}</div>`;
+    notes.innerHTML = `<h4>WHY THE AIR GOES WHERE IT DOES</h4><p>${NOTES[s.type]}</p><p>Front → rear only: the fan wall makes a pressure step, every heat source lies downstream of it, and the rear panel is perforated so the hot air has a short way out.</p><p>Fins and DIMMs run front-to-rear on purpose — crosswise they would block the flow you see.</p>`;
+  }
+}
+function hideCard() { card.style.display = 'none'; }
+function showCard(o) {
+  card.style.display = 'block';
+  if (o.sw) { card.innerHTML = `<h3>${o.sw.name}</h3><div class="k">U${o.sw.u} · 1U · rear-mounted, ports face the hot aisle</div><div>${o.sw.info}</div>`; return; }
+  const s = o.spec, i = SERVERS.indexOf(s);
+  card.innerHTML = `<h3>${s.name}</h3><div class="k">${s.range} · ${s.u}U · ${s.host}</div><div>${TYPES[s.type].info}</div><button class="big" id="ins">INSPECT SLICE</button>`;
+  document.getElementById('ins').onclick = () => inspect(i);
+}
+document.getElementById('prev').onclick = () => switchTo(-1);
+document.getElementById('next').onclick = () => switchTo(1);
+
+// ───────────────────────────── input
+const el = renderer.domElement, ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let drag = null;
+function pick(e) {
+  mouse.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(lowRoots.filter(r => r.visible), true)[0];
+  if (!hit) return null; let o = hit.object; while (o && !o.userData.spec && !o.userData.sw) o = o.parent; return o ? o.userData : null;
+}
+el.addEventListener('contextmenu', e => e.preventDefault());
+el.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, b: e.button, m: 0 }; el.setPointerCapture(e.pointerId); });
+el.addEventListener('pointerup', e => {
+  if (drag && drag.m < 5 && drag.b === 0 && mode === 'rack' && !busy) { const p = pick(e); if (p) showCard(p); else hideCard(); }
+  drag = null;
+});
+el.addEventListener('pointermove', e => {
+  if (drag) {
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.m += Math.abs(dx) + Math.abs(dy); drag.x = e.clientX; drag.y = e.clientY;
+    if (busy) return;
+    if (drag.b === 0 && !e.shiftKey) { cam.th -= dx * .006; cam.ph = Math.max(-.3, Math.min(1.55, cam.ph + dy * .005)); }
+    else {
+      const rgt = new V3().setFromMatrixColumn(camera.matrix, 0), up = new V3().setFromMatrixColumn(camera.matrix, 1), s = cam.r * .0011;
+      cam.t.addScaledVector(rgt, -dx * s).addScaledVector(up, dy * s);
+    }
+    return;
+  }
+  if (mode !== 'rack' || busy) return;
+  const p = pick(e);
+  if (p && p.spec) { showHL(p.spec.bottom, p.spec.u); tip.innerHTML = `${p.spec.name}<br><span>${p.spec.range}</span><br><span>${p.spec.u}U</span>`; }
+  else if (p && p.sw) { showHL(p.sw.u, 1); tip.innerHTML = `${p.sw.name}<br><span>U${p.sw.u}</span><br><span>1U</span>`; }
+  else { hl.visible = false; tip.style.display = 'none'; el.style.cursor = ''; return; }
+  tip.style.display = 'block'; tip.style.left = e.clientX + 16 + 'px'; tip.style.top = e.clientY + 12 + 'px'; el.style.cursor = 'pointer';
+});
+el.addEventListener('wheel', e => { e.preventDefault(); if (!busy) cam.r = Math.max(1.5, Math.min(140, cam.r * Math.exp(e.deltaY * .0012))); }, { passive: false });
+addEventListener('keydown', e => {
+  if (mode === 'slice') { if (e.key === 'ArrowLeft') switchTo(-1); if (e.key === 'ArrowRight') switchTo(1); if (e.key === 'Escape') backToRack(); }
+});
+
+function resize() { if (!innerWidth || !innerHeight) return; renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+Object.assign(cam, RACK_PRESETS['FULL RACK 3/4']());
+ui();
+
+// ───────────────────────────── loop
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => frame(Math.min(.05, clock.getDelta())));
+function frame(dt) {
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i]; tw.t += dt; const k = Math.min(1, tw.t / tw.d); tw.f(k);
+    if (k >= 1) { tweens.splice(i, 1); tw.res(); }
+  }
+  for (const c of live) {
+    applyState(c);
+    for (const r of c.rotors) r.rotation.z += dt * 30;
+    if (state.airflow && c.air.group.visible) c.air.step(dt);
+  }
+  if (rackAir.pts.visible && mode === 'rack') rackAir.step(dt);
+  if (!isFinite(cam.r)) Object.assign(cam, RACK_PRESETS['FULL RACK 3/4']());
+  applyCam();
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
