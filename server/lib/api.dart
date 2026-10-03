@@ -10202,17 +10202,17 @@ syncToolbar();
                   ? '<span class="badge err">ip banned</span>'
                   : '<span class="badge $statusClass">${_htmlEscape(u.status)}</span>';
       return '<tr>'
-          '<td>$safeEmail</td>'
-          '<td>$statusBadge</td>'
-          '<td class="nowrap">${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
-          '<td class="nowrap">'
+          '<td data-label="Email">$safeEmail</td>'
+          '<td data-label="Status">$statusBadge</td>'
+          '<td data-label="Plan">${_htmlEscape(planLabels[u.planId] ?? u.planId)}</td>'
+          '<td data-label="Storage">'
           '<div class="meter"><div style="width:${pct.toStringAsFixed(0)}%"></div></div>'
           '<span class="muted" style="font-size:12px">${fmtBytes(used)} / ${fmtBytes(u.quotaBytes)} (${pct.toStringAsFixed(0)}%)</span>'
           '</td>'
-          '<td class="nowrap">${aiCell(u)}</td>'
-          '<td class="nowrap">${fmtDate(u.createdAtMs)}</td>'
-          '<td class="nowrap">${fmtDate(u.lastLoginAtMs)}</td>'
-          '<td class="actions-cell">$action</td>'
+          '<td data-label="AI usage">${aiCell(u)}</td>'
+          '<td data-label="Created">${fmtDate(u.createdAtMs)}</td>'
+          '<td data-label="Last login">${fmtDate(u.lastLoginAtMs)}</td>'
+          '<td data-label="Actions" class="actions-cell">$action</td>'
           '</tr>';
     }).join();
 
@@ -10387,7 +10387,7 @@ syncToolbar();
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
         '<style>$_adminCss$_bannersCss$_bmCss</style>'
-        '</head><body class="no-js"><div class="wrap">'
+        '</head><body class="no-js"><div class="wrap admin-wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
         '<div style="margin-left:auto;display:flex;gap:8px;align-items:center">'
@@ -10420,9 +10420,9 @@ syncToolbar();
         '</div>'
         '${_adminAssistantPanel(googleModels, mistralModels)}'
         '<div class="tab-panel" id="panel-users">'
-        '<div class="card table-card">'
-        '<table><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
-        '<th>Storage</th><th>AI usage</th><th>Created</th><th>Last login</th><th></th></tr></thead>'
+        '<div class="card table-card users-table-card">'
+        '<table class="users-table"><thead><tr><th>Email</th><th>Status</th><th>Plan</th>'
+        '<th>Storage</th><th>AI usage</th><th>Created</th><th>Last login</th><th>Actions</th></tr></thead>'
         '<tbody>$rows</tbody></table>'
         '</div>'
         '$bansCard'
@@ -11579,6 +11579,7 @@ syncToolbar();
 body{background:#0f0d17;color:#ece8f7;margin:0;-webkit-font-smoothing:antialiased;
   font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.5}
 .wrap{max-width:1180px;margin:0 auto;padding:36px 28px 64px}
+.wrap.admin-wrap{max-width:none}
 header.top{display:flex;align-items:baseline;gap:12px;margin-bottom:26px}
 h1{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:0}
 h1 .dot{color:#8a7ee0}
@@ -11646,6 +11647,30 @@ h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
 .empty{color:#8d86a8;font-size:13px;padding:10px 0}
 .card{background:#151122;border:1px solid #241e36;border-radius:14px;padding:20px 22px;margin-bottom:18px}
 .card.table-card{padding:14px 16px;overflow-x:auto}
+.card.users-table-card{overflow:visible}
+.users-table{table-layout:fixed}
+.users-table th,.users-table td{padding:10px 8px;white-space:normal;overflow-wrap:anywhere}
+.users-table th:nth-child(1){width:18%}
+.users-table th:nth-child(2){width:8%}
+.users-table th:nth-child(3){width:9%}
+.users-table th:nth-child(4){width:16%}
+.users-table th:nth-child(5){width:20%}
+.users-table th:nth-child(6),.users-table th:nth-child(7){width:10%}
+.users-table th:nth-child(8){width:9%;text-align:right}
+.users-table .meter{display:block;width:100%;max-width:120px;margin:0 0 6px}
+@media(max-width:1000px){
+  .users-table,.users-table tbody,.users-table tr{display:block}
+  .users-table thead{display:none}
+  .users-table tr{padding:10px 0;border-bottom:1px solid #262038}
+  .users-table tr:last-child{border-bottom:0}
+  .users-table td{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;border:0;text-align:left;padding:6px 8px}
+  .users-table td::before{content:attr(data-label);color:#7f7898;font-size:11px;font-weight:600;text-transform:uppercase}
+  .users-table td[data-label=Storage] .muted{grid-column:2}
+  .users-table td[data-label="AI usage"] .muted{grid-column:2}
+  .users-table .menu{justify-self:start;max-width:100%}
+  .users-table .menu-pop{left:0;right:auto;min-width:0;width:min(260px,calc(100vw - 190px))}
+  .users-table .menu-item{white-space:normal;overflow-wrap:anywhere}
+}
 .card.table-card h2{padding:6px 6px 0}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th{text-align:left;color:#7f7898;font-weight:600;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #262038;white-space:nowrap}
