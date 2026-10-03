@@ -12735,6 +12735,7 @@ window.lumaAskReason = function (form, message) {
     'engine': 'Engine (.html)',
     'pc': 'PC build (.html)',
     'keyboard': 'Keyboard (.html)',
+    'cruise_ship': 'Cruise Ship (.html)',
     'cathedral': 'Cathedral (3D model, .glb)',
   };
 
@@ -12745,6 +12746,7 @@ window.lumaAskReason = function (form, message) {
     'high': 'High',
     'xhigh': 'Xhigh',
     'max': 'Max',
+    'ultra': 'Ultra',
   };
 
   static String _bmOptions(Map<String, String> options) => [
@@ -12834,7 +12836,7 @@ window.lumaAskReason = function (form, message) {
   let idEdited = false;
   let maxBytes = 60 * 1024 * 1024;
   let entries = [];
-  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard' };
+  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship' };
 
   function editing() {
     return entries.find(function (e) { return e.id === entryPick.value; }) || null;
@@ -13388,7 +13390,7 @@ window.lumaAskReason = function (form, message) {
     const selCount = $('bnSelCount');
     const renderSel = $('bnRenderSelected');
     const countLine = $('bnCatalogCount');
-    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard' };
+    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship' };
     let scenes = [];
     let kind = 'all';
     const selected = new Set();

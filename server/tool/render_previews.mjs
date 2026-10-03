@@ -321,6 +321,24 @@ async function shootKeyboard(page) {
   await sleep(skipped ? 4000 : 20000);
 }
 
+async function shootCruiseShip(page) {
+  await page.waitForFunction(() => window.cruiseDebug?.ready === true || window.cruiseDebug?.error,
+    { timeout: 45000, polling: 100 });
+  await page.evaluate(() => {
+    if (window.cruiseDebug.error) throw new Error(window.cruiseDebug.error);
+    window.cruiseDebug.setView('tender');
+    window.cruiseDebug.setTime(16.5);
+    window.cruiseDebug.setWeather('clear');
+    window.cruiseDebug.setCamera({ x: -45, y: 8, z: 225, yaw: -1.46, pitch: 0.10 });
+    window.cruiseDebug.hideUI?.();
+  });
+  await page.addStyleTag({ content: 'body > :not(canvas):not(script):not(style) { visibility: hidden !important; } canvas { visibility: visible !important; }' });
+  await sleep(2000);
+  await page.evaluate(() => {
+    if (window.cruiseDebug.error) throw new Error(window.cruiseDebug.error);
+  });
+}
+
 async function shootPc(page) {
   // PC scenes are bespoke: the power control and the online indicator
   // differ per scene. The module scripts (and their click handlers) only
@@ -457,7 +475,8 @@ async function main() {
   const kindOf = (id) =>
     manifest.benchmarks.find((x) => x.id === id)?.kind ??
     (id.startsWith('engine_') ? 'engine' : id.startsWith('pc_') ? 'pc' :
-      id.startsWith('cathedral_') ? 'cathedral' : id.startsWith('keyboard_') ? 'keyboard' : 'pagoda');
+      id.startsWith('cathedral_') ? 'cathedral' : id.startsWith('keyboard_') ? 'keyboard' :
+        id.startsWith('cruise_ship_') ? 'cruise_ship' : 'pagoda');
   const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
   const sceneFile = (id) => {
     const ext = sceneExtension(id);
@@ -572,6 +591,7 @@ async function main() {
         else if (kind !== 'cathedral') {
           if (kind === 'engine') await shootEngine(page);
           else if (kind === 'keyboard') await shootKeyboard(page);
+          else if (kind === 'cruise_ship') await shootCruiseShip(page);
           else await shootPc(page);
           if (framing) console.log(`  framing: ${(await applyFraming(page, framing)).camera}`);
         }

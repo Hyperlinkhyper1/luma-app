@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MSC Virtuosa · Cruise Ship Test</title>
+<link rel="icon" href="data:,">
+</head>
+<body>
+<canvas id="view" tabindex="0"></canvas>
+<div id="fade"></div>
+
+<!-- Loading -->
+<section id="loading">
+  <div class="load-card">
+    <div class="eyebrow">AI Usage · Cruise Ship Test · Opus 5.5 (Ultracode)</div>
+    <h1>MSC Virtuosa</h1>
+    <div class="sub">Meraviglia-Plus class · 331 m · 19 decks</div>
+    <div class="bar"><i id="loadBar"></i></div>
+    <div id="loadStep" class="step">Starting renderer…</div>
+  </div>
+</section>
+
+<!-- Boarding card shown once everything is built -->
+<section id="board" hidden>
+  <div class="board-card">
+    <div class="eyebrow">Deck 7 · Promenade · Lifeboat station</div>
+    <h1>MSC Virtuosa</h1>
+    <p class="lede">You are standing on the deck 7 promenade, next to the lifeboats, 20&nbsp;m above the sea.
+      Walk the outside decks, drop to sea level in the tender, or fly the drone.</p>
+    <div class="keys">
+      <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Walk</span></div>
+      <div><kbd>Shift</kbd><span>Run</span></div>
+      <div><kbd>Ctrl</kbd><span>Crouch</span></div>
+      <div><kbd>E</kbd><span>Use door / stairs</span></div>
+      <div><kbd>V</kbd><span>Walk · Tender · Drone</span></div>
+      <div><kbd>M</kbd><span>Deck map</span></div>
+      <div><kbd>H</kbd><span>Ship's horn</span></div>
+      <div><kbd>F1</kbd><span>Hide HUD</span></div>
+      <div><kbd>Esc</kbd><span>Settings</span></div>
+    </div>
+    <button id="boardBtn" class="primary">Step onto the deck</button>
+    <div id="backendNote" class="note"></div>
+  </div>
+</section>
+
+<!-- HUD -->
+<div id="hud" hidden>
+  <div id="hudPlace"><b id="hudDeck">DECK 7</b><span id="hudArea">PROMENADE</span></div>
+  <div id="hudEnv"><span id="hudTime">16:30</span><span id="hudWeather">Clear</span><span id="hudSea">18 kn</span></div>
+  <div id="hudMode">WALK</div>
+  <div id="crosshair"></div>
+  <div id="prompt" hidden></div>
+  <div id="toast" hidden></div>
+  <div id="fps" hidden></div>
+</div>
+
+<!-- Deck map -->
+<section id="map" class="modal" hidden>
+  <div class="modal-card wide">
+    <header><h2>Deck map</h2><button class="x" data-close="map">✕</button></header>
+    <p class="hint">Pick a spot to go there. Doors and stairwells (<kbd>E</kbd>) open this same list.</p>
+    <svg id="mapSvg" viewBox="0 0 1000 300" aria-label="Side elevation of the ship"></svg>
+    <div id="mapList" class="map-list"></div>
+  </div>
+</section>
+
+<!-- Settings -->
+<section id="settings" class="modal" hidden>
+  <div class="modal-card">
+    <header><h2>Settings</h2><button class="x" data-close="settings">✕</button></header>
+    <nav id="setTabs">
+      <button data-tab="time" class="on">Time</button>
+      <button data-tab="weather">Weather</button>
+      <button data-tab="sea">Sea &amp; location</button>
+      <button data-tab="graphics">Graphics</button>
+      <button data-tab="controls">Controls &amp; comfort</button>
+      <button data-tab="audio">Audio</button>
+    </nav>
+    <div id="setBody"></div>
+    <footer>
+      <button id="setReset" class="ghost">Reset to defaults</button>
+      <button id="setResume" class="primary">Resume</button>
+    </footer>
+  </div>
+</section>
+
+<section id="fatal" hidden>
+  <div class="load-card">
+    <h1>Can't start the scene</h1>
+    <p id="fatalMsg"></p>
+  </div>
+</section>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

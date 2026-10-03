@@ -153,7 +153,7 @@ class _ConverterHub extends StatelessWidget {
         ConverterToolTile(
           icon: Icons.category_outlined,
           title: 'Other',
-          subtitle: 'Minecraft builds, file breaker & fixer',
+          subtitle: 'Minecraft worlds & builds, file breaker & fixer',
           badge: 'OTHER',
           onTap: () => onOpen(ConverterTool.other),
         ),

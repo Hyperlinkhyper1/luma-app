@@ -470,12 +470,17 @@ class _ConverterPrimaryButtonState extends State<ConverterPrimaryButton> {
                     children: [
                       Icon(widget.icon, color: luma.onAccent, size: 20),
                       const SizedBox(width: 8),
-                      Text(
-                        widget.label,
-                        style: TextStyle(
-                          color: luma.onAccent,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                      Flexible(
+                        child: Text(
+                          widget.label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: luma.onAccent,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],

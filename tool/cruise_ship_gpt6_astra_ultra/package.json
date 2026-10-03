@@ -1,0 +1,13 @@
+{
+  "name": "luma-cruise-ship-gpt6-astra-ultra",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "preview": "node serve.mjs"
+  },
+  "dependencies": { "three": "0.186.1" },
+  "devDependencies": { "vite": "8.3.2" }
+}

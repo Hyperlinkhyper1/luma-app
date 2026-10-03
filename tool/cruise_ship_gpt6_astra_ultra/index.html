@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>MSC Virtuosa · GPT 6 Astra (Ultra)</title>
+<link rel="icon" href="data:,">
+<style>/*__STYLE__*/</style>
+</head>
+<body>
+<canvas id="scene" tabindex="0" aria-label="MSC Virtuosa interactive exterior exploration"></canvas>
+<section id="loading" class="veil"><div class="loading-card"><div class="eyebrow">GPT 6 ASTRA (ULTRA) / CRUISE SHIP TEST</div><h1>VIRTUOSA</h1><p id="progress">Preparing your passage…</p><div class="loading-line"></div></div></section>
+<section id="welcome" class="veil" hidden><div class="boarding"><div class="eyebrow">MSC VIRTUOSA / OPEN SEA</div><h1>A world<br>above the water.</h1><p class="intro">An empty ship. An endless horizon.<br>Step onto deck 7, beneath a city of balconies.</p><button id="board" class="primary">Begin exploring <span>↗</span></button><div class="boarding-foot">GPT 6 Astra (Ultra) <span>331 m · Exterior expedition</span></div></div><div class="welcome-caption">DECK 7 / LIFEBOAT PROMENADE</div></section>
+<div id="hud" hidden>
+  <header class="hud-top"><div class="brand">MSC <span>VIRTUOSA</span></div><div class="environment"><span id="timeLabel">16:30</span><span id="weatherLabel">CLEAR</span><span class="sea-label">AT SEA</span><button id="menuButton" aria-label="Open settings">☰</button></div></header>
+  <div class="location"><div class="eyebrow" id="modeLabel">ON FOOT</div><h2 id="placeLabel">Lifeboat promenade</h2><p id="deckLabel">DECK 7 · STARBOARD</p></div>
+  <div id="reticle">·</div><div id="hint">Click the scene to look around</div>
+  <footer class="hud-bottom"><div><kbd>WASD</kbd> Move <kbd>SHIFT</kbd> Sprint <kbd>C</kbd> Crouch</div><div><button id="mapButton"><kbd>M</kbd> Deck map</button><button id="modeButton"><kbd>V</kbd> Change view</button><kbd>ESC</kbd> Settings</div></footer>
+  <div id="fps" hidden></div>
+</div>
+<section id="settings" class="veil panel-veil" hidden><div class="panel"><header><div><div class="eyebrow">YOUR PASSAGE</div><h2>Conditions & controls</h2></div><button class="close" data-close aria-label="Close settings">×</button></header>
+  <div class="settings-grid">
+  <section><h3>Time of day</h3><label>Ship time <output id="hourOutput">16:30</output><input id="hour" type="range" min="0" max="23.99" step="0.01" value="16.5"></label><label class="check"><input id="paused" type="checkbox"> Pause day/night cycle</label><label>Day length<select id="dayLength"><option value="24">24 minutes</option><option value="60">60 minutes</option><option value="6">6 minutes</option><option value="1440">24 hours</option></select></label></section>
+  <section><h3>Weather</h3><label>Conditions<select id="weather"><option value="auto">Changing weather</option><option value="clear">Clear</option><option value="overcast">Overcast</option><option value="fog">Sea fog</option><option value="rain">Rain</option><option value="storm">Thunderstorm</option></select></label><label class="check"><input id="lightning" type="checkbox" checked> Lightning flashes</label><p class="note">Weather changes gradually. Wind, waves and deck surfaces respond together.</p></section>
+  <section><h3>Graphics</h3><label>Quality<select id="quality"><option value="low">Low</option><option value="medium">Medium</option><option value="high" selected>High</option><option value="ultra">Ultra</option></select></label><label>Resolution <output id="resolutionOutput">100%</output><input id="resolution" type="range" min="0.5" max="1.5" step="0.1" value="1"></label><label class="check"><input id="showFps" type="checkbox"> Show performance</label></section>
+  <section><h3>Comfort & sound</h3><label>Field of view <output id="fovOutput">70°</output><input id="fov" type="range" min="50" max="95" value="70"></label><label>Volume<input id="volume" type="range" min="0" max="1" step="0.05" value="0.55"></label><label class="check"><input id="headBob" type="checkbox"> Head bob</label><label class="check"><input id="cameraRoll" type="checkbox" checked> Gentle ship motion</label></section>
+  </div><footer><button id="reset">Reset settings</button><button class="primary" data-close>Return to the sea ↗</button></footer><p class="keys-note">WASD move · Mouse look (or drag) · Shift sprint · C crouch · M map · V view · F hide interface<br>Free camera: Q/E down/up · Tender: W/S throttle, A/D steer · Esc releases mouse / opens settings</p>
+</div></section>
+<section id="map" class="veil panel-veil" hidden><div class="panel map-panel"><header><div><div class="eyebrow">EXPLORE THE EXTERIOR</div><h2>Choose your viewpoint</h2></div><button class="close" data-close aria-label="Close deck map">×</button></header><div class="ship-diagram"><svg viewBox="0 0 900 200" aria-label="Ship side profile"><path d="M45 126H850L817 172H132L72 152Z"/><path d="M106 122V80H155V46H659L715 68H776L810 122Z"/><path class="glass" d="M163 59H655L692 77H165ZM116 91H760V116H116Z"/><path d="M516 46V24H584L601 46ZM294 45V30H321V45Z"/><path class="waterline" d="M20 179H880"/><text x="40" y="199">STERN</text><text x="816" y="199">BOW</text></svg></div><div id="destinations"></div><div class="view-switch"><button data-mode="walk">On foot</button><button data-mode="tender">Tender at sea level</button><button data-mode="free">Free camera</button></div><p class="note">All public exterior decks are connected by physical stairs. Map shortcuts are optional.</p></div></section>
+<section id="error" class="veil" hidden><div class="panel error-panel"><div class="eyebrow">PASSAGE INTERRUPTED</div><h2>The scene could not continue</h2><p id="errorText"></p><button class="primary" id="retry">Reload scene</button></div></section>
+<script>/*__SCENE__*/</script>
+</body>
+</html>

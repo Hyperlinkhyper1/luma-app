@@ -149,6 +149,7 @@ flutter:
     - assets/ai_usage/engine_tests/
     - assets/ai_usage/server_rack_tests/
     - server/benchmarks/scenes/engine_gpt61_sol_xhigh/index.html
+    - server/benchmarks/scenes/cruise_ship_gpt6_astra_ultra/index.html
     - assets/ai_usage/pc_tests/gpt61_sol_xhigh/index.html
     - assets/city_planner/
     - assets/subway_builder/

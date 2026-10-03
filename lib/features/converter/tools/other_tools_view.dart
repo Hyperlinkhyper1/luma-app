@@ -5,10 +5,11 @@ import '../converter_widgets.dart';
 import 'file_corruptor_view.dart';
 import 'file_fixer_view.dart';
 import 'schematic_converter_view.dart';
+import 'world_converter_view.dart';
 
 /// The converter's "Other" category: the tools that are not audio, image or
 /// video work. Each one opens its own screen, the same way the main hub works.
-enum OtherTool { minecraftSchematic, fileCorruptor, fileFixer }
+enum OtherTool { minecraftSchematic, minecraftWorld, fileCorruptor, fileFixer }
 
 class OtherToolsView extends StatefulWidget {
   const OtherToolsView({super.key, required this.onBack});
@@ -25,6 +26,8 @@ class _OtherToolsViewState extends State<OtherToolsView> {
   @override
   Widget build(BuildContext context) {
     switch (_active) {
+      case OtherTool.minecraftWorld:
+        return WorldConverterView(onBack: () => setState(() => _active = null));
       case OtherTool.minecraftSchematic:
         return SchematicConverterView(
           onBack: () => setState(() => _active = null),
@@ -59,6 +62,13 @@ class _OtherHub extends StatelessWidget {
       children: [
         ConverterToolGrid(
           tiles: [
+            ConverterToolTile(
+              icon: Icons.public_rounded,
+              title: 'Minecraft world converter',
+              subtitle: 'Java ↔ Bedrock · versions, entities, players & stats',
+              badge: 'MINECRAFT',
+              onTap: () => onOpen(OtherTool.minecraftWorld),
+            ),
             ConverterToolTile(
               icon: Icons.view_in_ar_outlined,
               title: 'Minecraft schematics',

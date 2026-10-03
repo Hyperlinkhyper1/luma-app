@@ -7,6 +7,7 @@ import '../../../../../theme/luma_theme.dart';
 import 'ai_benchmark_repository.dart';
 import 'ai_benchmark_scope.dart';
 import 'cathedral_test_page.dart';
+import 'cruise_ship_test_page.dart';
 import 'engine_test_page.dart';
 import 'hero_tile.dart';
 import 'keyboard_test_page.dart';
@@ -184,6 +185,16 @@ class _TestsTabState extends State<TestsTab> {
           width: width,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(builder: (_) => const ServerRackTestPage()),
+          ),
+        ),
+        LumaHeroTile(
+          title: 'Cruise Ship Test',
+          subtitle: 'New · Open the test screen',
+          imageFile: _tileArt(repo, 'cruise_ship'),
+          fallbackIcon: Icons.directions_boat_rounded,
+          width: width,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const CruiseShipTestPage()),
           ),
         ),
       ];

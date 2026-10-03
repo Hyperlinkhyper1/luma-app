@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.24)
+project(luma_world_converter LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(MSVC)
+  add_compile_options(/utf-8 /Zc:__cplusplus /Zc:preprocessor /bigobj)
+endif()
+include(FetchContent)
+FetchContent_Declare(je2be
+  GIT_REPOSITORY https://github.com/kbinani/je2be-core.git
+  GIT_TAG 8dfc4de1ba5c7f72e804abea8663380c0dbd5680)
+FetchContent_MakeAvailable(je2be)
+add_executable(luma-world-converter main.cpp)
+target_link_libraries(luma-world-converter PRIVATE je2be)
+target_include_directories(luma-world-converter PRIVATE "${je2be_SOURCE_DIR}/src")
+install(TARGETS luma-world-converter RUNTIME DESTINATION world_converter COMPONENT WorldConverter)
+install(FILES "${je2be_SOURCE_DIR}/LICENSE" DESTINATION world_converter RENAME je2be-LICENSE.txt COMPONENT WorldConverter)
+install(FILES README.md DESTINATION world_converter COMPONENT WorldConverter)
+file(GLOB dependency_roots LIST_DIRECTORIES true "${FETCHCONTENT_BASE_DIR}/*-src")
+foreach(dependency_root IN LISTS dependency_roots)
+  get_filename_component(dependency_name "${dependency_root}" NAME)
+  file(GLOB notices
+    "${dependency_root}/LICENSE*" "${dependency_root}/COPYING*"
+    "${dependency_root}/COPYRIGHT*" "${dependency_root}/NOTICE*"
+    "${dependency_root}/lib/LICENSE*")
+  foreach(notice IN LISTS notices)
+    if(NOT IS_DIRECTORY "${notice}")
+      install(FILES "${notice}" DESTINATION "world_converter/licenses/${dependency_name}" COMPONENT WorldConverter)
+    endif()
+  endforeach()
+endforeach()

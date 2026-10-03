@@ -30,7 +30,7 @@ class AiBenchmarkEntry {
   /// the client caches the download under.
   final String id;
 
-  /// `pagoda`, `engine`, `pc`, `cathedral` or `keyboard` — which test this
+  /// `pagoda`, `engine`, `pc`, `cathedral`, `keyboard` or `cruise_ship` — which test this
   /// scene implements.
   final String kind;
 
@@ -94,7 +94,14 @@ class AiBenchmarkStore {
 
   /// Every test a scene can implement. A scene's id always starts with its
   /// kind and an underscore.
-  static const kinds = ['pagoda', 'engine', 'pc', 'cathedral', 'keyboard'];
+  static const kinds = [
+    'pagoda',
+    'engine',
+    'pc',
+    'cathedral',
+    'keyboard',
+    'cruise_ship',
+  ];
 
   static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');
 
@@ -258,7 +265,7 @@ class AiBenchmarkStore {
   /// Tests whose scenes are always WebGL. The banner renderer waits for
   /// their canvas, so a page without one (a CSS keyboard filed under the
   /// wrong test) can only ever fail there.
-  static const _canvasKinds = {'pagoda', 'engine', 'pc'};
+  static const _canvasKinds = {'pagoda', 'engine', 'pc', 'cruise_ship'};
 
   static final RegExp _drawsOnCanvas = RegExp(
       r'''<canvas|getcontext\(|webgl|three(\.module)?(\.min)?\.js|["']three["']''',
@@ -490,12 +497,7 @@ class AiBenchmarkStore {
   // ---- Files ---------------------------------------------------------------
 
   bool _validId(String id) =>
-      idPattern.hasMatch(id) &&
-      (id.startsWith('pagoda_') ||
-          id.startsWith('engine_') ||
-          id.startsWith('pc_') ||
-          id.startsWith('cathedral_') ||
-          id.startsWith('keyboard_'));
+      idPattern.hasMatch(id) && kinds.any((kind) => id.startsWith('${kind}_'));
 
   Future<File?> _sceneFile(String id) async {
     final ext = _extOf(id);
@@ -505,7 +507,10 @@ class AiBenchmarkStore {
       final overrideIndex = File('$_dir/$id/index.html');
       if (await overrideIndex.exists()) return overrideIndex;
     }
-    final seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.$ext');
+    File? seed = _seedDir == null ? null : File('$_seedDir/scenes/$id.$ext');
+    if (seed != null && !await seed.exists() && ext == 'html') {
+      seed = File('$_seedDir/scenes/$id/index.html');
+    }
     final seedExists = seed != null && await seed.exists();
     final upload = File('$_uploadsDir/$id.$ext');
     if (await upload.exists() &&
@@ -514,10 +519,6 @@ class AiBenchmarkStore {
       return upload;
     }
     if (seedExists) return seed;
-    if (_seedDir != null && ext == 'html') {
-      final seedIndex = File('$_seedDir/scenes/$id/index.html');
-      if (await seedIndex.exists()) return seedIndex;
-    }
     return null;
   }
 
@@ -605,27 +606,17 @@ class AiBenchmarkStore {
       id.startsWith('cathedral_') ? 'glb' : 'html';
 
   static String _kindOf(String id) {
-    if (id.startsWith('engine_')) return 'engine';
-    if (id.startsWith('pc_')) return 'pc';
-    if (id.startsWith('cathedral_')) return 'cathedral';
-    if (id.startsWith('keyboard_')) return 'keyboard';
+    for (final kind in kinds) {
+      if (id.startsWith('${kind}_')) return kind;
+    }
     return 'pagoda';
   }
 
   /// `pagoda_gpt56_sol_xhigh` → `Gpt56 Sol Xhigh`: only ever a fallback for a
   /// scene the manifest doesn't name, where a rough label beats a raw id.
   static String _prettyId(String id) {
-    final stem = id.startsWith('pagoda_')
-        ? id.substring('pagoda_'.length)
-        : id.startsWith('engine_')
-            ? id.substring('engine_'.length)
-            : id.startsWith('pc_')
-                ? id.substring('pc_'.length)
-                : id.startsWith('cathedral_')
-                    ? id.substring('cathedral_'.length)
-                    : id.startsWith('keyboard_')
-                        ? id.substring('keyboard_'.length)
-                        : id;
+    final prefix = '${_kindOf(id)}_';
+    final stem = id.startsWith(prefix) ? id.substring(prefix.length) : id;
     return stem
         .split('_')
         .where((p) => p.isNotEmpty)
