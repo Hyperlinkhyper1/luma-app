@@ -1684,7 +1684,7 @@ function sliceGP(g,def){
   ocp.traverse(o=>{if(o.isMesh)setInfo(o,{title:'OCP 3.0 NETWORK ADAPTER',rows:[
     ['Type','Dual 25 GbE OCP NIC 3.0 SFF'],['Service','Slides out of the rear without opening the chassis'],
     ['Lanes','PCIe Gen5 ×8 from CPU 0'],['Features','RDMA, SR-IOV, PXE / HTTP boot']],
-    note:'OCP NIC 3.0 keeps the primary network interface outside the covered volume, so a failed NIC is swapped like a PSU — in seconds, from the cold side of the rack door.'}));
+    note:'OCP NIC 3.0 keeps the primary network interface outside the covered volume, so a failed NIC is swapped like a PSU — in seconds, from the cold side of the rack door.'});});
   mkRearIO(io,8,2.0,rz+.4);
   for(let i=0;i<2;i++)
     mkPSU(pwr,{x:17.4-i*8.0,y:h/2,z:rz+9.6,w:7.6,h:h-.9,d:19,watts:800,feed:def.feeds[i],std:'CRPS 1U'});
