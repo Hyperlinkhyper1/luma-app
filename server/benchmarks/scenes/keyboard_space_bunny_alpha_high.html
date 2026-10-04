@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NOVA 60 — Mechanical Keyboard Showcase</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #071018;
+    --panel: rgba(9, 22, 31, .78);
+    --line: rgba(143, 216, 222, .17);
+    --text: #e4f1f1;
+    --muted: #78939b;
+    --cyan: #65e0d3;
+    --amber: #f0b66b;
+  }
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); }
+  #app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+  #viewport { position: absolute; inset: 0; }
+  #viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 52% 42%, transparent 32%, rgba(2, 8, 12, .34) 100%); }
+  .topbar, .interface, .legend, .bottom-bar { position: absolute; z-index: 4; }
+  .topbar { top: 25px; left: 31px; right: 31px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+  .brand { display: flex; align-items: center; gap: 12px; letter-spacing: .19em; font-size: 11px; font-weight: 700; color: #c6d9dc; }
+  .brand-mark { width: 25px; height: 25px; border: 1px solid var(--cyan); border-radius: 7px; display: grid; place-items: center; color: var(--cyan); font-size: 13px; box-shadow: 0 0 22px rgba(101,224,211,.18); }
+  .top-meta { display: flex; gap: 9px; align-items: center; color: var(--muted); font-size: 10px; letter-spacing: .16em; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 13px var(--cyan); }
+  .interface { left: 31px; top: 91px; width: min(310px, calc(100vw - 62px)); pointer-events: none; }
+  .eyebrow { color: var(--cyan); font-size: 10px; font-weight: 700; letter-spacing: .23em; margin-bottom: 13px; }
+  h1 { margin: 0; font-size: clamp(38px, 5vw, 66px); line-height: .9; letter-spacing: -.065em; font-weight: 650; }
+  .subhead { color: #9bb0b5; font-size: 12px; line-height: 1.65; max-width: 245px; margin: 18px 0 25px; }
+  .assembly-card { border: 1px solid var(--line); background: linear-gradient(135deg, rgba(16,35,44,.74), rgba(6,17,24,.52)); border-radius: 13px; padding: 14px 15px 13px; backdrop-filter: blur(13px); }
+  .assembly-top { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; }
+  #phase { color: #c9dfe0; letter-spacing: .08em; }
+  .progress-track { height: 3px; margin: 12px 0 9px; background: rgba(120,169,176,.15); border-radius: 4px; overflow: hidden; }
+  #progress { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), #b3f3dd); box-shadow: 0 0 14px rgba(101,224,211,.7); transition: width .12s linear; }
+  #assemblyNote { color: #78939b; font-size: 10px; letter-spacing: .04em; }
+  .legend { right: 31px; top: 104px; width: 174px; pointer-events: none; }
+  .legend-title { color: #647f87; font-size: 9px; letter-spacing: .2em; margin-bottom: 13px; }
+  .legend-item { display: flex; align-items: center; gap: 9px; color: #71888f; font-size: 10px; letter-spacing: .12em; padding: 6px 0; transition: color .25s; }
+  .legend-item i { width: 7px; height: 7px; border-radius: 50%; background: #496069; display: block; transition: background .25s, box-shadow .25s; }
+  .legend-item.active { color: #d6e8e8; }
+  .legend-item.active i { background: var(--cyan); box-shadow: 0 0 11px rgba(101,224,211,.7); }
+  .bottom-bar { left: 31px; right: 31px; bottom: 25px; display: flex; justify-content: space-between; align-items: end; gap: 18px; pointer-events: none; }
+  .controls { pointer-events: auto; display: flex; gap: 8px; }
+  button { border: 1px solid var(--line); color: #c6dbdc; background: rgba(8, 21, 29, .8); border-radius: 9px; padding: 10px 13px; font: inherit; font-size: 10px; letter-spacing: .12em; cursor: pointer; backdrop-filter: blur(12px); transition: background .2s, border-color .2s, transform .2s; }
+  button:hover { background: rgba(32, 67, 74, .78); border-color: rgba(101,224,211,.55); transform: translateY(-2px); }
+  button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+  .hint { color: #71878d; font-size: 10px; letter-spacing: .1em; text-align: right; line-height: 1.7; }
+  #soundHint { color: var(--amber); }
+  .corner { position: absolute; right: 31px; bottom: 84px; color: rgba(126,163,169,.58); font-size: 9px; letter-spacing: .18em; pointer-events: none; }
+  @media (max-width: 700px) {
+    .topbar { top: 17px; left: 18px; right: 18px; }
+    .interface { left: 18px; top: 69px; width: 245px; }
+    h1 { font-size: 42px; }
+    .subhead { font-size: 11px; margin: 13px 0 17px; }
+    .legend { display: none; }
+    .bottom-bar { left: 18px; right: 18px; bottom: 17px; align-items: end; }
+    .hint { max-width: 150px; font-size: 8px; }
+    .corner { right: 18px; bottom: 78px; font-size: 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewport" aria-label="Interactive 3D mechanical keyboard"></div>
+  <div class="vignette"></div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">N</span><span>NOVA / 60</span></div>
+    <div class="top-meta"><span class="status-dot"></span><span>3D ASSEMBLY / 01</span></div>
+  </header>
+  <section class="interface" aria-live="polite">
+    <div class="eyebrow">MECHANICAL KEYBOARD / STUDY 01</div>
+    <h1>Precision<br>in layers.</h1>
+    <p class="subhead">A tactile 60% board, assembled in the open. Explore the stack, then play its rhythm.</p>
+    <div class="assembly-card">
+      <div class="assembly-top"><span id="phase">01 / PCB CORE</span><span id="percent">0%</span></div>
+      <div class="progress-track"><div id="progress"></div></div>
+      <div id="assemblyNote">Initializing the core layer</div>
+    </div>
+  </section>
+  <aside class="legend" aria-label="Assembly layers">
+    <div class="legend-title">EXPLODED STACK</div>
+    <div class="legend-item active" data-layer="pcb"><i></i><span>01 &nbsp; PCB</span></div>
+    <div class="legend-item" data-layer="foam"><i></i><span>02 &nbsp; FOAM</span></div>
+    <div class="legend-item" data-layer="plate"><i></i><span>03 &nbsp; PLATE</span></div>
+    <div class="legend-item" data-layer="switches"><i></i><span>04 &nbsp; SWITCHES</span></div>
+    <div class="legend-item" data-layer="keycaps"><i></i><span>05 &nbsp; KEYCAPS</span></div>
+  </aside>
+  <div class="corner">DRAG TO ORBIT&nbsp;&nbsp;·&nbsp;&nbsp;CLICK TO PLAY</div>
+  <footer class="bottom-bar">
+    <div class="controls">
+      <button id="replay" type="button">↻ &nbsp; REPLAY ASSEMBLY</button>
+      <button id="mute" type="button" aria-pressed="false">◉ &nbsp; SOUND ON</button>
+    </div>
+    <div class="hint"><span id="soundHint">SOUND SLEEPS UNTIL FIRST TOUCH</span><br>KEYS RESPOND TO YOUR PHYSICAL KEYBOARD</div>
+  </footer>
+</div>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+const viewport = document.getElementById("viewport");
+const phaseEl = document.getElementById("phase");
+const percentEl = document.getElementById("percent");
+const progressEl = document.getElementById("progress");
+const noteEl = document.getElementById("assemblyNote");
+const soundHint = document.getElementById("soundHint");
+const muteButton = document.getElementById("mute");
+const replayButton = document.getElementById("replay");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+} catch (error) {
+  viewport.innerHTML = '<div style="display:grid;place-items:center;height:100%;padding:30px;color:#b6cccf;font:14px system-ui;text-align:center">WebGL is unavailable in this browser. The 3D showcase needs hardware-accelerated graphics.</div>';
+  throw error;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+viewport.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x071018);
+scene.fog = new THREE.Fog(0x071018, 32, 58);
+const camera = new THREE.PerspectiveCamera(39, window.innerWidth / window.innerHeight, .1, 100);
+camera.position.set(18, 16.5, 24);
+const cameraTarget = new THREE.Vector3(0, 1.7, 0);
+camera.lookAt(cameraTarget);
+
+const root = new THREE.Group();
+root.rotation.set(-.08, 0, 0);
+scene.add(root);
+
+const ambient = new THREE.HemisphereLight(0xa8d9df, 0x09131c, 1.7);
+scene.add(ambient);
+const keyLight = new THREE.DirectionalLight(0xc9f5ee, 3.2);
+keyLight.position.set(-10, 18, 12);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -18;
+keyLight.shadow.camera.right = 18;
+keyLight.shadow.camera.top = 18;
+keyLight.shadow.camera.bottom = -18;
+keyLight.shadow.bias = -.0005;
+scene.add(keyLight);
+const warmLight = new THREE.PointLight(0xe7a567, 18, 24, 2);
+warmLight.position.set(11, 7, 7);
+scene.add(warmLight);
+const cyanLight = new THREE.PointLight(0x54d9d1, 16, 22, 2);
+cyanLight.position.set(-11, 5, -8);
+scene.add(cyanLight);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(100, 100),
+  new THREE.MeshStandardMaterial({ color: 0x08151d, roughness: .93, metalness: .08 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -.42;
+floor.receiveShadow = true;
+scene.add(floor);
+const grid = new THREE.GridHelper(54, 54, 0x1b3c45, 0x0e2530);
+grid.position.y = -.405;
+grid.material.transparent = true;
+grid.material.opacity = .42;
+scene.add(grid);
+const glow = new THREE.Mesh(
+  new THREE.CircleGeometry(9.6, 64),
+  new THREE.MeshBasicMaterial({ color: 0x2bc6c1, transparent: true, opacity: .055, depthWrite: false })
+);
+glow.rotation.x = -Math.PI / 2;
+glow.position.set(0, -.39, 0);
+scene.add(glow);
+
+const metal = new THREE.MeshStandardMaterial({ color: 0x17252d, metalness: .86, roughness: .25 });
+const metalDark = new THREE.MeshStandardMaterial({ color: 0x0d171e, metalness: .8, roughness: .32 });
+const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x38515a, transparent: true, opacity: .8 });
+const pcbMaterial = new THREE.MeshStandardMaterial({ color: 0x123e42, metalness: .35, roughness: .46 });
+const pcbEdge = new THREE.LineBasicMaterial({ color: 0x4bd5cb, transparent: true, opacity: .75 });
+const foamMaterial = new THREE.MeshStandardMaterial({ color: 0x182b31, roughness: .98, metalness: .02 });
+const plateMaterial = new THREE.MeshStandardMaterial({ color: 0x71878c, metalness: .88, roughness: .29 });
+const switchMaterial = new THREE.MeshPhysicalMaterial({ color: 0x61d8d0, transparent: true, opacity: .65, roughness: .2, metalness: .08, transmission: .08, thickness: .15 });
+const stemMaterial = new THREE.MeshStandardMaterial({ color: 0xf0a860, roughness: .28, metalness: .35 });
+const capBody = new THREE.MeshStandardMaterial({ color: 0x15252e, roughness: .42, metalness: .16 });
+const capTop = new THREE.MeshStandardMaterial({ color: 0x29434b, roughness: .31, metalness: .2 });
+const capAccent = new THREE.MeshStandardMaterial({ color: 0x56cfc5, roughness: .28, metalness: .18 });
+const capAmber = new THREE.MeshStandardMaterial({ color: 0xe2a963, roughness: .3, metalness: .2 });
+const capDark = new THREE.MeshStandardMaterial({ color: 0x233943, roughness: .34, metalness: .18 });
+const capTextLight = "#d7eeee";
+const capTextDark = "#092027";
+
+const caseGroup = new THREE.Group();
+root.add(caseGroup);
+const boardW = 14.15, boardD = 4.82;
+const base = new THREE.Mesh(new THREE.BoxGeometry(boardW, .58, boardD), metalDark);
+base.position.y = .12;
+base.castShadow = base.receiveShadow = true;
+caseGroup.add(base);
+const innerBase = new THREE.Mesh(new THREE.BoxGeometry(boardW - .32, .12, boardD - .32), metal);
+innerBase.position.y = .46;
+caseGroup.add(innerBase);
+const railDefs = [
+  [boardW - .22, .66, .20, -boardD / 2 + .13],
+  [boardW - .22, .66, .20, boardD / 2 - .13],
+  [.20, .66, boardD - .48, -boardW / 2 + .13],
+  [.20, .66, boardD - .48, boardW / 2 - .13]
+];
+for (const [w, h, d, z] of railDefs) {
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(w === .20 ? .20 : boardW - .22, h, z === 0 ? boardD - .48 : .20), metal);
+  if (z !== 0) rail.position.set(z, .48, 0);
+  else rail.position.set(0, .48, z);
+  rail.castShadow = rail.receiveShadow = true;
+  caseGroup.add(rail);
+}
+for (const x of [-6.62, 6.62]) {
+  for (const z of [-2.03, 2.03]) {
+    const screw = new THREE.Mesh(new THREE.CylinderGeometry(.085, .085, .035, 16), edgeMaterial);
+    screw.position.set(x, .83, z);
+    caseGroup.add(screw);
+    const slot = new THREE.Mesh(new THREE.BoxGeometry(.09, .012, .018), new THREE.MeshBasicMaterial({ color: 0x0a1319 }));
+    slot.position.set(x, .852, z);
+    caseGroup.add(slot);
+  }
+}
+const frontBadge = new THREE.Mesh(new THREE.BoxGeometry(3.4, .025, .025), new THREE.MeshBasicMaterial({ color: 0x5fe1d4, transparent: true, opacity: .9 }));
+frontBadge.position.set(0, .38, 2.425);
+caseGroup.add(frontBadge);
+
+const pcbGroup = new THREE.Group();
+root.add(pcbGroup);
+const pcbBoard = new THREE.Mesh(new THREE.BoxGeometry(13.55, .14, 4.08), pcbMaterial);
+pcbBoard.castShadow = pcbBoard.receiveShadow = true;
+pcbGroup.add(pcbBoard);
+const pcbOutline = new THREE.LineSegments(new THREE.EdgesGeometry(pcbBoard.geometry), pcbEdge);
+pcbOutline.position.copy(pcbBoard.position);
+pcbGroup.add(pcbOutline);
+const chipMat = new THREE.MeshStandardMaterial({ color: 0x0b171e, metalness: .6, roughness: .38 });
+[[-2.8, -1.05, 1.15, .13], [2.8, 1.0, 1.35, .15], [4.2, -.7, .6, .1]].forEach(([x,z,w,d]) => {
+  const chip = new THREE.Mesh(new THREE.BoxGeometry(w, .13, d), chipMat);
+  chip.position.set(x, .14, z);
+  chip.castShadow = true;
+  pcbGroup.add(chip);
+});
+const traceMat = new THREE.LineBasicMaterial({ color: 0x52cfc4, transparent: true, opacity: .52 });
+for (let i = 0; i < 9; i++) {
+  const z = -1.72 + i * .42;
+  const points = [new THREE.Vector3(-6.2, .078, z), new THREE.Vector3(-2.5, .078, z), new THREE.Vector3(-1.5, .078, z + .12), new THREE.Vector3(2.6, .078, z + .12), new THREE.Vector3(6.15, .078, z)];
+  pcbGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), traceMat));
+}
+for (let i = 0; i < 5; i++) {
+  const x = -5.2 + i * 2.45;
+  const points = [new THREE.Vector3(x, .08, 1.9), new THREE.Vector3(x + .8, .08, 1.9), new THREE.Vector3(x + .8, .08, -.8), new THREE.Vector3(x + 1.8, .08, -.8)];
+  pcbGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), traceMat));
+}
+
+const foamGroup = new THREE.Group();
+root.add(foamGroup);
+const foam = new THREE.Mesh(new THREE.BoxGeometry(13.45, .22, 4.0), foamMaterial);
+foam.castShadow = foam.receiveShadow = true;
+foamGroup.add(foam);
+const foamEdges = new THREE.LineSegments(new THREE.EdgesGeometry(foam.geometry), new THREE.LineBasicMaterial({ color: 0x40616a, transparent: true, opacity: .35 }));
+foamGroup.add(foamEdges);
+for (let i = 0; i < 5; i++) {
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(12.7, .012, .025), new THREE.MeshBasicMaterial({ color: 0x28434a, transparent: true, opacity: .5 }));
+  strip.position.set(0, .12, -1.5 + i * .75);
+  foamGroup.add(strip);
+}
+
+const plateGroup = new THREE.Group();
+root.add(plateGroup);
+const plate = new THREE.Mesh(new THREE.BoxGeometry(13.45, .16, 4.0), plateMaterial);
+plate.castShadow = plate.receiveShadow = true;
+plateGroup.add(plate);
+const plateEdges = new THREE.LineSegments(new THREE.EdgesGeometry(plate.geometry), new THREE.LineBasicMaterial({ color: 0xc2e2df, transparent: true, opacity: .55 }));
+plateGroup.add(plateEdges);
+const plateScrewMat = new THREE.MeshStandardMaterial({ color: 0xb4c7c5, metalness: .9, roughness: .25 });
+for (const x of [-6.35, 6.35]) for (const z of [-1.78, 1.78]) {
+  const screw = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .035, 14), plateScrewMat);
+  screw.position.set(x, .1, z);
+  plateGroup.add(screw);
+}
+
+const switchGroup = new THREE.Group();
+root.add(switchGroup);
+const capGroup = new THREE.Group();
+root.add(capGroup);
+const keys = [];
+const interactiveMeshes = [];
+const unit = .82;
+const gap = .08;
+const pitch = unit + gap;
+const depth = .72;
+const rows = [
+  [["Esc",1],["F1",1],["F2",1],["F3",1],["F4",1],["F5",1],["F6",1],["F7",1],["F8",1],["F9",1],["F10",1],["F11",1],["F12",1],["Del",1],["Home",1]],
+  [["Tab",1.5],["Q",1],["W",1],["E",1],["R",1],["T",1],["Y",1],["U",1],["I",1],["O",1],["P",1],["[",1],["]",1],["\\",1.5]],
+  [["Caps",1.75],["A",1],["S",1],["D",1],["F",1],["G",1],["H",1],["J",1],["K",1],["L",1],[";",1],["'",1],["Enter",2.25]],
+  [["Shift",2.25],["Z",1],["X",1],["C",1],["V",1],["B",1],["N",1],["M",1],[",",1],[".",1],["/",1],["Shift",1.75],["↑",1]],
+  [["Ctrl",1.25],["⌘",1.25],["Alt",1.25],["Space",6.25],["Alt",1.25],["Fn",1.25],["Menu",1.25],["Ctrl",1.25]]
+];
+function makeLabel(label, accent) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256; canvas.height = 96;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = accent ? capTextDark : capTextLight;
+  ctx.font = `600 ${label.length > 5 ? 25 : label.length > 2 ? 31 : 39}px Inter, Arial, sans-serif`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(label, 128, 49);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+}
+function addBox(group, w, h, d, material, x, y, z, shadow = true) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = shadow; mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+let globalIndex = 0;
+rows.forEach((row, rowIndex) => {
+  const total = row.reduce((sum, item) => sum + item[1], 0) * unit - gap;
+  let cursor = -total / 2;
+  row.forEach(([label, width]) => {
+    const w = width * unit - gap;
+    const x = cursor + w / 2;
+    const z = -2.02 + rowIndex * .94;
+    cursor += width * unit;
+    const isAccent = ["Esc", "Enter", "Space", "F1", "F2", "F3", "F4", "F5", "F6"].includes(label);
+    const isAmber = ["Enter", "F1", "F2", "F3", "F4", "F5", "F6"].includes(label);
+    const topMat = isAmber ? capAmber : isAccent ? capAccent : capTop;
+    const bodyMat = isAccent ? capDark : capBody;
+    const key = { label, input: label, x, z, width: w, row: rowIndex, index: globalIndex++, pressStart: 0, pressDuration: 0, held: false, pressOffset: 0, visualY: 1.53 };
+    const cap = new THREE.Group();
+    cap.position.set(x, 1.53, z);
+    cap.userData.key = key;
+    const body = addBox(cap, w * .95, .18, depth, bodyMat, 0, 0, 0);
+    const top = addBox(cap, w * .90, .15, depth * .91, topMat, 0, .135, 0);
+    const highlight = new THREE.Mesh(new THREE.BoxGeometry(w * .76, .018, depth * .66), new THREE.MeshStandardMaterial({ color: isAccent ? 0x9af1de : 0x4d7076, roughness: .28, metalness: .2 }));
+    highlight.position.set(0, .222, -.01);
+    cap.add(highlight);
+    const labelWidth = Math.min(w * .72, label.length > 5 ? 1.55 : 1.12);
+    const legend = new THREE.Mesh(new THREE.PlaneGeometry(labelWidth, .28), makeLabel(label, isAccent || isAmber));
+    legend.rotation.x = -Math.PI / 2;
+    legend.position.set(0, .237, -.02);
+    cap.add(legend);
+    capGroup.add(cap);
+    key.cap = cap;
+    interactiveMeshes.push(body, top, legend);
+    [body, top, legend].forEach(mesh => mesh.userData.key = key);
+    keys.push(key);
+
+    const sw = new THREE.Group();
+    sw.position.set(x, 1.12, z);
+    const housing = addBox(sw, Math.min(w * .57, .52), .16, .47, switchMaterial, 0, 0, 0);
+    const stem = addBox(sw, .18, .22, .18, stemMaterial, 0, .14, 0);
+    housing.castShadow = stem.castShadow = true;
+    switchGroup.add(sw);
+    key.switch = sw;
+  });
+});
+
+const inputAliases = {
+  " ":"Space", "Spacebar":"Space", "ArrowUp":"↑", "Control":"Ctrl", "Meta":"⌘", "Command":"⌘",
+  "Escape":"Esc", "Backspace":"Backspace", "Enter":"Enter", "Shift":"Shift", "Alt":"Alt", "Tab":"Tab"
+};
+const byInput = new Map(keys.map(key => [key.input.toLowerCase(), key]));
+
+let audioContext = null;
+let masterGain = null;
+let noiseBuffer = null;
+let muted = false;
+function ensureAudio() {
+  if (!audioContext) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return Promise.resolve(false);
+    audioContext = new AudioCtx();
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = muted ? 0 : .16;
+    masterGain.connect(audioContext.destination);
+    noiseBuffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * .035), audioContext.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  }
+  if (audioContext.state === "suspended") return audioContext.resume().then(() => true);
+  return Promise.resolve(true);
+}
+function playSound(key) {
+  if (muted || !audioContext || !masterGain || audioContext.state !== "running") return;
+  const now = audioContext.currentTime;
+  const isSpace = key.label === "Space";
+  const isEnter = key.label === "Enter";
+  const isBackspace = key.label === "Backspace";
+  const isModifier = ["Shift", "Ctrl", "Alt", "Fn", "⌘", "Menu", "Caps", "Tab", "Esc"].includes(key.label);
+  const base = isSpace ? 76 : isEnter ? 166 : isBackspace ? 116 : isModifier ? 132 : 235 + ((key.label.charCodeAt(0) * 17) % 105);
+  const duration = isSpace ? .19 : isModifier ? .085 : .075;
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  osc.type = isBackspace ? "sawtooth" : isModifier ? "square" : isSpace ? "sine" : "triangle";
+  osc.frequency.setValueAtTime(base, now);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(42, base * (isSpace ? .62 : .72)), now + duration);
+  gain.gain.setValueAtTime(.0001, now);
+  gain.gain.exponentialRampToValueAtTime(isSpace ? .42 : .28, now + .008);
+  gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+  osc.connect(gain).connect(masterGain);
+  osc.start(now); osc.stop(now + duration + .02);
+  if (!isSpace) {
+    const noise = audioContext.createBufferSource();
+    const noiseGain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    noise.buffer = noiseBuffer;
+    filter.type = "highpass"; filter.frequency.value = isBackspace ? 1300 : 2500;
+    noiseGain.gain.setValueAtTime(.08, now);
+    noiseGain.gain.exponentialRampToValueAtTime(.0001, now + .035);
+    noise.connect(filter).connect(noiseGain).connect(masterGain);
+    noise.start(now); noise.stop(now + .04);
+  }
+}
+function pressKey(key, held = false) {
+  if (!key) return;
+  const now = performance.now();
+  key.pressStart = now;
+  key.pressDuration = held ? 100000 : 145;
+  key.held = held;
+  ensureAudio().then(() => playSound(key));
+}
+function releaseKey(key) {
+  if (key) key.held = false;
+}
+window.addEventListener("keydown", event => {
+  let input = event.key;
+  if (event.code === "Space") input = "Space";
+  if (inputAliases[input]) input = inputAliases[input];
+  else if (input.length === 1) input = input.toUpperCase();
+  const key = byInput.get(String(input).toLowerCase());
+  if (key && !event.repeat) {
+    event.preventDefault();
+    pressKey(key, true);
+  } else if (event.code === "Space") event.preventDefault();
+});
+window.addEventListener("keyup", event => {
+  let input = event.key;
+  if (event.code === "Space") input = "Space";
+  if (inputAliases[input]) input = inputAliases[input];
+  else if (input.length === 1) input = input.toUpperCase();
+  releaseKey(byInput.get(String(input).toLowerCase()));
+});
+window.addEventListener("pointerdown", () => { ensureAudio(); }, { once: true });
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let pointerDown = null;
+renderer.domElement.addEventListener("pointerdown", event => {
+  pointerDown = { x: event.clientX, y: event.clientY, moved: false };
+  renderer.domElement.setPointerCapture(event.pointerId);
+});
+renderer.domElement.addEventListener("pointermove", event => {
+  if (!pointerDown) return;
+  const dx = event.clientX - pointerDown.x, dy = event.clientY - pointerDown.y;
+  if (Math.abs(dx) + Math.abs(dy) > 5) pointerDown.moved = true;
+  if (pointerDown.moved) {
+    root.rotation.y += dx * .005;
+    root.rotation.x = THREE.MathUtils.clamp(root.rotation.x + dy * .003, -.42, .22);
+  }
+});
+renderer.domElement.addEventListener("pointerup", event => {
+  if (!pointerDown) return;
+  const wasClick = !pointerDown.moved;
+  pointerDown = null;
+  if (!wasClick || performance.now() < assemblyEnd) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(interactiveMeshes, true)[0];
+  if (hit) pressKey(hit.object.userData.key, false);
+});
+renderer.domElement.addEventListener("pointercancel", () => { pointerDown = null; });
+
+let assemblyStart = performance.now() + 260;
+let assemblyEnd = 9500;
+function ease(t) { t = THREE.MathUtils.clamp(t, 0, 1); return t * t * (3 - 2 * t); }
+function blend(a, b, t) { return a + (b - a) * ease(t); }
+function setLayerPositions(t) {
+  const pcbT = blend(-1.05, .62, (t - 0) / 900);
+  pcbGroup.position.y = pcbT;
+  foamGroup.position.y = blend(3.0, .84, (t - 1000) / 850);
+  plateGroup.position.y = blend(5.0, .99, (t - 1900) / 800);
+  for (const key of keys) {
+    const switchT = blend(7.25, 1.12, (t - (3000 + key.index * 32)) / 720);
+    key.switch.position.y = switchT;
+    key.switch.position.x = key.x + blend(.38, 0, (t - (3000 + key.index * 32)) / 720);
+    key.switch.position.z = key.z + blend(.9, 0, (t - (3000 + key.index * 32)) / 720);
+    const capT = blend(9.3, 1.53, (t - (6100 + key.index * 31)) / 800);
+    key.cap.position.y = capT - key.pressOffset;
+    key.cap.position.x = key.x + blend(.58, 0, (t - (6100 + key.index * 31)) / 800);
+    key.cap.position.z = key.z + blend(1.05, 0, (t - (6100 + key.index * 31)) / 800);
+  }
+}
+const legendItems = [...document.querySelectorAll(".legend-item")];
+function updateUI(t) {
+  let active = "pcb", phase = "01 / PCB CORE", note = "Bringing the core into position", progress = 0;
+  if (t >= 9500) { active = "keycaps"; phase = "READY / PLAY"; note = "Click a key or use your keyboard"; progress = 100; }
+  else if (t >= 6100) { active = "keycaps"; phase = "05 / KEYCAP ARRAY"; note = "Installing keycaps left to right"; progress = 62 + ((t - 6100) / 3400) * 38; }
+  else if (t >= 3000) { active = "switches"; phase = "04 / SWITCH ARRAY"; note = "Installing switches left to right"; progress = 32 + ((t - 3000) / 3100) * 30; }
+  else if (t >= 1900) { active = "plate"; phase = "03 / PLATE"; note = "The plate locks the architecture"; progress = 19 + ((t - 1900) / 1100) * 13; }
+  else if (t >= 1000) { active = "foam"; phase = "02 / ACOUSTIC FOAM"; note = "Adding the acoustic damping layer"; progress = 9 + ((t - 1000) / 900) * 10; }
+  else { progress = (t / 1000) * 9; }
+  phaseEl.textContent = phase;
+  noteEl.textContent = note;
+  percentEl.textContent = `${Math.min(100, Math.round(progress))}%`;
+  progressEl.style.width = `${Math.min(100, progress)}%`;
+  legendItems.forEach(item => item.classList.toggle("active", item.dataset.layer === active));
+}
+function animateKeyPresses(now) {
+  for (const key of keys) {
+    if (key.held) key.pressOffset = .115;
+    else if (key.pressDuration < 100000) {
+      const p = (now - key.pressStart) / key.pressDuration;
+      key.pressOffset = p >= 1 ? 0 : Math.sin(p * Math.PI) * .115;
+    } else key.pressOffset = 0;
+    key.visualY += ((key.pressOffset ? 1.53 - .12 : 1.53) - key.visualY) * .22;
+  }
+}
+function replay() {
+  assemblyStart = performance.now() + 120;
+  assemblyEnd = assemblyStart + 9500;
+  for (const key of keys) { key.pressStart = 0; key.pressDuration = 0; key.held = false; key.pressOffset = 0; }
+  soundHint.textContent = muted ? "SOUND MUTED · CLICK TO ENABLE" : "SOUND SLEEPS UNTIL FIRST TOUCH";
+}
+replayButton.addEventListener("click", replay);
+muteButton.addEventListener("click", () => {
+  muted = !muted;
+  muteButton.setAttribute("aria-pressed", String(muted));
+  muteButton.innerHTML = muted ? "◌ &nbsp; SOUND OFF" : "◉ &nbsp; SOUND ON";
+  if (masterGain) masterGain.gain.value = muted ? 0 : .16;
+  if (!muted) ensureAudio();
+  soundHint.textContent = muted ? "SOUND MUTED" : "SOUND READY";
+});
+
+function resize() {
+  const width = window.innerWidth, height = window.innerHeight;
+  camera.aspect = width / height;
+  camera.fov = width < 700 ? 47 : 39;
+  const distance = width < 700 ? 1.16 : width < 1050 ? 1.05 : 1;
+  camera.position.set(18 * distance, 16.5 * distance, 24 * distance);
+  camera.lookAt(cameraTarget);
+  camera.updateProjectionMatrix();
+  renderer.setSize(width, height);
+}
+window.addEventListener("resize", resize);
+resize();
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  const t = now - assemblyStart;
+  setLayerPositions(Math.max(0, t));
+  animateKeyPresses(now);
+  updateUI(Math.max(0, t));
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
