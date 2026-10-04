@@ -123,6 +123,9 @@ class PreviewRenderStatus {
 ///
 /// Separately from the dashboard, `LUMA_PREVIEW_RENDER=1` lets [kick] render
 /// missing banners unprompted.
+/// Where a scene's script first fails to parse, counted in the HTML file.
+typedef SourceProblem = ({int line, int column, String message});
+
 class PreviewRenderService {
   PreviewRenderService({
     required this.dataDir,
@@ -198,6 +201,43 @@ class PreviewRenderService {
   }
 
   bool _loggedUnavailable = false;
+
+  /// The first syntax error in [bytes]'s inline scripts, or null when they
+  /// parse (or this can't be checked here). The renderer reports a syntax
+  /// mistake as a bare "Unexpected token", with no position; this finds it
+  /// without a browser, in about a tenth of a second.
+  Future<SourceProblem?> findSyntaxError(List<int> bytes) async {
+    final tool = '${File(_script).parent.path}${Platform.pathSeparator}'
+        'check_syntax.mjs';
+    Directory? scratch;
+    try {
+      if (!await _fileExists(tool)) return null;
+      scratch = await Directory.systemTemp.createTemp('luma_syntax_');
+      final file = File('${scratch.path}${Platform.pathSeparator}scene.html');
+      await file.writeAsBytes(bytes);
+      final result = await _runProcess(_node, [tool, file.path])
+          .timeout(const Duration(seconds: 30));
+      if (result.exitCode != 0) return null;
+      final raw = jsonDecode('${result.stdout}'.trim().split('\n').last);
+      if (raw is! Map || raw['ok'] != false) return null;
+      final line = raw['line'];
+      final column = raw['column'];
+      if (line is! int || line < 1) return null;
+      return (
+        line: line,
+        column: column is int ? column : 1,
+        message: '${raw['message'] ?? 'SyntaxError'}',
+      );
+    } catch (_) {
+      return null;
+    } finally {
+      try {
+        await scratch?.delete(recursive: true);
+      } catch (_) {
+        // A leftover temp directory is harmless.
+      }
+    }
+  }
 
   /// Checks an on-demand repair in an isolated override directory. It cannot
   /// replace a live scene or its banner until the candidate renders.

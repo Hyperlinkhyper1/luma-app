@@ -135,6 +135,11 @@ extension BenchmarkRepairApi on Api {
           'No HTML source, or the source is over the 200 kB repair limit.');
     }
     final entry = matches.first;
+    final syntax = await previewRenders.findSyntaxError(scene.bytes);
+    if (syntax != null) {
+      diagnostic = 'Syntax error at line ${syntax.line}:${syntax.column}: '
+          '${syntax.message}. The renderer reported: $diagnostic';
+    }
     final job = BenchmarkRepairJob(id,
         name: entry['model'] as String? ?? id,
         kind: entry['kind'] as String? ?? '');
@@ -306,7 +311,14 @@ extension BenchmarkRepairApi on Api {
         {'role': 'system', 'content': benchmarkRepairInstructions},
         {
           'role': 'user',
-          'content': jsonEncode({'renderError': diagnostic, 'html': source})
+          'content': jsonEncode({
+            'renderError': diagnostic,
+            if (errorLineOf(diagnostic) case final line?) ...{
+              'errorLine': line,
+              'errorLines': errorLinesOf(source, line),
+            },
+            'html': source,
+          })
         },
       ];
       final maxTokens =
@@ -353,6 +365,11 @@ extension BenchmarkRepairApi on Api {
       }
       final repaired = applyBenchmarkRepair(source, acc.content);
       final bytes = utf8.encode(repaired);
+      if (await previewRenders.findSyntaxError(bytes) case final broken?) {
+        throw StateError('The repair still has a syntax error at line '
+            '${broken.line}:${broken.column}: ${broken.message}. It was not '
+            'rendered. The live test was kept.');
+      }
       job.detail = 'Checking the repaired test in the banner renderer…';
       final renderError = await previewRenders.validateRepair(job.id, bytes);
       if (renderError != null)

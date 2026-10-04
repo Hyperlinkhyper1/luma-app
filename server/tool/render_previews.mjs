@@ -688,10 +688,20 @@ async function main() {
     try {
       page = await worker.browser.newPage();
       page.lumaErrors = [];
-      page.on('pageerror', (e) => {
-        const first = String(e.message || e).split('\n')[0];
-        page.lumaErrors.push(first);
-        pageProblem ||= `page error: ${first}`;
+      // The browser's own report of an uncaught error, which (unlike the
+      // 'pageerror' event) says where in the scene's file it happened, so a
+      // repair can be pointed at the line instead of searching 60 kB for it.
+      const cdp = await page.createCDPSession();
+      await cdp.send('Runtime.enable');
+      cdp.on('Runtime.exceptionThrown', ({ exceptionDetails: d }) => {
+        const own = (f) => typeof f?.url === 'string' && f.url.startsWith('file:');
+        const frame = (d.stackTrace?.callFrames ?? []).find(own) ?? (own(d) ? d : null);
+        const text = String(d.exception?.description || d.text || 'error').split('\n')[0]
+          .replace(/^(Uncaught\s+)?\w*Error:\s*/, '');
+        const where = frame && Number.isInteger(frame.lineNumber)
+          ? ` (at line ${frame.lineNumber + 1}:${(frame.columnNumber ?? 0) + 1})` : '';
+        page.lumaErrors.push(text + where);
+        pageProblem ||= `page error: ${text}${where}`;
       });
       page.on('requestfailed', (r) => {
         if (/\.(m?js)(\?|$)/.test(r.url())) pageProblem ||= `could not load ${r.url()} (${r.failure()?.errorText ?? 'failed'})`;

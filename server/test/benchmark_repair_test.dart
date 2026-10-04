@@ -25,6 +25,11 @@ class RepairRenderer extends PreviewRenderService {
   RepairRenderer({required super.dataDir}) : super(environment: const {});
   String? validationError;
   int validations = 0;
+  SourceProblem? Function(List<int> bytes)? syntax;
+  @override
+  Future<SourceProblem?> findSyntaxError(List<int> bytes) async =>
+      syntax?.call(bytes);
+
   List<int>? candidate;
   final rendered = <String>[];
   @override
@@ -176,6 +181,21 @@ void main() {
     final huge = ChatStreamAccumulator()
       ..addLine(line({'content': 'y' * 100001}));
     expect(repairStreamProblem(huge), contains('too large'));
+  });
+
+  test('a render error that names a line is turned into the code around it',
+      () {
+    expect(errorLineOf('Unexpected token (at line 801:22)'), 801);
+    expect(errorLineOf('Syntax error at line 12:3: nope'), 12);
+    expect(errorLineOf('TimeoutError: no canvas'), isNull);
+    final source = [for (var n = 1; n <= 40; n++) 'line $n  '].join('\n');
+    final lines = errorLinesOf(source, 20);
+    expect(lines.first, {'line': 12, 'text': 'line 12'});
+    expect(lines.last, {'line': 28, 'text': 'line 28'});
+    expect(errorLinesOf(source, 2).first['line'], 1);
+    expect(errorLinesOf(source, 40).last['line'], 40);
+    expect(errorLinesOf(source, 41), isEmpty);
+    expect(errorLinesOf(source, 0), isEmpty);
   });
 
   test('price guard handles unknown, free and expensive prices', () {
@@ -473,6 +493,41 @@ void main() {
       await finished();
       expect(calls, 1);
       expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
+    });
+    test('the model is shown the line a syntax error is on', () async {
+      await save();
+      renderer.syntax = (bytes) => utf8.decode(bytes).contains('broken()')
+          ? (line: 1, column: 40, message: "Unexpected token '.'")
+          : null;
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final user =
+          jsonDecode((sent['messages'] as List).last['content'] as String)
+              as Map;
+      expect(user['renderError'], startsWith('Syntax error at line 1:40'));
+      expect(user['renderError'], contains('ReferenceError: broken'));
+      expect(user['errorLine'], 1);
+      final shown = (user['errorLines'] as List).cast<Map>();
+      expect(shown.map((l) => l['line']).contains(1), isTrue);
+      expect(shown.firstWhere((l) => l['line'] == 1)['text'],
+          utf8.decode(utf8.encode(original)).split('\n')[0].trimRight());
+      expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
+    });
+    test('a repair that still does not parse fails without opening a browser',
+        () async {
+      await save();
+      renderer.syntax = (bytes) => utf8.decode(bytes).contains('fixed()')
+          ? (line: 4, column: 9, message: "Unexpected token '>'")
+          : null;
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(job.detail, contains('still has a syntax error at line 4:9'));
+      expect(renderer.validations, 0);
+      expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
+          original);
+      expect(renderer.rendered, isEmpty);
     });
     test('repairs ask for low reasoning unless the settings say otherwise',
         () async {
