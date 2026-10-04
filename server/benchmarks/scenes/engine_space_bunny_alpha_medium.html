@@ -140,13 +140,13 @@ for(let i=0;i<5;i++){const z=-4.05+i*2.025;const j=cylinder(V(0,0,z),.19,1.0,M.j
 // crankshaft throws and counterweights, phases are a physically consistent 90° cross-plane pattern
 for(let n=1;n<=8;n++){
  const b=bankOf(n),k=localOf(n),z=crankZ[k],ang=pistonPhase(n);
- const throw=new THREE.Group();crankRoot.add(throw);
+ const crankThrow=new THREE.Group();crankRoot.add(crankThrow);
  const d=V(Math.cos(ang),Math.sin(ang),0);
- const j=cylinder(d.clone().multiplyScalar(crankRadius).setZ(z),.235,.66,M.journal,throw,'z');
+ const j=cylinder(d.clone().multiplyScalar(crankRadius).setZ(z),.235,.66,M.journal,crankThrow,'z');
  for(const dz of [-.23,.23]){
-  const web=box(V(Math.cos(ang)*.34,Math.sin(ang)*.34,z+dz),V(.66,.44,.16),M.crank,throw);web.rotation.z=ang;
-  const cw=box(V(-Math.cos(ang)*.44,-Math.sin(ang)*.44,z+dz),V(.76,.56,.19),M.crank,throw);cw.rotation.z=ang+.08;
-  sphere(V(0,0,z+dz),.19,M.crank,throw);
+  const web=box(V(Math.cos(ang)*.34,Math.sin(ang)*.34,z+dz),V(.66,.44,.16),M.crank,crankThrow);web.rotation.z=ang;
+  const cw=box(V(-Math.cos(ang)*.44,-Math.sin(ang)*.44,z+dz),V(.76,.56,.19),M.crank,crankThrow);cw.rotation.z=ang+.08;
+  sphere(V(0,0,z+dz),.19,M.crank,crankThrow);
  }
 }
 for(let z=-4.2;z<4.4;z+=.62){const ring=torus(V(0,0,z),.31,.055,M.bolt,category.crankshaft);ring.rotation.x=Math.PI/2}
@@ -209,7 +209,7 @@ for(let n=1;n<=8;n++){
  for(const zz of [z-.68,z+.68]){
    const lip=torus(radialPoint(b,2.14,zz),.71,.055,M.blockCut,category.block);lip.quaternion.copy(bankQuat[b]);lip.rotation.x+=Math.PI/2;
  }
- cylinders.push({n,b,k,z,piston,rod,head,camLocal,lobe,intakeV,exhaustV,rockerI,rockerE,flash,cover,explodeBase:radialPoint(b,2.55,z),coverBase:radialPoint(b,3.35,z)});
+ cylinders.push({n,b,k,z,piston,rod,head,camLocal,lobe,intakeV,exhaustV,rockerI,rockerE,flash,cover,bore,explodeBase:radialPoint(b,2.55,z),coverBase:radialPoint(b,3.35,z)});
 }
 
 // open crankcase / main bearing structure
