@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOCTURNE // Aerothermal PC</title>
+<style>
+  :root {
+    --accent: #5cf2ff;
+    --accent-rgb: 92,242,255;
+    --ink: #edfaff;
+    --muted: #78909b;
+    --panel: rgba(7, 14, 20, .82);
+    --line: rgba(159, 223, 236, .15);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; margin: 0; overflow: hidden;
+    background: #02060a; color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  body { user-select: none; }
+  #scene { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .vignette {
+    position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(circle at 46% 43%, transparent 24%, rgba(0,3,7,.18) 60%, rgba(0,2,5,.8) 115%);
+  }
+  header {
+    position: fixed; left: 30px; top: 26px; pointer-events: none;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .mark {
+    width: 42px; height: 42px; position: relative; display: grid; place-items: center;
+    border: 1px solid rgba(var(--accent-rgb), .5); transform: rotate(45deg);
+    background: rgba(var(--accent-rgb), .06); box-shadow: 0 0 24px rgba(var(--accent-rgb), .12);
+  }
+  .mark::before {
+    content: ""; width: 17px; height: 17px; border: 2px solid var(--accent);
+    border-left-color: transparent; border-radius: 50%;
+  }
+  .brand { letter-spacing: .26em; font-size: 13px; font-weight: 750; }
+  .brand small {
+    display: block; color: var(--muted); font-size: 8px; letter-spacing: .32em;
+    margin-top: 5px; font-weight: 600;
+  }
+  .top-status {
+    position: fixed; right: 30px; top: 30px; text-align: right; pointer-events: none;
+    color: var(--muted); font-size: 9px; letter-spacing: .19em; line-height: 1.8;
+  }
+  .top-status strong { color: var(--accent); font-weight: 650; }
+  .intro {
+    position: fixed; left: 30px; bottom: 28px; width: 300px; pointer-events: none;
+  }
+  .eyebrow { color: var(--accent); font-size: 9px; letter-spacing: .28em; font-weight: 700; }
+  h1 { font-size: clamp(25px, 3vw, 44px); line-height: .98; margin: 10px 0 12px; letter-spacing: -.045em; font-weight: 620; }
+  h1 span { color: #51636d; }
+  .intro p { color: #71838d; font-size: 11px; line-height: 1.7; margin: 0; max-width: 250px; }
+  .view-hint {
+    position: fixed; left: 50%; bottom: 25px; transform: translateX(-50%);
+    padding: 9px 14px; border: 1px solid var(--line); border-radius: 30px;
+    color: #69808b; background: rgba(3,8,12,.5); backdrop-filter: blur(12px);
+    font-size: 9px; letter-spacing: .13em; white-space: nowrap; pointer-events: none;
+  }
+  .hud {
+    position: fixed; right: 24px; bottom: 24px; width: 272px;
+    background: linear-gradient(145deg, rgba(13,23,30,.93), rgba(4,10,15,.91));
+    border: 1px solid rgba(140,205,220,.17); border-radius: 16px;
+    padding: 15px; backdrop-filter: blur(20px);
+    box-shadow: 0 18px 70px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.04);
+  }
+  .hud::before {
+    content:""; position:absolute; inset:5px; border:1px solid rgba(255,255,255,.025);
+    border-radius:12px; pointer-events:none;
+  }
+  .hud-head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 13px; }
+  .hud-title { font-size: 9px; font-weight: 700; letter-spacing: .2em; }
+  .online { font-size: 8px; letter-spacing: .15em; color: #596b74; }
+  .online i { display:inline-block; width:5px; height:5px; border-radius:50%; background:#39454c; margin-right:5px; }
+  .online.active { color: var(--accent); }
+  .online.active i { background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  .power-row { display:flex; align-items:center; gap:14px; padding: 4px 2px 14px; border-bottom:1px solid var(--line); }
+  .power {
+    flex: 0 0 auto; width:48px; height:48px; border-radius:50%; cursor:pointer;
+    color:var(--accent); background:rgba(var(--accent-rgb),.06);
+    border:1px solid rgba(var(--accent-rgb),.4); font-size:22px;
+    box-shadow: inset 0 0 15px rgba(var(--accent-rgb),.08), 0 0 0 transparent;
+    transition: .2s; text-shadow:0 0 8px var(--accent);
+  }
+  .power:hover { background:rgba(var(--accent-rgb),.14); box-shadow:0 0 20px rgba(var(--accent-rgb),.14); transform:scale(1.04); }
+  .power:active { transform:scale(.94); }
+  .readout { min-width:0; }
+  .readout strong { display:block; font-size:10px; letter-spacing:.14em; margin-bottom:5px; }
+  .readout span { color:var(--muted); font: 8px ui-monospace, monospace; letter-spacing:.08em; }
+  .meter { height:2px; background:#16232a; margin-top:8px; overflow:hidden; }
+  .meter div { height:100%; width:0; background:var(--accent); box-shadow:0 0 8px var(--accent); transition:width .25s; }
+  .section { padding-top:12px; }
+  .label { display:flex; justify-content:space-between; color:#72858e; font-size:8px; letter-spacing:.16em; margin-bottom:9px; }
+  .color-row { display:flex; align-items:center; gap:10px; }
+  input[type=color] {
+    width:38px; height:30px; padding:0; border:1px solid rgba(var(--accent-rgb),.35);
+    border-radius:7px; background:transparent; cursor:pointer;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding:3px; }
+  input[type=color]::-webkit-color-swatch { border:0; border-radius:4px; }
+  .hex { color:#b7c6cc; font:10px ui-monospace,monospace; letter-spacing:.1em; }
+  .presets { display:flex; gap:6px; margin-left:auto; }
+  .preset { width:13px; height:13px; border-radius:50%; border:1px solid rgba(255,255,255,.22); cursor:pointer; transition:.15s; }
+  .preset:hover { transform:scale(1.35); }
+  .control { display:flex; align-items:center; gap:10px; margin-top:11px; color:#7e919a; font-size:8px; letter-spacing:.11em; }
+  .control output { margin-left:auto; color:#b6c7ce; font:8px ui-monospace,monospace; min-width:32px; text-align:right; }
+  input[type=range] { appearance:none; flex:1; height:2px; background:#213038; outline:0; }
+  input[type=range]::-webkit-slider-thumb { appearance:none; width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px rgba(var(--accent-rgb),.7); cursor:pointer; }
+  .toggles { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:13px; }
+  .toggle {
+    height:29px; border:1px solid #1c2a31; border-radius:6px; color:#647780; background:#091117;
+    cursor:pointer; font-size:7px; letter-spacing:.11em; transition:.15s;
+  }
+  .toggle:hover { color:#b6c6cb; border-color:#30444e; }
+  .toggle.on { color:var(--accent); border-color:rgba(var(--accent-rgb),.35); background:rgba(var(--accent-rgb),.06); }
+  .boot {
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:260px; text-align:center; opacity:0; pointer-events:none; transition:.4s;
+    filter:drop-shadow(0 0 18px rgba(var(--accent-rgb),.2));
+  }
+  .boot.show { opacity:1; }
+  .boot-title { color:var(--accent); font-size:12px; letter-spacing:.5em; margin-bottom:12px; }
+  .boot-line { height:1px; background:rgba(var(--accent-rgb),.15); }
+  .boot-line div { height:100%; width:0; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+  @media(max-width:700px) {
+    header { left:16px; top:16px; }
+    .top-status { display:none; }
+    .intro { left:16px; bottom:18px; width:180px; }
+    .intro p,.view-hint { display:none; }
+    .hud { right:12px; bottom:12px; width:225px; padding:12px; }
+    h1 { font-size:26px; }
+  }
+  @media(max-height:600px) {
+    .intro p,.view-hint { display:none; }
+    .hud { bottom:10px; }
+    .toggles { display:none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="scene"></div>
+<div class="vignette"></div>
+<header>
+  <div class="mark"></div>
+  <div class="brand">NOCTURNE<small>AEROTHERMAL SYSTEMS</small></div>
+</header>
+<div class="top-status"><strong id="clock">00:00:00</strong><br>LOCAL // RENDER NODE</div>
+<section class="intro">
+  <div class="eyebrow">NX–9 / LUNAR CHASSIS</div>
+  <h1>BUILT BEYOND<br><span>THE QUIET.</span></h1>
+  <p>A modular zero-noise-inspired build. Drag to orbit, scroll to inspect, and awaken the system.</p>
+</section>
+<div class="view-hint">DRAG TO ORBIT &nbsp;·&nbsp; SCROLL TO ZOOM &nbsp;·&nbsp; RIGHT-DRAG TO PAN</div>
+<div class="boot" id="boot">
+  <div class="boot-title">POST / DIAGNOSTIC</div>
+  <div class="boot-line"><div id="bootBar"></div></div>
+</div>
+<aside class="hud">
+  <div class="hud-head"><div class="hud-title">SYSTEM CONTROL</div><div class="online" id="online"><i></i> STANDBY</div></div>
+  <div class="power-row">
+    <button class="power" id="power" aria-label="Power">⏻</button>
+    <div class="readout"><strong id="stateText">SYSTEM OFFLINE</strong><span id="loadText">CORE VOLTAGE 0.00 V</span><div class="meter"><div id="loadMeter"></div></div></div>
+  </div>
+  <div class="section">
+    <div class="label"><span>CHROMA BUS</span><span>ARGB / 5V</span></div>
+    <div class="color-row">
+      <input type="color" id="color" value="#5cf2ff" aria-label="RGB color">
+      <div class="hex" id="hex">#5CF2FF</div>
+      <div class="presets">
+        <button class="preset" data-color="#5cf2ff" style="background:#5cf2ff"></button>
+        <button class="preset" data-color="#ff3fb4" style="background:#ff3fb4"></button>
+        <button class="preset" data-color="#8b5cff" style="background:#8b5cff"></button>
+        <button class="preset" data-color="#ff702b" style="background:#ff702b"></button>
+      </div>
+    </div>
+  </div>
+  <div class="control"><span>FAN CURVE</span><input id="fanSpeed" type="range" min="20" max="100" value="62"><output id="fanVal">62%</output></div>
+  <div class="control"><span>BRIGHTNESS</span><input id="brightness" type="range" min="10" max="100" value="82"><output id="brightVal">82%</output></div>
+  <div class="toggles">
+    <button class="toggle" id="viewBtn">INSPECT MODE</button>
+    <button class="toggle on" id="spinBtn">AUTO ORBIT</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x02060a);
+scene.fog = new THREE.FogExp2(0x02060a, .036);
+const camera = new THREE.PerspectiveCamera(36, innerWidth/innerHeight, .1, 100);
+camera.position.set(7.8, 5.3, 9.6);
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.querySelector('#scene').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0,1.55,0);
+controls.enableDamping = true;
+controls.dampingFactor = .06;
+controls.minDistance = 6;
+controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI*.84;
+controls.autoRotateSpeed = .45;
+
+const rgbMeshes = [], fanGroups = [], pulses = [], glassMeshes = [];
+let powered=false, startup=0, load=0, fanFactor=.62, brightness=.82, inspect=false;
+const rgb = new THREE.Color(0x5cf2ff);
+const tempV = new THREE.Vector3();
+
+const metal = (color,rough=.35,metalness=.9) => new THREE.MeshStandardMaterial({color,roughness:rough,metalness});
+const darkMetal = metal(0x10181d,.3,.92);
+const edgeMetal = metal(0x34444c,.22,1);
+const black = metal(0x06090b,.48,.55);
+const rubber = new THREE.MeshStandardMaterial({color:0x090c0e,roughness:.82,metalness:.1});
+const glassMat = new THREE.MeshPhysicalMaterial({color:0x18323d,roughness:.08,metalness:.05,transparent:true,opacity:.16,transmission:.15,thickness:.12,side:THREE.DoubleSide,depthWrite:false});
+const rgbMat = new THREE.MeshStandardMaterial({color:0x111111,emissive:rgb.clone(),emissiveIntensity:0,roughness:.28,metalness:.35});
+const ledMat = new THREE.MeshStandardMaterial({color:0x101010,emissive:rgb.clone(),emissiveIntensity:0});
+rgbMeshes.push(rgbMat,ledMat);
+
+function roundedBox(w,h,d,r=.08,mat=edgeMetal){
+  const s=new THREE.Shape(), x=-w/2,y=-h/2;
+  s.moveTo(x+r,y); s.lineTo(x+w-r,y); s.quadraticCurveTo(x+w,y,x+w,y+r);
+  s.lineTo(x+w,y+h-r); s.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  s.lineTo(x+r,y+h); s.quadraticCurveTo(x,y+h,x,y+h-r);
+  s.lineTo(x,y+r); s.quadraticCurveTo(x,y,x+r,y);
+  const g=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.025,bevelThickness:.025,curveSegments:5});
+  g.translate(0,0,-d/2);
+  const m=new THREE.Mesh(g,mat); m.castShadow=true; m.receiveShadow=true; return m;
+}
+function cyl(rt,rb,h,mat,seg=32){ const m=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat); m.castShadow=true; m.receiveShadow=true; return m; }
+function bar(a,b,r,mat){ const m=cyl(r,r,a.distanceTo(b),mat,12); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize()); return m; }
+function addLed(parent,x,y,z,w,h,d,mat=ledMat){ const m=roundedBox(w,h,d,.025,mat); m.position.set(x,y,z); parent.add(m); return m; }
+
+const pc = new THREE.Group(); scene.add(pc); pc.position.y=-2.25;
+const chassis = new THREE.Group(); pc.add(chassis);
+
+// architectural frame
+const frameMat=metal(0x18252b,.26,.95);
+for(const x of [-2.05,2.05]) for(const z of [-1.65,1.65]){
+  const p=roundedBox(.18,6.65,.18,.05,frameMat); p.position.set(x,1.15,z); chassis.add(p);
+}
+for(const y of [-2.05,4.35]){
+  let p=roundedBox(4.28,.16,3.48,.06,frameMat); p.position.set(0,y,0); chassis.add(p);
+}
+for(const z of [-1.68,1.68]){
+  for(const y of [-1.75,1.05,3.75]){
+    const rail=roundedBox(4.0,1.8,.09,.05,black); rail.position.set(0,y,z); chassis.add(rail);
+  }
+}
+// lower deck
+for(let i=0;i<8;i++){
+  const vent=roundedBox(.35,.03,2.8,.02,edgeMetal); vent.position.set(-1.75+i*.5,-1.94,0); chassis.add(vent);
+}
+// floating motherboard
+const board = roundedBox(3.18,.13,2.65,.08,metal(0x14232a,.47,.65));
+board.position.set(-.18,.7,-.15); chassis.add(board);
+for(let i=0;i<4;i++) addLed(board,-1.25+i*.72,.79,-.72,.48,.018,.025);
+
+// chipset heatsink fins
+const chipset=new THREE.Group(); chipset.position.set(-.65,.93,.22); chassis.add(chipset);
+for(let i=0;i<13;i++){ const f=roundedBox(.08,.42,1.08,.015,edgeMetal); f.position.x=-.42+i*.07; chipset.add(f); }
+addLed(chipset,0,.67,.4,.65,.02,.02);
+
+// VRM heatsinks
+for(const z of [-.75,.45]){
+  const sink=new THREE.Group(); sink.position.set(-1.62,1.02,z); chassis.add(sink);
+  for(let i=0;i<7;i++){ const f=roundedBox(.5,.16,.035,.012,edgeMetal); f.position.y=i*.045; sink.add(f); }
+}
+// CPU tower
+const cpu=new THREE.Group(); cpu.position.set(-.5,1.25,.05); chassis.add(cpu);
+const block=roundedBox(1.12,.16,1.12,.07,darkMetal); block.rotation.x=Math.PI/2; block.rotation.z=Math.PI/4; cpu.add(block);
+for(let i=0;i<7;i++){
+  const fin=roundedBox(1.05,.055,.055,.01,edgeMetal);
+  fin.position.y=.12+i*.06; fin.rotation.y=i*.08; cpu.add(fin);
+}
+const core=addLed(cpu,0,.58,0,.65,.025,.65); pulses.push(core);
+// AIO tubes and pump head
+const pump=cyl(.48,.48,.27,darkMetal,48); pump.position.set(-.5,.99,1.12); chassis.add(pump);
+const ring=cyl(.405,.405,.285,ledMat,64); ring.position.copy(pump.position); chassis.add(ring);
+const glassTube=bar(new THREE.Vector3(-.5,.55,.35),new THREE.Vector3(-1.2,3.65,-.7),.07,glassMat);
+glassMeshes.push(glassTube); chassis.add(glassTube);
+const innerTube=bar(new THREE.Vector3(-.5,.55,.35),new THREE.Vector3(-1.2,3.65,-.7),.018,ledMat); chassis.add(innerTube);
+// top radiator
+const rad=new THREE.Group(); rad.position.set(.2,3.92,-.12); chassis.add(rad);
+rad.add(roundedBox(3.45,.48,1.25,.05,black));
+for(let i=0;i<24;i++){ const fin=roundedBox(.022,.39,1.08,.006,edgeMetal); fin.position.x=-1.55+i*.135; rad.add(fin); }
+
+// GPU
+const gpu=new THREE.Group(); gpu.position.set(.12,1.52,.56); gpu.rotation.z=-.035; chassis.add(gpu);
+gpu.add(roundedBox(3.08,.47,1.22,.12,metal(0x151b20,.3,.85)));
+const gpuFace=roundedBox(2.7,.34,.06,.07,metal(0x253139,.24,1)); gpuFace.position.set(0,0,.64); gpu.add(gpuFace);
+for(let i=0;i<5;i++) addLed(gpu,-1.1+i*.55,-.02,.69,.3,.055,.025);
+const backplate=roundedBox(2.65,.05,1.02,.07,metal(0x303e44,.3,.95)); backplate.position.y=.27; gpu.add(backplate);
+for(let i=0;i<4;i++){
+  const fanHub=cyl(.34,.34,.035,black,48); fanHub.rotation.x=Math.PI/2; fanHub.position.set(-1.05+i*.7,0,.67); gpu.add(fanHub);
+  const fg=new THREE.Group(); fg.position.copy(fanHub.position); fg.position.z+=.025; fanGroups.push(fg); gpu.add(fg);
+  for(let j=0;j<7;j++){
+    const blade=roundedBox(.48,.08,.025,.03,metal(0x202a30,.4,.7));
+    blade.position.x=Math.cos(j*Math.PI*2/7)*.14; blade.position.y=Math.sin(j*Math.PI*2/7)*.14;
+    blade.rotation.z=j*Math.PI*2/7+.55; fg.add(blade);
+  }
+}
+for(const x of [-1.2,1.2]){
+  const support=roundedBox(.12,.7,.12,.025,edgeMetal); support.position.set(x,-.56,.15); gpu.add(support);
+}
+
+// RAM sticks
+for(let i=0;i<4;i++){
+  const ram=roundedBox(.18,.92,.08,.035,metal(0x263039,.25,.9));
+  ram.position.set(-1.35+i*.32,1.35,-1.1); chassis.add(ram);
+  addLed(chassis,ram.position.x,1.43,-1.025,.12,.62,.02);
+}
+
+// PSU
+const psu=new THREE.Group(); psu.position.set(.8,-1.4,-.15); chassis.add(psu);
+psu.add(roundedBox(1.5,.85,2.1,.1,metal(0x11191e,.36,.9)));
+const grill=cyl(.48,.48,.05,black,48); grill.rotation.x=Math.PI/2; grill.position.set(0,0,1.08); psu.add(grill);
+for(let i=0;i<9;i++){
+  const slit=roundedBox(.72,.025,.02,.01,edgeMetal); slit.rotation.z=i*Math.PI/9; slit.position.set(0,0,1.12); psu.add(slit);
+}
+addLed(psu,0,.44,.6,.7,.02,.03);
+
+// front intake fans
+for(const y of [-.55,.85,2.25]){
+  const housing=cyl(.59,.59,.14,black,64); housing.rotation.x=Math.PI/2; housing.position.set(0,y,1.51); chassis.add(housing);
+  const rim=cyl(.515,.515,.16,edgeMetal,64); rim.rotation.x=Math.PI/2; rim.position.set(0,y,1.52); chassis.add(rim);
+  const fg=new THREE.Group(); fg.position.set(0,y,1.62); fanGroups.push(fg); chassis.add(fg);
+  for(let i=0;i<9;i++){
+    const b=roundedBox(.35,.09,.025,.025,metal(0x1c262b,.4,.7));
+    b.position.x=Math.cos(i*Math.PI*2/9)*.18; b.position.y=Math.sin(i*Math.PI*2/9)*.18;
+    b.rotation.z=i*Math.PI*2/9+.35; fg.add(b);
+  }
+  const hub=cyl(.13,.13,.04,rgbMat,32); hub.rotation.x=Math.PI/2; hub.position.set(0,y,1.65); fg.add(hub);
+  addLed(chassis,0,y-.61,1.63,.36,.025,.025);
+}
+// side glass
+const side=roundedBox(3.88,6.0,.025,.04,glassMat); side.rotation.y=Math.PI/2; side.position.set(2.03,1.12,-.08); chassis.add(side); glassMeshes.push(side);
+// front glass
+const front=roundedBox(3.95,6.0,.025,.04,glassMat); front.position.set(0,1.12,1.72); chassis.add(front); glassMeshes.push(front);
+// feet
+for(const x of [-1.65,1.65]) for(const z of [-1.35,1.35]){
+  const foot=cyl(.18,.22,.35,black,24); foot.position.set(x,-2.32,z); chassis.add(foot);
+}
+// floating logo plate
+const badge=roundedBox(.72,.15,.025,.04,rgbMat); badge.position.set(0,-1.86,1.77); chassis.add(badge);
+
+// floor, grid, atmosphere
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0x03080c,roughness:.72,metalness:.25}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-2.59; floor.receiveShadow=true; scene.add(floor);
+const grid=new THREE.GridHelper(32,48,0x12303a,0x0b1a20); grid.position.y=-2.575; grid.material.transparent=true; grid.material.opacity=.3; scene.add(grid);
+const ringGlow=new THREE.Mesh(new THREE.RingGeometry(3.7,3.74,96),new THREE.MeshBasicMaterial({color:0x18414b,transparent:true,opacity:.35,side:THREE.DoubleSide}));
+ringGlow.rotation.x=-Math.PI/2; ringGlow.position.y=-2.56; scene.add(ringGlow);
+
+scene.add(new THREE.HemisphereLight(0x7cb8cc,0x05070a,.55));
+const key=new THREE.DirectionalLight(0xc5efff,2.2); key.position.set(5,9,6); key.castShadow=true;
+key.shadow.mapSize.set(1024,1024); key.shadow.camera.left=-7; key.shadow.camera.right=7; key.shadow.camera.top=8; key.shadow.camera.bottom=-6; scene.add(key);
+const rim=new THREE.PointLight(rgb.clone(),12,10,2); rim.position.set(2,3,4); scene.add(rim);
+const fill=new THREE.DirectionalLight(0x345b7a,1.3); fill.position.set(-6,3,-5); scene.add(fill);
+const innerLight=new THREE.PointLight(rgb.clone(),0,6,2); innerLight.position.set(0,1,.3); scene.add(innerLight);
+
+// cables
+const cableMat=rubber;
+for(let i=0;i<3;i++){
+  const curve=new THREE.CatmullRomCurve3([
+    new THREE.Vector3(1.1,1.05,-.8),
+    new THREE.Vector3(1.35,.3,-1.15),
+    new THREE.Vector3(1.2,-.7,-.9),
+    new THREE.Vector3(.85,-1.15,-.1)
+  ]);
+  const cable=new THREE.Mesh(new THREE.TubeGeometry(curve,24,.035+i*.008,8,false),cableMat); chassis.add(cable);
+}
+
+// dynamic RGB glow sprites as shader planes
+const glowMat=new THREE.ShaderMaterial({
+  uniforms:{glowColor:{value:rgb},power:{value:0}},
+  vertexShader:'varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform vec3 glowColor; uniform float power; varying vec2 vUv; void main(){float d=length(vUv-.5)*2.; float a=pow(max(0.,1.-d),3.)*power*.18; gl_FragColor=vec4(glowColor,a);}',
+  transparent:true,depthWrite:false,blending:THREE.AdditiveBlending
+});
+const glows=[];
+for(const [x,y,z,sx,sy] of [[-1.5,3.3,.1,3.4,.3],[0,.8,1.6,1.2,5.2],[.2,1.5,.9,2.8,.6]]){
+  const g=new THREE.Mesh(new THREE.PlaneGeometry(sx,sy),glowMat); g.position.set(x,y,z); chassis.add(g); glows.push(g);
+}
+
+const powerBtn=document.querySelector('#power');
+const online=document.querySelector('#online');
+const stateText=document.querySelector('#stateText');
+const loadText=document.querySelector('#loadText');
+const loadMeter=document.querySelector('#loadMeter');
+const boot=document.querySelector('#boot'), bootBar=document.querySelector('#bootBar');
+
+function setPower(){
+  powered=!powered;
+  if(powered){
+    startup=0; load=0; boot.classList.add('show'); bootBar.style.width='0%';
+    stateText.textContent='INITIALIZING CORE';
+    online.className='online active'; online.innerHTML='<i></i> BOOTING';
+  } else {
+    startup=0; load=0; boot.classList.remove('show');
+    stateText.textContent='SYSTEM OFFLINE';
+    online.className='online'; online.innerHTML='<i></i> STANDBY';
+    loadText.textContent='CORE VOLTAGE 0.00 V'; loadMeter.style.width='0%';
+  }
+}
+powerBtn.addEventListener('click',setPower);
+
+const colorInput=document.querySelector('#color'), hex=document.querySelector('#hex');
+function setColor(c){
+  rgb.set(c); colorInput.value=c;
+  hex.textContent=c.toUpperCase();
+  document.documentElement.style.setProperty('--accent',c);
+  const n=parseInt(c.slice(1),16);
+  document.documentElement.style.setProperty('--accent-rgb',`${n>>16},${(n>>8)&255},${n&255}`);
+  rim.color.copy(rgb); innerLight.color.copy(rgb); ringGlow.material.color.copy(rgb);
+  glowMat.uniforms.glowColor.value.copy(rgb);
+}
+colorInput.addEventListener('input',e=>setColor(e.target.value));
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>setColor(b.dataset.color)));
+document.querySelector('#fanSpeed').addEventListener('input',e=>{
+  fanFactor=+e.target.value/100; document.querySelector('#fanVal').textContent=e.target.value+'%';
+});
+document.querySelector('#brightness').addEventListener('input',e=>{
+  brightness=+e.target.value/100; document.querySelector('#brightVal').textContent=e.target.value+'%';
+});
+const spinBtn=document.querySelector('#spinBtn');
+spinBtn.addEventListener('click',()=>{
+  controls.autoRotate=!controls.autoRotate; spinBtn.classList.toggle('on',controls.autoRotate);
+});
+const viewBtn=document.querySelector('#viewBtn');
+viewBtn.addEventListener('click',()=>{
+  inspect=!inspect; glassMeshes.forEach(m=>m.visible=!inspect);
+  viewBtn.classList.toggle('on',inspect);
+  if(inspect){
+    controls.autoRotate=false; spinBtn.classList.remove('on');
+    camera.position.set(0.3,2.1,10.8); controls.target.set(0,1.1,.1);
+  } else {
+    camera.position.set(7.8,5.3,9.6); controls.target.set(0,1.55,0);
+  }
+});
+
+let last=performance.now(), elapsed=0;
+const clockStart=Date.now();
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt=Math.min((now-last)/1000,.05); last=now; elapsed+=dt;
+  controls.update();
+
+  if(powered){
+    if(startup<1){
+      startup=Math.min(1,startup+dt/.95);
+      bootBar.style.width=(startup*100)+'%';
+      if(startup>=1){
+        boot.classList.remove('show'); stateText.textContent='SYSTEM NOMINAL';
+        online.innerHTML='<i></i> NOMINAL';
+      }
+    }
+    load=Math.min(1,load+dt/1.5);
+    const idle=.73+Math.sin(elapsed*.31)*.025+Math.sin(elapsed*.73)*.012;
+    const percent=Math.round(load*idle*100);
+    loadText.textContent='12V RAIL '+(12.08*load).toFixed(2)+' V // '+percent+'%';
+    loadMeter.style.width=(percent*.62)+'%';
+  }
+
+  const level=powered?startup:0;
+  const pulse=.82+Math.sin(elapsed*2.4)*.09+Math.sin(elapsed*5.1)*.035;
+  rgbMat.emissive.copy(rgb).multiplyScalar(brightness*level*pulse*2.1);
+  ledMat.emissive.copy(rgb).multiplyScalar(brightness*level*pulse*3.2);
+  rim.intensity=level*brightness*13;
+  innerLight.intensity=level*brightness*8;
+  glowMat.uniforms.power.value=level*brightness;
+  fanGroups.forEach((f,i)=>f.rotation.z-=dt*(1.8+fanFactor*8)*(i%3===0?1.08:1));
+  pulses.forEach(m=>m.scale.x=m.scale.z=.88+Math.sin(elapsed*3)*.12);
+  ringGlow.material.opacity=.22+level*.14;
+  pc.position.y=-2.25+Math.sin(elapsed*.65)*.035;
+  ringGlow.scale.setScalar(1+Math.sin(elapsed*.8)*.008);
+
+  if(document.visibilityState==='visible'){
+    const t=new Date();
+    const secs=String(t.getHours()*3600+t.getMinutes()*60+t.getSeconds()).padStart(6,'0');
+    document.querySelector('#clock').textContent=secs.slice(0,2)+':'+secs.slice(2,4)+':'+secs.slice(4);
+  }
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(animate);
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+});
+</script>
+</body>
+</html>
