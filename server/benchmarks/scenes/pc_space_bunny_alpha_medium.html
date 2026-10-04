@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AETHER // FORGE PC</title>
+<style>
+:root{--accent:#65f3ff;--accent2:#ff5fc8;--ink:#08121d;--panel:rgba(8,18,30,.82);--line:rgba(164,220,255,.2);--muted:#8fa5b8}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030812;color:#e9f6ff;font-family:Inter,Segoe UI,Arial,sans-serif}
+#app{position:fixed;inset:0}canvas{display:block}
+#vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 52% 45%,transparent 35%,rgba(0,0,0,.48) 100%);z-index:2}
+.brand{position:fixed;left:34px;top:28px;z-index:5;letter-spacing:.22em;font-size:11px;color:#b7d9eb}
+.brand strong{display:block;font-size:22px;letter-spacing:.12em;color:white;margin-top:7px;text-shadow:0 0 20px #6eeaff66}
+.brand span{color:var(--accent)}
+#intro{position:fixed;left:34px;bottom:30px;z-index:5;color:#8ca7ba;font-size:12px;line-height:1.6;max-width:240px}
+#intro b{color:#dffaff;font-weight:500}
+#hud{position:fixed;right:24px;bottom:24px;width:292px;z-index:6;background:linear-gradient(145deg,rgba(12,28,43,.93),rgba(4,12,22,.91));border:1px solid var(--line);border-radius:18px;padding:17px;box-shadow:0 20px 70px #0008,inset 0 1px 0 #ffffff12;backdrop-filter:blur(18px)}
+.hudtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}.eyebrow{font-size:9px;letter-spacing:.2em;color:#7c98aa}.live{font-size:10px;color:#67f4bc;letter-spacing:.08em}.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#65f3a2;box-shadow:0 0 9px #65f3a2;margin-right:5px}
+.powerrow{display:flex;align-items:center;gap:12px;padding:10px 0 14px;border-bottom:1px solid var(--line)}
+#power{width:58px;height:58px;border-radius:50%;border:1px solid #74eaff88;background:radial-gradient(circle at 35% 28%,#22475a,#0b1c2b 65%);color:#d9fbff;font-size:25px;cursor:pointer;box-shadow:0 0 0 5px #64eaff0b,0 0 22px #43ddff35,inset 0 0 18px #43ddff22;transition:.25s;flex:none}
+#power:hover{transform:scale(1.06);box-shadow:0 0 0 7px #64eaff15,0 0 35px #43ddff66,inset 0 0 20px #43ddff44}#power.off{color:#526b7c;border-color:#526b7c66;box-shadow:none;filter:grayscale(1)}
+#status{font-size:16px;font-weight:600;letter-spacing:.04em}.sub{font-size:10px;color:#7590a1;margin-top:4px}
+.section{margin-top:14px}.label{display:flex;justify-content:space-between;font-size:10px;color:#8ca7b8;margin-bottom:9px;letter-spacing:.12em}.label em{font-style:normal;color:#d9f6ff}
+input[type=range]{width:100%;accent-color:var(--accent);height:3px;cursor:pointer}
+input[type=color]{width:100%;height:31px;border:1px solid #7896a844;border-radius:7px;background:#0b1928;padding:3px;cursor:pointer}
+.presets{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:8px}.swatch{height:16px;border-radius:4px;cursor:pointer;border:1px solid #ffffff22;transition:.2s}.swatch:hover{transform:translateY(-2px);filter:brightness(1.3)}
+.btnrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.btn{background:#112436;border:1px solid #8db4ca26;color:#a8c5d4;border-radius:7px;padding:8px 2px;font-size:9px;letter-spacing:.08em;cursor:pointer}.btn:hover,.btn.active{color:white;border-color:#6eeaff88;background:#17384a;box-shadow:0 0 14px #54ddff18}
+.footer{display:flex;justify-content:space-between;margin-top:13px;font-size:9px;color:#587385;letter-spacing:.08em}
+#boot{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:4;pointer-events:none;opacity:0;text-align:center;transition:.35s}#boot.show{opacity:1}.ring{width:54px;height:54px;margin:0 auto 14px;border:2px solid #6ceeff22;border-top-color:#6ceeff;border-radius:50%;animation:spin 1s linear infinite}#boottext{font-size:10px;letter-spacing:.25em;color:#a5eaff}@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){#hud{right:12px;bottom:12px;width:260px;padding:13px}.brand{left:16px;top:17px}.brand strong{font-size:17px}#intro{left:16px;bottom:20px;font-size:10px;max-width:170px}}
+</style>
+</head>
+<body>
+<div id="app"></div><div id="vignette"></div>
+<div class="brand"><span>PROJECT // 07</span><strong>AETHER FORGE</strong><span>NEON THERMAL SYSTEM</span></div>
+<div id="intro"><b>Drag to orbit · Scroll to zoom</b><br>Explore the hand-built core of a machine designed for another dimension.</div>
+<div id="hud">
+  <div class="hudtop"><div class="eyebrow">SYSTEM CONTROL / 01</div><div class="live" id="live"><i class="dot"></i>ONLINE</div></div>
+  <div class="powerrow"><button id="power" class="off" title="Power">⏻</button><div><div id="status">STANDBY</div><div class="sub" id="statusSub">Press to initialize core</div></div></div>
+  <div class="section"><div class="label"><span>CHROMA BUS</span><em id="colorName">CYAN</em></div><input type="color" id="color" value="#65f3ff"><div class="presets" id="presets"></div></div>
+  <div class="section"><div class="label"><span>FAN CURVE</span><em id="fanVal">65%</em></div><input id="fan" type="range" min="0" max="100" value="65"></div>
+  <div class="section"><div class="label"><span>LIGHT FIELD</span><em id="lightVal">70%</em></div><input id="light" type="range" min="0" max="100" value="70"></div>
+  <div class="section"><div class="label"><span>INSPECT VIEW</span><em>QUICK POSE</em></div><div class="btnrow"><button class="btn active" data-view="orbit">ORBIT</button><button class="btn" data-view="front">FRONT</button><button class="btn" data-view="top">TOP</button></div></div>
+  <div class="footer"><span>VOLTAGE <b>12.0V</b></span><span>FPS <b id="fps">60</b></span></div>
+</div>
+<div id="boot"><div class="ring"></div><div id="boottext">POST / CALIBRATING OPTICS</div></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x030812); scene.fog=new THREE.FogExp2(0x030812,.035);
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,100); camera.position.set(10,6.7,13.5);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'}); renderer.setPixelRatio(Math.min(devicePixelRatio,1.8)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.15; document.getElementById('app').appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,.2,0); controls.enableDamping=true; controls.dampingFactor=.06; controls.minDistance=7; controls.maxDistance=22; controls.maxPolarAngle=Math.PI*.86;
+const composer=new EffectComposer(renderer); composer.addPass(new RenderPass(scene,camera)); const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.65,.55,.7); composer.addPass(bloom);
+
+const mat=(c,metal=.1,rough=.45,em=0x000000,ei=0)=>new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough,emissive:em,emissiveIntensity:ei});
+const black=mat(0x101a25,.72,.28), dark=mat(0x07111b,.55,.34), silver=mat(0x8aa8b8,.82,.24), white=mat(0xd4e3e6,.35,.3), rubber=mat(0x060a0f,.05,.82), gold=mat(0xd8a54c,.8,.22);
+const rgb=mat(0x65f3ff,.15,.24,0x65f3ff,3); const rgb2=mat(0xff3bbd,.15,.3,0xff3bbd,2.5); const screenMat=mat(0x06151d,.2,.2,0x0b6a83,1.2);
+const root=new THREE.Group(); scene.add(root);
+const caseG=new THREE.Group(); root.add(caseG);
+function box(w,h,d,m,x=0,y=0,z=0,parent=caseG){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function cyl(r,h,m,x=0,y=0,z=0,parent=caseG,seg=32){let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function torus(r,t,m,x=0,y=0,z=0,parent=caseG){let o=new THREE.Mesh(new THREE.TorusGeometry(r,t,10,48),m);o.position.set(x,y,z);parent.add(o);return o}
+function lineTube(points,color,thick=.025,parent=caseG){let curve=new THREE.CatmullRomCurve3(points),o=new THREE.Mesh(new THREE.TubeGeometry(curve,28,thick,8,false),mat(color,.2,.38));parent.add(o);return o}
+function screw(x,y,z){cyl(.055,.025,silver,x,y,z,caseG,12)}
+
+// architectural frame
+box(5.8,.25,3.55,black,0,-4,0);box(5.8,.25,3.55,black,0,4,0);box(.25,8,3.55,black,-2.8,0,0);box(.25,8,3.55,black,2.8,0,0);box(5.3,7.5,.12,dark,0,0,-1.67);box(5.3,7.5,.12,mat(0x0b1b2a,.1,.18,0x063b4a,.12),0,0,1.68);
+// glass side frame
+for(let x of [-2.62,2.62]){box(.08,7.4,.08,silver,x,0,1.68)}for(let y of [-3.55,3.55])box(5.25,.08,.08,silver,0,y,1.68)
+// motherboard
+box(4.7,6.55,.11,mat(0x0b2430,.6,.35),0,.15,-.93);box(4.5,6.2,.025,mat(0x102d38,.45,.4),0,.15,-.85);
+// etched motherboard lines
+for(let i=0;i<8;i++){let g=new THREE.Mesh(new THREE.BoxGeometry(3.5,.018,.025),rgb2);g.position.set(0,-2.7+i*.72,-.81);caseG.add(g)}
+// rear I/O
+box(1.05,1.1,.12,silver,-1.75,2.3,-.73); for(let i=0;i<5;i++)box(.13,.22,.04,dark,-2.1+i*.17,2.3,-.65);
+// CPU socket and tower cooler
+box(1.25,1.25,.16,gold,-.55,1.35,-.64);box(.95,.95,.2,black,-.55,1.35,-.52);
+for(let i=0;i<6;i++){box(1.55,.12,.78,silver,-.55,.9+i*.17,-.12)}
+box(.22,.9,1.0,rgb,-.55,1.35,.28); cyl(.19,.18,rgb2,-.55,1.35,.82).rotation.x=Math.PI/2;
+// GPU
+box(3.75,.58,1.05,black,-.1,-.55,.52);box(3.4,.14,.7,silver,-.1,-.55,1.08);box(3.8,.08,.08,rgb2,-.1,-.22,1.1);
+for(let i=0;i<18;i++){box(.055,.36,.82, i%2?silver:dark,-1.72+i*.19,-.55,.48)}
+box(.65,.42,.14,rgb,.75,-.56,1.12);box(.42,.28,.13,screenMat,-.8,-.56,1.12);
+// RAM
+for(let i=0;i<4;i++){let x=1.25+i*.32;box(.18,2.0,.42,black,x,.65,-.35);box(.055,1.65,.04,rgb,x,.65,-.1);box(.24,.12,.5,silver,x,1.7,-.35)}
+// power supply shroud and unit
+box(4.8,.7,2.6,dark,0,-3.25,-.25);box(1.2,.45,1.2,silver,1.5,-3.25,.45);box(.8,.16,.03,rgb,1.5,-3.25,1.1);
+// front intake fans
+const fans=[]; function fan(x,y,z,scale=1,reverse=false){let g=new THREE.Group();g.position.set(x,y,z);g.scale.setScalar(scale);g.rotation.y=reverse?Math.PI:0;caseG.add(g);torus(.63,.075,silver,0,0,0,g);torus(.51,.025,rgb,0,0,.08,g);cyl(.16,.18,rgb2,0,0,0,g,24).rotation.x=Math.PI/2;
+ for(let i=0;i<7;i++){let a=i/7*Math.PI*2;let blade=new THREE.Mesh(new THREE.BoxGeometry(.19,.43,.055),dark);blade.position.set(Math.cos(a)*.35,Math.sin(a)*.35,0);blade.rotation.z=a+.55;blade.castShadow=true;g.add(blade)}cyl(.075,.12,silver,0,0,.1,g,20).rotation.x=Math.PI/2;fans.push(g);return g}
+fan(0,2.55,1.1,1.18);fan(0,.55,1.1,1.18);fan(0,-1.45,1.1,1.18);fan(1.8,0,-1.1,.78,true);
+// liquid tubes
+lineTube([new THREE.Vector3(-.55,2.05,.8),new THREE.Vector3(-1.7,2.9,.8),new THREE.Vector3(-2.05,2.7,1.2),new THREE.Vector3(-2.1,.2,1.1),new THREE.Vector3(-1.4,-.7,.75)],0x65f3ff,.045);lineTube([new THREE.Vector3(.2,1.95,.8),new THREE.Vector3(1.4,2.8,.85),new THREE.Vector3(1.85,2.5,1.15),new THREE.Vector3(1.9,-.2,1.1)],0xff3bbd,.045);
+// radiator
+box(2.2,1.0,.22,black,-1.1,2.9,-.65);for(let i=0;i<10;i++)box(.06,.9,.28,silver,-2.05+i*.21,2.9,-.55);
+// cable bundles
+for(let i=0;i<3;i++){lineTube([new THREE.Vector3(1.4,-.1+i*.08,-.5),new THREE.Vector3(1.8,-.8,.4),new THREE.Vector3(1.3,-2.3,1.25),new THREE.Vector3(.5,-2.9,1.25)],i===1?0xff3bbd:0x65f3ff,.025)}
+// top vents and logo
+box(3.2,.05,1.3,mat(0x0a151e,.5,.5),0,3.82,.25);for(let i=0;i<9;i++)box(2.8,.04,.035,rgb,0,3.86,-.2+i*.12);
+const logo=new THREE.Mesh(new THREE.RingGeometry(.28,.34,48),new THREE.MeshBasicMaterial({color:0x65f3ff,transparent:true,opacity:.9,side:THREE.DoubleSide}));logo.position.set(0,-3.48,1.12);logo.rotation.x=Math.PI/2;caseG.add(logo);
+// front glass reflection strips
+for(let i=0;i<3;i++){let gl=new THREE.Mesh(new THREE.PlaneGeometry(.025,6.5),new THREE.MeshBasicMaterial({color:0x9bdfff,transparent:true,opacity:.12}));gl.position.set(-1.6+i*1.55,0,1.72);gl.rotation.z=-.18;caseG.add(gl)}
+// floor and grid
+const floor=new THREE.Mesh(new THREE.CircleGeometry(18,64),mat(0x050b13,.2,.65));floor.rotation.x=-Math.PI/2;floor.position.y=-4.15;floor.receiveShadow=true;scene.add(floor);
+const grid=new THREE.GridHelper(28,28,0x123a4a,0x0a1b28);grid.position.y=-4.12;grid.material.transparent=true;grid.material.opacity=.35;scene.add(grid);
+// lights
+scene.add(new THREE.HemisphereLight(0x8ad9ff,0x02050a,1.4));
+const key=new THREE.DirectionalLight(0xc9efff,3.2);key.position.set(5,10,8);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
+const rim=new THREE.PointLight(0x184cff,30,18);rim.position.set(-6,3,-3);scene.add(rim);
+const pink=new THREE.PointLight(0xff168e,18,13);pink.position.set(5,1,3);scene.add(pink);
+const cyanLight=new THREE.PointLight(0x43eaff,22,14);cyanLight.position.set(0,-1,4);scene.add(cyanLight);
+// dust motes
+const pts=[];for(let i=0;i<120;i++)pts.push((Math.random()-.5)*14,Math.random()*10-4,(Math.random()-.5)*8);const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));const dust=new THREE.Points(pg,new THREE.PointsMaterial({color:0x6bdcff,size:.025,transparent:true,opacity:.45}));scene.add(dust);
+
+let powered=true, power=1, bootTime=0, bootDone=true, color=new THREE.Color('#65f3ff'), fanSpeed=.65, lightPower=.7, mode='orbit';
+const status=document.getElementById('status'),sub=document.getElementById('statusSub'),live=document.getElementById('live'),powerBtn=document.getElementById('power'),boot=document.getElementById('boot'),boottext=document.getElementById('boottext');
+const glowMats=[rgb,rgb2];function setColor(hex){color.set(hex);rgb.color.set(hex);rgb.emissive.set(hex);rgb2.color.copy(color).offsetHSL(.38,.1,0);rgb2.emissive.copy(rgb2.color);document.getElementById('colorName').textContent=hex.toUpperCase()}
+function setPower(v){powered=v;bootDone=!v;powerBtn.classList.toggle('off',!v);if(v){bootTime=0;boot.classList.add('show');status.textContent='BOOTING';sub.textContent='Waking the Aether core…';live.innerHTML='<i class="dot" style="background:#ffd36a;box-shadow:0 0 9px #ffd36a"></i>STARTING'}else{boot.classList.remove('show');status.textContent='STANDBY';sub.textContent='Press to initialize core';live.innerHTML='<i class="dot" style="background:#687d8c;box-shadow:none"></i>OFFLINE'}}
+powerBtn.onclick=()=>setPower(!powered);document.getElementById('color').oninput=e=>setColor(e.target.value);document.getElementById('fan').oninput=e=>{fanSpeed=+e.target.value/100;document.getElementById('fanVal').textContent=e.target.value+'%'};document.getElementById('light').oninput=e=>{lightPower=+e.target.value/100;document.getElementById('lightVal').textContent=e.target.value+'%'};
+['#65f3ff','#ff4fc3','#8bff74','#ffbd5c','#a875ff','#ffffff'].forEach(c=>{let d=document.createElement('div');d.className='swatch';d.style.background=c;d.onclick=()=>{document.getElementById('color').value=c;setColor(c)};document.getElementById('presets').appendChild(d)});
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-view]').forEach(x=>x.classList.remove('active'));b.classList.add('active');let p=b.dataset.view;if(p==='front')camera.position.set(0,1,15);if(p==='top')camera.position.set(0,13,.1);if(p==='orbit')camera.position.set(10,6.7,13.5);controls.target.set(0,.2,0)});
+setColor('#65f3ff');
+const clock=new THREE.Clock();let elapsed=0,frames=0,fpsClock=0;
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.05);elapsed+=dt;if(powered)power=Math.min(1,power+dt*1.35);if(powered&&!bootDone){bootTime+=dt;if(bootTime>.45)boottext.textContent='MAPPING THERMAL ARRAY';if(bootTime>1.15)boottext.textContent='CHROMA BUS ONLINE';if(bootTime>1.75){bootDone=true;boot.classList.remove('show');status.textContent='ONLINE';sub.textContent='Aether core at 4.8 GHz';live.innerHTML='<i class="dot"></i>ONLINE'}}
+let p=powered?power:0;rgb.emissiveIntensity=3*p*lightPower;rgb2.emissiveIntensity=2.5*p*lightPower;screenMat.emissiveIntensity=1.2*p;logo.material.opacity=.25+.7*p;cyanLight.intensity=22*p*lightPower;pink.intensity=18*p*lightPower;rim.intensity=30*p*lightPower;
+fans.forEach((f,i)=>{f.rotation.z+=dt*(.9+fanSpeed*4.2)*(i%2?-1:1)*p});dust.rotation.y=elapsed*.012;root.position.y=Math.sin(elapsed*1.3)*.018*p;controls.update();composer.render();frames++;fpsClock+=dt;if(fpsClock>.7){document.getElementById('fps').textContent=Math.round(frames/fpsClock);frames=0;fpsClock=0}}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight)});animate();
+</script>
+</body>
+</html>
