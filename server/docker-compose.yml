@@ -24,6 +24,12 @@ services:
       # rebuild from outside this container's blast radius. That also means
       # this container no longer needs host-Docker-socket access, which was
       # effectively root on the host.
+    # The host's GPU, so the benchmark banner renderer's headless Chromium
+    # draws WebGL in hardware instead of on the CPU (tool/render_previews.mjs
+    # falls back to software by itself if the device is unusable). Remove
+    # this on a host with no /dev/dri, or the container won't start.
+    devices:
+      - /dev/dri:/dev/dri
     # No "ports:" on purpose — only Caddy may reach the app, over the
     # internal network. Never expose 8080 to the internet (plain HTTP).
     networks:

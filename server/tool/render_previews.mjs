@@ -32,14 +32,24 @@ const execFileAsync = promisify(execFile);
 //
 // Needs node + a headless Chromium. Chromium is found via --chromium-bin,
 // $CHROMIUM_BIN, or well-known install paths. One scene at a time, one small
-// tab, software WebGL — deliberately light so it can run beside the server.
+// tab. WebGL runs on the GPU when Chromium can reach one (d3d11 on Windows,
+// EGL or Vulkan over /dev/dri on Linux — the Docker service maps it in) and
+// falls back to SwiftShader on the CPU otherwise; --gpu off forces software.
 //
 // Prints one `START <id>` and one `OK   <id>` / `FAIL <id>: <reason>` line
-// per scene; the server follows progress by those lines.
+// per scene, `STEP <id> <0–1> <what>` lines while one renders, and one
+// `RENDERER <backend>` line; the server follows progress by those lines.
 
 const W = 1120;
 const H = 700;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The scene being rendered, so the shooting helpers can report how far in
+// they are without threading the id through every call.
+let currentId = null;
+const step = (fraction, what) => {
+  if (currentId) console.log(`STEP ${currentId} ${Math.min(1, Math.max(0, fraction)).toFixed(2)} ${what}`);
+};
 
 function arg(name, fallback = null) {
   const i = process.argv.indexOf(`--${name}`);
@@ -184,7 +194,8 @@ const virtualMs = (page) => page.evaluate(() => (window.__lumaShot ? window.__lu
 // gets, then on to the next moment that bright, and freezes time there.
 // Scenes with no cycle stay where they are (their clock already reads late
 // morning).
-async function findDaylight(page) {
+async function findDaylight(page, from = 0.5, to = 0.85) {
+  step(from, 'learning the day cycle');
   await warp(page, true, 600);
   const v0 = await virtualMs(page);
   const t0 = Date.now();
@@ -192,6 +203,7 @@ async function findDaylight(page) {
   let hi = -Infinity;
   while (Date.now() - t0 < 45000 && (await virtualMs(page)) - v0 < 8 * 60 * 1000) {
     await sleep(700);
+    step(from + (to - from) * 0.5 * Math.min(1, (Date.now() - t0) / 45000), 'learning the day cycle');
     const { mean } = await sampleLuma(page);
     lo = Math.min(lo, mean);
     hi = Math.max(hi, mean);
@@ -211,7 +223,9 @@ async function findDaylight(page) {
   // moment that gets shot — not one a few fast-forwarded frames later, in
   // the dark.
   await page.evaluate(() => window.__lumaShot.freeze());
+  step(from + (to - from) * 0.5, 'waiting for daylight');
   while (Date.now() - t1 < 90000) {
+    step(from + (to - from) * (0.5 + 0.5 * Math.min(1, (Date.now() - t1) / 90000)), 'waiting for daylight');
     ({ mean } = await sampleLuma(page));
     if (mean >= target) {
       reached = true;
@@ -242,6 +256,7 @@ async function applyFraming(page, framing) {
 }
 
 async function shootPagoda(page, framing) {
+  step(0.1, 'building the garden');
   // Hook shape varies per scene: voxelCount is a plain number in most
   // scenes, a function in a few older ones.
   await page
@@ -252,6 +267,7 @@ async function shootPagoda(page, framing) {
     .catch(() => {});
   const t0 = Date.now();
   let lastPress = 0;
+  step(0.25, 'waiting for the loading screen');
   while (!(await canvasVisible(page))) {
     if (Date.now() - t0 > 90000) throw new Error('scene never got past its loading screen');
     if (Date.now() - lastPress > 4000) {
@@ -262,9 +278,11 @@ async function shootPagoda(page, framing) {
   }
   // Let fade-outs finish, and fast-forward past build-up animations and
   // camera intros before reading the scene's framing.
+  step(0.35, 'skipping intro animations');
   await warp(page, true, 600);
   await sleep(3000);
   await warp(page, false);
+  step(0.45, 'framing');
   if (framing) {
     // The operator's own shot: no fitting, no refit, just daylight.
     const used = await applyFraming(page, framing);
@@ -282,6 +300,7 @@ async function shootPagoda(page, framing) {
       console.log(`  reframing: ${refit.ok ? `${refit.camera}, distance ${refit.distance}, box ${refit.box}` : refit.reason}`);
     }
   }
+  step(0.9, 'final frames');
   await page.evaluate(() => window.__lumaShot.waitFrames(3));
   // Some scenes fill their HUD counters on a frame timer — wait for real
   // numbers so the banner never shows "-- voxels".
@@ -294,17 +313,18 @@ async function shootPagoda(page, framing) {
   await sleep(1500);
 }
 
-async function shootEngine(page) {
+async function settleCanvas(page) {
+  step(0.2, 'waiting for the canvas');
   await page.waitForSelector('canvas', { timeout: 120000 });
+  step(0.5, 'letting it draw');
   await sleep(5000);
 }
 
-async function shootServerRack(page) {
-  await page.waitForSelector('canvas', { timeout: 120000 });
-  await sleep(5000);
-}
+const shootEngine = settleCanvas;
+const shootServerRack = settleCanvas;
 
 async function shootKeyboard(page) {
+  step(0.2, 'waiting for the page');
   // Keyboard scenes are drawn every which way — canvas, SVG, or plain CSS
   // keycaps — so wait for the page to have painted anything rather than for
   // a canvas, then let the assembly animation play out.
@@ -323,10 +343,12 @@ async function shootKeyboard(page) {
     if (skip) skip.click();
     return Boolean(skip);
   });
+  step(0.4, 'waiting for the board to assemble');
   await sleep(skipped ? 4000 : 20000);
 }
 
 async function shootCruiseShip(page) {
+  step(0.2, 'waiting for the ship');
   await page.waitForFunction(() => window.cruiseDebug?.ready === true || window.cruiseDebug?.error,
     { timeout: 45000, polling: 100 });
   await page.evaluate(() => {
@@ -349,8 +371,10 @@ async function shootPc(page) {
   // differ per scene. The module scripts (and their click handlers) only
   // exist after the Three.js CDN imports resolve, so wait for the canvas
   // plus a margin before touching the power control.
+  step(0.2, 'waiting for the canvas');
   await page.waitForSelector('canvas', { timeout: 120000 });
   await sleep(3000);
+  step(0.4, 'powering on');
   const clickPower = () =>
     page.evaluate(() => {
       const direct = ['#pwr', '#powerBtn', '#power-btn', '#btnPower', '#power']
@@ -382,6 +406,41 @@ async function shootPc(page) {
   await page.waitForFunction(isOnline, { timeout: 60000, polling: 500 }).catch(() => {});
   await sleep(2000);
 }
+
+// Chromium flags per WebGL backend, best first. A GPU backend is only kept
+// when a probe page actually gets a hardware WebGL context from it.
+function backends() {
+  const gpu = (arg('gpu', 'auto') || 'auto').toLowerCase();
+  const software = { name: 'software', args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] };
+  if (gpu === 'off' || gpu === '0' || gpu === 'false') return [software];
+  const hardware = ['--ignore-gpu-blocklist', '--enable-gpu-rasterization'];
+  if (process.platform === 'win32') {
+    return [{ name: 'gpu', args: [...hardware, '--use-angle=d3d11'] }, software];
+  }
+  if (process.platform === 'linux' && !fs.existsSync('/dev/dri')) return [software];
+  return [
+    { name: 'gpu', args: [...hardware, '--use-gl=angle', '--use-angle=gl-egl'] },
+    { name: 'gpu', args: [...hardware, '--use-angle=vulkan', '--enable-features=Vulkan', '--disable-vulkan-surface'] },
+    software,
+  ];
+}
+
+// The WebGL renderer string a blank page gets, or null without WebGL.
+async function probeWebGl(browser) {
+  const page = await browser.newPage();
+  try {
+    return await page.evaluate(() => {
+      const gl = document.createElement('canvas').getContext('webgl');
+      if (!gl) return null;
+      const info = gl.getExtension('WEBGL_debug_renderer_info');
+      return String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    });
+  } finally {
+    await page.close().catch(() => {});
+  }
+}
+
+const softwareGl = /swiftshader|llvmpipe|softpipe|software/i;
 
 function readManifest(dirs) {
   for (const dir of dirs) {
@@ -529,7 +588,7 @@ async function main() {
   console.log(`capturing ${ids.length} scenes with ${chromium}, one at a time`);
   await fs.promises.mkdir(outDir, { recursive: true });
 
-  const launch = () => puppeteer.launch({
+  const launchWith = (backend) => puppeteer.launch({
     executablePath: chromium,
     headless: true,
     protocolTimeout: 300000,
@@ -539,18 +598,43 @@ async function main() {
       '--no-sandbox',
       '--disable-dev-shm-usage',
       '--mute-audio',
-      '--enable-unsafe-swiftshader',
-      '--use-angle=swiftshader',
       '--disable-background-timer-throttling',
-      '--num-raster-threads=1',
+      '--disable-renderer-backgrounding',
+      '--disable-backgrounding-occluded-windows',
       '--renderer-process-limit=1',
+      ...backend.args,
     ],
   });
-  let browser = await launch();
+  // Settle on the first backend that gives the scenes a working WebGL.
+  let chosen = null;
+  let browser = null;
+  for (const backend of backends()) {
+    let b = null;
+    try {
+      b = await launchWith(backend);
+      const gl = await probeWebGl(b);
+      if (gl && (backend.name === 'software' || !softwareGl.test(gl))) {
+        chosen = backend;
+        browser = b;
+        console.log(`RENDERER ${backend.name} · ${gl}`);
+        break;
+      }
+      console.log(`  ${backend.name} backend ${backend.args.at(-1)} unusable: ${gl ? `software fallback (${gl})` : 'no WebGL'}`);
+    } catch (e) {
+      console.log(`  ${backend.name} backend ${backend.args.at(-1)} failed to launch: ${String(e).split('\n')[0]}`);
+    }
+    await b?.close().catch(() => {});
+  }
+  if (!browser) {
+    console.error('Chromium has no working WebGL here, not even SwiftShader — every scene would render blank.');
+    process.exit(3);
+  }
+  const launch = () => launchWith(chosen);
   const failed = [];
   try {
     for (const id of ids) {
       console.log(`START ${id}`);
+      currentId = id;
       const file = sceneFile(id);
       if (!file) {
         console.log(`FAIL ${id}: no scene file`);
@@ -564,9 +648,18 @@ async function main() {
         browser = await launch();
       }
       let page = null;
+      // The first thing the scene itself complained about, so a timeout
+      // says why (a CDN import that never loaded, a WebGL error) instead of
+      // just what was waited for.
+      let pageProblem = '';
       try {
         page = await browser.newPage();
+        page.on('pageerror', (e) => { pageProblem ||= `page error: ${String(e.message || e).split('\n')[0]}`; });
+        page.on('requestfailed', (r) => {
+          if (/\.(m?js)(\?|$)/.test(r.url())) pageProblem ||= `could not load ${r.url()} (${r.failure()?.errorText ?? 'failed'})`;
+        });
         await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+        step(0.02, 'loading the scene');
         const framing = framingOf(id);
         // Engine and PC scenes keep their own clock; with a saved framing
         // they get just the camera hook.
@@ -602,6 +695,7 @@ async function main() {
           else await shootPc(page);
           if (framing) console.log(`  framing: ${(await applyFraming(page, framing)).camera}`);
         }
+        step(0.97, 'capturing');
         const png = await page.screenshot({ type: 'png' });
         const { spread } = lumaStats(png);
         if (spread < 0.02) throw new Error('blank frame (solid colour), keeping the old banner');
@@ -612,9 +706,11 @@ async function main() {
         await fs.promises.rename(`${target}.tmp`, target);
         console.log(`OK   ${id}`);
       } catch (e) {
-        console.log(`FAIL ${id}: ${String(e).split('\n')[0]}`);
+        const reason = String(e).split('\n')[0];
+        console.log(`FAIL ${id}: ${pageProblem ? `${reason} (${pageProblem.slice(0, 200)})` : reason}`);
         failed.push(id);
       } finally {
+        currentId = null;
         if (page) await page.close().catch(() => {});
         await sleep(1000);
       }

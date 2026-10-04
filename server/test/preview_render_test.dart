@@ -185,6 +185,25 @@ void main() {
       expect(s.status.items.last.detail, 'TimeoutError: no canvas');
     });
 
+    test('follows progress inside a scene and the backend in use', () async {
+      final s = service();
+      await s.start(PreviewRenderMode.missing);
+      process.line('RENDERER gpu · Mesa Intel(R) Graphics');
+      process.line('START pagoda_lacks');
+      process.line('STEP pagoda_lacks 0.45 framing');
+      await settle();
+      final item = s.status.items.first;
+      expect(s.status.renderer, 'gpu · Mesa Intel(R) Graphics');
+      expect(item.progress, 0.45);
+      expect(item.stage, 'framing');
+      expect(item.detail, isEmpty);
+      expect(item.toJson(), containsPair('stage', 'framing'));
+      process.line('OK   pagoda_lacks');
+      await settle();
+      expect(item.progress, 1);
+      expect(item.stage, isEmpty);
+    });
+
     test('only one job at a time', () async {
       final s = service();
       final both = await Future.wait([

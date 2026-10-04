@@ -42,9 +42,13 @@ RUN apt-get update \
 # (PreviewRenderService) shoot AI benchmark scenes in a headless Chromium
 # driven by node — see tool/render_previews.mjs. Scenes load three.js from a
 # CDN at render time; the fonts cover the scenes' HUD text, CJK included.
+# The Mesa drivers let Chromium draw WebGL on the host's GPU through the
+# /dev/dri device docker-compose maps in; without one it falls back to
+# SwiftShader on the CPU.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         nodejs npm chromium \
+        libgl1-mesa-dri libegl-mesa0 libegl1 mesa-vulkan-drivers \
         fonts-liberation fonts-noto-cjk fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 COPY tool/package.json tool/package-lock.json /app/tool/

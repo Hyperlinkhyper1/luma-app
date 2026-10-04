@@ -13397,11 +13397,13 @@ window.lumaAskReason = function (form, message) {
 
   /// Control panel tab: "Render missing banners" / "Re-render all" POST to
   /// /admin/benchmark-banners/render and then poll
-  /// /admin/benchmark-banners/status every 3s while the job runs, one row
+  /// /admin/benchmark-banners/status every 2s while the job runs, one row
   /// per scene with a thumbnail of each banner as it lands, under a
-  /// progress bar whose time left is estimated from the scenes done so far.
-  /// Like the model refresh, the job outlives the request, so a reload
-  /// mid-render picks the same poll back up.
+  /// progress bar that follows the renderer's steps inside each scene and
+  /// estimates the time left from the scenes done so far. A failed poll is
+  /// retried rather than ending the watch, so the page never needs a
+  /// reload to catch up. Like the model refresh, the job outlives the
+  /// request, so a reload mid-render picks the same poll back up.
   ///
   /// "Browse & pick…" opens the catalog of every scene to select some and
   /// re-render just those; each tile's "Frame" opens the framing editor,
@@ -13431,7 +13433,7 @@ window.lumaAskReason = function (form, message) {
   }
 
   function json(url, init) {
-    return fetch(url, init).then((r) => r.json().catch(() => ({}))
+    return fetch(url, Object.assign({ cache: 'no-store' }, init)).then((r) => r.json().catch(() => ({}))
       .then((body) => ({ ok: r.ok, status: r.status, body })));
   }
 
@@ -13457,8 +13459,9 @@ window.lumaAskReason = function (form, message) {
 
   // ---- Progress bar --------------------------------------------------------
 
-  // Finished scenes plus a share of the one on screen, that share guessed
-  // from how long finished scenes took. Never reaches the end on a guess.
+  // Finished scenes plus a share of the one on screen: how far the renderer
+  // says it is, or a guess from how long finished scenes took when that is
+  // further. Never reaches the end on a guess.
   function drawProgress() {
     const data = last;
     const items = (data && data.items) || [];
@@ -13476,7 +13479,8 @@ window.lumaAskReason = function (form, message) {
     const avg = took.length ? took.reduce((a, b) => a + b, 0) / took.length : 0;
     const current = items.find((i) => i.state === 'rendering');
     const elapsed = current && current.startedAtMs ? now - current.startedAtMs : 0;
-    const share = current && avg ? Math.min(0.95, elapsed / avg) : 0;
+    const stepped = current ? Number(current.progress) || 0 : 0;
+    const share = current ? Math.min(0.95, Math.max(stepped, avg ? elapsed / avg : 0)) : 0;
     const running = !!data.running;
     const pct = running
       ? Math.min(99, ((finished + share) / total) * 100)
@@ -13492,8 +13496,11 @@ window.lumaAskReason = function (form, message) {
       progressLabel.textContent = 'Scene ' + Math.min(finished + 1, total) + ' of ' + total
         + (current ? ' · ' + current.id : '')
         + (queued ? ' · ' + queued + ' more queued' : '');
-      progressEta.textContent = avg
-        ? 'about ' + duration(Math.max(0, avg * (total - finished) - elapsed)) + ' left'
+      // Before any scene has finished, extrapolate the first one from how
+      // far into it the renderer is.
+      const perScene = avg || (stepped > 0.15 ? elapsed / stepped : 0);
+      progressEta.textContent = perScene
+        ? 'about ' + duration(Math.max(0, perScene * (total - finished) - elapsed)) + ' left'
         : (current ? 'first scene · ' + duration(elapsed) + ' so far' : 'starting…');
     } else {
       progressLabel.textContent = finished + ' of ' + total + ' scenes finished'
@@ -13522,7 +13529,8 @@ window.lumaAskReason = function (form, message) {
         : data.missingCount + ' without a banner');
     if (running) {
       text += ' — <strong>rendering</strong>'
-        + (data.mode === 'selected' ? ' picked scenes' : data.mode === 'all' ? ' all' : ' missing');
+        + (data.mode === 'selected' ? ' picked scenes' : data.mode === 'all' ? ' all' : ' missing')
+        + (data.renderer ? ' <span class="muted">on ' + esc(data.renderer) + '</span>' : '');
     } else if (data.error) {
       text += ' — <span class="badge err">failed</span> ' + esc(data.error);
     } else if (data.finishedAtMs && items.length) {
@@ -13542,6 +13550,11 @@ window.lumaAskReason = function (form, message) {
     logBox.style.display = shown.length ? 'block' : 'none';
     rows.innerHTML = shown.map((i) => {
       const b = BADGE[i.state] || ['', i.state];
+      const label = i.state === 'rendering' && i.progress > 0
+        ? b[1] + ' ' + Math.round(i.progress * 100) + '%' : b[1];
+      const note = i.state === 'rendering' && i.stage
+        ? esc(i.stage) + (i.detail ? ' · ' + esc(i.detail) : '')
+        : esc(i.detail || '—');
       const stamp = i.finishedAtMs || data.finishedAtMs || 0;
       const img = i.state === 'ok'
         ? '<a href="/admin/benchmark-banners/image/' + encodeURIComponent(i.id)
@@ -13551,24 +13564,49 @@ window.lumaAskReason = function (form, message) {
           + encodeURIComponent(i.id) + '?v=' + stamp + '"></a>'
         : '';
       return '<tr><td>' + esc(i.id) + '</td>'
-        + '<td><span class="badge ' + b[0] + '">' + b[1] + '</span></td>'
+        + '<td><span class="badge ' + b[0] + '">' + label + '</span></td>'
         + '<td>' + img + '</td>'
-        + '<td class="muted" style="font-size:12px">' + esc(i.detail || '—') + '</td></tr>';
+        + '<td class="muted" style="font-size:12px">' + note + '</td></tr>';
     }).join('');
     catalog.onStatus(data);
     return running || (data.queued || []).length > 0;
   }
 
+  // One poll at a time; while a job runs (or might, after a failed read)
+  // the next is always scheduled, so a dropped request or a tunnel hiccup
+  // only delays the page instead of freezing it until a reload.
+  let failures = 0;
+  // Just after starting a job the last status read still says idle; keep
+  // retrying through that window too.
+  let watchUntil = 0;
   function load() {
+    clearTimeout(timer);
+    timer = null;
     json('/admin/benchmark-banners/status')
-      .then(({ body }) => {
-        clearTimeout(timer);
-        if (render(body)) timer = setTimeout(load, 3000);
+      .then(({ ok, body }) => {
+        if (!ok || !body || !Array.isArray(body.items)) throw new Error('bad status');
+        failures = 0;
+        let more = false;
+        try {
+          more = render(body);
+        } finally {
+          clearTimeout(timer);
+          timer = more ? setTimeout(load, 2000) : null;
+        }
       })
       .catch(() => {
-        summary.textContent = 'Could not read the banner status.';
+        failures++;
+        if (failures >= 3) summary.textContent = 'Could not read the banner status — retrying…';
+        clearTimeout(timer);
+        if (!last || last.running || (last.queued || []).length || Date.now() < watchUntil) {
+          timer = setTimeout(load, Math.min(15000, 2000 * failures));
+        }
       });
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && last && (last.running || (last.queued || []).length)) load();
+  });
 
   function start(mode, ids) {
     missingBtn.disabled = true;
@@ -13588,6 +13626,7 @@ window.lumaAskReason = function (form, message) {
           allBtn.disabled = false;
           return { ok: false, message: msg };
         }
+        watchUntil = Date.now() + 60000;
         setTimeout(load, 500);
         return { ok: true, queued: !!body.queued, count: body.count };
       })

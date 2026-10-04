@@ -31,6 +31,12 @@ class PreviewRenderItem {
   /// why it failed.
   String detail = '';
 
+  /// How far into this scene the renderer is (0–1) and what it is doing
+  /// right now, from its `STEP` lines, so the dashboard's bar moves during
+  /// a scene rather than only between scenes.
+  double progress = 0;
+  String stage = '';
+
   /// When the renderer started and finished this scene, so the dashboard
   /// can estimate how long the rest of the job will take.
   int? startedAtMs;
@@ -40,6 +46,8 @@ class PreviewRenderItem {
         'id': id,
         'state': state,
         'detail': detail,
+        'progress': progress,
+        'stage': stage,
         if (startedAtMs != null) 'startedAtMs': startedAtMs,
         if (finishedAtMs != null) 'finishedAtMs': finishedAtMs,
       };
@@ -56,6 +64,10 @@ class PreviewRenderStatus {
   /// Why the job could not start or ended early (tooling missing, renderer
   /// crashed); null when it ran to completion.
   String? error;
+
+  /// The WebGL backend the renderer settled on, e.g. `gpu · Mesa Intel(R)
+  /// Graphics` or `software · SwiftShader`; null until it says.
+  String? renderer;
   List<PreviewRenderItem> items = [];
 
   /// Scenes asked for while a job was running; they get a job of their own
@@ -77,6 +89,7 @@ class PreviewRenderStatus {
         'finishedAtMs': finishedAtMs,
         'stopped': stopped,
         'error': error,
+        'renderer': renderer,
         'items': [for (final i in items) i.toJson()],
         'queued': queued,
         'log': log,
@@ -290,6 +303,7 @@ class PreviewRenderService {
       ..finishedAtMs = null
       ..stopped = false
       ..error = null
+      ..renderer = null
       ..items = [for (final id in ids) PreviewRenderItem(id)]
       ..log.clear();
   }
@@ -302,7 +316,8 @@ class PreviewRenderService {
   }
 
   /// Follows the renderer's progress lines (`START id`, `OK   id`,
-  /// `FAIL id: reason`, and indented notes about the scene in between).
+  /// `FAIL id: reason`, `STEP id fraction what`, `RENDERER backend`, and
+  /// indented notes about the scene in between).
   Future<void> _follow(Process process) async {
     PreviewRenderItem? current;
     String lastError = '';
@@ -313,10 +328,13 @@ class PreviewRenderService {
         .transform(const LineSplitter())
         .map((line) => line.replaceAll(ansi, ''))
         .listen((line) {
-      status.addLog(line);
       final start = RegExp(r'^START (\S+)').firstMatch(line);
       final ok = RegExp(r'^OK\s+(\S+)').firstMatch(line);
       final fail = RegExp(r'^FAIL (\S+?): (.*)$').firstMatch(line);
+      final step = RegExp(r'^STEP (\S+) ([\d.]+) ?(.*)$').firstMatch(line);
+      final renderer = RegExp(r'^RENDERER (.+)$').firstMatch(line);
+      // Steps arrive several times a second; they'd crowd out the log.
+      if (step == null) status.addLog(line);
       final now = DateTime.now().millisecondsSinceEpoch;
       if (start != null) {
         current = _item(start.group(1)!)
@@ -325,14 +343,23 @@ class PreviewRenderService {
       } else if (ok != null) {
         _item(ok.group(1)!)
           ?..state = 'ok'
+          ..progress = 1
+          ..stage = ''
           ..finishedAtMs = now;
         current = null;
       } else if (fail != null) {
         _item(fail.group(1)!)
           ?..state = 'failed'
           ..detail = fail.group(2)!
+          ..stage = ''
           ..finishedAtMs = now;
         current = null;
+      } else if (step != null) {
+        _item(step.group(1)!)
+          ?..progress = (double.tryParse(step.group(2)!) ?? 0).clamp(0.0, 1.0)
+          ..stage = step.group(3)!;
+      } else if (renderer != null) {
+        status.renderer = renderer.group(1)!.trim();
       } else if (line.startsWith('  ') && current != null) {
         final note = line.trim();
         current!.detail =

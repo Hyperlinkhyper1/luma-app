@@ -180,7 +180,7 @@ class _TestsTabState extends State<TestsTab> {
         LumaHeroTile(
           title: 'Server Rack Test',
           subtitle: 'New · Open the test screen',
-          imageFile: null,
+          imageFile: _tileArt(repo, 'server_rack'),
           fallbackIcon: Icons.dns_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
