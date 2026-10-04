@@ -399,6 +399,69 @@ class PreviewRenderService {
     return true;
   }
 
+  Map<String, String>? _failures;
+
+  File get _failuresFile => File('$dataDir${Platform.pathSeparator}'
+      'preview_render_failures.json');
+
+  Map<String, String> get _failureMap {
+    final cached = _failures;
+    if (cached != null) return cached;
+    final loaded = <String, String>{};
+    try {
+      final file = _failuresFile;
+      if (file.existsSync()) {
+        final raw = jsonDecode(file.readAsStringSync());
+        if (raw is Map) {
+          for (final e in raw.entries) {
+            if (e.key is String && e.value is String) {
+              loaded[e.key as String] = e.value as String;
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Unreadable: start with no recorded errors.
+    }
+    return _failures = loaded;
+  }
+
+  /// The error a scene's last render ended with, or null once it has
+  /// rendered since. Kept on disk because a render job's own status is
+  /// replaced by the next job (a repaired scene queues one), and a repair
+  /// needs the error long after the job that hit it.
+  String? failureFor(String id) => _failureMap[id];
+
+  /// Recorded errors for scenes that still exist, so a deleted test doesn't
+  /// linger as something to repair.
+  Future<Map<String, String>> recordedFailures() async {
+    final known = {
+      for (final c in await (await _store()).previewCoverage()) c.id,
+    };
+    return {
+      for (final e in _failureMap.entries)
+        if (known.contains(e.key)) e.key: e.value,
+    };
+  }
+
+  void recordFailure(String id, String? detail) {
+    final map = _failureMap;
+    final text = detail?.trim() ?? '';
+    if (text.isEmpty) {
+      if (map.remove(id) == null) return;
+    } else {
+      if (map[id] == text) return;
+      map[id] = text;
+    }
+    try {
+      final tmp = File('${_failuresFile.path}.tmp');
+      tmp.writeAsStringSync(jsonEncode(map), flush: true);
+      tmp.renameSync(_failuresFile.path);
+    } catch (_) {
+      // Still remembered in memory; the next change tries the disk again.
+    }
+  }
+
   void _reset(PreviewRenderMode mode, List<String> ids) {
     status
       ..mode = mode
@@ -456,6 +519,7 @@ class PreviewRenderService {
           ..progress = 1
           ..stage = ''
           ..finishedAtMs = now;
+        recordFailure(ok.group(1)!, null);
         current = null;
       } else if (fail != null) {
         _item(fail.group(1)!)
@@ -463,6 +527,7 @@ class PreviewRenderService {
           ..detail = fail.group(2)!
           ..stage = ''
           ..finishedAtMs = now;
+        recordFailure(fail.group(1)!, fail.group(2)!);
         current = null;
       } else if (step != null) {
         _item(step.group(1)!)

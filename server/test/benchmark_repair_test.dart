@@ -238,11 +238,8 @@ void main() {
           description: 'Original description',
           bytes: utf8.encode(original));
       renderer = RepairRenderer(dataDir: dir.path);
-      renderer.status.items = [
-        PreviewRenderItem('pagoda_demo')
-          ..state = 'failed'
-          ..detail = 'ReferenceError: broken is not defined'
-      ];
+      renderer.recordFailure(
+          'pagoda_demo', 'ReferenceError: broken is not defined');
       price = const AiPrice(1, 2);
       calls = 0;
       failCall = false;
@@ -362,6 +359,18 @@ void main() {
       expect(usage.usageCalls('other'), isEmpty);
       expect(usage.tokensUsed('owner', const Duration(days: 7)), 0);
     });
+    test('a recorded error outlives the render job that hit it', () async {
+      await save();
+      renderer.status.items = [
+        PreviewRenderItem('pagoda_other')..state = 'ok',
+      ];
+      final started =
+          await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      expect(started['httpStatus'], 202, reason: '$started');
+      await finished();
+      expect(calls, 1);
+      expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
+    });
     test('a failed candidate keeps the live file and still records paid usage',
         () async {
       await save();
@@ -413,7 +422,7 @@ void main() {
           (await request('POST', '/admin/benchmark-banners/repair/pagoda_demo',
               origin: 'https://evil.example'))['httpStatus'],
           403);
-      renderer.status.items.clear();
+      renderer.recordFailure('pagoda_demo', null);
       expect(
           (await request('POST',
               '/admin/benchmark-banners/repair/pagoda_demo'))['httpStatus'],
@@ -460,16 +469,10 @@ void main() {
               bytes: utf8.encode(original));
           ids.add(id);
         }
-        renderer.status.items = [
-          for (final id in ids)
-            PreviewRenderItem(id)
-              ..state = 'failed'
-              ..detail = 'ReferenceError: broken is not defined',
-          PreviewRenderItem('cathedral_glb')
-            ..state = 'failed'
-            ..detail = 'invalid GLB',
-          PreviewRenderItem('pagoda_fine')..state = 'ok',
-        ];
+        for (final id in ids) {
+          renderer.recordFailure(id, 'ReferenceError: broken is not defined');
+        }
+        renderer.recordFailure('cathedral_glb', 'invalid GLB');
         return ids;
       }
 
@@ -567,9 +570,7 @@ void main() {
                 'POST', '/admin/benchmark-banners/repair-all'))['error'],
             'no_model');
         await save();
-        renderer.status.items = [
-          PreviewRenderItem('pagoda_fine')..state = 'ok'
-        ];
+        renderer.recordFailure('pagoda_demo', null);
         expect(
             (await request(
                 'POST', '/admin/benchmark-banners/repair-all'))['error'],

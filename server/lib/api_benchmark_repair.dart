@@ -173,12 +173,9 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(
           409, 'busy', 'Wait for the current render or repair to finish.');
     }
-    final failures = previewRenders.status.items
-        .where((i) => i.id == id && i.state == 'failed');
     benchmarkRepairStarting = true;
     try {
-      final plan =
-          await _planRepair(id, failures.isEmpty ? null : failures.first.detail);
+      final plan = await _planRepair(id, previewRenders.failureFor(id));
       _registerRepairJob(plan.job);
       unawaited(_runRepair(plan.job, plan.route, plan.ownerId, plan.entry,
           plan.scene, plan.diagnostic));
@@ -209,13 +206,7 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(
           409, 'no_model', 'Choose a repair model using the cog first.');
     }
-    final failed = [
-      for (final i in previewRenders.status.items)
-        if (i.state == 'failed' &&
-            i.detail.trim().isNotEmpty &&
-            !i.id.startsWith('cathedral_'))
-          (id: i.id, diagnostic: i.detail),
-    ];
+    final failed = await _repairableFailures();
     if (failed.isEmpty) {
       return errorResponse(409, 'no_failures',
           'No failed scenes to repair. Render the banners first; repairs need a recorded render error.');
@@ -227,6 +218,18 @@ extension BenchmarkRepairApi on Api {
       'count': failed.length,
       'workers': BenchmarkRepairAll.workers,
     });
+  }
+
+  /// Scenes whose last render failed and that a repair can try: every
+  /// recorded render error, not only the last job's, since repaired scenes
+  /// re-render and replace that job's list.
+  Future<List<({String id, String diagnostic})>> _repairableFailures() async {
+    final recorded = await previewRenders.recordedFailures();
+    return [
+      for (final e in recorded.entries)
+        if (e.value.trim().isNotEmpty && !e.key.startsWith('cathedral_'))
+          (id: e.key, diagnostic: e.value),
+    ];
   }
 
   Future<void> _runRepairAll() async {

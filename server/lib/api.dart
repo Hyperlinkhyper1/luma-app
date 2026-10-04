@@ -4899,6 +4899,7 @@ class Api {
       ...previewRenders.status.toJson(),
       'repairs': [for (final job in benchmarkRepairJobs.values) job.toJson()],
       'repairAll': benchmarkRepairAll.toJson(),
+      'repairable': (await _repairableFailures()).length,
       'repairModel': switch (benchmarkRepairSettings.route) {
         final route? => {
             'upstream': route.upstream.label,
@@ -10773,7 +10774,7 @@ syncToolbar();
         '<button id="bannersAllBtn" type="button" class="btn btn-ghost">'
         'Re-render all</button>'
         '<button id="bannersRepairAllBtn" type="button" class="btn btn-ghost" '
-        'style="display:none">Repair all</button>'
+        'disabled>Repair all</button>'
         '<button id="bannersStopBtn" type="button" class="btn btn-ghost btn-sm" '
         'style="display:none">Stop</button>'
         '</div>'
@@ -13821,12 +13822,14 @@ window.lumaAskReason = function (form, message) {
     const repairs = data.repairs || [];
     const repairing = repairActive(data);
     const items = data.items || [];
-    const repairable = items.filter((i) => i.state === 'failed' && i.detail
-      && !i.id.startsWith('cathedral_')).length;
+    const repairable = Number(data.repairable) || 0;
     repairAllBtn.dataset.count = repairable;
-    repairAllBtn.style.display = repairable > 0 || repairing ? '' : 'none';
     repairAllBtn.disabled = running || repairing || repairable === 0;
     repairAllBtn.textContent = 'Repair all' + (repairable > 0 ? ' (' + repairable + ')' : '');
+    repairAllBtn.title = repairing ? 'A repair is running'
+      : running ? 'Wait for the render to finish'
+      : repairable === 0 ? 'No scene has a recorded render error yet. Render the banners first; scenes that fail are listed here.'
+      : 'Repair every scene whose render failed, three at a time';
     missingBtn.disabled = running || repairing || data.missingCount === 0;
     allBtn.disabled = running || repairing || data.sceneCount === 0;
     missingBtn.textContent = 'Render missing banners'

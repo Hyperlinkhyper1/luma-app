@@ -129,11 +129,20 @@ void main() {
     test('every test has a prompt ending in the output contract', () {
       for (final kind in kBenchmarkPrompts.keys) {
         expect(AiBenchmarkStore.kinds, contains(kind));
+        if (kBenchmarkManualKinds.contains(kind)) continue;
         final p = benchmarkPromptFor(kind);
         expect(p, contains('<!DOCTYPE html>'));
         expect(p.trimRight(), endsWith('breaks it.'));
       }
-      expect(benchmarkPromptFor('cathedral'), isEmpty);
+    });
+
+    test('the cathedral prompt is for copying only: no HTML contract', () {
+      expect(kBenchmarkManualKinds, {'cathedral'});
+      expect(kBenchmarkPrompts, contains('cathedral'));
+      final p = benchmarkPromptFor('cathedral');
+      expect(p, contains('cathedral.glb'));
+      expect(p, isNot(contains('<!DOCTYPE html>')));
+      expect(AiBenchmarkStore.extForKind('cathedral'), 'glb');
     });
   });
 

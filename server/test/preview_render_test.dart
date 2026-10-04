@@ -176,6 +176,39 @@ void main() {
       expect(launches.last[launches.last.indexOf('--jobs') + 1], '4');
     });
 
+    test('remembers a scene\'s render error until it renders, across jobs',
+        () async {
+      final s = service();
+      await s.start(PreviewRenderMode.missing);
+      process.line('START pagoda_lacks');
+      process.line('FAIL pagoda_lacks: TimeoutError: no canvas');
+      process.line('START engine_lacks');
+      process.line('OK   engine_lacks');
+      await process.exit(0);
+      await settle();
+      expect(s.failureFor('pagoda_lacks'), 'TimeoutError: no canvas');
+      expect(s.failureFor('engine_lacks'), isNull);
+
+      // A later job replaces the status list, but not what is remembered.
+      await s.start(PreviewRenderMode.selected, only: ['engine_lacks']);
+      expect(s.status.items.map((i) => i.id), ['engine_lacks']);
+      expect(s.failureFor('pagoda_lacks'), 'TimeoutError: no canvas');
+      await process.exit(0);
+      await settle();
+
+      // A new process (a restart) still knows it, and a good render clears it.
+      final later = service();
+      expect(later.failureFor('pagoda_lacks'), 'TimeoutError: no canvas');
+      expect((await later.recordedFailures()).keys, ['pagoda_lacks']);
+      await later.start(PreviewRenderMode.selected, only: ['pagoda_lacks']);
+      process.line('START pagoda_lacks');
+      process.line('OK   pagoda_lacks');
+      await process.exit(0);
+      await settle();
+      expect(later.failureFor('pagoda_lacks'), isNull);
+      expect(service().failureFor('pagoda_lacks'), isNull);
+    });
+
     test('keeps notes with their scene when two render side by side', () async {
       final s = service();
       await s.start(PreviewRenderMode.missing);

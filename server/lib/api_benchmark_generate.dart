@@ -194,6 +194,7 @@ extension BenchmarkGenerateApi on Api {
             'kind': e.key,
             'label': e.value.label,
             'prompt': benchmarkPromptFor(e.key),
+            'manual': kBenchmarkManualKinds.contains(e.key),
           },
       ],
       'keys': [
@@ -249,6 +250,13 @@ extension BenchmarkGenerateApi on Api {
     final kind = str('kind');
     if (!kBenchmarkPrompts.containsKey(kind)) {
       return errorResponse(400, 'bad_request', 'Pick a test.');
+    }
+    if (kBenchmarkManualKinds.contains(kind)) {
+      return errorResponse(
+          400,
+          'bad_request',
+          'The ${kBenchmarkPrompts[kind]!.label} test is a binary model a '
+              'text reply cannot carry. Upload it by hand.');
     }
     final name = str('name');
     if (name.isEmpty || name.length > 80) {
@@ -891,6 +899,7 @@ const _bgScript = r'''
   const search = $('bgSearch'), effort = $('bgEffort'), modelId = $('bgModelId');
   const prompt = $('bgPrompt'), promptNote = $('bgPromptNote');
   const nameBox = $('bgName'), vendor = $('bgVendor'), maxTokens = $('bgMaxTokens');
+  let manualNote = false, hintShown = false;
   const status = $('bgStatus'), start = $('bgStart'), runsBox = $('bgRuns');
   const BATCH = ':batch';
   const pickerData = $('aiPickerData');
@@ -958,6 +967,7 @@ const _bgScript = r'''
   function isBatch(id) { return key === 'openrouter' && id.endsWith(BATCH); }
   function syncStart() {
     start.textContent = isBatch(modelId.value.trim()) ? 'Submit batch' : 'Start run';
+    start.disabled = manualNote || !!(state && !state.keys.some((k) => k.configured));
   }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
   function renderKeys() {
@@ -1026,6 +1036,11 @@ const _bgScript = r'''
     const t = state.tests.find((x) => x.kind === k);
     prompt.value = t ? t.prompt : '';
     promptNote.textContent = t ? '· default for ' + t.label : '';
+    manualNote = !!(t && t.manual);
+    if (manualNote) {
+      status.textContent = t.label + ' needs a model file, not a page. Copy the prompt into an agent that can export it, then upload the result by hand.';
+    } else if (hintShown) status.textContent = '';
+    hintShown = manualNote;
     autofill();
   }
 
@@ -1125,6 +1140,7 @@ const _bgScript = r'''
     if (!key) { status.textContent = 'Pick an API key.'; return; }
     if (!id) { status.textContent = 'Pick a model.'; search.focus(); return; }
     if (!kind) { status.textContent = 'Pick a test.'; return; }
+    if (manualNote) return;
     if (!nameBox.value.trim()) { status.textContent = 'Give the entry a name.'; nameBox.focus(); return; }
     const t = state.tests.find((x) => x.kind === kind);
     start.disabled = true;
