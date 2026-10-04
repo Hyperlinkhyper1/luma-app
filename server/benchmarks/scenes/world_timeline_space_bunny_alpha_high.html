@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Timeline of the World</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #050b14; }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  svg { display: block; width: 100vw; height: 100vh; touch-action: none; user-select: none; }
+  text { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .interactive { cursor: pointer; }
+  .interactive:focus { outline: none; }
+  .copy { paint-order: stroke; stroke: #06101a; stroke-width: 5px; stroke-linejoin: round; }
+  .fine { letter-spacing: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<svg id="world" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="svgTitle svgDesc" tabindex="0">
+  <title id="svgTitle">A Timeline of the World</title>
+  <desc id="svgDesc">An animated illustrated history from Earth's formation to the digital age, with a draggable timeline, narration, and playback controls.</desc>
+
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop id="skyTop" offset="0" stop-color="#17070b"/>
+      <stop id="skyBottom" offset="1" stop-color="#6b190d"/>
+    </linearGradient>
+    <radialGradient id="sunGradient">
+      <stop offset="0" stop-color="#fff9c4"/>
+      <stop offset=".35" stop-color="#ffd36b" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ff7a22" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="oceanGradient" cx="35%" cy="25%" r="75%">
+      <stop id="oceanLight" offset="0" stop-color="#4ba6ad"/>
+      <stop id="oceanDark" offset="1" stop-color="#092a46"/>
+    </radialGradient>
+    <linearGradient id="landGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop id="landLight" offset="0" stop-color="#d68a45"/>
+      <stop id="landDark" offset="1" stop-color="#63351f"/>
+    </linearGradient>
+    <linearGradient id="iceGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4ffff"/>
+      <stop offset="1" stop-color="#8fc7d6"/>
+    </linearGradient>
+    <linearGradient id="groundGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop id="groundTop" offset="0" stop-color="#254e3e"/>
+      <stop id="groundBottom" offset="1" stop-color="#071820"/>
+    </linearGradient>
+    <linearGradient id="nightCity" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#081127"/>
+      <stop offset="1" stop-color="#17253b"/>
+    </linearGradient>
+    <radialGradient id="impactGlow">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".18" stop-color="#fff2a1"/>
+      <stop offset=".42" stop-color="#ff7a24" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#b51e09" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="magmaGlow">
+      <stop offset="0" stop-color="#fff7a3"/>
+      <stop offset=".22" stop-color="#ffb126"/>
+      <stop offset=".5" stop-color="#eb3512"/>
+      <stop offset="1" stop-color="#5c0905" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="windows" width="18" height="18" patternUnits="userSpaceOnUse">
+      <rect x="4" y="4" width="5" height="6" rx="1" fill="#ffd979" opacity=".9"/>
+      <rect x="12" y="10" width="3" height="4" rx=".5" fill="#62e6ff" opacity=".8"/>
+    </pattern>
+    <pattern id="waterLines" width="90" height="28" patternUnits="userSpaceOnUse">
+      <path d="M8 17 Q24 8 42 17 T82 17" fill="none" stroke="#b7f6ff" stroke-width="2" opacity=".18"/>
+    </pattern>
+    <filter id="softGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="wideGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="20"/>
+    </filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity=".55"/>
+    </filter>
+    <clipPath id="planetClip">
+      <circle cx="800" cy="425" r="374"/>
+    </clipPath>
+    <clipPath id="frameClip">
+      <rect width="1600" height="900"/>
+    </clipPath>
+
+    <g id="trilobite">
+      <ellipse cx="0" cy="0" rx="34" ry="18" fill="currentColor"/>
+      <path d="M-28 -12 Q0 -27 28 -12 M-31 -4 Q0 -18 31 -4 M-31 5 Q0 -7 31 5 M-27 13 Q0 2 27 13" fill="none" stroke="#071820" stroke-width="3" opacity=".7"/>
+      <path d="M-18 -16 L-29 -29 M-5 -19 L-7 -35 M10 -18 L16 -33 M22 -14 L36 -24" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="28" cy="-3" r="2.5" fill="#071820"/>
+    </g>
+    <g id="dinosaur">
+      <path d="M-70 18 Q-35 1 -22 -20 Q-7 -45 17 -36 Q36 -28 38 -5 L58 -11 Q73 -14 78 -28 L92 -26 Q91 -7 74 2 L42 17 Q21 28 0 24 L-23 23 Q-43 43 -55 61 L-68 60 L-58 25 Q-76 32 -92 25 Q-111 17 -70 18Z" fill="currentColor"/>
+      <path d="M15 -34 Q22 -61 40 -67" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+      <path d="M-3 23 L3 62 L18 62 L20 24 M31 22 L39 61 L53 61 L48 20" fill="currentColor"/>
+      <circle cx="84" cy="-23" r="3" fill="#07131b"/>
+      <path d="M-42 2 L-54 -23 L-62 -19 L-55 4" fill="currentColor"/>
+    </g>
+    <g id="mammal">
+      <path d="M-58 9 Q-32 -8 -13 0 Q2 -16 22 -6 Q38 0 47 18 L61 22 L58 31 L38 29 Q22 40 0 28 L-30 27 L-45 38 L-55 36 L-45 21 Q-64 25 -72 16 Q-75 8 -58 9Z" fill="currentColor"/>
+      <path d="M-8 -2 L-4 -25 L8 -29 L19 -7 M-4 -25 L-13 -34" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M-40 23 L-43 45 M-22 25 L-17 44 M23 27 L28 44 M36 26 L43 43" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="48" cy="5" r="2.5" fill="#07131b"/>
+      <path d="M58 22 L69 25" stroke="currentColor" stroke-width="3"/>
+    </g>
+    <g id="person" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="-25" r="6" fill="currentColor" stroke="none"/>
+      <path d="M0 -18 L0 8 M-15 -8 L0 -13 L15 -7 M0 8 L-12 29 M0 8 L13 29"/>
+    </g>
+    <g id="fern" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+      <path d="M0 0 Q-3 -42 2 -82"/>
+      <path d="M1 -68 Q-20 -80 -25 -69 M1 -59 Q24 -75 29 -61 M1 -49 Q-25 -63 -30 -51 M1 -39 Q27 -57 33 -42 M1 -29 Q-25 -42 -31 -29 M1 -18 Q24 -34 29 -21"/>
+    </g>
+    <g id="bird" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+      <path d="M-18 0 Q-8 -12 0 -2 Q9 -12 19 0"/>
+    </g>
+  </defs>
+
+  <g clip-path="url(#frameClip)">
+    <rect width="1600" height="900" fill="url(#sky)"/>
+    <circle id="sun" cx="1260" cy="150" r="115" fill="url(#sunGradient)" opacity=".7"/>
+    <g id="stars" opacity="0"></g>
+
+    <g id="planet" filter="url(#shadow)">
+      <circle cx="800" cy="425" r="386" fill="#a7eaff" opacity=".08"/>
+      <circle cx="800" cy="425" r="374" fill="url(#oceanGradient)"/>
+      <g clip-path="url(#planetClip)">
+        <path id="landMorph" d="" fill="url(#landGradient)" stroke="#d3b277" stroke-width="2" stroke-opacity=".35"/>
+        <path id="islandMorph" d="" fill="url(#landGradient)" opacity=".8"/>
+        <rect x="420" y="50" width="760" height="750" fill="url(#waterLines)" id="oceanLines"/>
+        <g id="lava" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M430 620 L510 575 L548 590 L610 535 L672 550 L722 485 L785 510 L850 450 L908 470 L965 402 L1030 430 L1092 360 L1180 375" stroke="#ffbd33" stroke-width="12" filter="url(#softGlow)"/>
+          <path d="M470 685 L540 638 L590 655 L654 601 L720 618 L790 566 L858 590 L930 540 L1000 558 L1080 500 L1160 520" stroke="#ff5a1f" stroke-width="8"/>
+          <path d="M530 350 L588 392 L650 368 L710 410 L785 380 L855 420 L934 390 L1000 435 L1080 402" stroke="#ff8d24" stroke-width="7"/>
+          <path d="M600 285 L650 310 L706 280 L760 322 L820 290 L882 330 L946 302" stroke="#ffe46a" stroke-width="4"/>
+        </g>
+        <g id="clouds" fill="#eefbff" opacity=".2">
+          <path d="M448 260 Q490 222 538 250 Q573 203 631 232 Q670 216 711 253 Q650 276 590 269 Q526 288 448 260Z"/>
+          <path d="M790 330 Q835 292 883 319 Q923 269 985 299 Q1031 270 1081 314 Q1030 348 968 337 Q891 366 790 330Z"/>
+          <path d="M630 520 Q675 478 727 510 Q770 458 827 491 Q875 475 916 517 Q856 550 795 539 Q717 557 630 520Z"/>
+        </g>
+        <g id="iceCaps" opacity="0">
+          <path d="M425 145 Q570 70 730 57 Q900 42 1050 93 L1170 150 Q1090 184 1000 151 Q920 196 825 145 Q720 191 620 150 Q520 188 425 145Z" fill="url(#iceGradient)"/>
+          <path d="M430 710 Q545 650 660 707 Q765 650 882 710 Q1015 653 1172 713 L1172 800 L425 800Z" fill="url(#iceGradient)"/>
+        </g>
+        <g id="planetGlow" opacity=".45">
+          <ellipse cx="630" cy="320" rx="120" ry="55" fill="url(#magmaGlow)" transform="rotate(-24 630 320)"/>
+          <ellipse cx="965" cy="540" rx="150" ry="65" fill="url(#magmaGlow)" transform="rotate(18 965 540)"/>
+        </g>
+      </g>
+      <circle cx="800" cy="425" r="374" fill="none" stroke="#bcefff" stroke-width="5" opacity=".18"/>
+    </g>
+
+    <path d="M0 690 Q260 625 510 680 T1010 670 T1600 680 L1600 900 L0 900Z" fill="url(#groundGradient)"/>
+    <path d="M0 704 Q280 668 520 706 T1020 699 T1600 705" fill="none" stroke="#b8f6e9" stroke-width="3" opacity=".18"/>
+
+    <g id="scene0">
+      <circle id="theiaGlow" cx="1290" cy="210" r="105" fill="url(#magmaGlow)" opacity=".6"/>
+      <circle id="theia" cx="1320" cy="175" r="65" fill="#7c463d"/>
+      <path d="M1270 145 Q1300 115 1332 136 M1300 192 Q1330 172 1370 198 M1350 135 L1360 155" fill="none" stroke="#bd7962" stroke-width="7" opacity=".55"/>
+      <g id="debris">
+        <circle cx="1190" cy="125" r="8" fill="#d47b54"/>
+        <circle cx="1250" cy="280" r="6" fill="#ffc05c"/>
+        <circle cx="1400" cy="285" r="10" fill="#a84934"/>
+        <path d="M1120 220 L1144 227 L1160 205 M1375 120 L1390 95 L1405 118" fill="#e58a4d"/>
+      </g>
+      <circle id="formationFlash" cx="800" cy="425" r="300" fill="url(#impactGlow)" opacity="0"/>
+      <circle id="formationRing" cx="800" cy="425" r="80" fill="none" stroke="#fff1aa" stroke-width="7" opacity="0"/>
+    </g>
+
+    <g id="scene1">
+      <g id="steam" fill="#e9f5ed" opacity=".6">
+        <path d="M420 550 Q460 500 510 546 Q558 492 612 542 Q660 520 700 554 Q626 588 553 573 Q480 596 420 550Z"/>
+        <path d="M850 575 Q890 526 942 565 Q990 512 1040 558 Q1090 538 1130 575 Q1050 610 980 593 Q907 620 850 575Z"/>
+      </g>
+      <g id="rain" stroke="#c8f6ff" stroke-width="3" stroke-linecap="round" opacity=".45">
+        <path d="M480 210 L455 275 M545 180 L520 250 M620 235 L596 300 M710 185 L686 252 M820 225 L796 290 M930 180 L906 248 M1030 235 L1005 302 M1110 190 L1088 250"/>
+      </g>
+      <g fill="#bde9eb" opacity=".5">
+        <circle cx="585" cy="610" r="13"/><circle cx="622" cy="592" r="8"/><circle cx="665" cy="615" r="16"/>
+        <circle cx="913" cy="623" r="11"/><circle cx="951" cy="604" r="7"/><circle cx="988" cy="622" r="14"/>
+      </g>
+    </g>
+
+    <g id="scene2" transform="translate(0 80)">
+      <g fill="#3d8d75" stroke="#a4e0a6" stroke-width="3">
+        <path d="M450 635 Q456 596 487 590 Q521 594 526 635Z"/>
+        <path d="M493 635 Q499 585 535 578 Q574 584 580 635Z"/>
+        <path d="M548 635 Q555 592 586 585 Q620 591 626 635Z"/>
+        <path d="M917 635 Q924 588 958 581 Q995 587 1002 635Z"/>
+        <path d="M969 635 Q976 578 1014 570 Q1055 577 1062 635Z"/>
+      </g>
+      <g fill="none" stroke="#b6f2c1" stroke-width="3" opacity=".7">
+        <path d="M460 621 Q490 610 519 622 M469 608 Q491 601 514 609 M505 617 Q536 603 570 617 M513 602 Q541 590 564 600 M559 621 Q590 609 617 621 M930 619 Q960 608 991 620 M940 604 Q973 590 1000 603 M982 617 Q1014 600 1052 617"/>
+      </g>
+      <g id="microbes" fill="#a4ffd2" filter="url(#softGlow)">
+        <circle cx="735" cy="542" r="12"/><circle cx="782" cy="570" r="8"/><circle cx="824" cy="530" r="10"/>
+      </g>
+    </g>
+
+    <g id="scene3">
+      <g id="oxygenBubbles" fill="none" stroke="#c9ffff" stroke-width="3" opacity=".65">
+        <circle cx="550" cy="400" r="13"/><circle cx="610" cy="345" r="9"/><circle cx="675" cy="420" r="16"/>
+        <circle cx="895" cy="380" r="11"/><circle cx="955" cy="330" r="15"/><circle cx="1030" cy="410" r="8"/>
+      </g>
+      <path d="M410 365 Q520 315 620 356" fill="none" stroke="#d7fff1" stroke-width="4" opacity=".3"/>
+      <path d="M910 460 Q1015 405 1130 450" fill="none" stroke="#d7fff1" stroke-width="4" opacity=".3"/>
+    </g>
+
+    <g id="scene4">
+      <g fill="#e9fbff" stroke="#a8d8e3" stroke-width="3" opacity=".85">
+        <path d="M475 585 L530 520 L605 540 L655 485 L740 520 L795 460 L880 500 L945 455 L1030 515 L1110 485 L1140 620 L480 620Z"/>
+        <path d="M745 520 L795 460 L820 510 L795 535Z" fill="#fff"/>
+      </g>
+      <g id="snow" fill="#fff"></g>
+    </g>
+
+    <g id="scene5" color="#d7a84b">
+      <g transform="translate(565 610) scale(1.15)"><use href="#trilobite"/></g>
+      <g transform="translate(690 655) rotate(-12) scale(.9)"><use href="#trilobite"/></g>
+      <g transform="translate(900 625) scale(1.1)"><use href="#trilobite"/></g>
+      <g fill="#79d5df" stroke="#0b5362" stroke-width="3">
+        <path d="M1010 535 Q1050 495 1100 528 Q1060 555 1020 550Z"/>
+        <path d="M1020 540 L978 516 L982 563Z"/>
+        <circle cx="1085" cy="520" r="4" fill="#082536"/>
+        <path d="M1035 515 Q1040 486 1060 480" fill="none"/>
+      </g>
+      <g fill="none" stroke="#a8f5f0" stroke-width="3" opacity=".45">
+        <path d="M445 650 Q510 625 570 650 M755 690 Q825 665 900 692 M985 670 Q1050 645 1120 674"/>
+      </g>
+    </g>
+
+    <g id="scene6">
+      <g color="#3f8e5d">
+        <use href="#fern" transform="translate(465 680) scale(1.3)"/>
+        <use href="#fern" transform="translate(535 684) scale(.95)"/>
+        <use href="#fern" transform="translate(610 682) scale(1.15)"/>
+        <use href="#fern" transform="translate(1000 682) scale(1.2)"/>
+        <use href="#fern" transform="translate(1080 680) scale(.85)"/>
+      </g>
+      <g color="#57432f">
+        <path d="M705 675 Q700 641 720 620 Q740 640 738 675Z"/>
+        <path d="M720 639 L704 615 M720 640 L741 610" stroke="currentColor" stroke-width="4"/>
+        <path d="M816 676 Q814 646 837 628 Q857 650 852 676Z"/>
+        <path d="M837 642 L820 615 M837 643 L861 611" stroke="currentColor" stroke-width="4"/>
+      </g>
+    </g>
+
+    <g id="scene7" color="#557044">
+      <g id="dinoA" transform="translate(650 585) scale(1.15)"><use href="#dinosaur"/></g>
+      <g id="dinoB" transform="translate(1010 605) scale(.8)"><use href="#dinosaur"/></g>
+      <path d="M535 674 Q625 642 715 670 T900 667 T1080 673" fill="none" stroke="#304c31" stroke-width="5" opacity=".5"/>
+    </g>
+
+    <g id="scene8">
+      <circle id="impactHalo" cx="980" cy="330" r="180" fill="url(#impactGlow)" opacity="0"/>
+      <circle id="asteroid" cx="1370" cy="120" r="58" fill="#59433d" stroke="#9b6b55" stroke-width="5"/>
+      <circle cx="1350" cy="100" r="12" fill="#3c302f"/><circle cx="1390" cy="142" r="9" fill="#302827"/><circle cx="1320" cy="145" r="6" fill="#a37c62"/>
+      <path d="M1370 180 L1330 230 L1360 225 L1340 278 L1390 225 L1410 270 L1415 190Z" fill="#ff8b2c" opacity=".8" filter="url(#softGlow)"/>
+      <circle id="shockRing" cx="980" cy="330" r="20" fill="none" stroke="#fff2a0" stroke-width="5" opacity="0"/>
+    </g>
+
+    <g id="scene9" color="#6d4d3b">
+      <g transform="translate(590 635) scale(.95)"><use href="#mammal"/></g>
+      <g transform="translate(890 650) scale(.75)"><use href="#mammal"/></g>
+      <path d="M1060 620 Q1090 590 1120 620 Q1108 646 1072 642Z" fill="#52717c" stroke="#193d48" stroke-width="3"/>
+      <path d="M1120 625 L1150 609 L1138 632Z" fill="#52717c"/>
+    </g>
+
+    <g id="scene10" color="#d4b58d">
+      <use href="#person" transform="translate(610 660) scale(1.15)"/>
+      <use href="#person" transform="translate(680 668) scale(.95)"/>
+      <use href="#person" transform="translate(748 655) scale(1.1)"/>
+      <use href="#person" transform="translate(820 670) scale(.9)"/>
+      <path d="M560 690 Q670 650 790 690 T1020 686" fill="none" stroke="#c7ae7c" stroke-width="4" opacity=".5"/>
+    </g>
+
+    <g id="scene11">
+      <path d="M390 690 L1080 620 L1210 670 L510 735Z" fill="#8c5e2f"/>
+      <g stroke="#d7b85e" stroke-width="4" opacity=".75">
+        <path d="M475 683 L570 718 M555 673 L660 708 M640 662 L755 697 M730 651 L850 686 M825 640 L950 674 M925 630 L1060 662"/>
+        <path d="M510 716 L1080 645 M610 725 L1135 657 M720 730 L1180 665"/>
+      </g>
+      <g fill="#d8a751">
+        <path d="M680 620 L710 575 L742 620Z"/><path d="M760 615 L790 570 L822 615Z"/>
+      </g>
+      <g color="#d4b58d"><use href="#person" transform="translate(580 674) scale(.6)"/><use href="#person" transform="translate(850 652) scale(.55)"/></g>
+    </g>
+
+    <g id="scene12">
+      <g fill="#d5b46e" stroke="#76552d" stroke-width="3">
+        <path d="M430 680 L565 535 L700 680Z"/>
+        <path d="M565 535 L590 680" stroke="#8c6938" stroke-width="4" fill="none"/>
+        <path d="M390 680 L480 595 L575 680Z" fill="#b58c53"/>
+        <path d="M800 680 L855 595 L910 680Z" fill="#b78d55"/>
+        <path d="M790 680 L850 545 L915 680Z" fill="#cfad6a"/>
+        <path d="M820 650 H900 M830 620 H890 M840 590 H880" fill="none" stroke="#75562f" stroke-width="4"/>
+      </g>
+      <path d="M535 575 L565 535 L595 575" fill="#7d5b34"/>
+      <circle cx="565" cy="535" r="7" fill="#d9b65f"/>
+    </g>
+
+    <g id="scene13">
+      <g fill="#d7c6a3" stroke="#665846" stroke-width="4">
+        <path d="M420 680 V595 H520 V680Z M400 595 H540 L520 570 H420Z"/>
+        <path d="M570 680 V590 H665 V680Z M550 590 H685 L665 565 H570Z"/>
+        <path d="M710 680 V595 H820 V680Z M690 595 H840 L820 570 H710Z"/>
+      </g>
+      <g fill="#955d48" stroke="#6b3d31" stroke-width="4">
+        <path d="M880 680 V555 Q930 500 980 555 V680Z M855 555 H1005 L980 530 H880Z"/>
+        <path d="M920 680 V605 Q930 594 940 605 V680Z" fill="#452e2a"/>
+      </g>
+      <g transform="translate(1090 540)" fill="none" stroke="#b45e4b" stroke-width="7">
+        <path d="M0 140 V0 M-45 0 H45 M-35 30 H35 M-48 62 H48 M-60 94 H60 M-70 140 H70"/>
+        <path d="M-45 0 L-22 -18 M-35 30 L-9 10 M-48 62 L-20 42 M-60 94 L-28 74"/>
+      </g>
+    </g>
+
+    <g id="scene14">
+      <g fill="#9aa6a4" stroke="#475a5c" stroke-width="4">
+        <path d="M430 680 V550 H550 V680Z"/>
+        <path d="M410 550 H570 L545 520 H435Z"/>
+        <path d="M520 680 V500 H625 V680Z"/>
+        <path d="M500 500 H645 L620 470 H525Z"/>
+        <path d="M600 680 V545 H725 V680Z"/>
+      </g>
+      <path d="M440 550 V465 L472 495 L504 465 V550 M532 500 V410 L572 455 L611 410 V500" fill="#657679" stroke="#344b50" stroke-width="4"/>
+      <path d="M635 545 V470 H695 V545Z" fill="#463a39"/>
+      <g stroke="#d5c6a1" stroke-width="3" opacity=".75">
+        <path d="M470 610 H505 M470 645 H505 M565 560 H590 M565 605 H590 M565 650 H590"/>
+      </g>
+    </g>
+
+    <g id="scene15">
+      <g transform="translate(520 550)">
+        <rect x="0" y="25" width="120" height="90" rx="4" fill="#5b3a2c"/>
+        <path d="M15 25 V-5 M105 25 V-5 M15 0 H105" stroke="#c4a16e" stroke-width="9"/>
+        <path d="M60 0 V50 M35 18 L60 42 L85 18" fill="none" stroke="#d9c292" stroke-width="7"/>
+        <path d="M12 65 H108 M20 85 H100" stroke="#d3ad70" stroke-width="4"/>
+      </g>
+      <g id="ship" transform="translate(980 560)">
+        <path d="M-140 55 Q0 105 145 52 L105 92 H-80Z" fill="#4b352c" stroke="#c19a66" stroke-width="4"/>
+        <path d="M-15 50 V-95 M-20 -92 L105 30 H-20Z" fill="#d7c6a2" stroke="#7d6549" stroke-width="4"/>
+        <path d="M-12 -35 L-125 40 H-12Z" fill="#b65b48" stroke="#713c35" stroke-width="4"/>
+        <path d="M-2 52 Q10 10 3 -25 Q50 10 55 52" fill="none" stroke="#c9aa75" stroke-width="5"/>
+      </g>
+      <path d="M805 435 Q1000 350 1240 470" fill="none" stroke="#f2d48a" stroke-width="3" stroke-dasharray="9 12" opacity=".55"/>
+    </g>
+
+    <g id="scene16">
+      <g id="factory">
+        <path d="M390 690 V575 H480 V535 H570 V580 H660 V545 H760 V690Z" fill="#4b4a48" stroke="#202b30" stroke-width="5"/>
+        <path d="M480 535 L535 480 V535 M660 545 L720 500 V545" fill="#55524d" stroke="#202b30" stroke-width="5"/>
+        <g fill="#f0c75f"><rect x="420" y="610" width="45" height="36"/><rect x="500" y="610" width="45" height="36"/><rect x="585" y="610" width="45" height="36"/><rect x="680" y="605" width="45" height="36"/></g>
+        <path d="M510 492 H690 M470 480 H730" stroke="#34383a" stroke-width="7"/>
+        <g id="smoke" fill="#c9d0cc" opacity=".48">
+          <circle cx="500" cy="455" r="28"/><circle cx="525" cy="420" r="36"/><circle cx="560" cy="385" r="43"/>
+          <circle cx="695" cy="478" r="25"/><circle cx="722" cy="440" r="34"/><circle cx="755" cy="400" r="40"/>
+        </g>
+      </g>
+      <g transform="translate(960 650)">
+        <path d="M-170 10 H170 L135 50 H-140Z" fill="#26353b" stroke="#a7b3ae" stroke-width="4"/>
+        <path d="M-90 10 V-55 H65 V10 M-62 -55 V-85 H-20 V-55 M15 -55 V-85 H58 V-55" fill="#59686b"/>
+        <circle cx="-85" cy="30" r="23" fill="#111a1f" stroke="#899994" stroke-width="6"/>
+        <circle cx="95" cy="30" r="23" fill="#111a1f" stroke="#899994" stroke-width="6"/>
+        <path d="M80 -88 H225 L165 -45 H80Z" fill="#33454a"/>
+      </g>
+    </g>
+
+    <g id="scene17">
+      <g id="airplane" transform="translate(520 430)">
+        <path d="M-105 0 L-35 -16 L10 -12 L42 -50 L62 -48 L47 -10 L100 0 L47 11 L62 48 L42 50 L10 13 L-35 16Z" fill="#e5e5d8" stroke="#5c6b72" stroke-width="3"/>
+        <circle cx="-18" cy="-2" r="7" fill="#547484"/>
+      </g>
+      <g transform="translate(620 670)" color="#5b675b">
+        <rect x="-95" y="-24" width="170" height="42" rx="18" fill="currentColor"/>
+        <path d="M-25 -18 V36 M30 -18 V36" stroke="#202b29" stroke-width="7"/>
+        <path d="M75 -18 L122 -48 L127 -10Z" fill="currentColor"/>
+        <path d="M-130 0 H-175" stroke="currentColor" stroke-width="6"/>
+      </g>
+      <g transform="translate(1010 590)">
+        <path d="M-35 85 Q-25 20 0 -20 Q25 20 35 85Z" fill="#e9e9df" stroke="#6a7476" stroke-width="4"/>
+        <path d="M-18 22 L-58 55 L-8 43 L8 43 L58 55 L18 22" fill="#bf3f31" stroke="#74261f" stroke-width="3"/>
+        <circle cx="0" cy="-12" r="10" fill="#5b93a1"/>
+        <path d="M-18 85 L-27 103 M18 85 L27 103" stroke="#4a5354" stroke-width="7"/>
+      </g>
+      <path d="M900 600 Q1040 390 1260 335" fill="none" stroke="#dce8ee" stroke-width="2" stroke-dasharray="5 12" opacity=".45"/>
+      <circle cx="1270" cy="300" r="72" fill="#d5d7cf" opacity=".8"/>
+      <g fill="#7e847f" opacity=".55"><circle cx="1240" cy="280" r="15"/><circle cx="1295" cy="325" r="22"/><circle cx="1260" cy="340" r="11"/></g>
+    </g>
+
+    <g id="scene18">
+      <rect x="350" y="360" width="940" height="360" fill="url(#nightCity)" opacity=".86"/>
+      <g fill="#14243b" stroke="#3e6684" stroke-width="2">
+        <rect x="380" y="510" width="80" height="210"/><rect x="470" y="430" width="100" height="290"/>
+        <rect x="585" y="485" width="75" height="235"/><rect x="675" y="350" width="125" height="370"/>
+        <rect x="815" y="455" width="90" height="265"/><rect x="920" y="390" width="120" height="330"/>
+        <rect x="1055" y="475" width="80" height="245"/><rect x="1150" y="425" width="110" height="295"/>
+      </g>
+      <g fill="url(#windows)">
+        <rect x="390" y="520" width="65" height="190"/><rect x="480" y="440" width="85" height="270"/>
+        <rect x="595" y="495" width="60" height="215"/><rect x="687" y="365" width="100" height="345"/>
+        <rect x="825" y="465" width="70" height="245"/><rect x="930" y="405" width="100" height="300"/>
+        <rect x="1065" y="485" width="60" height="225"/><rect x="1160" y="440" width="90" height="270"/>
+      </g>
+      <g id="network" fill="none" stroke="#58e7ff" stroke-width="2" opacity=".55">
+        <path d="M500 560 L735 440 L1020 520 L1200 455 M735 440 L945 410 L1155 570 M500 560 L940 410"/>
+        <g fill="#9ff6ff"><circle cx="500" cy="560" r="5"/><circle cx="735" cy="440" r="5"/><circle cx="1020" cy="520" r="5"/><circle cx="1200" cy="455" r="5"/><circle cx="945" cy="410" r="5"/></g>
+      </g>
+      <path d="M430 690 Q575 640 735 684 T1035 678 T1280 690 L1280 730 L430 730Z" fill="#080c14"/>
+      <g id="dataBits" fill="#65eaff"></g>
+    </g>
+
+    <g id="embers" fill="#ffad45" opacity=".8"></g>
+    <g id="birds" color="#172d35" opacity=".75"></g>
+
+    <g id="narrative" filter="url(#shadow)">
+      <rect x="62" y="54" width="690" height="202" rx="20" fill="#06111d" fill-opacity=".76" stroke="#b9e9ee" stroke-opacity=".2" stroke-width="2"/>
+      <rect x="62" y="54" width="8" height="202" rx="4" fill="#e7c46b"/>
+      <text id="chapterKicker" x="92" y="88" class="fine" font-size="15" font-weight="700" fill="#7dd9df">CHAPTER 01 / 19</text>
+      <text id="chapterTitle" x="92" y="130" font-size="34" font-weight="800" fill="#f5f2e8">Formation of Earth</text>
+      <text id="chapterDate" x="92" y="160" font-size="18" font-weight="700" fill="#e8c96e">About 4.54 billion years ago</text>
+      <text id="chapterCaption" x="92" y="194" font-size="19" fill="#d5e3e7">
+        <tspan x="92" dy="0">Earth condensed from the solar nebula.</tspan>
+        <tspan x="92" dy="27">A giant impact with Theia helped form the Moon.</tspan>
+      </text>
+    </g>
+
+    <g id="timelinePanel">
+      <rect x="0" y="714" width="1600" height="186" fill="#050c15" fill-opacity=".91"/>
+      <path d="M0 714 H1600" stroke="#8cd8df" stroke-opacity=".25" stroke-width="2"/>
+
+      <g id="eraBands">
+        <rect x="70" y="728" width="144" height="17" rx="4" fill="#713b29"/>
+        <rect x="214" y="728" width="368" height="17" rx="4" fill="#2f6254"/>
+        <rect x="582" y="728" width="176" height="17" rx="4" fill="#365e7a"/>
+        <rect x="758" y="728" width="168" height="17" rx="4" fill="#49654c"/>
+        <rect x="926" y="728" width="58" height="17" rx="4" fill="#6c5c38"/>
+        <rect x="984" y="728" width="176" height="17" rx="4" fill="#47616a"/>
+        <rect x="1160" y="728" width="370" height="17" rx="4" fill="#574f72"/>
+        <g font-size="10" font-weight="800" letter-spacing="1.4" fill="#f1f4ed" text-anchor="middle">
+          <text x="142" y="740">HADEAN</text>
+          <text x="398" y="740">ARCHEAN</text>
+          <text x="670" y="740">PROTEROZOIC</text>
+          <text x="842" y="740">PALEOZOIC</text>
+          <text x="955" y="740">MESO.</text>
+          <text x="1072" y="740">CENOZOIC</text>
+          <text x="1345" y="740">HUMAN HISTORY</text>
+        </g>
+      </g>
+
+      <rect id="timelineTrack" x="70" y="753" width="1460" height="9" rx="4.5" fill="#223544" stroke="#59707d" stroke-width="1"/>
+      <rect x="70" y="753" width="918" height="9" rx="4.5" fill="#2a7e86"/>
+      <rect x="988" y="753" width="202" height="9" rx="4.5" fill="#33798b"/>
+      <rect x="1190" y="753" width="340" height="9" rx="4.5" fill="#665b91"/>
+
+      <g id="ticks"></g>
+      <g id="playhead">
+        <line id="playheadLine" x1="70" y1="741" x2="70" y2="777" stroke="#fff1a8" stroke-width="3"/>
+        <path id="playheadCap" d="M58 735 L70 723 L82 735Z" fill="#fff1a8" filter="url(#softGlow)"/>
+      </g>
+
+      <g font-size="11" font-weight="700" letter-spacing="1.5" fill="#829da7">
+        <text x="70" y="790">DEEP TIME · LOGARITHMIC</text>
+        <text x="990" y="790">LIFE → FOOD · LOGARITHMIC</text>
+        <text x="1530" y="790" text-anchor="end">RECORDED HISTORY · LINEAR</text>
+      </g>
+      <text id="dateReadout" x="1530" y="790" text-anchor="end" font-size="13" font-weight="800" fill="#f0d77f">4.54 billion years ago</text>
+
+      <g id="controls">
+        <rect x="70" y="815" width="1160" height="64" rx="16" fill="#091522" stroke="#294353"/>
+        <g id="playButton" class="interactive" role="button" tabindex="0" aria-label="Pause">
+          <rect x="82" y="826" width="52" height="42" rx="12" fill="#1f5660"/>
+          <g id="pauseIcon" fill="#f6e6a0"><rect x="99" y="836" width="6" height="22" rx="2"/><rect x="112" y="836" width="6" height="22" rx="2"/></g>
+          <path id="playIcon" d="M100 834 L122 847 L100 860Z" fill="#f6e6a0" opacity="0"/>
+        </g>
+        <g id="restartButton" class="interactive" role="button" tabindex="0" aria-label="Restart">
+          <rect x="146" y="826" width="52" height="42" rx="12" fill="#172a38"/>
+          <path d="M160 843 A14 14 0 1 1 160 858 M160 836 V846 H150" fill="none" stroke="#cde5e7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+        <g id="speedButton" class="interactive" role="button" tabindex="0" aria-label="Change playback speed">
+          <rect x="210" y="826" width="82" height="42" rx="12" fill="#172a38"/>
+          <text id="speedText" x="251" y="853" text-anchor="middle" font-size="17" font-weight="800" fill="#cde5e7">1×</text>
+        </g>
+        <text x="320" y="852" font-size="14" fill="#7894a1">SPACE  play/pause</text>
+        <text x="475" y="852" font-size="14" fill="#7894a1">←  →  chapters</text>
+        <text x="650" y="852" font-size="14" fill="#7894a1">Drag the amber playhead to scrub</text>
+        <g transform="translate(1085 847)" fill="none" stroke="#668592" stroke-width="3">
+          <path d="M0 8 Q20 -5 40 8 T80 8"/>
+          <path d="M25 12 L30 0 M25 2 L30 12"/>
+          <path d="M50 2 L55 14 M50 14 L55 2"/>
+        </g>
+        <text x="1175" y="852" font-size="13" fill="#668592">DEEP TIME</text>
+      </g>
+      <text x="1260" y="853" font-size="13" fill="#9db0b7">2:51 at 1×</text>
+      <text x="1530" y="853" text-anchor="end" font-size="13" fill="#9db0b7">LOOPING</text>
+
+      <rect id="timelineHit" x="54" y="720" width="1492" height="77" fill="transparent" class="interactive" aria-label="Timeline scrubber"/>
+    </g>
+  </g>
+</svg>
+
+<script>
+(() => {
+  "use strict";
+
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("world");
+  const $ = id => document.getElementById(id);
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (a, b, v) => {
+    const t = clamp((v - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  };
+  const fract = v => v - Math.floor(v);
+
+  const chapters = [
+    {
+      short: "Earth", title: "Formation of Earth", date: "About 4.54 billion years ago",
+      caption: ["Earth condensed from the material of the solar nebula.", "A giant impact with the proto-planet Theia helped form the Moon."],
+      palette: ["#16070a", "#68170d", "#32151a", "#572315", "#2b1010", "#ff9d3e"]
+    },
+    {
+      short: "Hadean", title: "The Hadean World", date: "4.54–4.0 billion years ago",
+      caption: ["Repeated impacts and a magma ocean gave way to a cooling crust.", "Steam-rich rain gathered into the earliest oceans and began the water cycle."],
+      palette: ["#31100d", "#d26231", "#244858", "#734326", "#a6c7bf", "#ffd06b"]
+    },
+    {
+      short: "Life", title: "The First Life", date: "About 3.7–3.5 billion years ago",
+      caption: ["The oldest widely accepted evidence of life comes from ancient microbial communities.", "Stromatolites—layered structures made by microbes—survive in some of Earth's oldest rocks."],
+      palette: ["#17405b", "#70b9bd", "#176678", "#647842", "#d8edda", "#bff3a4"]
+    },
+    {
+      short: "Oxygen", title: "The Great Oxidation", date: "About 2.4 billion years ago",
+      caption: ["Cyanobacteria released oxygen, beginning the Great Oxidation Event.", "The change altered oceans, exposed the land to weathering, and eventually transformed the atmosphere."],
+      palette: ["#0e5069", "#78c8c1", "#187b86", "#5e8146", "#e4fff0", "#6effd2"]
+    },
+    {
+      short: "Ice", title: "Snowball Earth", date: "About 720–635 million years ago",
+      caption: ["Severe global glaciations reached low latitudes during the Cryogenian periods.", "Ice may have covered much of the surface, although its full extent remains debated."],
+      palette: ["#172d4b", "#83b8cd", "#376f8b", "#c5e0e5", "#f3ffff", "#b6f1ff"]
+    },
+    {
+      short: "Cambrian", title: "The Cambrian Explosion", date: "Beginning about 538 million years ago",
+      caption: ["Many major animal body plans appear in the fossil record within a geological flash.", "Trilobites crawled across the seas while early chordates and fishes appeared."],
+      palette: ["#092d4a", "#3e9caf", "#0b6078", "#477b4a", "#c9f4e6", "#62f2df"]
+    },
+    {
+      short: "Land", title: "Life Moves Onto Land", date: "Plants by about 470 million years ago; animals by about 375 million years ago",
+      caption: ["Simple plants colonized wet margins and evolved forests of larger vascular plants.", "Arthropods, early vertebrates and eventually tetrapods followed onto the land."],
+      palette: ["#123d59", "#80b6ad", "#1c6572", "#3e7543", "#d7e7c5", "#f0c95b"]
+    },
+    {
+      short: "Pangaea", title: "Pangaea and the Dinosaurs", date: "Pangaea about 335–175 million years ago; dinosaurs 252–66 million years ago",
+      caption: ["Continents drifted together into Pangaea before breaking apart again.", "Dinosaurs became dominant terrestrial animals during the Mesozoic."],
+      palette: ["#24394a", "#c59a61", "#245c67", "#4d6637", "#e3d0a2", "#efb14c"]
+    },
+    {
+      short: "Impact", title: "The Asteroid Impact", date: "About 66 million years ago",
+      caption: ["An asteroid struck shallow sea at Chicxulub, ejecting hot debris worldwide.", "The ensuing impact winter and fires helped end the non-avian dinosaur age."],
+      palette: ["#1c0d15", "#7d2a2c", "#3c1720", "#4a2c29", "#e4a486", "#ff8b32"]
+    },
+    {
+      short: "Mammals", title: "The Rise of Mammals", date: "About 225–66 million years ago; diversification after 66 million years ago",
+      caption: ["Small mammals survived the Mesozoic and expanded after large dinosaurs disappeared.", "Warm, isolated climates and later cooling favored diverse mammal communities."],
+      palette: ["#152b4a", "#8aa7b1", "#285d6c", "#53634b", "#d8e3dd", "#f4ce79"]
+    },
+    {
+      short: "Sapiens", title: "Homo sapiens", date: "About 300,000 years ago",
+      caption: ["Anatomically modern humans arose in Africa and later spread across the world.", "Shared language, symbolic culture and cumulative learning reshaped nearly every habitat."],
+      palette: ["#23324e", "#a5a18a", "#315b66", "#655c40", "#e1d8b8", "#f2c56d"]
+    },
+    {
+      short: "Farming", title: "Farming Begins", date: "About 10,000 BCE",
+      caption: ["Independent communities in several regions began growing crops and herding animals.", "Sedentary settlements, food surpluses and population growth changed human life."],
+      palette: ["#263d55", "#c5a66c", "#385c61", "#725b32", "#ebd2a0", "#f0c45c"]
+    },
+    {
+      short: "Cities", title: "Early Civilisations", date: "Mesopotamia and Egypt; Great Pyramid about 2560 BCE",
+      caption: ["Cities in Mesopotamia and Egypt built states, writing, irrigation and monumental architecture.", "The Great Pyramid of Giza was completed as part of Egypt's Old Kingdom."],
+      palette: ["#263d59", "#d6b476", "#42636a", "#8d703c", "#f0d7a6", "#f6cb6a"]
+    },
+    {
+      short: "Classical", title: "The Classical World", date: "About 500 BCE–500 CE",
+      caption: ["Greece, Rome and Han China developed influential political, philosophical and commercial worlds.", "Trade and scholarship connected much of Eurasia, though disease and conflict remained powerful."],
+      palette: ["#233b57", "#c8b27e", "#355f6b", "#6a693f", "#e9ddbb", "#edc66a"]
+    },
+    {
+      short: "Medieval", title: "The Medieval World", date: "About 500–1400 CE",
+      caption: ["Empires, kingdoms, cities and trade networks redrew political and economic life.", "Advances in agriculture, navigation, medicine and learning endured through periods of conflict."],
+      palette: ["#1c304b", "#8995a2", "#2b5360", "#455c50", "#d3d6cc", "#d8b969"]
+    },
+    {
+      short: "Print", title: "Print and Exploration", date: "Printing press about 1450; Atlantic voyage of 1492",
+      caption: ["Movable-type printing in Europe accelerated the spread of texts and ideas.", "Oceanic navigation linked continents, while conquest and exchange transformed societies."],
+      palette: ["#17324d", "#8fa9b3", "#285567", "#4c5a48", "#ded8bd", "#e8c66d"]
+    },
+    {
+      short: "Industry", title: "The Industrial Revolution", date: "From about 1760",
+      caption: ["Steam power, mechanised production and fossil fuels transformed work and transport.", "Cities grew rapidly, while pollution, empire and new inequalities became global."],
+      palette: ["#26333e", "#7c807d", "#34535c", "#474b3c", "#c5c8b9", "#e6a84e"]
+    },
+    {
+      short: "Modern", title: "The Twentieth Century", date: "Powered flight 1903; world wars 1914–1945; Moon landing 1969",
+      caption: ["Flight, mass media and mechanised warfare linked events on an unprecedented scale.", "The first humans walked on the Moon in 1969, during a Cold War space race."],
+      palette: ["#10253c", "#70828c", "#294e60", "#37463f", "#d7ded6", "#edc86c"]
+    },
+    {
+      short: "Digital", title: "The Digital Age", date: "From the 1970s to today",
+      caption: ["Computers and networks moved from institutions into homes, workplaces and pockets.", "Connected media, biotechnology and artificial intelligence are reshaping daily life and the planet."],
+      palette: ["#030918", "#152744", "#103b52", "#253a43", "#93a5ad", "#67e7ff"]
+    }
+  ];
+
+  const tickPositions = [0.002, 0.08, 0.18, 0.28, 0.42, 0.45, 0.48, 0.52, 0.55, 0.59, 0.67, 0.71, 0.77, 0.82, 0.87, 0.90, 0.94, 0.97, 0.992];
+  const xAt = p => 70 + p * 1460;
+  const chapterDuration = 10;
+  const totalDuration = chapters.length * chapterDuration;
+  const sceneIds = Array.from({ length: chapters.length }, (_, i) => $("scene" + i));
+
+  let playTime = 0;
+  let ambientTime = 0;
+  let playing = true;
+  let speed = 1;
+  let lastFrame = performance.now();
+  let lastChapter = -1;
+  let dragging = false;
+
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function colorLerp(a, b, t) {
+    const A = hexToRgb(a), B = hexToRgb(b);
+    return `rgb(${Math.round(lerp(A[0], B[0], t))},${Math.round(lerp(A[1], B[1], t))},${Math.round(lerp(A[2], B[2], t))})`;
+  }
+
+  function updatePalette(index, local) {
+    const a = chapters[index].palette;
+    const b = chapters[Math.min(index + 1, chapters.length - 1)].palette;
+    const t = smooth(0.72, 1, local);
+    $("skyTop").setAttribute("stop-color", colorLerp(a[0], b[0], t));
+    $("skyBottom").setAttribute("stop-color", colorLerp(a[1], b[1], t));
+    $("oceanLight").setAttribute("stop-color", colorLerp(a[2], b[2], t));
+    $("oceanDark").setAttribute("stop-color", colorLerp(a[2], b[2], .45));
+    $("landLight").setAttribute("stop-color", colorLerp(a[3], b[3], t));
+    $("landDark").setAttribute("stop-color", colorLerp(a[3], b[3], .55));
+    $("clouds").setAttribute("fill", a[4]);
+    $("groundTop").setAttribute("stop-color", colorLerp(a[3], b[3], t));
+    $("groundBottom").setAttribute("stop-color", a[0]);
+    $("sun").setAttribute("cx", 1220 + index * 14);
+    $("sun").setAttribute("cy", 145 + Math.sin(index * .7) * 35);
+    const night = index >= 18 ? 1 : 0;
+    $("stars").setAttribute("opacity", night ? .95 : index === 4 ? .35 : .08);
+    $("oceanLines").setAttribute("opacity", index < 2 ? .05 : .8);
+    $("lava").setAttribute("opacity", clamp(1 - smooth(0.1, 1.5, index), 0, 1));
+    $("planetGlow").setAttribute("opacity", clamp(.75 - index * .17, 0, .75));
+    const ice = index === 3 ? .25 : index === 4 ? .95 : index === 5 ? .15 : 0;
+    $("iceCaps").setAttribute("opacity", ice);
+    $("clouds").setAttribute("opacity", index < 2 ? .15 : index === 4 ? .42 : .28);
+  }
+
+  const landConfigs = [
+    [[655,230],[692,210],[724,232],[743,270],[719,297],[681,287],[649,260]],
+    [[600,190],[640,148],[692,132],[722,163],[748,211],[720,246],[668,248],[628,226]],
+    [[515,350],[557,285],[615,245],[664,174],[732,137],[803,126],[857,164],[914,198],[976,242],[1023,312],[1051,374],[1018,431],[978,490],[916,529],[866,584],[806,615],[746,583],[685,544],[616,525],[554,464]],
+    [[480,380],[525,286],[595,234],[652,162],[730,112],[800,92],[854,133],[912,183],[974,196],[1026,247],[1081,294],[1102,359],[1061,413],[1012,472],[952,501],[896,559],[822,596],[752,578],[690,539],[616,526],[543,469]],
+    [[503,220],[548,176],[604,190],[641,239],[672,201],[721,161],[773,173],[796,232],[845,258],[885,226],[932,248],[954,301],[1004,324],[1026,380],[1003,434],[958,466],[927,529],[876,550],[840,603],[786,576],[739,542],[700,482],[652,455],[616,399],[565,362],[546,298]],
+    [[515,230],[557,179],[610,192],[644,248],[677,204],[726,162],[779,175],[801,235],[850,264],[891,230],[937,252],[959,306],[1009,331],[1030,386],[1005,440],[960,471],[929,534],[878,555],[842,607],[788,580],[741,546],[702,486],[654,459],[618,403],[567,365],[548,300]]
+  ];
+  const islandConfigs = [
+    [[510,415],[545,396],[566,420],[551,451],[520,447]],
+    [[980,420],[1012,392],[1052,414],[1040,456],[1004,468]],
+    [[450,310],[482,288],[515,309],[500,344],[470,349]],
+    [[1060,570],[1100,551],[1131,580],[1107,615],[1073,608]],
+    [[460,585],[497,563],[531,590],[509,627],[477,620]],
+    [[1085,180],[1125,162],[1152,193],[1128,225],[1095,214]]
+  ];
+  function smoothClosed(points) {
+    if (!points.length) return "";
+    const p = points;
+    const mid = (i, j) => [(p[i][0] + p[j][0]) / 2, (p[i][1] + p[j][1]) / 2];
+    let d = `M ${mid(p.length - 1, 0)[0]} ${mid(p.length - 1, 0)[1]}`;
+    for (let i = 0; i < p.length; i++) {
+      const j = (i + 1) % p.length;
+      const m = mid(i, j);
+      d += ` Q ${p[i][0]} ${p[i][1]} ${m[0]} ${m[1]}`;
+    }
+    return d + " Z";
+  }
+  function getConfig(configs, f) {
+    f = clamp(f, 0, configs.length - 1);
+    const i = Math.floor(f), j = Math.min(i + 1, configs.length - 1), t = f - i;
+    return configs[i].map((p, k) => [lerp(p[0], configs[j][k][0], t), lerp(p[1], configs[j][k][1], t)]);
+  }
+
+  function setText(index) {
+    if (index === lastChapter) return;
+    lastChapter = index;
+    const ch = chapters[index];
+    $("chapterKicker").textContent = `CHAPTER ${String(index + 1).padStart(2, "0")} / 19`;
+    $("chapterTitle").textContent = ch.title;
+    $("chapterDate").textContent = ch.date;
+    const caption = $("chapterCaption");
+    while (caption.firstChild) caption.removeChild(caption.firstChild);
+    ch.caption.forEach((line, i) => {
+      const t = document.createElementNS(NS, "tspan");
+      t.setAttribute("x", "92");
+      t.setAttribute("dy", i === 0 ? "0" : "27");
+      t.textContent = line;
+      caption.appendChild(t);
+    });
+    $("dateReadout").textContent = ch.date;
+  }
+
+  function sceneOpacity(index, local) {
+    return smooth(0, .12, local) * (1 - smooth(.84, 1, local));
+  }
+
+  function updateScene(index, local) {
+    for (let i = 0; i < sceneIds.length; i++) {
+      const op = i === index ? sceneOpacity(index, local) : 0;
+      sceneIds[i].setAttribute("opacity", op.toFixed(3));
+    }
+    const commonX = Math.sin(ambientTime * .4) * 4;
+    $("clouds").setAttribute("transform", `translate(${commonX + 14} 0)`);
+    $("rain").setAttribute("transform", `translate(${fract(ambientTime * .2) * -70} 0)`);
+    $("steam").setAttribute("transform", `translate(${Math.sin(ambientTime * .8) * 8} ${Math.sin(ambientTime) * 4})`);
+    $("birds").setAttribute("transform", `translate(${Math.sin(ambientTime * .15) * 35} ${Math.sin(ambientTime * .3) * 10})`);
+
+    if (index === 0) {
+      const approach = smooth(.08, .68, local);
+      const x = lerp(1370, 930, approach), y = lerp(115, 360, approach);
+      $("theia").setAttribute("cx", x); $("theia").setAttribute("cy", y);
+      $("theiaGlow").setAttribute("cx", x); $("theiaGlow").setAttribute("cy", y);
+      $("debris").setAttribute("transform", `translate(${-approach * 230} ${approach * 95}) rotate(${-approach * 18} 1300 180)`);
+      $("formationFlash").setAttribute("opacity", Math.max(0, 1 - Math.abs(local - .72) * 7));
+      $("formationRing").setAttribute("opacity", smooth(.6, .72, local) * (1 - smooth(.72, .98, local)));
+      $("formationRing").setAttribute("r", lerp(65, 370, smooth(.62, .95, local)));
+    }
+    if (index === 1) {
+      $("rain").setAttribute("transform", `translate(${fract(ambientTime * .32) * -100} 0)`);
+    }
+    if (index === 3) {
+      $("oxygenBubbles").setAttribute("transform", `translate(0 ${Math.sin(ambientTime * 1.2) * 12})`);
+    }
+    if (index === 7) {
+      $("dinoA").setAttribute("transform", `translate(${650 + Math.sin(ambientTime * .3) * 12} ${585 + Math.sin(ambientTime * .6) * 3}) scale(1.15)`);
+      $("dinoB").setAttribute("transform", `translate(${1010 + Math.sin(ambientTime * .25 + 2) * 10} 605) scale(.8)`);
+    }
+    if (index === 8) {
+      const hit = smooth(.18, .48, local);
+      const ax = lerp(1390, 980, hit), ay = lerp(70, 330, hit);
+      $("asteroid").setAttribute("cx", ax); $("asteroid").setAttribute("cy", ay);
+      $("impactHalo").setAttribute("opacity", smooth(.35, .5, local) * (1 - smooth(.62, 1, local)));
+      $("impactHalo").setAttribute("r", lerp(80, 310, smooth(.4, .8, local)));
+      $("shockRing").setAttribute("opacity", smooth(.4, .48, local) * (1 - smooth(.48, 1, local)));
+      $("shockRing").setAttribute("r", lerp(20, 430, smooth(.4, .9, local)));
+    }
+    if (index === 15) {
+      $("ship").setAttribute("transform", `translate(${980 + Math.sin(ambientTime * .25) * 42} ${560 + Math.sin(ambientTime * .5) * 5})`);
+    }
+    if (index === 16) {
+      $("smoke").setAttribute("transform", `translate(${Math.sin(ambientTime * .4) * 12} ${-fract(ambientTime * .12) * 70})`);
+    }
+    if (index === 17) {
+      const flight = fract(ambientTime * .08);
+      $("airplane").setAttribute("transform", `translate(${330 + flight * 920} ${390 - Math.sin(flight * Math.PI) * 100}) scale(${.8 + flight * .25})`);
+    }
+    if (index === 18) {
+      $("network").setAttribute("opacity", .45 + Math.sin(ambientTime * 2) * .15);
+    }
+  }
+
+  function updateEarth(index, local) {
+    const configF = [0,0,1,1,1,2,2.3,3,4,4.3,4.5,4.7,4.8,4.9,5,5,5,5,5][index];
+    $("landMorph").setAttribute("d", smoothClosed(getConfig(landConfigs, configF)));
+    $("islandMorph").setAttribute("d", smoothClosed(getConfig(islandConfigs, configF)));
+    $("landMorph").setAttribute("opacity", lerp(.22, 1, clamp(configF / 2)));
+    const impactShake = index === 8 ? Math.max(0, 1 - Math.abs(local - .5) * 7) * Math.sin(ambientTime * 40) * 7 : 0;
+    const zoom = index >= 10 ? 1.015 : 1;
+    $("planet").setAttribute("transform", `translate(${800 + impactShake} ${430}) scale(${zoom}) translate(-800 -430)`);
+  }
+
+  function makeParticleGroup(groupId, count, fill, sizeRange) {
+    const group = $(groupId);
+    for (let i = 0; i < count; i++) {
+      const el = document.createElementNS(NS, "circle");
+      el.setAttribute("cx", 0); el.setAttribute("cy", 0);
+      el.setAttribute("r", lerp(sizeRange[0], sizeRange[1], fract(Math.sin(i * 91.17) * 43758.54)));
+      el.setAttribute("fill", fill);
+      el.dataset.seed = i;
+      group.appendChild(el);
+    }
+  }
+  makeParticleGroup("stars", 42, "#e8f7ff", [.7, 2.1]);
+  makeParticleGroup("snow", 40, "#ffffff", [1.4, 3.5]);
+  makeParticleGroup("embers", 20, "#ffad45", [1.2, 4.2]);
+  makeParticleGroup("dataBits", 24, "#65eaff", [1.3, 3.1]);
+
+  const starEls = Array.from($("stars").children);
+  starEls.forEach((el, i) => {
+    const s1 = fract(Math.sin(i * 13.7) * 8234.31);
+    const s2 = fract(Math.sin(i * 77.13 + 2) * 3421.9);
+    el.setAttribute("cx", 60 + s1 * 1480);
+    el.setAttribute("cy", 35 + s2 * 470);
+  });
+  const snowEls = Array.from($("snow").children);
+  snowEls.forEach(el => {
+    el.dataset.x = fract(Math.sin(Number(el.dataset.seed + 1) * 19.1) * 1872) * 1500 + 50;
+    el.dataset.s = .45 + fract(Math.sin(Number(el.dataset.seed + 4) * 5.2) * .7);
+  });
+  const emberEls = Array.from($("embers").children);
+  emberEls.forEach(el => {
+    el.dataset.x = 430 + fract(Math.sin(Number(el.dataset.seed + 2) * 31.7) * 7560) * 770;
+    el.dataset.s = .7 + fract(Math.sin(Number(el.dataset.seed + 7) * 4.4) * 1.2);
+  });
+  const dataEls = Array.from($("dataBits").children);
+  dataEls.forEach((el, i) => {
+    el.dataset.x = 390 + fract(Math.sin(i * 24.1) * 4221) * 850;
+    el.dataset.s = .7 + fract(Math.sin(i * 8.3) * 2300) * 1.5;
+  });
+  const birdsGroup = $("birds");
+  for (let i = 0; i < 7; i++) {
+    const bird = document.createElementNS(NS, "g");
+    const use = document.createElementNS(NS, "use");
+    use.setAttribute("href", "#bird");
+    use.setAttribute("transform", `scale(${.35 + i * .04})`);
+    bird.appendChild(use);
+    bird.dataset.x = 470 + i * 78;
+    bird.dataset.y = 250 + (i % 3) * 38;
+    birdsGroup.appendChild(bird);
+  }
+
+  function updateParticles(index) {
+    const starOpacity = index === 18 ? .95 : index === 4 ? .3 : .05;
+    $("stars").setAttribute("opacity", starOpacity);
+    $("snow").setAttribute("opacity", index === 4 ? .9 : index === 5 ? .18 : 0);
+    $("embers").setAttribute("opacity", index < 2 ? .75 : index === 2 ? .12 : 0);
+    $("dataBits").setAttribute("opacity", index === 18 ? .9 : 0);
+    snowEls.forEach(el => {
+      const x = Number(el.dataset.x) + Math.sin(ambientTime * .7 + Number(el.dataset.seed)) * 18;
+      const y = fract(Number(el.dataset.seed) * .137 + ambientTime * Number(el.dataset.s) * .07) * 430;
+      el.setAttribute("transform", `translate(${x} ${y})`);
+    });
+    emberEls.forEach(el => {
+      const y = 710 - fract(Number(el.dataset.seed) * .193 + ambientTime * Number(el.dataset.s) * .08) * 560;
+      const x = Number(el.dataset.x) + Math.sin(ambientTime * 1.4 + Number(el.dataset.seed)) * 24;
+      el.setAttribute("transform", `translate(${x} ${y})`);
+    });
+    dataEls.forEach((el, i) => {
+      const y = 690 - fract(Number(el.dataset.seed) * .217 + ambientTime * Number(el.dataset.s) * .12) * 330;
+      const x = Number(el.dataset.x) + Math.sin(ambientTime * 1.2 + i) * 12;
+      el.setAttribute("transform", `translate(${x} ${y})`);
+    });
+    Array.from(birdsGroup.children).forEach((bird, i) => {
+      const x = Number(bird.dataset.x) + ambientTime * (8 + i) % 620;
+      const wrapped = 420 + ((x - 420) % 720);
+      bird.setAttribute("transform", `translate(${wrapped} ${Number(bird.dataset.y) + Math.sin(ambientTime * 2 + i) * 5})`);
+    });
+  }
+
+  function buildTicks() {
+    const ticks = $("ticks");
+    chapters.forEach((ch, i) => {
+      const x = xAt(tickPositions[i]);
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "interactive");
+      g.setAttribute("role", "button");
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("aria-label", `Jump to ${ch.title}`);
+      const line = document.createElementNS(NS, "line");
+      line.setAttribute("x1", x); line.setAttribute("x2", x);
+      line.setAttribute("y1", "748"); line.setAttribute("y2", "768");
+      line.setAttribute("stroke", "#d7e4df"); line.setAttribute("stroke-width", "2");
+      const dot = document.createElementNS(NS, "circle");
+      dot.setAttribute("cx", x); dot.setAttribute("cy", "757.5"); dot.setAttribute("r", "5");
+      dot.setAttribute("fill", i === 18 ? "#fff1a8" : "#a8c3c7");
+      const hit = document.createElementNS(NS, "circle");
+      hit.setAttribute("cx", x); hit.setAttribute("cy", "757.5"); hit.setAttribute("r", "13");
+      hit.setAttribute("fill", "transparent");
+      const title = document.createElementNS(NS, "title");
+      title.textContent = `${ch.title} — ${ch.date}`;
+      g.append(line, dot, hit, title);
+      const jump = event => { event.stopPropagation(); seekTo(i * chapterDuration + .01); };
+      g.addEventListener("pointerdown", jump);
+      g.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); jump(event); }
+      });
+      ticks.appendChild(g);
+    });
+  }
+  buildTicks();
+
+  function updatePlayhead(index, local) {
+    const next = index < chapters.length - 1 ? tickPositions[index + 1] : 1;
+    const p = lerp(tickPositions[index], next, local);
+    const x = xAt(p);
+    $("playheadLine").setAttribute("x1", x); $("playheadLine").setAttribute("x2", x);
+    $("playheadCap").setAttribute("transform", `translate(${x - 70} 0)`);
+  }
+
+  function updatePlayIcon() {
+    $("pauseIcon").setAttribute("opacity", playing ? 1 : 0);
+    $("playIcon").setAttribute("opacity", playing ? 0 : 1);
+    $("playButton").setAttribute("aria-label", playing ? "Pause" : "Play");
+  }
+  function togglePlay() { playing = !playing; updatePlayIcon(); }
+  function changeSpeed() {
+    speed = speed === .5 ? 1 : speed === 1 ? 2 : .5;
+    $("speedText").textContent = `${speed}×`;
+  }
+  function restart() { playTime = 0; lastChapter = -1; setText(0); }
+  function jumpChapter(dir) {
+    const index = Math.floor(playTime / chapterDuration);
+    let target = dir < 0 ? index - 1 : index + 1;
+    if (target < 0) target = 0;
+    if (target >= chapters.length) target = chapters.length - 1;
+    seekTo(target * chapterDuration + .01);
+  }
+  function seekTo(time) {
+    playTime = clamp(time, 0, totalDuration - .001);
+    lastChapter = -1;
+  }
+
+  function seekFromPointer(event) {
+    const pt = svg.createSVGPoint();
+    pt.x = event.clientX; pt.y = event.clientY;
+    const local = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const p = clamp((local.x - 70) / 1460);
+    let i = 0;
+    while (i < tickPositions.length - 2 && p > tickPositions[i + 1]) i++;
+    const next = i < chapters.length - 1 ? tickPositions[i + 1] : 1;
+    const localP = i < chapters.length - 1 ? clamp((p - tickPositions[i]) / (next - tickPositions[i])) : 1;
+    seekTo((i + localP) * chapterDuration);
+  }
+
+  $("timelineHit").addEventListener("pointerdown", event => {
+    event.preventDefault();
+    dragging = true;
+    $("timelineHit").setPointerCapture(event.pointerId);
+    seekFromPointer(event);
+  });
+  $("timelineHit").addEventListener("pointermove", event => { if (dragging) seekFromPointer(event); });
+  $("timelineHit").addEventListener("pointerup", event => {
+    dragging = false;
+    if ($("timelineHit").hasPointerCapture(event.pointerId)) $("timelineHit").releasePointerCapture(event.pointerId);
+  });
+  $("timelineHit").addEventListener("pointercancel", () => { dragging = false; });
+
+  $("playButton").addEventListener("click", togglePlay);
+  $("restartButton").addEventListener("click", restart);
+  $("speedButton").addEventListener("click", changeSpeed);
+
+  function bindButtonKey(id, fn) {
+    $(id).addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); fn(); }
+    });
+  }
+  bindButtonKey("playButton", togglePlay);
+  bindButtonKey("restartButton", restart);
+  bindButtonKey("speedButton", changeSpeed);
+
+  window.addEventListener("keydown", event => {
+    if (event.code === "Space") { event.preventDefault(); togglePlay(); }
+    else if (event.key === "ArrowRight") { event.preventDefault(); jumpChapter(1); }
+    else if (event.key === "ArrowLeft") { event.preventDefault(); jumpChapter(-1); }
+    else if (event.key === "Home") { event.preventDefault(); restart(); }
+  });
+
+  function frame(now) {
+    const dt = Math.min(.05, (now - lastFrame) / 1000);
+    lastFrame = now;
+    if (playing && !dragging) {
+      playTime += dt * speed;
+      ambientTime += dt * speed;
+      if (playTime >= totalDuration) {
+        playTime %= totalDuration;
+        ambientTime = 0;
+        lastChapter = -1;
+      }
+    }
+    const chapterFloat = clamp(playTime / chapterDuration, 0, chapters.length - 1);
+    const index = Math.min(chapters.length - 1, Math.floor(chapterFloat));
+    const local = clamp(chapterFloat - index, 0, 1);
+    setText(index);
+    updatePalette(index, local);
+    updateEarth(index, local);
+    updateScene(index, local);
+    updateParticles(index);
+    updatePlayhead(index, local);
+    requestAnimationFrame(frame);
+  }
+
+  updatePlayIcon();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
