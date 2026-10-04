@@ -10740,7 +10740,7 @@ syncToolbar();
         '${_bgDialogHtml()}'
         '</div>'
         '<div class="card">'
-        '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="btn btn-ghost btn-sm" aria-label="Render repair settings" title="Render repair settings">${_ico('cog')}</button>')}'
+        '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="bn-icon-btn bn-icon-btn--sm" aria-label="Banner render settings" title="Banner render settings">${_ico('cog')}</button>')}'
         '<div class="maint-desc" tabindex="0">Renders the model-card banners of the AI '
         'Usage plugin\'s Tests tab, one scene at a time in a headless '
         'browser. Pagoda banners are shot in daylight, framed as the whole '
@@ -11700,7 +11700,7 @@ syncToolbar();
   /// language: 1.8 stroke, round caps, drawn in `currentColor`.
   static const _icoPaths = <String, String>{
     'cog':
-        'M9 2h6l.5 3L18 6.5l2.8-1L23 9.5l-2.5 2V14l2.5 2-2.2 4-2.8-1-2.5 1.5L15 23H9l-.5-2.5L6 19l-2.8 1L1 16l2.5-2v-2.5L1 9.5l2.2-4 2.8 1L8.5 5z'
+        'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z'
             'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
     'sparkles': 'M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'
         'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
@@ -13404,6 +13404,14 @@ window.lumaAskReason = function (form, message) {
 .bn-icon-btn:hover{background:#1c1730;border-color:#2d2645;color:#ece8f7}
 .bn-icon-btn:focus-visible,.bn-tile:focus-within{outline:2px solid #8a7ee0;outline-offset:2px}
 .bn-icon-btn .bn-ico{width:18px;height:18px}
+.bn-icon-btn--sm{width:34px;height:34px}
+.bn-dialog{color-scheme:dark}
+.bn-dialog>form{display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+.bn-dlg-body{padding:2px 22px 20px;display:grid;gap:14px}
+.bn-dlg-body .muted{margin:0;font-size:12.5px;line-height:1.5;color:#9b94b3}
+.bn-field{display:grid;gap:6px;font-size:13px;font-weight:600;color:#cdc7e2}
+.bn-field .bn-input{width:100%;min-width:0;box-sizing:border-box;flex:none}
+.bn-rule{border:0;border-top:1px solid #241e36;margin:0}
 .bn-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:0 22px 14px;border-bottom:1px solid #241e36}
 .bn-toolbar .range-tabs{margin:0}
 .bn-input{background:#1a1530;color:#ece8f7;border:1px solid #2d2645;border-radius:9px;padding:9px 12px;font:inherit;font-size:13px;min-width:220px;flex:0 1 260px;outline:none}
@@ -13467,18 +13475,18 @@ window.lumaAskReason = function (form, message) {
   /// which loads the scene into a sandboxed iframe at banner size and
   /// talks to the shot control inside it over postMessage.
   static const _bnRepairDialogHtml = r'''
-<dialog id="bnRepairSettings" class="bn-dlg" style="max-width:540px">
+<dialog id="bnRepairSettings" class="bn-dialog" style="width:min(540px,calc(100vw - 32px))" aria-labelledby="bnRepairTitle">
   <form id="bnRepairForm">
-    <div class="bn-dlg-head"><h2>Render repair settings</h2><button type="button" id="bnRepairClose" class="btn btn-ghost btn-sm" aria-label="Close">×</button></div>
-    <div style="padding:0 22px 20px;display:grid;gap:14px">
-      <label>Render workers<input id="bnWorkers" class="bn-input" style="width:100%" type="number" min="1" max="6" step="1" value="2" required></label>
-      <p class="muted">Scenes rendered side by side, each in a browser of its own. More is faster only while the GPU has room; if banners come out dark or blank, lower it. Applies to the next render and saves on its own.</p>
+    <div class="bn-dlg-head"><div><h2 id="bnRepairTitle">Banner render settings</h2><div class="bn-dlg-sub">Speed, and the model that repairs failed scenes</div></div><button type="button" id="bnRepairClose" class="bn-icon-btn" aria-label="Close"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="bn-dlg-body">
+      <label class="bn-field">Render workers<input id="bnWorkers" class="bn-input" type="number" min="1" max="6" step="1" value="2" required></label>
+      <p class="muted">Scenes rendered side by side, each in a browser of its own. More is faster only while the GPU has room; if banners come out dark or blank, lower it. Saves on its own and applies to the next render.</p>
       <div id="bnWorkersNote" role="status" class="muted"></div>
-      <hr style="border:0;border-top:1px solid var(--line,#8884);margin:0">
+      <hr class="bn-rule">
       <p class="muted">Repairs run only when you click <strong>Repair once</strong> on a failed scene. The model may only fix its render error. Saving settings does not run it.</p>
-      <label>Server API key<select id="bnRepairKey" class="bn-input" style="width:100%" required></select></label>
-      <label>Model<input id="bnRepairModel" class="bn-input" style="width:100%" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
-      <label>Maximum estimated cost per repair (USD)<input id="bnRepairLimit" class="bn-input" style="width:100%" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
+      <label class="bn-field">Server API key<select id="bnRepairKey" class="bn-input" required></select></label>
+      <label class="bn-field">Model<input id="bnRepairModel" class="bn-input" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
+      <label class="bn-field">Maximum estimated cost per repair (USD)<input id="bnRepairLimit" class="bn-input" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
       <p class="muted">Price guard is always on: unknown prices and price increases block a call. Saving accepts the selected model’s current token prices. Output is capped to fit the estimate. Usage is recorded in the AI Usage plugin for aydenjue@outlook.com.</p>
       <div id="bnRepairNote" role="status" class="muted"></div>
     </div>
