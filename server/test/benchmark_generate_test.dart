@@ -84,9 +84,10 @@ void main() {
 
     test('vendor comes from the key or the OpenRouter id', () {
       const known = {'anthropic', 'google', 'mistralai', 'x-ai'};
+      expect(benchmarkVendorFor(AiUpstream.openrouter, 'x-ai/grok-5', known),
+          'x-ai');
       expect(
-          benchmarkVendorFor(AiUpstream.openrouter, 'x-ai/grok-5', known), 'x-ai');
-      expect(benchmarkVendorFor(AiUpstream.openrouter, 'acme/thing', known), '');
+          benchmarkVendorFor(AiUpstream.openrouter, 'acme/thing', known), '');
       expect(benchmarkVendorFor(AiUpstream.google, 'gemini-3-pro', known),
           'google');
       expect(benchmarkVendorFor(AiUpstream.mistral, 'mistral-large', known),
@@ -133,6 +134,89 @@ void main() {
         expect(p.trimRight(), endsWith('breaks it.'));
       }
       expect(benchmarkPromptFor('cathedral'), isEmpty);
+    });
+  });
+
+  group('batch', () {
+    const page = '<!doctype html><html><body></body></html>';
+
+    test('only OpenRouter :batch ids run as a batch', () {
+      expect(
+          isBenchmarkBatchModel(
+              AiUpstream.openrouter, 'anthropic/claude-sonnet-5.5:batch'),
+          isTrue);
+      expect(
+          isBenchmarkBatchModel(
+              AiUpstream.openrouter, 'anthropic/claude-sonnet-5.5'),
+          isFalse);
+      expect(isBenchmarkBatchModel(AiUpstream.google, 'gemini:batch'), isFalse);
+      expect(isBenchmarkBatchModel(AiUpstream.openrouter, ':batch'), isFalse);
+      expect(benchmarkBatchBaseModel('anthropic/claude-sonnet-5.5:batch'),
+          'anthropic/claude-sonnet-5.5');
+      expect(benchmarkBatchBaseModel('x-ai/grok-5'), 'x-ai/grok-5');
+    });
+
+    test('the entry name drops OpenRouter\'s (batch) tag', () {
+      expect(
+          benchmarkDisplayName('Anthropic: Claude Sonnet 5.5 (batch)', 'high'),
+          'Claude Sonnet 5.5 (High)');
+    });
+
+    test('reads a completed batch like a finished stream', () {
+      final acc = ChatStreamAccumulator();
+      final why = readBenchmarkBatch({
+        'status': 'completed',
+        'usage': {'prompt_tokens': 10, 'completion_tokens': 90, 'cost': 0.5},
+        'results': [
+          {
+            'custom_id': 'pagoda_x',
+            'response': {
+              'status_code': 200,
+              'body': {
+                'choices': [
+                  {
+                    'message': {
+                      'content': page,
+                      'reasoning': 'thinking it over',
+                    },
+                    'finish_reason': 'stop',
+                  },
+                ],
+                'usage': {'prompt_tokens': 10, 'completion_tokens': 90},
+              },
+            },
+            'error': null,
+          },
+        ],
+      }, acc);
+      expect(why, isNull);
+      expect(acc.content, page);
+      expect(acc.reasoningChars, 'thinking it over'.length);
+      expect(acc.finishReason, 'stop');
+      expect(acc.tokens, 100);
+      expect(acc.usage.costUsd, 0.5);
+    });
+
+    test('says why a batch produced nothing', () {
+      expect(
+          readBenchmarkBatch({
+            'status': 'failed',
+            'error': {'message': 'model has no batch endpoint'},
+          }, ChatStreamAccumulator()),
+          'The batch ended failed: model has no batch endpoint.');
+      expect(
+          readBenchmarkBatch({
+            'status': 'completed',
+            'results': [
+              {
+                'response': null,
+                'error': {'message': 'max_tokens too large'},
+              },
+            ],
+          }, ChatStreamAccumulator()),
+          'max_tokens too large');
+      expect(readBenchmarkBatch({'status': 'expired'}, ChatStreamAccumulator()),
+          'The batch ended expired.');
     });
   });
 }

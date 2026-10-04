@@ -80,6 +80,7 @@ String benchmarkDisplayName(String modelName, String effort) {
   var name = modelName.trim();
   final colon = name.indexOf(': ');
   if (colon > 0 && colon < 30) name = name.substring(colon + 2).trim();
+  name = name.replaceFirst(RegExp(r'\s*\(batch\)$', caseSensitive: false), '');
   final label = kBenchmarkEfforts[effort] ?? '';
   final full = label.isEmpty ? name : '$name ($label)';
   return full.length > 80 ? full.substring(0, 80).trim() : full;
@@ -182,4 +183,99 @@ class ChatStreamAccumulator {
     final reason = choice['finish_reason'];
     if (reason is String && reason.isNotEmpty) finishReason = reason;
   }
+
+  /// Takes a whole, non-streamed chat completion body at once, the shape a
+  /// batch result carries.
+  void addCompletion(Map body) {
+    final err = body['error'];
+    if (err is Map) {
+      error = '${err['message'] ?? err['code'] ?? 'Upstream error'}';
+    } else if (err is String) {
+      error = err;
+    }
+    if (body['usage'] is Map) usage = AiCallUsage.parse(jsonEncode(body));
+    final choices = body['choices'];
+    if (choices is List && choices.isNotEmpty && choices.first is Map) {
+      final choice = choices.first as Map;
+      final message = choice['message'];
+      if (message is Map) {
+        final c = message['content'];
+        if (c is String) _content.write(c);
+        for (final k in const ['reasoning', 'reasoning_content']) {
+          final r = message[k];
+          if (r is String) reasoningChars += r.length;
+        }
+      }
+      final reason = choice['finish_reason'];
+      if (reason is String && reason.isNotEmpty) finishReason = reason;
+    }
+    done = true;
+  }
+}
+
+/// OpenRouter's suffix for a model's half-price batch variant
+/// (`anthropic/claude-sonnet-5.5:batch`). Those only run through its async
+/// Batch API, never the streamed chat endpoint.
+const kBenchmarkBatchSuffix = ':batch';
+
+/// Whether [modelId] on [upstream] has to go through OpenRouter's Batch API.
+bool isBenchmarkBatchModel(AiUpstream upstream, String modelId) =>
+    upstream == AiUpstream.openrouter &&
+    modelId.endsWith(kBenchmarkBatchSuffix) &&
+    modelId.length > kBenchmarkBatchSuffix.length;
+
+/// The model slug a batch is submitted under: the batch variant's base
+/// model, which OpenRouter then routes to one of its `:batch` endpoints.
+String benchmarkBatchBaseModel(String modelId) =>
+    modelId.endsWith(kBenchmarkBatchSuffix)
+        ? modelId.substring(0, modelId.length - kBenchmarkBatchSuffix.length)
+        : modelId;
+
+/// Batch statuses OpenRouter never moves on from.
+const kBenchmarkBatchTerminal = {'completed', 'failed', 'expired', 'cancelled'};
+
+/// Reads a finished OpenRouter batch object (`GET /batches/{id}`) holding
+/// the one scene request into [acc], as if it had been streamed. Returns
+/// why it produced nothing usable, or null when [acc] now holds the reply.
+String? readBenchmarkBatch(Map batch, ChatStreamAccumulator acc) {
+  String? message(Object? err) {
+    if (err is Map) {
+      final m = err['message'] ?? err['code'];
+      return m == null ? null : '$m';
+    }
+    return err is String && err.isNotEmpty ? err : null;
+  }
+
+  // The batch's own usage carries what OpenRouter actually charged.
+  void batchUsage() {
+    final usage = batch['usage'];
+    if (usage is Map && usage.isNotEmpty) {
+      acc.usage = AiCallUsage.parse(jsonEncode({'usage': usage}));
+    }
+  }
+
+  batchUsage();
+  final status = batch['status'];
+  if (status != 'completed') {
+    final why = message(batch['error']);
+    final label = status is String ? status : 'unknown';
+    return 'The batch ended $label${why == null ? '' : ': $why'}.';
+  }
+  final results = batch['results'];
+  final result = results is List && results.isNotEmpty && results.first is Map
+      ? results.first as Map
+      : null;
+  if (result == null) return 'The batch finished with no result.';
+  final failed = message(result['error']);
+  if (failed != null) return failed;
+  final response = result['response'];
+  final body = response is Map ? response['body'] : null;
+  if (body is! Map) return 'The batch result holds no response.';
+  final code = response is Map ? response['status_code'] : null;
+  if (code is num && code != 200) {
+    return 'HTTP ${code.toInt()}${message(body['error']) == null ? '' : ': ${message(body['error'])}'}';
+  }
+  acc.addCompletion(body);
+  batchUsage();
+  return null;
 }

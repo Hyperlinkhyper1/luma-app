@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:luma/features/converter/schematic/nbt.dart';
 import 'package:luma/features/converter/world/world_conversion.dart';
 import 'package:luma/features/converter/world/world_converter_service_io.dart';
+import 'package:luma/features/converter/world/world_versions.dart';
 
 NbtList doubles(List<double> values) =>
     NbtList.of(values.map(NbtDouble.new).toList());
@@ -152,6 +153,34 @@ Future<void> main(List<String> args) async {
           'TileZ': const NbtInt(4),
         },
       ),
+      mob(
+        'trident',
+        11,
+        10,
+        extra: {
+          'Owner': uuid(100),
+          'inGround': const NbtByte(1),
+          'pickup': const NbtByte(1),
+          'DealtDamage': const NbtByte(1),
+          'item': NbtCompound({
+            'id': const NbtString('minecraft:trident'),
+            'count': const NbtInt(1),
+            'components': NbtCompound({'minecraft:damage': const NbtInt(5)}),
+          }),
+        },
+      ),
+      // A projectile in mid-air is reported, not transferred or refused.
+      mob(
+        'snowball',
+        12,
+        11,
+        extra: {
+          'Item': NbtCompound({
+            'id': const NbtString('minecraft:snowball'),
+            'count': const NbtInt(1),
+          }),
+        },
+      ),
     ];
     chunk.values['block_entities'] = NbtList.of([
       NbtCompound({
@@ -214,8 +243,12 @@ Future<void> main(List<String> args) async {
     );
     final before = await service.inspect(source.path);
     check(
-      before.entities.length == 10,
-      'Source census must include both cows, passengers and item frame',
+      before.entities.length == 11,
+      'Source census must include both cows, passengers, item frame and trident',
+    );
+    check(
+      before.warnings.any((w) => w.contains('1 snowball')),
+      'A mid-air snowball must be reported rather than silently skipped',
     );
     final bedrock = await service.convert(
       source: source.path,
@@ -232,8 +265,19 @@ Future<void> main(List<String> args) async {
       ),
     );
     final after = await service.inspect(java.path);
-    check(after.entities.length >= 10, 'Round trip dropped entities');
+    check(after.entities.length >= 11, 'Round trip dropped entities');
     check(after.localPlayer, 'Round trip dropped local player');
+    final returned = savedTrident(
+      await readChunk(File('${java.path}/entities/r.0.0.mca')),
+    );
+    check(
+      returned
+              .compound('item')
+              ?.compound('components')
+              ?.intValue('minecraft:damage') ==
+          5,
+      'Thrown trident item and durability did not round trip',
+    );
     final savedPlayer = Nbt.read(
       Uint8List.fromList(await File('${java.path}/level.dat').readAsBytes()),
     ).asCompound.compound('Data')!.compound('Player')!;
@@ -292,7 +336,7 @@ Future<void> main(List<String> args) async {
         ),
       );
       check(
-        latestJava.entityCount >= 10,
+        latestJava.entityCount >= 11,
         'Latest version conversion lost entities',
       );
       check(
@@ -371,7 +415,7 @@ Future<void> main(List<String> args) async {
           ),
         );
         check(
-          historical.entityCount >= 10,
+          historical.entityCount >= 11,
           'Older Java entity schema lost records',
         );
         final player = Nbt.read(
@@ -390,8 +434,33 @@ Future<void> main(List<String> args) async {
           (diamonds.intValue('count') ?? diamonds.intValue('Count')) == 3,
           'Older Java player inventory was lost',
         );
+        // Before 1.17 entities live in the terrain chunk; before 1.20.5 a
+        // thrown trident keeps "Trident" in the Count/tag item format; before
+        // 1.16 its owner is OwnerUUIDMost/OwnerUUIDLeast.
+        final dataVersion = javaWorldVersions[version]!;
+        final trident = savedTrident(
+          await readChunk(
+            File(
+              '${historical.path}/${dataVersion < 2681 ? 'region' : 'entities'}/r.0.0.mca',
+            ),
+          ),
+        );
+        final damage = dataVersion >= 3837
+            ? trident
+                  .compound('item')
+                  ?.compound('components')
+                  ?.intValue('minecraft:damage')
+            : trident.compound('Trident')?.compound('tag')?.intValue('Damage');
+        check(damage == 5, 'Java $version lost the thrown trident durability');
+        check(
+          dataVersion >= 2566
+              ? trident.intArray('Owner') != null
+              : trident.values['OwnerUUIDMost'] != null &&
+                    trident.values['Owner'] == null,
+          'Java $version lost the thrown trident owner',
+        );
         stdout.writeln(
-          'PASS: Java $version with entities and player inventory',
+          'PASS: Java $version with entities, thrown trident and player inventory',
         );
       }
       final targets = args.contains('--matrix')
@@ -522,3 +591,15 @@ String? blockName(NbtTag tag) => switch (tag) {
         (tag.values[''] == null ? null : blockName(tag.values['']!)),
   _ => null,
 };
+
+NbtCompound savedTrident(NbtCompound chunk) {
+  final level = chunk.compound('Level');
+  return (level ?? chunk)
+      .list('Entities')!
+      .items
+      .cast<NbtCompound>()
+      .firstWhere(
+        (e) => e.stringValue('id') == 'minecraft:trident',
+        orElse: () => throw StateError('Saved world has no thrown trident'),
+      );
+}

@@ -83,9 +83,48 @@ static void saveJavaNbtFile(fs::path const &p, CompoundTag const &tag) {
 }
 static void saveJavaLevel(fs::path const &p, CompoundTag const &tag) { saveJavaNbtFile(p/"level.dat",tag); }
 
+// Leash knots are rebuilt by the game from each leashed mob's lead, so they are
+// not records of their own. Projectiles in mid-air land or vanish within
+// seconds once loaded; neither engine has a schema for them.
+static std::map<std::string,int> gTransientEntities;
+static bool transientEntityType(std::string const &id) {
+  static std::set<std::string> const transient = {
+    "minecraft:snowball","minecraft:egg","minecraft:ender_pearl","minecraft:potion",
+    "minecraft:splash_potion","minecraft:lingering_potion","minecraft:xp_bottle","minecraft:experience_bottle",
+    "minecraft:fireball","minecraft:small_fireball","minecraft:dragon_fireball","minecraft:wither_skull",
+    "minecraft:wither_skull_dangerous","minecraft:wind_charge","minecraft:breeze_wind_charge",
+    "minecraft:wind_charge_projectile","minecraft:breeze_wind_charge_projectile","minecraft:shulker_bullet",
+    "minecraft:llama_spit","minecraft:evocation_fang","minecraft:evoker_fangs","minecraft:fishing_hook",
+    "minecraft:fishing_bobber","minecraft:fireworks_rocket","minecraft:firework_rocket","minecraft:lightning_bolt",
+    "minecraft:area_effect_cloud","minecraft:eye_of_ender_signal","minecraft:eye_of_ender",
+    "minecraft:ominous_item_spawner"};
+  return transient.contains(id);
+}
+static bool uncountedEntity(std::string const &id) {
+  if (id == "minecraft:leash_knot") return true;
+  if (!transientEntityType(id)) return false;
+  ++gTransientEntities[id.substr(10)];
+  return true;
+}
+static void transientWarning(json &result) {
+  if (gTransientEntities.empty()) return;
+  std::string detail;
+  for (auto const &[type,count] : gTransientEntities) detail += (detail.empty() ? "" : ", ") + std::to_string(count) + " " + type;
+  result["warnings"].push_back("Not carried over: " + detail + ". These are thrown projectiles in mid-air, which land or vanish within seconds in game.");
+}
+
 static void entity(json &out, CompoundTag const &e, int dim, bool bedrock) {
   auto id = e.string(bedrock ? u8"identifier" : u8"id", u8"");
   require(!id.empty(), "Entity has no type identifier");
+  if (uncountedEntity(utf8(id))) {
+    if (auto children = e.listTag(u8"Passengers")) {
+      for (auto const &child : children->fValue) {
+        auto c = child->asCompound(); require(c != nullptr, "Invalid passenger NBT");
+        entity(out, *c, dim, bedrock);
+      }
+    }
+    return;
+  }
   auto pos = e.listTag(u8"Pos");
   require(pos && pos->size() == 3, "Entity has no valid position: " + utf8(id));
   json xyz = json::array();
@@ -103,7 +142,18 @@ static void entity(json &out, CompoundTag const &e, int dim, bool bedrock) {
   }
   if (auto vehicle = e.compoundTag(u8"Riding")) entity(out,*vehicle,dim,bedrock);
 }
+// Java moved entities out of terrain chunks into entities/ regions in 20w45a.
+// Later terrain chunks can still carry a Level.Entities copy, which the game
+// ignores, so only a chunk saved before the split is read for entities.
+constexpr int kJavaEntityStorageSplit = 2681;
+static bool javaTerrainChunk(CompoundTag const &root) {
+  return root.compoundTag(u8"Level") || root.listTag(u8"sections") || root.string(u8"Status");
+}
+static bool javaChunkHoldsEntities(CompoundTag const &root) {
+  return !javaTerrainChunk(root) || root.int32(u8"DataVersion",0) < kJavaEntityStorageSplit;
+}
 static void entityList(json &out, CompoundTag const &root, int dim) {
+  if (!javaChunkHoldsEntities(root)) return;
   auto container = root.compoundTag(u8"Level");
   auto list = (container ? container.get() : &root)->listTag(u8"Entities");
   if (!list) return;
@@ -112,18 +162,29 @@ static void entityList(json &out, CompoundTag const &root, int dim) {
     entity(out, *c, dim, false);
   }
 }
+static std::string hiveOccupantType(CompoundTag const &occupant) {
+  auto data = occupant.compoundTag(u8"SaveData");
+  auto id = (data ? data.get() : &occupant)->string(u8"identifier",u8"");
+  if (!id.empty()) return utf8(id);
+  // Naturally generated Bedrock nests save only "minecraft:bee<>" and an empty SaveData.
+  auto actor = utf8(occupant.string(u8"ActorIdentifier",u8""));
+  return actor.substr(0,actor.find('<'));
+}
 static void hive(json &out, CompoundTag &block, int dim, bool bedrock, bool strip) {
   auto bees = block.listTag(bedrock ? u8"Occupants" : u8"bees");
   if (!bedrock && !bees) bees = block.listTag(u8"Bees");
   if (!bees) return;
   for (auto const &entry : bees->fValue) {
     auto occupant = entry->asCompound(); require(occupant != nullptr, "Invalid hive occupant");
-    auto data = occupant->compoundTag(bedrock ? u8"SaveData" : u8"entity_data");
-    if (!bedrock && !data) data = occupant->compoundTag(u8"EntityData");
-    auto e = data ? data.get() : occupant;
-    auto id = e->string(bedrock ? u8"identifier" : u8"id",u8"");
+    std::string id;
+    if (bedrock) id = hiveOccupantType(*occupant);
+    else {
+      auto data = occupant->compoundTag(u8"entity_data");
+      if (!data) data = occupant->compoundTag(u8"EntityData");
+      id = utf8((data ? data.get() : occupant)->string(u8"id",u8""));
+    }
     require(!id.empty(), "Hive occupant has no entity identifier");
-    out.push_back({{"type",utf8(id)+"@hive"},{"dimension",dim},
+    out.push_back({{"type",id+"@hive"},{"dimension",dim},
       {"position",{block.int32(u8"x",0)+0.5,block.int32(u8"y",0)+0.5,block.int32(u8"z",0)+0.5}}});
   }
   if (strip) { block.erase(u8"Occupants"); block.erase(u8"bees"); block.erase(u8"Bees"); }
@@ -228,8 +289,19 @@ static void adaptJavaTag(CompoundTag &tag, int version) {
     auto uuid = je2be::Uuid::FromIntArray(*owner); require(bool(uuid),"Invalid owner UUID");
     auto id = utf8(tag.string(u8"id",u8""));
     static std::set<std::string> const pets = {"minecraft:wolf","minecraft:cat","minecraft:horse","minecraft:donkey","minecraft:mule","minecraft:llama","minecraft:trader_llama","minecraft:parrot","minecraft:skeleton_horse","minecraft:zombie_horse"};
-    require(pets.contains(id),"Ownership schema cannot be safely downgraded for " + id);
-    tag[u8"OwnerUUID"] = std::make_shared<mcfile::nbt::StringTag>(uuid->toString()); tag.erase(u8"Owner");
+    static std::set<std::string> const arrows = {"minecraft:arrow","minecraft:spectral_arrow","minecraft:trident"};
+    if (arrows.contains(id)) {
+      // Pre-1.16 arrows keep their shooter as OwnerUUIDMost/OwnerUUIDLeast.
+      auto const &v = owner->fValue;
+      auto most = (uint64_t(uint32_t(v[0])) << 32) | uint32_t(v[1]);
+      auto least = (uint64_t(uint32_t(v[2])) << 32) | uint32_t(v[3]);
+      tag[u8"OwnerUUIDMost"] = std::make_shared<mcfile::nbt::LongTag>(static_cast<int64_t>(most));
+      tag[u8"OwnerUUIDLeast"] = std::make_shared<mcfile::nbt::LongTag>(static_cast<int64_t>(least));
+      tag.erase(u8"Owner");
+    } else {
+      require(pets.contains(id),"Ownership schema cannot be safely downgraded for " + id);
+      tag[u8"OwnerUUID"] = std::make_shared<mcfile::nbt::StringTag>(uuid->toString()); tag.erase(u8"Owner");
+    }
   }
   require(version >= 2566 || !tag.listTag(u8"Trusted"),"Trusted-player records cannot be safely downgraded to this Java version");
   for (auto const &[key,value] : tag.fValue) {
@@ -258,8 +330,9 @@ static json scanJava(fs::path const &p, bool stripEntities = false, bool stripPl
   auto level = javaLevel(p); auto data = level->compoundTag(u8"Data");
   require(bool(data), "Missing Java world Data");
   int version = data->int32(u8"DataVersion", 0);
+  gTransientEntities.clear();
   require(version >= 0 && version <= 5017, "This engine supports Java release formats through 26.3. Update Luma for a newer format.");
-  json result = {{"edition", "java"}, {"version", version}, {"entities", json::array()}, {"remotePlayers", 0}, {"localPlayer", false}};
+  json result = {{"edition", "java"}, {"version", version}, {"entities", json::array()}, {"remotePlayers", 0}, {"localPlayer", false}, {"warnings", json::array()}};
   auto &entities = result["entities"];
   for (auto const &[dir, dim] : javaDimensions(p,version)) {
     regions(dir/"region", dim, entities, stripEntities);
@@ -301,6 +374,7 @@ static json scanJava(fs::path const &p, bool stripEntities = false, bool stripPl
     saveJavaNbtFile(playerDirectory/(localUuid+".dat"),*player);
   }
   if (stripEntities || stripPlayers) saveJavaLevel(p, *level);
+  transientWarning(result);
   return result;
 }
 static int le32(std::string const &s, size_t offset) {
@@ -308,7 +382,8 @@ static int le32(std::string const &s, size_t offset) {
   uint32_t v = 0; for (size_t i=0; i<4; ++i) v |= uint32_t(uint8_t(s[offset+i])) << (8*i);
   return static_cast<int32_t>(v);
 }
-#include "bedrock_projectiles.hpp"
+#include "bedrock_actors.hpp"
+#include "bedrock_hives.hpp"
 
 static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stripPlayers = false, bool normalizeActors = false) {
   auto raw = readFile(p/"level.dat"); require(raw.size() > 8, "Truncated Bedrock level.dat");
@@ -331,6 +406,9 @@ static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stri
   leveldb::WriteBatch removals;
   struct References { std::set<int> dimensions; size_t count = 0; };
   std::map<std::string,References> actors;
+  std::set<int64_t> uniqueIds;
+  size_t duplicates = 0;
+  gTransientEntities.clear();
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     auto key = it->key().ToString(), value = it->value().ToString();
     if (!key.starts_with("digp")) continue;
@@ -358,9 +436,20 @@ static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stri
       "Actor indexes disagree on the entity dimension; its dimension cannot be determined safely");
     int dim = explicitDimension ? *explicitDimension : *refs.dimensions.begin();
     require(dim >= 0 && dim <= 2,"Unsupported actor dimension");
-    json records = json::array(); entity(records,*actor,dim,true);
-    auto const &pos = records.front()["position"];
-    double cx = std::floor(pos[0].get<double>() / 16), cz = std::floor(pos[2].get<double>() / 16);
+    // A dupe glitch can save two actors under one UniqueID; the game, and the
+    // Java UUID derived from it, keep only one of them.
+    auto uniqueId = actor->int64(u8"UniqueID");
+    bool duplicate = uniqueId && !uniqueIds.insert(*uniqueId).second;
+    json records = json::array();
+    if (duplicate) ++duplicates; else entity(records,*actor,dim,true);
+    auto pos = actor->listTag(u8"Pos");
+    require(pos && pos->size() == 3,"Entity has no valid position: " + utf8(actor->string(u8"identifier",u8"")));
+    auto coordinate = [&](size_t axis) {
+      if (auto f = pos->at(axis)->asFloat()) return double(f->fValue);
+      if (auto d = pos->at(axis)->asDouble()) return d->fValue;
+      throw std::runtime_error("Entity position is not numeric");
+    };
+    double cx = std::floor(coordinate(0) / 16), cz = std::floor(coordinate(2) / 16);
     require(std::isfinite(cx) && std::isfinite(cz) && cx >= INT32_MIN && cx <= INT32_MAX && cz >= INT32_MIN && cz <= INT32_MAX,
       "Actor position is outside the valid chunk range");
     auto dimension = dim == 0 ? mcfile::Dimension::Overworld : dim == 1 ? mcfile::Dimension::Nether : mcfile::Dimension::End;
@@ -384,7 +473,9 @@ static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stri
       mcfile::stream::InputStreamReader r(stream, mcfile::Encoding::LittleEndian);
       while (stream->pos() < value.size()) {
         auto e = CompoundTag::Read(r); require(bool(e), "Corrupt legacy entity NBT");
-        entity(result["entities"], *e, static_cast<int>(parsed.fTagged.fDimension), true);
+        auto uniqueId = e->int64(u8"UniqueID");
+        if (uniqueId && !uniqueIds.insert(*uniqueId).second) ++duplicates;
+        else entity(result["entities"], *e, static_cast<int>(parsed.fTagged.fDimension), true);
       }
       if (stripEntities) removals.Delete(key);
     }
@@ -421,6 +512,8 @@ static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stri
   require(it->status().ok(), "Could not read the complete entity database");
   it.reset();
   if (stripEntities || stripPlayers || normalizeActors) require(db->Write({}, &removals).ok(), "Cannot save normalized actor indexes or remove excluded records");
+  if (duplicates) result["warnings"].push_back("Counted " + std::to_string(duplicates) + " duplicated Bedrock entity records once. They share an entity ID with another record, so the game keeps only one of each.");
+  transientWarning(result);
   return result;
 }
 static json scan(fs::path const &p, bool stripEntities = false, bool stripPlayers = false) {
@@ -461,7 +554,7 @@ static void overlayJava(fs::path const &records, fs::path const &terrain, bool e
     regions(from/"region",0,ignored,false,[&](CompoundTag &root,size_t slot,fs::path const &file) {
       auto level = root.compoundTag(u8"Level"); auto src = level ? level.get() : &root;
       auto selected = std::make_shared<CompoundTag>();
-      if (auto list = src->listTag(u8"Entities"); list && !list->empty()) (*selected)[u8"Entities"] = list;
+      if (auto list = src->listTag(u8"Entities"); list && !list->empty() && javaChunkHoldsEntities(root)) (*selected)[u8"Entities"] = list;
       auto hives = std::make_shared<mcfile::nbt::ListTag>(Tag::Type::Compound);
       if (auto tiles = src->listTag(level ? u8"TileEntities" : u8"block_entities")) {
         for (auto const &tile : tiles->fValue) {
@@ -479,7 +572,8 @@ static void overlayJava(fs::path const &records, fs::path const &terrain, bool e
       auto dstLevel = root.compoundTag(u8"Level");
       auto src = srcLevel ? srcLevel : found->second;
       auto dst = dstLevel ? dstLevel.get() : &root;
-      if (auto list = src->listTag(u8"Entities")) (*dst)[u8"Entities"] = list;
+      // A 1.17+ terrain chunk keeps no entities; they arrive through entities/ above.
+      if (auto list = src->listTag(u8"Entities"); list && javaChunkHoldsEntities(root)) (*dst)[u8"Entities"] = list;
       auto sourceTiles = src->listTag(srcLevel ? u8"TileEntities" : u8"block_entities");
       auto tiles = dst->listTag(dstLevel ? u8"TileEntities" : u8"block_entities");
       if (!sourceTiles || !tiles) return;
@@ -663,7 +757,7 @@ static int run(std::vector<std::string> const &args) {
     }
     throw std::runtime_error("World engine failed to convert the save: " + details);
   }
-  if (entities && args[4] == "java") recoverBedrockProjectiles(input,output);
+  if (entities && args[4] == "java") { recoverBedrockActors(input,output); completeBedrockHives(input,output); }
   if (args[4] == "java" && je2be::kJavaDataVersion < 4556) {
     auto level = javaLevel(output); adaptJavaTag(*level,je2be::kJavaDataVersion); saveJavaLevel(output,*level);
     json ignored = json::array();

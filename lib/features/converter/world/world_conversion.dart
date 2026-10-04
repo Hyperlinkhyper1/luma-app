@@ -25,6 +25,20 @@ String worldSourceName(String path) => normalizeWorldSourcePath(path)
     .last
     .replaceFirst(RegExp(r'\.(mcworld|zip)$', caseSensitive: false), '');
 
+/// A world name made safe to use as a folder name on Windows and Linux.
+String worldFolderName(String name) {
+  final cleaned = name
+      .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '_')
+      .replaceAll(RegExp(r'[. ]+$'), '')
+      .trim();
+  final reserved = RegExp(
+    r'^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$',
+    caseSensitive: false,
+  );
+  if (cleaned.isEmpty) return 'world';
+  return reserved.hasMatch(cleaned) ? '_$cleaned' : cleaned;
+}
+
 class WorldTarget {
   const WorldTarget(this.edition, this.version);
   final WorldEdition edition;
@@ -125,6 +139,13 @@ class WorldEntityRecord {
       _ => name,
     };
   }
+
+  /// The kind used to pair source and saved records. A Bedrock llama that
+  /// arrived with a wandering trader is saved by Java as a trader llama.
+  String get matchType => switch (canonicalType) {
+    'trader_llama' => 'llama',
+    final kind => kind,
+  };
 }
 
 class WorldCensus {
@@ -135,6 +156,7 @@ class WorldCensus {
     required this.remotePlayers,
     required this.version,
     this.warnings = const [],
+    this.levelName,
   });
   final WorldEdition edition;
   final List<WorldEntityRecord> entities;
@@ -142,6 +164,19 @@ class WorldCensus {
   final int remotePlayers;
   final Object version;
   final List<String> warnings;
+
+  /// The in-game name, when the save records one apart from its folder name.
+  final String? levelName;
+
+  WorldCensus withLevelName(String? name) => WorldCensus(
+    edition: edition,
+    entities: entities,
+    localPlayer: localPlayer,
+    remotePlayers: remotePlayers,
+    version: version,
+    warnings: warnings,
+    levelName: name,
+  );
 
   factory WorldCensus.fromJson(Map<String, dynamic> json) => WorldCensus(
     edition: WorldEdition.values.byName(json['edition'] as String),
@@ -278,7 +313,7 @@ void verifyWorldConversion(
   }
   verifyWorldEntityTarget(output, options.target);
   String bucket(WorldEntityRecord e, int x, int y, int z) =>
-      '${e.canonicalType}:${e.dimension}:$x:$y:$z';
+      '${e.matchType}:${e.dimension}:$x:$y:$z';
   final remaining = <String, List<WorldEntityRecord>>{};
   for (final entity in output.entities) {
     final key = bucket(

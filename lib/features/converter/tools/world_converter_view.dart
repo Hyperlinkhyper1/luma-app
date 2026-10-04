@@ -104,7 +104,8 @@ class _WorldConverterViewState extends State<WorldConverterView> {
     final source = _source;
     final parent = _outputParent;
     if (source == null || parent == null) return;
-    final name = worldSourceName(source);
+    final name = _census?.levelName ?? worldSourceName(source);
+    final edition = _target.edition == WorldEdition.java ? 'Java' : 'Bedrock';
     setState(() {
       _busy = true;
       _error = null;
@@ -113,8 +114,10 @@ class _WorldConverterViewState extends State<WorldConverterView> {
     try {
       final result = await _service.convert(
         source: source,
-        destination:
-            '$parent/${name}_${_target.edition.name}_${_target.version}',
+        destination: await _service.availableDestination(
+          parent,
+          '$name ($edition ${_target.displayVersion})',
+        ),
         options: WorldConversionOptions(
           target: _target,
           entities: _entities,
@@ -201,6 +204,11 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                 ),
                 if (census != null) ...[
                   const SizedBox(height: 12),
+                  if (census.levelName case final levelName?)
+                    Text(
+                      levelName,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   Text(
                     '${census.edition.label} · ${census.entities.length} entities · ${census.localPlayer ? 1 : 0} local player · ${census.remotePlayers} additional players',
                   ),
@@ -286,7 +294,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Convert entities'),
                         subtitle: const Text(
-                          'Mobs, pets, villagers, vehicles and passengers. Every source entity must match a saved output record or conversion fails.',
+                          'Mobs, pets, villagers, vehicles and passengers. Every source entity must match a saved output record or conversion fails. Projectiles still in mid-air are listed, not carried over.',
                         ),
                         value: _entities,
                         onChanged: _busy
@@ -337,6 +345,13 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                 ),
                 if (_outputParent != null)
                   Text(_outputParent!, style: TextStyle(color: luma.textMuted)),
+                if (census != null && census.edition == _target.edition) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'This world is already ${census.edition.label}. Choose the other edition to convert it.',
+                    style: TextStyle(color: luma.textSecondary),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 ConverterPrimaryButton(
                   label: 'Convert & verify world',

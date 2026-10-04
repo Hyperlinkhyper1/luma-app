@@ -135,7 +135,8 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
     final query = _query.trim().toLowerCase();
     final models = [
       ...uploads,
-      for (final entry in _bundledRackTests) entry.benchmark,
+      for (final entry in _bundledRackTests)
+        if (repo.byId(entry.benchmark.id) == null) entry.benchmark,
     ].where((entry) => entry.model.toLowerCase().contains(query)).toList();
     void pick(AiBenchmark entry) {
       final bundled = _bundledRackTests

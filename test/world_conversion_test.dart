@@ -301,4 +301,90 @@ void main() {
       expect(await root.list().length, 1);
     },
   );
+  test(
+    'pre-1.13 Java refuses selected records before the terrain pass',
+    () async {
+      final root = await Directory.systemTemp.createTemp('luma-world-old-');
+      addTearDown(() => root.delete(recursive: true));
+      final source = await Directory('${root.path}/source').create();
+      await File('${source.path}/level.dat').writeAsString('source');
+      final service = WorldConverterService(
+        worker: (args) async {
+          expect(args.first, 'scan');
+          return census([cow], edition: WorldEdition.bedrock);
+        },
+        versionWorker: (_, _, _, _) async =>
+            fail('Terrain conversion started for a doomed target'),
+      );
+      await expectLater(
+        service.convert(
+          source: source.path,
+          destination: '${root.path}/result',
+          options: const WorldConversionOptions(
+            target: WorldTarget(WorldEdition.java, '1.12.2'),
+          ),
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('before 1.13'),
+          ),
+        ),
+      );
+      expect(await root.list().length, 1);
+    },
+  );
+  test('a trader llama satisfies a Bedrock llama, but not another kind', () {
+    final source = census([
+      const WorldEntityRecord('minecraft:llama', 0, [17.18, -20.31, 11.19]),
+    ], edition: WorldEdition.bedrock);
+    const options = WorldConversionOptions(
+      target: WorldTarget(WorldEdition.java, '1.21.10'),
+    );
+    verifyWorldConversion(
+      source,
+      census([
+        const WorldEntityRecord('minecraft:trader_llama', 0, [
+          17.18,
+          -20.31,
+          11.19,
+        ]),
+      ]),
+      options,
+    );
+    expect(
+      () => verifyWorldConversion(
+        source,
+        census([
+          const WorldEntityRecord('minecraft:camel', 0, [17.18, -20.31, 11.19]),
+        ]),
+        options,
+      ),
+      throwsFormatException,
+    );
+  });
+  test('output folders use a safe name and never collide', () async {
+    expect(
+      worldFolderName('villa - Kopiëren (Java 26.3)'),
+      'villa - Kopiëren (Java 26.3)',
+    );
+    expect(worldFolderName('a<b>:c"d/e\\f|g?h*'), 'a_b__c_d_e_f_g_h_');
+    expect(worldFolderName('trailing. . '), 'trailing');
+    expect(worldFolderName('CON'), '_CON');
+    expect(worldFolderName('   '), 'world');
+    final root = await Directory.systemTemp.createTemp('luma-world-name-');
+    addTearDown(() => root.delete(recursive: true));
+    final service = WorldConverterService();
+    expect(
+      await service.availableDestination(root.path, 'villa (Java 26.3)'),
+      '${root.path}/villa (Java 26.3)',
+    );
+    await Directory('${root.path}/villa (Java 26.3)').create();
+    await File('${root.path}/villa (Java 26.3) (2)').writeAsString('');
+    expect(
+      await service.availableDestination(root.path, 'villa (Java 26.3)'),
+      '${root.path}/villa (Java 26.3) (3)',
+    );
+  });
 }

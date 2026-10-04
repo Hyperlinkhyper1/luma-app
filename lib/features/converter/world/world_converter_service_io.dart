@@ -6,6 +6,8 @@ import 'package:archive/archive_io.dart';
 
 import 'world_conversion.dart';
 
+const _lenientUtf8 = Utf8Codec(allowMalformed: true);
+
 typedef WorldWorker = Future<WorldCensus> Function(List<String> arguments);
 typedef WorldVersionWorker =
     Future<void> Function(
@@ -53,9 +55,20 @@ class WorldConverterService {
   Future<WorldCensus> _run(List<String> arguments) async {
     if (_worker != null) return _worker(arguments);
     final executable = await _executable();
-    final result = await Process.run(executable.path, arguments);
+    final result = await Process.run(
+      executable.path,
+      arguments,
+      stdoutEncoding: _lenientUtf8,
+      stderrEncoding: _lenientUtf8,
+    );
     if (result.exitCode != 0) {
-      throw FormatException(result.stderr.toString().trim());
+      final detail = result.stderr.toString().trim();
+      throw FormatException(
+        detail.isEmpty
+            ? 'The world conversion engine stopped unexpectedly '
+                  '(exit code ${result.exitCode}). The original world has not changed.'
+            : detail,
+      );
     }
     final lines = const LineSplitter().convert(result.stdout.toString());
     final payload = lines.lastWhere(
@@ -91,24 +104,40 @@ class WorldConverterService {
     } else {
       await Directory(destination).create();
     }
-    final result = await Process.run(java.path, [
-      '-Xmx4G',
-      '-Dfile.encoding=UTF-8',
-      '-jar',
-      jar.path,
-      '-i',
-      Directory(source).absolute.path,
-      '-o',
-      Directory(destination).absolute.path,
-      '-f',
-      target.format,
-      if (preserveRecords) '-k',
-    ]);
+    final result = await Process.run(
+      java.path,
+      [
+        '-Xmx4G',
+        '-Dfile.encoding=UTF-8',
+        '-Dstdout.encoding=UTF-8',
+        '-Dstderr.encoding=UTF-8',
+        '-jar',
+        jar.path,
+        '-i',
+        Directory(source).absolute.path,
+        '-o',
+        Directory(destination).absolute.path,
+        '-f',
+        target.format,
+        if (preserveRecords) '-k',
+      ],
+      stdoutEncoding: _lenientUtf8,
+      stderrEncoding: _lenientUtf8,
+    );
     if (result.exitCode != 0 ||
         !result.stdout.toString().contains('Conversion complete!') ||
         !await File('$destination/level.dat').exists()) {
+      var detail = result.stderr.toString().trim();
+      if (detail.isEmpty) {
+        final lines = const LineSplitter()
+            .convert(result.stdout.toString())
+            .where((line) => line.trim().isNotEmpty)
+            .toList();
+        detail = lines.skip(lines.length > 5 ? lines.length - 5 : 0).join('\n');
+      }
       throw FormatException(
-        'Version conversion failed: ${result.stderr.toString().trim()}',
+        'Version conversion failed: '
+        '${detail.isEmpty ? 'exit code ${result.exitCode}' : detail}',
       );
     }
   }
@@ -121,9 +150,39 @@ class WorldConverterService {
     try {
       final copy = Directory('${snapshot.path}/world');
       await _snapshotSource(path, copy);
-      return await _run(['scan', copy.path, 'normalize']);
+      final census = await _run(['scan', copy.path, 'normalize']);
+      return census.withLevelName(await _bedrockLevelName(copy));
     } finally {
       await snapshot.delete(recursive: true);
+    }
+  }
+
+  /// Bedrock world folders are random ids; the real name is in levelname.txt.
+  Future<String?> _bedrockLevelName(Directory world) async {
+    final file = File('${world.path}/levelname.txt');
+    if (!await file.exists()) return null;
+    try {
+      final name = utf8
+          .decode(await file.readAsBytes(), allowMalformed: true)
+          .split('\n')
+          .first
+          .replaceFirst('\uFEFF', '')
+          .trim();
+      return name.isEmpty ? null : name;
+    } on FileSystemException {
+      return null;
+    }
+  }
+
+  /// The first of `name`, `name (2)`, `name (3)`… that is free under [parent].
+  Future<String> availableDestination(String parent, String name) async {
+    final base = worldFolderName(name);
+    for (var n = 1; ; n++) {
+      final path = '$parent/${n == 1 ? base : '$base ($n)'}';
+      if (await FileSystemEntity.type(path, followLinks: false) ==
+          FileSystemEntityType.notFound) {
+        return path;
+      }
     }
   }
 
@@ -176,6 +235,17 @@ class WorldConverterService {
         throw const FormatException(
           'Additional players need Java UUID / Bedrock XUID mappings. '
           'Player conversion currently supports single-player worlds.',
+        );
+      }
+      // Refuse before the terrain pass, which can take minutes on a large world.
+      if (options.target.edition == WorldEdition.java &&
+          (options.target.savedVersion as int) < 1519 &&
+          ((options.entities && before.entities.isNotEmpty) ||
+              (options.players && before.localPlayer))) {
+        throw const FormatException(
+          'Java targets before 1.13 cannot safely store entity/player '
+          'records. Choose Java 1.13 or newer, or turn off Convert entities '
+          'and Convert players. The original world has not changed.',
         );
       }
       if (options.target.edition == WorldEdition.bedrock) {

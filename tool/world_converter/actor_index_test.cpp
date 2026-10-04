@@ -102,9 +102,9 @@ int main() {
     CompoundTag local; local[u8"UniqueID"] = std::make_shared<mcfile::nbt::LongTag>(321);
     auto localBytes = CompoundTag::Write(local,mcfile::Encoding::LittleEndian);
     require(db->Put({},"~local_player",*localBytes).ok(),"Cannot save owner fixture"); db.reset();
-    recoverBedrockProjectiles(root,output);
+    recoverBedrockActors(root,output);
     require(scanJava(output)["entities"].size() == 2,"Projectile-only chunks must preserve both arrow and trident");
-    recoverBedrockProjectiles(root,output);
+    recoverBedrockActors(root,output);
     require(scanJava(output)["entities"].size() == 2,"Projectile recovery duplicated existing identities");
     bool checkedTrident = false; json ignored = json::array();
     regions(output/"entities",0,ignored,false,[&](CompoundTag &chunk,size_t,fs::path const &) {
@@ -121,7 +121,97 @@ int main() {
       }
     },false);
     require(checkedTrident,"Saved output has no trident");
+    // Java 1.20.4 predates item components: the thrown item is "Trident" with Count/tag.
+    auto legacy = root/"java-1.20.4"; fs::create_directories(legacy);
+    (*javaData)[u8"DataVersion"] = std::make_shared<mcfile::nbt::IntTag>(3700);
+    saveJavaLevel(legacy,*javaRoot);
+    je2be::kJavaDataVersion = 3700;
+    recoverBedrockActors(root,legacy);
+    je2be::kJavaDataVersion = 4556;
+    require(scanJava(legacy)["entities"].size() == 2,"Legacy targets must preserve both arrow and trident");
+    checkedTrident = false; bool checkedArrow = false;
+    regions(legacy/"entities",0,ignored,false,[&](CompoundTag &chunk,size_t,fs::path const &) {
+      require(chunk.int32(u8"DataVersion",0) == 3700,"Legacy projectile chunk has the wrong schema version");
+      for (auto const &entry : chunk.listTag(u8"Entities")->fValue) {
+        auto entity = entry->asCompound();
+        require(!entity->compoundTag(u8"item"),"Legacy projectiles must not use the component item field");
+        if (entity->string(u8"id",u8"") == u8"minecraft:arrow") {
+          CompoundTag downgraded; downgraded.fValue = entity->fValue;
+          adaptJavaTag(downgraded,2230);
+          auto most = downgraded.int64(u8"OwnerUUIDMost"), least = downgraded.int64(u8"OwnerUUIDLeast");
+          require(!downgraded.intArrayTag(u8"Owner") && most && least &&
+            *most == ((int64_t(1) << 32) | 2) && *least == ((int64_t(3) << 32) | 4),
+            "Pre-1.16 arrow owner must use OwnerUUIDMost/OwnerUUIDLeast");
+          checkedArrow = true;
+          continue;
+        }
+        auto item = entity->compoundTag(u8"Trident");
+        require(item && item->string(u8"id",u8"") == u8"minecraft:trident","Legacy trident item was not converted");
+        require(item->byte(u8"Count",0) == 1,"Legacy trident item lost its count");
+        auto tag = item->compoundTag(u8"tag");
+        require(tag && tag->int32(u8"Damage",-1) == 7,"Legacy trident durability was lost");
+        checkedTrident = true;
+      }
+    },false);
+    require(checkedTrident && checkedArrow,"Legacy output is missing a projectile");
+
+    // A naturally generated nest saves its bee as only ActorIdentifier with an empty SaveData.
+    auto hive = std::make_shared<CompoundTag>();
+    (*hive)[u8"id"] = std::make_shared<mcfile::nbt::StringTag>(u8"Beehive");
+    (*hive)[u8"x"] = std::make_shared<mcfile::nbt::IntTag>(1);
+    (*hive)[u8"y"] = std::make_shared<mcfile::nbt::IntTag>(64);
+    (*hive)[u8"z"] = std::make_shared<mcfile::nbt::IntTag>(1);
+    auto occupants = std::make_shared<mcfile::nbt::ListTag>(Tag::Type::Compound);
+    auto natural = std::make_shared<CompoundTag>();
+    (*natural)[u8"ActorIdentifier"] = std::make_shared<mcfile::nbt::StringTag>(u8"minecraft:bee<>");
+    (*natural)[u8"SaveData"] = std::make_shared<CompoundTag>();
+    (*natural)[u8"TicksLeftToStay"] = std::make_shared<mcfile::nbt::IntTag>(46);
+    occupants->push_back(natural);
+    (*hive)[u8"Occupants"] = occupants;
+    auto hiveBytes = CompoundTag::Write(*hive,mcfile::Encoding::LittleEndian);
+    db = reopen();
+    require(db->Put({},mcfile::be::DbKey::BlockEntity(0,0,mcfile::Dimension::Overworld),*hiveBytes).ok(),"Cannot save hive fixture");
+    db.reset();
+    bool counted = false;
+    auto bedrockCensus = scanBedrock(root);
+    for (auto const &e : bedrockCensus["entities"]) counted = counted || e["type"] == "minecraft:bee@hive";
+    require(counted,"A natural nest's bee must be counted from its ActorIdentifier");
+    auto hiveWorld = root/"java-hive"; fs::create_directories(hiveWorld);
+    (*javaData)[u8"DataVersion"] = std::make_shared<mcfile::nbt::IntTag>(4556);
+    saveJavaLevel(hiveWorld,*javaRoot);
+    auto terrain = std::make_shared<CompoundTag>();
+    (*terrain)[u8"DataVersion"] = std::make_shared<mcfile::nbt::IntTag>(4556);
+    (*terrain)[u8"Status"] = std::make_shared<mcfile::nbt::StringTag>(u8"minecraft:full");
+    (*terrain)[u8"sections"] = std::make_shared<mcfile::nbt::ListTag>(Tag::Type::Compound);
+    auto javaHive = std::make_shared<CompoundTag>();
+    (*javaHive)[u8"id"] = std::make_shared<mcfile::nbt::StringTag>(u8"minecraft:beehive");
+    (*javaHive)[u8"x"] = std::make_shared<mcfile::nbt::IntTag>(1);
+    (*javaHive)[u8"y"] = std::make_shared<mcfile::nbt::IntTag>(64);
+    (*javaHive)[u8"z"] = std::make_shared<mcfile::nbt::IntTag>(1);
+    auto tiles = std::make_shared<mcfile::nbt::ListTag>(Tag::Type::Compound); tiles->push_back(javaHive);
+    (*terrain)[u8"block_entities"] = tiles;
+    // A 1.17+ terrain chunk's own Entities list is ignored by the game and must not be counted.
+    auto ghosts = std::make_shared<mcfile::nbt::ListTag>(Tag::Type::Compound);
+    auto ghost = std::make_shared<CompoundTag>(); ghost->fValue = actor.fValue;
+    (*ghost)[u8"id"] = std::make_shared<mcfile::nbt::StringTag>(u8"minecraft:cow");
+    ghosts->push_back(ghost);
+    (*terrain)[u8"Entities"] = ghosts;
+    appendEntityChunks(hiveWorld/"region",{{{"r.0.0.mca",0},terrain}},false);
+    completeBedrockHives(root,hiveWorld);
+    auto hiveCensus = scanJava(hiveWorld)["entities"];
+    require(hiveCensus.size() == 1 && hiveCensus[0]["type"] == "minecraft:bee@hive",
+      "The rebuilt hive must hold the bee, and the ignored terrain Entities copy must not count");
+    bool checkedBee = false;
+    regions(hiveWorld/"region",0,ignored,false,[&](CompoundTag &chunk,size_t,fs::path const &) {
+      auto bees = chunk.listTag(u8"block_entities")->at(0)->asCompound()->listTag(u8"bees");
+      require(bees && bees->size() == 1,"Natural nest bee was not written to the Java hive");
+      auto bee = bees->at(0)->asCompound();
+      require(bee->compoundTag(u8"entity_data")->string(u8"id",u8"") == u8"minecraft:bee","Natural nest bee lost its kind");
+      require(bee->int32(u8"ticks_in_hive",-1) == 0 && bee->int32(u8"min_ticks_in_hive",-1) == 46,"Java hive occupants need both stay timers");
+      checkedBee = true;
+    },false);
+    require(checkedBee,"Java hive chunk is missing");
     fs::remove_all(root);
-    std::cout << "PASS: actor indexes, corruption/exclusions and projectile-only chunks with trident item/durability, owner identity and no duplicates" << std::endl; return 0;
+    std::cout << "PASS: actor indexes, corruption/exclusions and projectile-only chunks with trident item/durability, owner identity and no duplicates, on component and pre-1.20.5 targets; natural nests; ignored terrain entity copies" << std::endl; return 0;
   } catch (std::exception const &e) { fs::remove_all(root); std::cerr << e.what() << std::endl; return 1; }
 }

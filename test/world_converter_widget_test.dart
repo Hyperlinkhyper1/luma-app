@@ -36,6 +36,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('26.3'), findsOneWidget);
+    expect(find.text('resort'), findsOneWidget);
+    expect(find.textContaining('already Bedrock Edition'), findsNothing);
+    await tester.ensureVisible(find.text('Java Edition'));
+    await tester.tap(find.text('Java Edition'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bedrock Edition').last);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('already Bedrock Edition'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('world import exposes a pasteable path and .mcworld picker', (
@@ -121,6 +129,7 @@ class _WorldImportService extends WorldConverterService {
       warnings: const [
         'Repeated actor references normalized on a temporary copy.',
       ],
+      levelName: 'resort',
     );
   }
 }

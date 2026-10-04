@@ -14,7 +14,10 @@ void main() {
       final bytes = ZipEncoder().encode(
         Archive()
           ..addFile(ArchiveFile('level.dat', 5, [1, 2, 3, 4, 5]))
-          ..addFile(ArchiveFile('db/CURRENT', 3, [6, 7, 8])),
+          ..addFile(ArchiveFile('db/CURRENT', 3, [6, 7, 8]))
+          ..addFile(
+            ArchiveFile.string('levelname.txt', '\uFEFFresort - Kopiëren\r\n'),
+          ),
       );
       await file.writeAsBytes(bytes);
       final service = WorldConverterService(
@@ -36,10 +39,9 @@ void main() {
           );
         },
       );
-      expect(
-        (await service.inspect('"${file.path}"')).edition,
-        WorldEdition.bedrock,
-      );
+      final census = await service.inspect('"${file.path}"');
+      expect(census.edition, WorldEdition.bedrock);
+      expect(census.levelName, 'resort - Kopiëren');
       expect(await file.readAsBytes(), bytes);
     },
   );

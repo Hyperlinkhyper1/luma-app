@@ -14,7 +14,29 @@ class BenchmarkGenJob {
     required this.prompt,
     required this.maxTokens,
     required this.startedAtMs,
+    this.batchId,
   });
+
+  /// Rebuilds a batch run saved by [toState] after a restart.
+  static BenchmarkGenJob? fromState(Map<String, dynamic> j) {
+    final upstream = AiUpstream.parse(j['upstream'] as String?);
+    final batchId = j['batchId'];
+    if (upstream == null || batchId is! String || batchId.isEmpty) return null;
+    final effort = j['effort'] as String? ?? '';
+    return BenchmarkGenJob(
+      id: j['id'] as String,
+      kind: j['kind'] as String,
+      sceneId: j['sceneId'] as String,
+      name: j['name'] as String,
+      vendor: j['vendor'] as String? ?? '',
+      route: AiModeRoute(upstream, j['model'] as String,
+          reasoningEffort: effort.isEmpty ? null : effort),
+      prompt: '',
+      maxTokens: (j['maxTokens'] as num?)?.toInt() ?? 0,
+      startedAtMs: (j['startedAtMs'] as num).toInt(),
+      batchId: batchId,
+    );
+  }
 
   final String id;
   final String kind;
@@ -26,10 +48,19 @@ class BenchmarkGenJob {
   final int maxTokens;
   final int startedAtMs;
 
+  /// Runs through OpenRouter's Batch API: half price, no stream, done
+  /// within 24 hours.
+  bool get batch => isBenchmarkBatchModel(route.upstream, route.model);
+
+  /// OpenRouter's id once the batch is submitted, and its last status.
+  String? batchId;
+  String? batchStatus;
+
   /// running · done · failed · stopped
   String status = 'running';
 
-  /// connecting · thinking · writing · saving, while running.
+  /// connecting · thinking · writing · saving while streaming; a batch is
+  /// submitting · queued · generating · saving.
   String phase = 'connecting';
   int? finishedAtMs;
   int chars = 0;
@@ -41,6 +72,9 @@ class BenchmarkGenJob {
   bool hasOutput = false;
   bool stopRequested = false;
   HttpClient? client;
+
+  /// Cuts a batch's wait between polls short, so Stop lands at once.
+  Completer<void>? wake;
 
   Map<String, Object?> toJson() => {
         'id': id,
@@ -64,7 +98,23 @@ class BenchmarkGenJob {
         'finishReason': finishReason,
         'error': error,
         'hasOutput': hasOutput,
+        'batch': batch,
+        'batchStatus': batchStatus,
         ...publish,
+      };
+
+  Map<String, Object?> toState() => {
+        'id': id,
+        'kind': kind,
+        'sceneId': sceneId,
+        'name': name,
+        'vendor': vendor,
+        'upstream': route.upstream.name,
+        'model': route.model,
+        'effort': route.reasoningEffort ?? '',
+        'maxTokens': maxTokens,
+        'startedAtMs': startedAtMs,
+        'batchId': batchId,
       };
 }
 
@@ -72,6 +122,7 @@ final _benchmarkGenJobs = <BenchmarkGenJob>[];
 
 extension BenchmarkGenerateApi on Api {
   static const _maxRunning = 3;
+  static const _maxBatches = 10;
   static const _keepJobs = 20;
   static const _defaultMaxTokens = 64000;
   static const _maxPromptChars = 200000;
@@ -82,7 +133,55 @@ extension BenchmarkGenerateApi on Api {
   static const _idleTimeout = Duration(minutes: 8);
   static const _totalTimeout = Duration(minutes: 90);
 
+  /// OpenRouter's completion window is 24 h; a little slack before giving up.
+  static const _batchTimeout = Duration(hours: 26);
+  static const _batchPollEvery = Duration(seconds: 30);
+  static const _openRouterApi = 'https://openrouter.ai/api/v1';
+
   String get _genOutputDir => '${config.dataDir}/benchmark_runs';
+  File get _batchStateFile => File('$_genOutputDir/batches.json');
+
+  /// Picks back up the batches that were still out when the server last
+  /// stopped. A batch keeps running at OpenRouter either way; without this
+  /// its scene would be paid for and never added.
+  Future<void> resumeBenchmarkBatches() async {
+    List<dynamic> saved;
+    try {
+      if (!await _batchStateFile.exists()) return;
+      saved = jsonDecode(await _batchStateFile.readAsString()) as List;
+    } catch (e) {
+      stderr.writeln('[luma] could not read pending benchmark batches: $e');
+      return;
+    }
+    for (final raw in saved) {
+      if (raw is! Map<String, dynamic>) continue;
+      final BenchmarkGenJob? job;
+      try {
+        job = BenchmarkGenJob.fromState(raw);
+      } catch (_) {
+        continue;
+      }
+      if (job == null || _benchmarkGenJobs.any((j) => j.id == job!.id)) {
+        continue;
+      }
+      job.phase = 'queued';
+      _benchmarkGenJobs.add(job);
+      unawaited(_runBenchmarkGen(job));
+    }
+  }
+
+  Future<void> _saveBenchmarkBatches() async {
+    final pending = [
+      for (final j in _benchmarkGenJobs)
+        if (j.batch && j.status == 'running' && j.batchId != null) j.toState(),
+    ];
+    try {
+      await Directory(_genOutputDir).create(recursive: true);
+      await _batchStateFile.writeAsString(jsonEncode(pending), flush: true);
+    } on FileSystemException catch (e) {
+      stderr.writeln('[luma] could not save pending benchmark batches: $e');
+    }
+  }
 
   /// Everything the dialog needs: the tests with their default prompts, the
   /// server's keys, the efforts, and every recent run.
@@ -169,10 +268,18 @@ extension BenchmarkGenerateApi on Api {
     final rawMax = body['maxTokens'];
     final maxTokens =
         rawMax is num ? rawMax.toInt().clamp(1000, 256000) : _defaultMaxTokens;
-    if (_benchmarkGenJobs.where((j) => j.status == 'running').length >=
-        _maxRunning) {
-      return errorResponse(409, 'busy',
-          'Already $_maxRunning runs going. Wait for one to finish.');
+    // Batches only sit and wait at OpenRouter, so they get their own cap.
+    final batch = isBenchmarkBatchModel(upstream, model);
+    final running = _benchmarkGenJobs
+        .where((j) => j.status == 'running' && j.batch == batch)
+        .length;
+    if (running >= (batch ? _maxBatches : _maxRunning)) {
+      return errorResponse(
+          409,
+          'busy',
+          batch
+              ? 'Already $_maxBatches batches waiting. Wait for one to finish.'
+              : 'Already $_maxRunning runs going. Wait for one to finish.');
     }
 
     final taken = {
@@ -205,6 +312,8 @@ extension BenchmarkGenerateApi on Api {
     }
     job.stopRequested = true;
     job.client?.close(force: true);
+    job.wake?.complete();
+    job.wake = null;
     return jsonResponse(200, {'ok': true});
   }
 
@@ -263,38 +372,22 @@ extension BenchmarkGenerateApi on Api {
   Future<void> _runBenchmarkGen(BenchmarkGenJob job) async {
     final acc = ChatStreamAccumulator();
     try {
-      var (status, errorBody) =
-          await _streamBenchmarkGen(job, acc, withMaxTokens: true);
-      // Some models cap output below what was asked and refuse the request
-      // outright; their own maximum is the next best thing.
-      if (status == HttpStatus.badRequest &&
-          acc.contentChars == 0 &&
-          RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
-                  caseSensitive: false)
-              .hasMatch(errorBody) &&
-          !job.stopRequested) {
-        (status, errorBody) =
-            await _streamBenchmarkGen(job, acc, withMaxTokens: false);
-      }
-      await _saveBenchmarkGenOutput(job, acc.content);
-      if (job.stopRequested) {
-        job.status = 'stopped';
-      } else if (status != HttpStatus.ok) {
-        job.status = 'failed';
-        job.error = _benchmarkUpstreamError(job, status, errorBody);
-      } else if (acc.error != null && acc.contentChars == 0) {
-        job.status = 'failed';
-        job.error = acc.error;
+      if (job.batch) {
+        await _runBenchmarkBatch(job, acc);
       } else {
-        await _finishBenchmarkGen(job, acc);
+        await _runBenchmarkStream(job, acc);
       }
     } on TimeoutException {
       await _saveBenchmarkGenOutput(job, acc.content);
       job.status = job.stopRequested ? 'stopped' : 'failed';
       job.error ??= job.stopRequested
           ? null
-          : 'The upstream went quiet for ${_idleTimeout.inMinutes} minutes, '
-              'or the run passed ${_totalTimeout.inMinutes} minutes.';
+          : job.batch
+              ? 'The batch still wasn\'t done after '
+                  '${_batchTimeout.inHours} hours.'
+              : 'The upstream went quiet for ${_idleTimeout.inMinutes} '
+                  'minutes, or the run passed ${_totalTimeout.inMinutes} '
+                  'minutes.';
     } catch (e) {
       await _saveBenchmarkGenOutput(job, acc.content);
       job.status = job.stopRequested ? 'stopped' : 'failed';
@@ -313,14 +406,197 @@ extension BenchmarkGenerateApi on Api {
       } catch (error) {
         stderr.writeln('[luma] benchmark usage recording failed: $error');
       }
+      if (job.batch) await _saveBenchmarkBatches();
     }
     final mins =
         ((job.finishedAtMs! - job.startedAtMs) / 60000).toStringAsFixed(1);
     await store.logActivity(
         'benchmark_generate',
-        '${job.route.upstream.label} · ${job.route.model} → ${job.sceneId}: '
+        '${job.route.upstream.label} · ${job.route.model}'
+            '${job.batchId == null ? '' : ' (batch ${job.batchId})'} '
+            '→ ${job.sceneId}: '
             '${job.status}${job.error == null ? '' : ' (${job.error})'}, '
             '$mins min, ${job.tokens} tokens');
+  }
+
+  Future<void> _runBenchmarkStream(
+      BenchmarkGenJob job, ChatStreamAccumulator acc) async {
+    var (status, errorBody) =
+        await _streamBenchmarkGen(job, acc, withMaxTokens: true);
+    // Some models cap output below what was asked and refuse the request
+    // outright; their own maximum is the next best thing.
+    if (status == HttpStatus.badRequest &&
+        acc.contentChars == 0 &&
+        RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
+                caseSensitive: false)
+            .hasMatch(errorBody) &&
+        !job.stopRequested) {
+      (status, errorBody) =
+          await _streamBenchmarkGen(job, acc, withMaxTokens: false);
+    }
+    await _saveBenchmarkGenOutput(job, acc.content);
+    if (job.stopRequested) {
+      job.status = 'stopped';
+    } else if (status != HttpStatus.ok) {
+      job.status = 'failed';
+      job.error = _benchmarkUpstreamError(job, status, errorBody);
+    } else if (acc.error != null && acc.contentChars == 0) {
+      job.status = 'failed';
+      job.error = acc.error;
+    } else {
+      await _finishBenchmarkGen(job, acc);
+    }
+  }
+
+  /// The chat completion body for [job]'s one request, streamed or, for a
+  /// batch, not.
+  Map<String, dynamic> _benchmarkRequestBody(BenchmarkGenJob job,
+      {required bool stream, required bool withMaxTokens}) {
+    final route = job.route;
+    final effort = route.reasoningEffort;
+    return {
+      if (stream) 'model': route.model,
+      'messages': [
+        {'role': 'user', 'content': job.prompt},
+      ],
+      if (stream) 'stream': true,
+      if (stream) 'stream_options': {'include_usage': true},
+      if (withMaxTokens) 'max_tokens': job.maxTokens,
+      if (effort != null && route.upstream == AiUpstream.openrouter)
+        'reasoning': effort == 'none' ? {'enabled': false} : {'effort': effort},
+      if (effort != null && route.upstream != AiUpstream.openrouter)
+        'reasoning_effort': effort,
+    };
+  }
+
+  /// Submits [job] as a one-request OpenRouter batch, or picks up the one
+  /// it already has, then polls until it ends and reads the reply out of
+  /// it. Nothing streams, so progress is only ever the batch's status.
+  Future<void> _runBenchmarkBatch(
+      BenchmarkGenJob job, ChatStreamAccumulator acc) async {
+    final deadline =
+        DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_batchTimeout);
+    if (job.batchId == null) {
+      job.phase = 'submitting';
+      // OpenRouter stream-parses the submit and wants `requests` last.
+      final (status, body) =
+          await _openRouterBatchCall(job, 'POST', '/batches', body: {
+        'endpoint': '/v1/chat/completions',
+        'model': benchmarkBatchBaseModel(job.route.model),
+        'requests': [
+          {
+            'custom_id': job.sceneId,
+            'body':
+                _benchmarkRequestBody(job, stream: false, withMaxTokens: true),
+          },
+        ],
+      });
+      final id = body is Map ? body['id'] : null;
+      if ((status != HttpStatus.ok && status != HttpStatus.accepted) ||
+          id is! String ||
+          id.isEmpty) {
+        job.status = 'failed';
+        job.error = _benchmarkUpstreamError(
+            job, status, body is String ? body : jsonEncode(body));
+        return;
+      }
+      job.batchId = id;
+      job.batchStatus = (body as Map)['status'] as String?;
+      await _saveBenchmarkBatches();
+    }
+    job.phase = 'queued';
+    var misses = 0;
+    while (!job.stopRequested) {
+      if (DateTime.now().isAfter(deadline)) throw TimeoutException('batch');
+      final (status, body) =
+          await _openRouterBatchCall(job, 'GET', '/batches/${job.batchId}');
+      if (job.stopRequested) break;
+      if (status == HttpStatus.ok && body is Map) {
+        misses = 0;
+        final s = body['status'];
+        if (s is String) job.batchStatus = s;
+        job.phase = s == 'validating' ? 'queued' : 'generating';
+        if (kBenchmarkBatchTerminal.contains(s)) {
+          final why = readBenchmarkBatch(body, acc) ??
+              (acc.contentChars == 0 ? acc.error : null);
+          job.chars = acc.contentChars;
+          job.reasoningChars = acc.reasoningChars;
+          job.tokens = acc.tokens;
+          await _saveBenchmarkGenOutput(job, acc.content);
+          if (why != null && acc.contentChars == 0) {
+            job.status = 'failed';
+            job.error = why;
+          } else {
+            await _finishBenchmarkGen(job, acc);
+          }
+          // The reply is saved here now; OpenRouter needn't keep a copy.
+          unawaited(
+              _openRouterBatchCall(job, 'DELETE', '/batches/${job.batchId}')
+                  .then((_) {}, onError: (_) {}));
+          return;
+        }
+      } else if (status == HttpStatus.notFound ||
+          status == HttpStatus.gone ||
+          status == HttpStatus.unauthorized ||
+          status == HttpStatus.forbidden) {
+        job.status = 'failed';
+        job.error = _benchmarkUpstreamError(
+            job, status, body is String ? body : jsonEncode(body));
+        return;
+      } else if (++misses >= 20) {
+        // Ten minutes of OpenRouter not answering: say so, keep waiting.
+        stderr.writeln('[luma] benchmark batch ${job.batchId}: '
+            '$misses polls failed (last HTTP $status)');
+        misses = 0;
+      }
+      final wake = job.wake = Completer<void>();
+      await Future.any([wake.future, Future<void>.delayed(_batchPollEvery)]);
+      job.wake = null;
+    }
+    job.status = 'stopped';
+  }
+
+  /// One call to OpenRouter's Batch API on the server's key. Returns the
+  /// status and the decoded JSON, or the raw text when it isn't JSON; a
+  /// network failure comes back as status 0.
+  Future<(int, Object?)> _openRouterBatchCall(
+      BenchmarkGenJob job, String method, String path,
+      {Map<String, dynamic>? body}) async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 30);
+    try {
+      final req = await client
+          .openUrl(method, Uri.parse('$_openRouterApi$path'))
+          .timeout(const Duration(seconds: 30));
+      req.headers
+        ..set(HttpHeaders.authorizationHeader,
+            'Bearer ${config.aiUpstreamKey(AiUpstream.openrouter)}')
+        ..set('HTTP-Referer', config.publicUrl)
+        ..set('X-Title', 'luma');
+      if (body != null) {
+        req.headers.contentType = ContentType.json;
+        req.add(utf8.encode(jsonEncode(body)));
+      }
+      final res = await req.close().timeout(const Duration(seconds: 60));
+      final text = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(minutes: 2));
+      try {
+        return (res.statusCode, jsonDecode(text));
+      } on FormatException {
+        return (
+          res.statusCode,
+          text.length > 4000 ? text.substring(0, 4000) : text
+        );
+      }
+    } on TimeoutException {
+      return (0, 'OpenRouter did not answer in time.');
+    } on IOException catch (e) {
+      return (0, '$e');
+    } finally {
+      client.close(force: true);
+    }
   }
 
   /// One streamed request. Returns the HTTP status and, when it isn't 200,
@@ -329,20 +605,8 @@ extension BenchmarkGenerateApi on Api {
       BenchmarkGenJob job, ChatStreamAccumulator acc,
       {required bool withMaxTokens}) async {
     final route = job.route;
-    final effort = route.reasoningEffort;
-    final body = <String, dynamic>{
-      'model': route.model,
-      'messages': [
-        {'role': 'user', 'content': job.prompt},
-      ],
-      'stream': true,
-      'stream_options': {'include_usage': true},
-      if (withMaxTokens) 'max_tokens': job.maxTokens,
-      if (effort != null && route.upstream == AiUpstream.openrouter)
-        'reasoning': effort == 'none' ? {'enabled': false} : {'effort': effort},
-      if (effort != null && route.upstream != AiUpstream.openrouter)
-        'reasoning_effort': effort,
-    };
+    final body =
+        _benchmarkRequestBody(job, stream: true, withMaxTokens: withMaxTokens);
     job.client?.close(force: true);
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
@@ -437,7 +701,8 @@ extension BenchmarkGenerateApi on Api {
     if (model.length > 120) model = '${model.substring(0, 120)}…';
     final description = 'Generated from the admin dashboard: '
         '${job.route.upstream.label} · $model'
-        '${effort == null ? '' : ' · $effort reasoning'}.';
+        '${effort == null ? '' : ' · $effort reasoning'}'
+        '${job.batch ? ' · batch' : ''}.';
     final bytes = utf8.encode(page);
     final Map<String, dynamic> entry;
     try {
@@ -502,6 +767,10 @@ String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'autocomplete="off">'
     '<label class="bg-inline"><span>Reasoning</span>'
     '<select id="bgEffort" class="bn-input"></select></label>'
+    '<label class="bg-inline bg-batch" title="OpenRouter\'s batch variants '
+    'cost half as much but run asynchronously and can take up to 24 hours.">'
+    '<input id="bgBatch" type="checkbox"><span>Batch</span>'
+    '<span class="bg-batch-note">½ price · up to 24 h</span></label>'
     '</div>'
     '<div id="bgModels" class="bg-models" role="listbox" '
     'aria-labelledby="bgStep2"></div>'
@@ -577,6 +846,11 @@ const _bgCss = r'''
 .bg-model-tools .bn-input[type=search]{flex:1 1 240px}
 .bg-inline{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#9b94b3}
 .bg-inline .bn-input{min-width:150px;flex:none}
+.bg-batch{cursor:pointer;padding:6px 10px;border-radius:9px;border:1px solid #241e36;background:#12101e;user-select:none}
+.bg-batch:has(input:checked){border-color:#8a7ee0;background:#1a1530;color:#ece8f7}
+.bg-batch:has(input:disabled){opacity:.5;cursor:not-allowed}
+.bg-batch input{margin:0;accent-color:#8a7ee0}
+.bg-batch-note{font-size:11.5px;color:#8d86a8}
 .bg-models{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));grid-auto-rows:max-content;gap:8px;max-height:260px;overflow:auto;padding:2px}
 .bg-models .bg-opt{min-height:0;padding:10px 12px}
 .bg-model-id{font:11px ui-monospace,Consolas,monospace;color:#a9a0c3;overflow-wrap:anywhere}
@@ -626,6 +900,8 @@ const _bgScript = r'''
   const prompt = $('bgPrompt'), promptNote = $('bgPromptNote');
   const nameBox = $('bgName'), vendor = $('bgVendor'), maxTokens = $('bgMaxTokens');
   const status = $('bgStatus'), start = $('bgStart'), runsBox = $('bgRuns');
+  const batchBox = $('bgBatch');
+  const BATCH = ':batch';
   const pickerData = $('aiPickerData');
   const allModels = pickerData ? JSON.parse(pickerData.textContent) : [];
   const EFFORT_LABEL = { '': "Model's default", none: 'Off', minimal: 'Minimal', low: 'Low',
@@ -686,6 +962,14 @@ const _bgScript = r'''
   }
 
   function modelsFor(upstream) { return allModels.filter((m) => m.upstream === upstream); }
+  function isBatch(id) { return key === 'openrouter' && id.endsWith(BATCH); }
+  // Only OpenRouter has batch variants; elsewhere the toggle is off and locked.
+  function syncBatchBox() {
+    const can = key === 'openrouter' && modelsFor(key).some((m) => m.id.endsWith(BATCH));
+    batchBox.disabled = !can && !isBatch(modelId.value.trim());
+    if (key !== 'openrouter') batchBox.checked = false;
+    start.textContent = batchBox.checked ? 'Submit batch' : 'Start run';
+  }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
   function renderKeys() {
     keysBox.innerHTML = state.keys.map((k) => '<button type="button" role="radio" class="bg-opt" data-value="' + esc(k.upstream) + '"'
@@ -703,12 +987,14 @@ const _bgScript = r'''
   }
   function renderModels() {
     const q = search.value.trim().toLowerCase();
-    const list = modelsFor(key).filter((m) => !q || (m.id + ' ' + (m.name || '')).toLowerCase().includes(q))
+    const list = modelsFor(key).filter((m) => isBatch(m.id) === batchBox.checked)
+      .filter((m) => !q || (m.id + ' ' + (m.name || '')).toLowerCase().includes(q))
       .sort((a, b) => (b.intelligence || 0) - (a.intelligence || 0) || (a.name || a.id).localeCompare(b.name || b.id));
-    $('bgModelCount').textContent = key ? list.length + ' on ' + labelOf(key) : '';
+    $('bgModelCount').textContent = key ? list.length + (batchBox.checked ? ' batch models' : '') + ' on ' + labelOf(key) : '';
     if (!key) { modelsBox.innerHTML = '<div class="bg-empty">Pick a key first.</div>'; return; }
     if (!list.length) {
       modelsBox.innerHTML = '<div class="bg-empty">' + (q ? 'No model matches “' + esc(q) + '”. Type its ID below instead.'
+        : batchBox.checked ? 'No batch models listed for this key. Refresh model data on the Maintenance tab, or type an ID ending in :batch below.'
         : 'No models listed for this key. Refresh model data on the Maintenance tab, or type an ID below.') + '</div>';
       return;
     }
@@ -732,6 +1018,20 @@ const _bgScript = r'''
     model = null;
     modelId.value = '';
     search.value = '';
+    syncBatchBox();
+    renderModels();
+    autofill();
+  }
+  // Flipping Batch keeps the same model where it has the other variant.
+  function toggleBatch() {
+    const id = modelId.value.trim();
+    if (id) {
+      const other = batchBox.checked ? (id.endsWith(BATCH) ? id : id + BATCH)
+        : (id.endsWith(BATCH) ? id.slice(0, -BATCH.length) : id);
+      if (modelsFor(key).some((m) => m.id === other)) pickModel(other);
+      else { model = null; modelId.value = ''; }
+    }
+    syncBatchBox();
     renderModels();
     autofill();
   }
@@ -756,6 +1056,7 @@ const _bgScript = r'''
     if (!base) return '';
     const colon = base.indexOf(': ');
     if (colon > 0 && colon < 30) base = base.slice(colon + 2).trim();
+    base = base.replace(/\s*\(batch\)$/i, '').replace(/:batch$/, '');
     const e = ENTRY_EFFORT[effort.value];
     return (e ? base + ' (' + e + ')' : base).slice(0, 80);
   }
@@ -795,8 +1096,14 @@ const _bgScript = r'''
   });
   search.addEventListener('input', renderModels);
   effort.addEventListener('change', autofill);
+  batchBox.addEventListener('change', toggleBatch);
   modelId.addEventListener('input', () => {
     const id = modelId.value.trim();
+    if (key === 'openrouter' && isBatch(id) !== batchBox.checked) {
+      batchBox.checked = isBatch(id);
+      syncBatchBox();
+      renderModels();
+    }
     model = modelsFor(key).find((m) => m.id === id) || null;
     modelsBox.querySelectorAll('[role=option]').forEach((b) =>
       b.setAttribute('aria-selected', model && b.dataset.id === id ? 'true' : 'false'));
@@ -827,7 +1134,7 @@ const _bgScript = r'''
       const usable = s.keys.filter((k) => k.configured);
       if (!usable.some((k) => k.upstream === key)) key = '';
       if (!key && usable.length) pickKey(usable[0].upstream);
-      else renderModels();
+      else { syncBatchBox(); renderModels(); }
       if (!usable.length) {
         status.textContent = 'The server has no AI keys set. Add one to its environment first.';
         start.disabled = true;
@@ -863,7 +1170,8 @@ const _bgScript = r'''
     }).catch(() => { start.disabled = false; status.textContent = 'Could not start the run (network error).'; });
   });
 
-  const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving' };
+  const PHASE = { connecting: 'Connecting', thinking: 'Thinking', writing: 'Writing', saving: 'Saving',
+    submitting: 'Submitting', queued: 'Queued', generating: 'In batch' };
   function renderRuns(jobs) {
     runsBox.innerHTML = (jobs || []).map((j) => {
       const running = j.status === 'running';
@@ -876,6 +1184,7 @@ const _bgScript = r'''
       if (j.chars) bits.push(kfmt(j.chars) + ' characters written');
       else if (j.reasoningChars) bits.push(kfmt(j.reasoningChars) + ' characters of reasoning');
       if (j.tokens) bits.push(kfmt(j.tokens) + ' tokens');
+      if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);
       let pub = '';
       if (j.status === 'done') {
@@ -886,12 +1195,13 @@ const _bgScript = r'''
         else if (j.render === 'queued') pub += ' · banner queued';
       }
       const actions = [];
-      if (running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="stop">Stop</button>');
+      if (running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="stop"' + (j.batch ? ' data-batch="1"' : '') + '>Stop</button>');
       if (j.commitUrl) actions.push('<a class="btn btn-ghost btn-sm" href="' + esc(j.commitUrl) + '" target="_blank" rel="noopener">Commit</a>');
       if (j.hasOutput) actions.push('<a class="btn btn-ghost btn-sm" href="/admin/benchmarks/generate/' + encodeURIComponent(j.id) + '/output" target="_blank" rel="noopener">Reply</a>');
       if (!running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="dismiss" aria-label="Dismiss this run">Dismiss</button>');
       return '<div class="bg-run is-' + esc(j.status) + '" data-id="' + esc(j.id) + '">'
-        + '<div><div class="bg-run-name">' + esc(j.name) + ' <span class="badge">' + esc(j.kindLabel) + '</span>' + badge + '</div>'
+        + '<div><div class="bg-run-name">' + esc(j.name) + ' <span class="badge">' + esc(j.kindLabel) + '</span>'
+        + (j.batch ? '<span class="badge">Batch</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + esc(j.upstreamLabel) + ' · <code>' + esc(j.model) + '</code>'
         + (j.effort ? ' · ' + esc(EFFORT_LABEL[j.effort] || j.effort) + ' reasoning' : '')
         + ' → <code>' + esc(j.sceneId) + '</code></div></div>'
@@ -907,7 +1217,9 @@ const _bgScript = r'''
     const b = e.target.closest('button[data-act]');
     if (!b) return;
     const id = b.closest('.bg-run').dataset.id;
-    if (b.dataset.act === 'stop' && !confirm('Stop this run? What the model wrote so far is kept as its reply, but no entry is added.')) return;
+    if (b.dataset.act === 'stop' && !confirm(b.dataset.batch
+      ? 'Stop waiting for this batch? OpenRouter can\'t cancel a submitted batch, so it still runs and is billed; luma just won\'t add its scene.'
+      : 'Stop this run? What the model wrote so far is kept as its reply, but no entry is added.')) return;
     b.disabled = true;
     post('/admin/benchmarks/generate/' + encodeURIComponent(id) + '/' + b.dataset.act).then(poll);
   });

@@ -61,6 +61,7 @@ Future<void> main() async {
       cs2OfflineStore: cs2OfflineStore);
 
   api.startAiPriceWatch();
+  await api.resumeBenchmarkBatches();
 
   final server = await shelf_io.serve(
     api.handler,

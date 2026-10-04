@@ -129,6 +129,7 @@ inline const std::set<std::string> kJavaEntityTypes = {
   "minecraft:zombified_piglin",
 };
 inline const std::set<std::string> kBedrockEntityTypes = {
+  "minecraft:thrown_trident",
   "minecraft:allay",
   "minecraft:armadillo",
   "minecraft:armor_stand",
