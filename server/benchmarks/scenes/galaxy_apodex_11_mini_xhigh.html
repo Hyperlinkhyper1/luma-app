@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galactic Voyager - Procedural 3D Benchmark</title>
+<style>
+  :root { --hud: #00f0ff; --hud-dim: #005f66; --warn: #ff2a2a; --bg: rgba(0,5,10,0.6); }
+  body { margin:0; overflow:hidden; background:#000; font-family:'Courier New',monospace; color:#fff; user-select:none; }
+  canvas { display:block; }
+  #loading {
+    position: absolute; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    transition: opacity 1s;
+  }
+  #loading h1 { color:var(--hud); font-size:2rem; text-transform:uppercase; letter-spacing:4px; text-shadow:0 0 20px var(--hud); }
+  #loading p { color:var(--hud-dim); font-size:0.9rem; margin-top:1rem; }
+  #progress { width:300px; height:4px; background:#222; margin-top:1.5rem; overflow:hidden; }
+  #progress-bar { width:0%; height:100%; background:var(--hud); box-shadow:0 0 10px var(--hud); transition:width 0.2s; }
+  #hud {
+    position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:100;
+    display:none;
+  }
+  .panel {
+    position:absolute; pointer-events:auto; background:var(--bg); border:1px solid var(--hud-dim);
+    padding:10px 14px; backdrop-filter:blur(4px); border-radius:4px; box-shadow:0 0 15px rgba(0,240,255,0.05);
+  }
+  #hud-top { top:20px; left:20px; right:20px; display:flex; justify-content:space-between; align-items:flex-start; }
+  .info-block h3 { margin:0 0 4px 0; font-size:0.75rem; color:var(--hud-dim); text-transform:uppercase; letter-spacing:1px; }
+  .info-block span { font-size:1.1rem; font-weight:bold; color:#fff; text-shadow:0 0 5px rgba(255,255,255,0.5); }
+  .data-row { font-size:0.9rem; color:#ccc; margin-bottom:2px; display:flex; justify-content:space-between; }
+  .data-row b { color:#fff; }
+  #hud-bottom { bottom:20px; left:20px; right:20px; display:flex; justify-content:space-between; align-items:flex-end; }
+  #minimap-container { width:160px; height:160px; border-radius:50%; overflow:hidden; border:2px solid var(--hud-dim); background:#000; box-shadow:0 0 20px rgba(0,240,255,0.1); }
+  #minimap { width:100%; height:100%; }
+  #controls { bottom:20px; right:20px; display:flex; gap:8px; flex-direction:column; align-items:flex-end; }
+  button {
+    background:rgba(0,0,0,0.8); border:1px solid var(--hud-dim); color:var(--hud); padding:8px 12px;
+    font-family:inherit; font-size:0.8rem; cursor:pointer; transition:all 0.2s; text-transform:uppercase;
+  }
+  button:hover { background:var(--hud); color:#000; box-shadow:0 0 10px var(--hud); }
+  button.active { background:var(--hud); color:#000; }
+  #legend { font-size:0.7rem; color:#888; margin-top:4px; line-height:1.4; }
+  #warp-overlay {
+    position:absolute; top:0; left:0; width:100%; height:100%; background:#000; z-index:90;
+    display:none; pointer-events:none;
+    background: radial-gradient(circle, transparent 40%, rgba(255,255,255,0.1) 100%);
+  }
+  #warp-scanlines {
+    position:absolute; top:0; left:0; width:100%; height:100%; z-index:91;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2) 2px, transparent 2px, transparent 4px);
+    display:none;
+  }
+  #mode-hud {
+    position: absolute; top: 20px; right: 20px; text-align: right;
+  }
+  #waypoint-hud { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: var(--warn); }
+  #toggle-ui { position:absolute; top:10px; left:10px; z-index:200; pointer-events:auto; background:none; border:none; color:var(--hud-dim); font-size:2rem; cursor:pointer; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+
+<div id="loading">
+  <h1>Galactic Voyager</h1>
+  <p id="status">Initializing Systems...</p>
+  <div id="progress"><div id="progress-bar"></div></div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div id="hud">
+  <div id="hud-top" class="panel">
+    <div style="width:380px;">
+      <div id="waypoint-hud" style="position:static; transform:none; width:auto; text-align:left; font-size:0.8rem; color:#fff;"></div>
+      <div class="info-block"><h3>Region</h3><span id="region-name">Perseus Arm</span></div>
+      <div class="info-block"><h3>Distance from Core</h3><span id="dist-core">24,500 ly</span></div>
+      <hr style="border:0; border-top:1px solid var(--hud-dim); margin:8px 0;">
+      <div class="data-row"><span>Speed (Sublight)</span> <b id="speed">24,000 km/s</b></div>
+      <div class="data-row"><span>Speed (Hyperdrive)</span> <b id="warp-speed">0.00 c</b></div>
+      <div class="data-row"><span>ETA to Destination</span> <b id="eta">00:42:15</b></div>
+    </div>
+  </div>
+
+  <div id="hud-bottom" class="panel">
+    <div id="legend">
+      <div style="color:var(--hud)">SYSTEMS NOMINAL</div>
+      <div id="warp-msg" style="display:none; color:var(--warn); animation: blink 0.5s infinite;">HYPERDRIVE ACTIVE</div>
+    </div>
+    <div id="minimap-container"><canvas id="minimap"></canvas></div>
+  </div>
+
+  <div id="controls" class="panel">
+    <div style="font-size:0.7rem; color:var(--hud-dim); margin-bottom:4px;">CAMERA MODE</div>
+    <div style="display:flex; gap:4px;">
+      <button class="active" data-mode="cinematic">Cinematic</button>
+      <button data-mode="chase">Chase</button>
+      <button data-mode="cockpit">Cockpit</button>
+      <button data-mode="map">Galaxy Map</button>
+    </div>
+    <div style="font-size:0.7rem; color:var(--hud-dim); margin:6px 0 4px;">VOYAGE CONTROL</div>
+    <div style="display:flex; gap:4px;">
+      <button id="btn-play">Play / Pause</button>
+      <button id="btn-audio">Audio: ON</button>
+      <button id="btn-info">How it Works</button>
+    </div>
+  </div>
+</div>
+
+<div id="warp-overlay"></div>
+<div id="warp-scanlines"></div>
+<button id="toggle-ui" style="display:none">✕</button>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+// --- MATH HELPERS ---
+const PI2 = Math.PI*2;
+const rand = (min=0, max=1) => Math.random()*(max-min)+min;
+
+// --- CONFIG ---
+const C = {
+  galaxyRadius: 50000, // ly
+  starCount: 260000,
+  armSlope: 0.45,
+  armCount: 5,
+  shipLength: 120, // meters
+  scaleM2LY: 1.057e-13, // meters to light years
+};
+
+// --- LOADING UI ---
+const Loading = {
+  el: document.getElementById('loading'),
+  bar: document.getElementById('progress-bar'),
+  status: document.getElementById('status'),
+  p: {v:0},
+  tick(msg) { this.p.v+=2; this.bar.style.width=this.p.v+'%'; this.status.innerText=msg; },
+  done() { this.el.style.opacity=0; setTimeout(()=>this.el.style.display='none', 1000); },
+};
+
+// ============================================================
+// AUDIO ENGINE (Web Audio API)
+// ============================================================
+class AudioEngine {
+  constructor() {
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.3;
+    this.master.connect(this.ctx.destination);
+    this.drone = null;
+    this.filter = null;
+    this.warpNode = null;
+    this.active = false;
+  }
+
+  startDrone() {
+    if(this.active) return;
+    this.active = true;
+    this.filter = this.ctx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 400;
+    
+    this.drone = this.ctx.createOscillator();
+    this.drone.type = 'triangle';
+    this.drone.frequency.value = 60;
+    this.drone.connect(this.filter);
+
+    // Sub-bass harmonics for "warp" feel
+    this.drone2 = this.ctx.createOscillator();
+    this.drone2.type = 'sine';
+    this.drone2.frequency.value = 30;
+    this.drone2.connect(this.filter);
+    this.drone2.start();
+
+    this.filter.connect(this.master);
+    this.drone.start();
+  }
+
+  update(speedScale) {
+    if(!this.active) return;
+    this.filter.frequency.setTargetAtTime(300 + speedScale*800, this.ctx.currentTime, 0.1);
+  }
+
+  startWarp() {
+    // Add a rising saw wave
+    this.warpNode = this.ctx.createOscillator();
+    this.warpNode.type = 'sawtooth';
+    this.warpNode.frequency.value = 100;
+    this.warpNode.connect(this.master);
+    this.warpNode.start();
+  }
+
+  endWarp() {
+    if(this.warpNode) {
+      this.warpNode.stop(this.ctx.currentTime+0.5);
+      this.warpNode = null;
+    }
+  }
+
+  toggle() {
+    if(this.ctx.state === 'suspended') this.ctx.resume();
+    if(this.active) {
+      this.drone.stop(); this.active=false;
+      document.getElementById('btn-audio').innerText="Audio: OFF";
+    } else {
+      this.startDrone();
+      document.getElementById('btn-audio').innerText="Audio: ON";
+    }
+  }
+}
+
+// ============================================================
+// TEXTURE GENERATORS
+// ============================================================
+const Tex = {
+  star: () => {
+    const c = document.createElement('canvas'); c.width=64; c.height=64;
+    const x = c.getContext('2d'); x.fillStyle='#fff'; x.beginPath();
+    x.arc(32,32, rand(8,16),0,PI2); x.fill();
+    return new THREE.CanvasTexture(c);
+  },
+  planetGlow: () => {
+    const c = document.createElement('canvas'); c.width=128; c.height=128;
+    const x = c.getContext('2d'); x.translate(64,64);
+    const g = x.createRadialGradient(0,0,0, 0,0,80);
+    g.addColorStop(0,'rgba(255,255,255,0.9)');
+    g.addColorStop(0.4,'rgba(100,200,255,0.2)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g; x.fillRect(-80,-80,160,160);
+    return new THREE.CanvasTexture(c);
+  },
+  nebula: () => {
+    const c = document.createElement('canvas'); c.width=256; c.height=256;
+    const x = c.getContext('2d');
+    const g = x.createRadialGradient(100,100,20, 120,120,150);
+    g.addColorStop(0,'rgba(180,50,255,0.6)');
+    g.addColorStop(0.3,'rgba(255,255,255,0.4)');
+    g.addColorStop(1,'rgba(20,0,50,0)');
+    x.fillStyle=g; x.fillRect(0,0,256,256);
+    // noise
+    for(let i=0;i<20000;i++){
+      x.fillStyle=`rgba(255,255,255,${rand(0,0.3)})`;
+      x.beginPath(); x.arc(rand()*256,rand()*256,rand()*2,0,PI2); x.fill();
+    }
+    return new THREE.CanvasTexture(c);
+  },
+  flare: () => {
+    const c = document.createElement('canvas'); c.width=128; c.height=128;
+    const x = c.getContext('2d'); x.translate(64,64);
+    x.fillStyle='white';
+    for(let i=0;i<8;i++){
+      x.rotate(PI2/8); x.fillRect(0, -2, 60, 4);
+    }
+    x.beginPath(); x.arc(0,0,20,0,PI2); x.fill();
+    x.shadowBlur=20; x.shadowColor='white';
+    return new THREE.CanvasTexture(c);
+  },
+  rings: () => {
+    const c = document.createElement('canvas'); c.width=256; c.height=256;
+    const x = c.getContext('2d'); x.translate(128,128);
+    const g = x.createRadialGradient(0,0,40, 0,0,200);
+    g.addColorStop(0,'rgba(210,180,140,0.8)');
+    g.addColorStop(0.1,'rgba(210,180,140,0.1)');
+    g.addColorStop(0.3,'rgba(210,180,140,0.7)');
+    g.addColorStop(0.35,'rgba(0,0,0,0.5)'); // Cassini gap
+    g.addColorStop(0.5,'rgba(210,180,140,0.7)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=g; x.fillRect(-200,-200,400,400);
+    return new THREE.CanvasTexture(c);
+  }
+};
+
+// ============================================================
+// GALAXY SYSTEM (The heavy lifter)
+// ============================================================
+class Galaxy {
+  constructor() {
+    this.group = new THREE.Group();
+    this.uniforms = {
+      uTime: {value:0},
+      uStarsSize: {value:2.0},
+      uCameraDist: {value:0}, // distance of camera from galactic center
+      uBulgeR: {value:2000},
+      uColorHalo: {value:new THREE.Color(0x223344)},
+      uColorBulge: {value:new THREE.Color(0xffddaa)},
+      uColorArm: {value:new THREE.Color(0x99ccff)},
+      uColorPink: {value:new THREE.Color(0xff66aa)},
+      uDustTint: {value:new THREE.Color(0x110000)},
+      uDustWidth: {value:0.06},
+      uHIIWidth: {value:0.1},
+      uRotationSpeed: {value:0.05},
+      uHyperdrive: {value:0.0},
+    };
+
+    const g = this.createGeometry(C.starCount);
+    this.mesh = new THREE.Points(g, new THREE.ShaderMaterial({
+      uniforms: this.uniforms,
+      vertexShader: `
+        uniform float uTime;
+        uniform float uStarsSize;
+        uniform float uCameraDist;
+        uniform float uBulgeR;
+        uniform float uHyperdrive;
+        attribute float aSize;
+        attribute float aBulge;
+        attribute float aArm;
+        attribute float aColor;
+        attribute float aOffset;
+        attribute vec3 aRandom;
+        varying float vAlpha;
+        varying float vDist;
+
+        // Spiral arm math
+        float getArm(float r) {
+          return mod(uTime * 20.0 + aOffset * 3.0 + r * ${C.armSlope} * 0.05, 6.28);
+        }
+
+        void main() {
+          vec3 pos = position;
+          float r = length(pos.xz);
+          float theta = atan(pos.z, pos.x);
+
+          // Differential rotation: closer stars orbit faster
+          float rot = 0.05 * (50000.0 / (r + 200.0)); // fast near core
+          float armTheta = getArm(r) + rot * 0.05;
+          float dArm = abs(theta - armTheta);
+
+          // Density / Color
+          float bulge = smoothstep(0.0, 1500.0, r) * (1.0 - smoothstep(${C.armCount}*.0, ${C.armCount}*.0 + 2000.0, r));
+          float arm = exp(-dArm * dArm * 40.0);
+          
+          // Stars only where they should be
+          float density = (bulge + arm);
+          if(density < 0.5) discard;
+
+          // Color mixing
+          vec3 col = mix(${this.uColorHalo.value}, ${this.uColorBulge.value}, bulge);
+          col = mix(col, ${this.uColorArm.value}, arm * 3.0);
+          
+          // H-II regions (pink) in arms
+          if(aColor > 0.5) col = mix(col, ${this.uColorPink.value}, aColor * 0.6 + 0.4);
+
+          // Dust lanes dim inner edge of arms
+          float dust = smoothstep(0.0, ${C.uDustWidth.value}, dArm);
+          col *= (1.0 - dust * ${this.uDustTint.value.rgb} * 2.0);
+
+          vAlpha = density * 0.8 + 0.2;
+          vAlpha *= (1.0 - dust * 0.7);
+
+          // Warp effect
+          if(uHyperdrive > 0.5) {
+             float warp = 1.0 + uHyperdrive * 4000.0;
+             pos = normalize(pos) * length(pos) * warp; 
+             vAlpha *= 1.0 + uHyperdrive * 2.0;
+             col *= 1.0 + uHyperdrive * 2.0;
+          }
+
+          vec4 mvPos = modelViewMatrix * vec4(pos, 1.0);
+          vDist = -mvPos.z;
+          gl_Position = projectionMatrix * mvPos;
+          gl_PointSize = uStarsSize * (1.0 + aSize) * mix(1.0, 300.0/r * 20.0, 1.0 - smoothstep(2000.0, 0.0, r));
+          gl_PointSize *= (1.0/length(gl_Position.xyz)); 
+        }
+      `,
+      fragmentShader: `
+        varying float vAlpha;
+        varying float vDist;
+        uniform sampler2D uTexture;
+        void main() {
+          if(length(gl_PointCoord - vec2(0.5)) > 0.5) discard;
+          gl_FragColor = texture2D(uTexture, gl_PointCoord) * vec4(vAlpha);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    }));
+    this.group.add(this.mesh);
+    this.mesh.matrixAutoUpdate = false;
+  }
+
+  createGeometry(n) {
+    const g = new THREE.BufferGeometry();
+    const pos = new Float32Array(n*3);
+    const sizes = new Float32Array(n);
+    const bulge = new Float32Array(n); // 1 if in bulge
+    const arms = new Float32Array(n);  // 1 if in arm
+    const colors = new Float32Array(n); // >0.5 if H-II region
+    const offsets = new Float32Array(n); // arm phase shift
+
+    // Generate dense core + arms
+    let idx = 0;
+    const rCore = 8000;
+    const rGalaxy = 50000;
+
+    // Bulge/Sphere core
+    const nCore = Math.floor(n * 0.15);
+    for(let i=0; i<nCore; i++) {
+      const r = rand(0, rCore);
+      const theta = rand(0, PI2);
+      const y = rand(-300, 300); // flatten slightly
+      pos[idx*3] = Math.cos(theta)*r;
+      pos[idx*3+1] = y;
+      pos[idx*3+2] = Math.sin(theta)*r;
+      sizes[idx] = rand(0.5, 1.5);
+      bulge[idx] = 1.0; colors[idx] = rand(0,1); offsets[idx] = rand(0,PI2); idx++;
+    }
+
+    // Arms (spiral)
+    const nArm = n - nCore;
+    for(let i=0; i<nArm; i++) {
+      const r = rand(2000, rGalaxy);
+      // Log spiral
+      const armAngle = (0.45 * Math.log(r) + rand(0, PI2)) * 0.05;
+      const baseTheta = rand(0, PI2);
+      const theta = armAngle + baseTheta * 0.3 + rand(-0.05, 0.05);
+      const y = rand(-600, 600) * (1.0 / (r/2000.0 + 1.0)); // thinner at edge
+      pos[idx*3] = Math.cos(theta)*r;
+      pos[idx*3+1] = y;
+      pos[idx*3+2] = Math.sin(theta)*r;
+      sizes[idx] = rand(0.3, 1.5);
+      bulge[idx] = 0.0; colors[idx] = rand(0,1); offsets[idx] = rand(0,PI2); idx++;
+    }
+
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    g.setAttribute('aBulge', new THREE.BufferAttribute(bulge, 1));
+    g.setAttribute('aArm', new THREE.BufferAttribute(arms, 1));
+    g.setAttribute('aColor', new THREE.BufferAttribute(colors, 1));
+    g.setAttribute('aOffset', new THREE.BufferAttribute(offsets, 1));
+    g.setAttribute('aRandom', new THREE.BufferAttribute(new Float32Array(n*3).map(()=>rand(0,1)), 3));
+    return g;
+  }
+}
+
+// ============================================================
+// SPACESHIP
+// ============================================================
+class Ship {
+  constructor() {
+    this.group = new THREE.Group();
+    this.parts = {};
+    this.createModel();
+    this.thrusterTime = 0;
+  }
+
+  createModel() {
+    const hull = new THREE.MeshStandardMaterial({ color:0x8a9ba8, roughness:0.5, metalness:0.7 });
+    const dark = new THREE.MeshStandardMaterial({ color:0x1a1f24, roughness:0.8, metalness:0.2 });
+    const red = new THREE.MeshStandardMaterial({ color:0xff0000, emissive:0xaa0000, emissiveIntensity:2 });
+    const green = new THREE.MeshStandardMaterial({ color:0x00ff00, emissive:0x00aa00, emissiveIntensity:2 });
+    const white = new THREE.MeshStandardMaterial({ color:0xffffff, emissive:0xffffff, emissiveIntensity:1 });
+    const canopy = new THREE.MeshStandardMaterial({ color:0x33ccff, roughness:0.1, metalness:0.9, transparent:true, opacity:0.7 });
+
+    // Fuselage - sleek fighter profile
+    const fShape = new THREE.Shape();
+    fShape.moveTo(8,0); fShape.lineTo(6,1.8); fShape.lineTo(0,2.2);
+    fShape.lineTo(-6,2.2); fShape.lineTo(-9,1.2); fShape.lineTo(-10,0);
+    fShape.lineTo(-9,-1.2); fShape.lineTo(-6,-2.2); fShape.lineTo(0,-2.2);
+    fShape.lineTo(6,-1.8);
+    const fEx = new THREE.ExtrudeGeometry(fShape, { depth: 1.2, bevelEnabled:true, bevelSegments:2, steps:2, bevelSize:0.1, bevelThickness:0.1 });
+    const f = new THREE.Mesh(fEx, hull); f.geometry.center(); f.rotateX(-0.3);
+    this.parts.fuselage = f;
+
+    // Cockpit
+    const cGeo = new THREE.SphereGeometry(0.8, 12, 12);
+    const c = new THREE.Mesh(cGeo, canopy);
+    c.position.set(0, 1.3, -0.4); c.scale.set(1,0.5,1);
+    this.parts.cockpit = c;
+
+    // Wings
+    const wShape = new THREE.Shape();
+    wShape.moveTo(0,0); wShape.lineTo(1, 3.5); wShape.lineTo(-0.5, 5.5); wShape.lineTo(0, 4.5);
+    const wEx = new THREE.ExtrudeGeometry(wShape, { depth: 2.6, bevelEnabled:false });
+    const w = new THREE.Mesh(wEx, dark);
+    w.position.set(0, -0.2, 0.5); w.scale.set(1,0.5,1); w.rotateX(-0.2);
+    this.parts.wingL = w;
+    this.parts.wingR = w.clone(); this.parts.wingR.scale.y = -1;
+    this.group.add(this.parts.fuselage, this.parts.cockpit, this.parts.wingL, this.parts.wingR);
+
+    // Engines
+    const engGeo = new THREE.CylinderGeometry(0.35, 0.5, 2.4, 16);
+    engGeo.rotateZ(Math.PI/2);
+    this.parts.engL = new THREE.Mesh(engGeo, dark);
+    this.parts.engL.position.set(-1.3, 0.8, 2.2);
+    this.parts.engR = this.parts.engL.clone(); this.parts.engR.position.x = 1.3;
+    this.group.add(this.parts.engL, this.parts.engR);
+
+    // Exhaust Plume
+    const pGeo = new THREE.ConeGeometry(0.25, 1.5, 8);
+    pGeo.rotateZ(-Math.PI/2); pGeo.translate(0,0.8,0);
+    this.parts.pL = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({color:0xff6600, transparent:true, opacity:0.8, blending:THREE.AdditiveBlending}));
+    this.parts.pR = this.parts.pL.clone(); this.parts.pR.position.set(0,-1.6, 2.2);
+    this.parts.pL.position.set(0, 1.6, 3.2);
+    this.group.add(this.parts.pL, this.parts.pR);
+
+    // Lights
+    this.parts.nL = new THREE.Mesh(new THREE.SphereGeometry(0.08), red); this.parts.nL.position.set(-1.5, -1.6, 4.2);
+    this.parts.nR = new THREE.Mesh(new THREE.SphereGeometry(0.08), green); this.parts.nR.position.set(1.5, -1.6, 4.2);
+    this.parts.s = new THREE.Mesh(new THREE.SphereGeometry(0.08), white); this.parts.s.position.set(0, 2.2, 4.2);
+    this.group.add(this.parts.nL, this.parts.nR, this.parts.s);
+  }
+
+  update(dt) {
+    this.thrusterTime += dt;
+    const s = 1.0 + Math.sin(this.thrusterTime * 15) * 0.5 + (Math.random()*0.2);
+    this.parts.pL.scale.set(s,s,s);
+    this.parts.pR.scale.set(s,s,s);
+    if(Math.random()>0.9) this.parts.pL.material.opacity = 0.6; else this.parts.pL.material.opacity = 0.8;
+    // Navigation lights pulse
+    this.parts.nL.material.emissiveIntensity = 1 + Math.sin(this.thrusterTime*8)*0.5;
+  }
+}
+
+// ============================================================
+// VOYAGE SCRIPT
+// ============================================================
+class Voyage {
+  constructor() {
+    this.ship = ship;
+    this.state = 'PRE_LAUNCH'; // PRE_LAUNCH, DEPART, CRUISE, HYPERDRIVE, CORE, NEBULA, ARRIVAL
+    this.t = 0;
+    this.duration = 1;
+    this.startT = 0;
+    this.speed = 0;
+    
+    // Waypoints (ly). Ship is at (0,0,0) in world.
+    // We need to move the GALAXY and PLANETS relative to ship, or move ship.
+    // Simplest: Ship moves.
+    this.waypoints = [
+      { p: new THREE.Vector3(0, 0, 0), t: 0,  r: 0 },     // Start at departure sun
+      { p: new THREE.Vector3(50, 0, 0), t: 1,  r: 0 },     // Lift off orbit
+      { p: new THREE.Vector3(800, 0, 1000), t: 15, r: 1200 }, // Exit system (1200 ly)
+      { p: new THREE.Vector3(2500, 0, 3000), t: 45, r: 0 },  // Approach Galaxy Center region
+      { p: new THREE.Vector3(0, 200, 0), t: 70, r: 0 },      // OVER THE CORE (pass directly over BH)
+      { p: new THREE.Vector3(-2500, 0, -3000), t: 100, r: 0 },
+      { p: new THREE.Vector3(-4000, 0, -6000), t: 130, r: 0 }, // Into Perseus Arm / Nebula region
+      { p: new THREE.Vector3(-3000, 0, -8000), t: 150, r: 1500 }, // Exit nebula
+      { p: new THREE.Vector3(0, 0, 0), t: 180, r: 0 }        // ARRIVE (loop)
+    ];
+
+    // Regions names
+    this.regions = ["Departure System (Solis)", "Interstellar Void", "Galactic Core", "Sagittarius A*", "Perseus Arm", "Lagoon Nebula", "Arrival System"];
+  }
+
+  activate() { this.state = 'DEPART'; this.startT = performance.now()/1000; this.duration = 180; }
+
+  update(dt, camera) {
+    if(this.state === 'PRE_LAUNCH') {
+      // Orbital phase
+      this.t += dt;
+      const r = 80; // orbit radius
+      this.ship.position.x = Math.cos(this.t*0.1)*r;
+      this.ship.position.z = Math.sin(this.t*0.1)*r;
+      this.ship.position.y = Math.sin(this.t*0.15)*10;
+      this.ship.lookAt(0,0,0);
+      camera.position.copy(this.ship.position).add(new THREE.Vector3(0, 20, 60));
+      camera.lookAt(0,0,0);
+      this.updateHUD('Departure System: Proxima Centauri-Analog', 0);
+      return 'pre-launch';
+    }
+    if(this.state === 'ARRIVAL') return 'arrival'; // handled in loop
+
+    this.t += dt;
+    const total = 180; // voyage length
+    this.startT += dt;
+    
+    // Find current segment
+    let p1 = this.waypoints[0], p2 = this.waypoints[1];
+    let segT = 0;
+    for(let i=1; i<this.waypoints.length; i++) {
+      p1 = this.waypoints[i-1];
+      p2 = this.waypoints[i];
+      if(this.startT < p2.t) {
+        segT = (this.startT - p1.t) / (p2.t - p1.t);
+        break;
+      }
+    }
+    
+    this.ship.position.lerpVectors(p1.p, p2.p, segT);
+    // Distance from core
+    const distCore = this.ship.position.distanceTo(new THREE.Vector3(0,0,0));
+    
+    // State transitions
+    if(this.startT < 5) this.state = 'DEPART';
+    else if(this.startT < 20) this.state = 'CRUISE';
+    else if(this.startT < 50) { this.state = 'HYPERDRIVE'; this.ship.materials[0].emissive.setHex(0xff4400); this.ship.materials[0].emissiveIntensity = 2; }
+    else if(this.startT < 75) this.state = 'CORE';
+    else if(this.startT < 120) this.state = 'NEBULA';
+    else if(this.startT < 160) this.state = 'CRUISE';
+    else if(this.startT < 170) this.state = 'ARRIVAL';
+    else {
+      // Reset
+      this.ship.materials[0].emissive.setHex(0);
+      this.startT = -1; this.state = 'PRE_LAUNCH';
+      return 'reset';
+    }
+
+    // Camera control based on state
+    const camOff = (this.state==='DEPART' || this.state==='ARRIVAL') ? 40 : 70;
+    const camH = (this.state==='DEPART') ? 10 : 15;
+    camera.position.x = this.ship.position.x + Math.cos(this.t)*camOff;
+    camera.position.z = this.ship.position.z + Math.sin(this.t)*camOff;
+    camera.position.y = this.ship.position.y + Math.sin(this.t)*camH;
+    camera.lookAt(this.ship.position);
+
+    // Speed calc for UI
+    let speedStr = '';
+    if(this.state === 'HYPERDRIVE') {
+      const c = 299792;
+      const v = 15 + Math.sin((this.startT-50)/5)*5;
+      speedStr = v.toFixed(2) + ' c';
+    } else {
+      const v = 42000 + Math.sin(this.t)*2000;
+      speedStr = Math.floor(v).toLocaleString() + ' km/s';
+    }
+
+    let region = 'Interstellar Space';
+    if(distCore < 3000) region = 'Galactic Core';
+    else if(distCore < 12000) region = this.regions[Math.floor(distCore/3000)%this.regions.length];
+
+    this.updateHUD(region, speedStr, distCore, segT/1);
+    return 'flying';
+  }
+
+  updateHUD(region, speed, dist, seg) {
+    document.getElementById('region-name').innerText = region;
+    document.getElementById('speed').innerText = speed;
+    if(dist) document.getElementById('dist-core').innerText = Math.floor(dist).toLocaleString() + ' ly';
+  }
+}
+
+// ============================================================
+// SCENE BUILDERS (Planets, Black Hole)
+// ============================================================
+const Scene = {};
+const worlds = []; // objects that orbit the ship relative logic (planets)
+// Actually simpler: Ship moves, planets static in world.
+
+function createSystem(center, name, hasPlanet, gasGiant=false) {
+  const sun = new THREE.Group();
+  sun.position.copy(center);
+  
+  // Sun mesh
+  const sunGeo = new THREE.SphereGeometry(8, 32, 32);
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd88 });
+  const s = new THREE.Mesh(sunGeo, sunMat);
+  sun.add(s);
+  // Corona
+  const coro = new THREE.Mesh(new THREE.SphereGeometry(11, 16, 16), new THREE.MeshBasicMaterial({
+    color: 0xff6600, transparent:true, opacity:0.3, blending:THREE.AdditiveBlending
+  }));
+  sun.add(coro);
+
+  // Lens flare sprite facing camera
+  const flare = new THREE.Sprite(new THREE.SpriteMaterial({map: Tex.flare()}));
+  flare.scale.set(15,15,1);
+  sun.add(flare);
+
+  worlds.push(sun); // render to minimap
+
+  if(hasPlanet) {
+    const p = new THREE.Group();
+    p.position.set(600, 0, 0); // ly
+    const geo = new THREE.SphereGeometry(4, 32, 32);
+    let mat;
+    if(gasGiant) {
+      mat = new THREE.MeshStandardMaterial({ color: 0xdcb480, roughness: 0.8 });
+      // Rings
+      const rGeo = new THREE.RingGeometry(7, 16, 64);
+      const rMat = new THREE.MeshBasicMaterial({ map: Tex.rings(), side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(rGeo, rMat);
+      ring.rotation.x = Math.PI/2;
+      ring.rotation.z = 0.2;
+      p.add(ring);
+    } else {
+      mat = new THREE.MeshStandardMaterial({ color: 0x2244aa });
+      // Atmosphere
+      const atmo = new THREE.Mesh(new THREE.SphereGeometry(4.2,32,32), new THREE.MeshBasicMaterial({
+        color: 0x4488ff, transparent:true, opacity:0.3, blending:THREE.AdditiveBlending
+      }));
+      p.add(atmo);
+    }
+    const planet = new THREE.Mesh(geo, mat);
+    p.add(planet);
+    worlds.push(p);
+    // Orbiting moon
+    const moon = new THREE.Group();
+    moon.position.set(12,0,0);
+    moon.add(new THREE.Mesh(new THREE.SphereGeometry(1,16,16), new THREE.MeshStandardMaterial({color:0x888888})));
+    worlds.push(moon);
+    p.add(moon);
+  }
+  return sun;
+}
+
+function createBlackHole() {
+  const bh = new THREE.Group();
+  // Event Horizon (black sphere)
+  const eh = new THREE.Mesh(new THREE.SphereGeometry(4, 32, 32), new THREE.MeshBasicMaterial({color:0x000000}));
+  bh.add(eh);
+  // Photon ring
+  const pr = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.3, 16, 100), new THREE.MeshBasicMaterial({color:0xff4400, blending:THREE.AdditiveBlending}));
+  bh.add(pr);
+  // Accretion disk - back half
+  const disk = new THREE.Mesh(
+    new THREE.RingGeometry(6, 25, 64, 2, Math.PI),
+    new THREE.MeshBasicMaterial({color:0xffaa00, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, transparent:true, opacity:0.6})
+  );
+  disk.position.z = 0.5; disk.rotation.x = -Math.PI/2;
+  bh.add(disk);
+  // Accretion disk - front half
+  const diskF = new THREE.Mesh(
+    new THREE.RingGeometry(6, 25, 64, 2, 0, Math.PI),
+    new THREE.MeshBasicMaterial({color:0xff8800, side:THREE.DoubleSide, blending:THREE.AdditiveBlending, transparent:true, opacity:0.6})
+  );
+  diskF.rotation.x = Math.PI/2;
+  bh.add(diskF);
+  // Glow
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(24,32,32), new THREE.MeshBasicMaterial({
+    color:0x550000, transparent:true, opacity:0.2, blending:THREE.AdditiveBlending
+  }));
+  bh.add(glow);
+  worlds.push(bh); // draw center of minimap
+  return bh;
+}
+
+function createNebula() {
+  // Large cloud box with soft volumetric shader
+  const g = new THREE.BoxGeometry(2000, 1200, 1200);
+  const m = new THREE.MeshBasicMaterial({
+    map: Tex.nebula(),
+    transparent:true, opacity:0.25, blending:THREE.AdditiveBlending, depthWrite:false
+  });
+  const n = new THREE.Mesh(g, m);
+  n.position.set(-3000, -300, -5000);
+  return n;
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
+const canvas = document.getElementById('canvas');
+const minimapCanvas = document.getElementById('minimap');
+const app = {
+  scene: new THREE.Scene(),
+  cam: new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.0001, 3000000),
+  composer: null,
+  controls: null,
+  ship: new Ship(),
+  galaxy: new Galaxy(),
+  voyage: new Voyage(),
+  audio: new AudioEngine(),
+  t: 0,
+  state: 'flying' // ui state
+};
+
+// Init Galaxy & Scene
+app.scene.add(app.galaxy.group);
+app.scene.add(app.ship.group);
+// Sun at origin for departure
+createSystem(new THREE.Vector3(0,0,0), "dep", true);
+// Black Hole
+app.scene.add(createBlackHole());
+// Nebula
+app.scene.add(createNebula());
+// Arrival system (far away at -3000,-8000)
+app.scene.add(createSystem(new THREE.Vector3(-3000, 0, -8000), "arr", true, true));
+
+// Camera setup
+app.cam.position.set(0, 20, 80);
+app.cam.lookAt(0,0,0);
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({canvas, antialias:false, powerPreference:"high-performance"});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.logarithmicDepthBuffer = true;
+renderer.toneMapping = THREE.ReinhardToneMapping;
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(app.scene, app.cam);
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+bloom.threshold = 0.1; bloom.strength = 1.2; bloom.radius = 0.5;
+composer.addPass(renderPass);
+composer.addPass(bloom);
+app.composer = composer;
+app.controls = new OrbitControls(app.cam, canvas);
+app.controls.enableDamping = true;
+app.controls.dampingFactor = 0.05;
+app.controls.enablePan = false;
+
+// Minimap
+const mmCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200000);
+mmCam.position.set(0, 3000, 0); // Top down
+mmCam.lookAt(0,0,0);
+const mmScene = new THREE.Scene();
+// Add a small visual proxy for the ship on the minimap
+const mmShip = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({color:0x00f0ff}));
+mmScene.add(mmShip);
+const mmGL = new THREE.WebGLRenderer({canvas:minimapCanvas, alpha:true});
+mmGL.setSize(160,160);
+mmGL.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// UI Elements
+const hud = document.getElementById('hud');
+let camMode = 'cinematic';
+const modes = {
+  cinematic: () => { app.controls.enabled = false; app.voyage.update(app.t, app.cam); },
+  chase: () => { app.controls.enabled = false; app.voyage.update(app.t, app.cam); },
+  cockpit: () => { app.controls.enabled = false; },
+  map: () => { app.controls.enabled = true; app.cam.lookAt(0,0,0); }
+};
+
+// Button bindings
+document.querySelectorAll('button[data-mode]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('button[data-mode]').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    camMode = b.dataset.mode;
+    if(camMode==='map') hud.style.display='none';
+    else hud.style.display='block';
+  });
+});
+document.getElementById('btn-play').addEventListener('click', () => {
+  app.voyage.activate();
+});
+document.getElementById('btn-audio').addEventListener('click', () => { app.audio.toggle(); });
+document.getElementById('toggle-ui').addEventListener('click', () => hud.style.display = hud.style.display==='none'?'block':'none');
+document.getElementById('btn-info').addEventListener('click', () => {
+  alert("How it works:\n\nScales: Ship is ~120m, Galaxy is ~100,000 ly across. We use THREE.LogarithmicDepthBuffer to avoid z-flickering across 10 orders of magnitude.\n\nGalaxy: 260k GPU points rendered with a custom GLSL shader computing spiral arm density, differential rotation, and dust lanes.\n\nHyperdrive: Vertex shader interpolates star positions toward infinity.\n\nShip: Built from Extrude/Sphere/Cylinder primitives. No external assets.");
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  app.cam.aspect = window.innerWidth/window.innerHeight;
+  app.cam.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  bloom.resolution.set(window.innerWidth, window.innerHeight);
+});
+
+// Minimap Draw Logic
+function drawMinimap() {
+  mmGL.render(mmScene, mmCam);
+  const ctx = minimapCanvas.getContext('2d');
+  ctx.clearRect(0,0,160,160);
+  const cx = 80, cy = 80;
+  // Draw Route
+  const wp = app.voyage.waypoints;
+  ctx.beginPath();
+  ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 1;
+  for(let p of wp) {
+    const sx = cx + p.p.x * (4000/20000); // scale 4000 ly across 160px
+    const sy = cy - p.p.z * (4000/20000);
+    if(p===wp[0]) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+  }
+  ctx.stroke();
+  // Draw Black Hole center
+  ctx.fillStyle='#ff0000'; ctx.beginPath(); ctx.arc(cx,cy,2,0,PI2); ctx.fill();
+}
+
+// Loop
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  app.t += dt;
+
+  if(app.voyage.state !== 'PRE_LAUNCH' && app.voyage.state !== 'ARRIVAL') {
+    const st = app.voyage.update(dt, app.cam);
+    app.state = st;
+  } else if(app.voyage.state === 'ARRIVAL') {
+    app.state = 'arrival';
+    // Loop reset happens inside voyage
+  }
+
+  // Warp effects
+  const wpEl = document.getElementById('warp-overlay');
+  const wsEl = document.getElementById('warp-scanlines');
+  const wmEl = document.getElementById('warp-msg');
+  if(app.state === 'HYPERDRIVE') {
+    app.galaxy.uniforms.uHyperdrive.value = 1.0;
+    wpEl.style.display='block'; wsEl.style.display='block'; wmEl.style.display='block';
+    // Rotate background stars faster
+    app.galaxy.mesh.rotation.y += 0.002;
+    app.audio.update(1.0);
+  } else {
+    app.galaxy.uniforms.uHyperdrive.value = 0.0;
+    wpEl.style.display='none'; wsEl.style.display='none'; wmEl.style.display='none';
+    app.galaxy.mesh.rotation.y += 0.0005;
+    app.audio.update(0.2);
+  }
+
+  app.ship.update(dt);
+  app.galaxy.uniforms.uTime.value += dt;
+  
+  // Camera Modes
+  modes[camMode]();
+  if(camMode === 'map') {
+    // In map mode, cam moves freely around origin
+  }
+
+  // Update Minimap proxy
+  const s = app.ship.position;
+  mmShip.position.set(s.x, 0, s.z);
+  drawMinimap();
+
+  composer.render();
+}
+
+// Start
+Loading.tick('Rendering Galaxy Engine...');
+// Simulate some heavy gen time for loading bar realism
+setTimeout(() => { Loading.tick('Building Procedural Ship...'); }, 800);
+setTimeout(() => { Loading.tick('Initializing Audio & Voyage...'); }, 1600);
+setTimeout(() => { Loading.done(); app.voyage.activate(); hud.style.display='block'; document.getElementById('toggle-ui').style.display='block'; }, 2400);
+
+// First interaction unlock audio
+document.body.addEventListener('click', () => { if(app.audio.ctx.state==='suspended') app.audio.ctx.resume(); }, {once:true});
+animate();
+
+</script>
+</body>
+</html>
