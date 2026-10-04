@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SERVER ARCHITECTURE LAB</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        .ui-panel {
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        .btn-technical {
+            background: rgba(40, 40, 40, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+        .btn-technical:hover {
+            background: rgba(60, 60, 60, 0.8);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        .btn-technical.active {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            color: white;
+        }
+        .metric-value {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            color: #10b981;
+        }
+        .tooltip {
+            pointer-events: none;
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 8px 12px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 100;
+            display: none;
+        }
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #FFF;
+            border-bottom-color: #3b82f6;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay">
+        <span class="loader"></span>
+        <p class="mt-4 text-gray-400 font-mono uppercase tracking-widest">Initializing Lab Environment...</p>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <!-- TOP BAR -->
+    <div class="fixed top-0 left-0 right-0 h-12 ui-panel flex items-center justify-between px-4 z-50 border-b border-white/10">
+        <div class="flex items-center gap-4">
+            <h1 class="font-bold tracking-tighter text-lg">SERVER ARCHITECTURE <span class="text-blue-500">LAB</span></h1>
+        </div>
+        <div class="flex items-center gap-6 text-xs font-mono text-gray-400">
+            <div class="flex gap-2">
+                <span>FPS:</span> <span id="fps-val" class="metric-value">60</span>
+            </div>
+            <div class="flex gap-2">
+                <span>DRAW CALLS:</span> <span id="draw-val" class="metric-value">0</span>
+            </div>
+            <div class="flex gap-2">
+                <span>TRIANGLES:</span> <span id="tri-val" class="metric-value">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEFT PANEL -->
+    <div class="fixed top-14 left-4 bottom-20 w-72 ui-panel rounded-lg p-4 z-40 overflow-y-auto">
+        <h2 class="text-xs font-bold text-gray-500 uppercase mb-4 tracking-wider">Rack Inventory</h2>
+        <div id="server-list" class="space-y-2">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="fixed top-14 right-4 bottom-20 w-80 ui-panel rounded-lg p-4 z-40 overflow-y-auto">
+        <div id="detail-panel" class="hidden">
+            <h2 id="detail-title" class="text-xl font-bold mb-1">Server Name</h2>
+            <p id="detail-subtitle" class="text-blue-400 text-xs font-mono mb-4">4U | U39-U42</p>
+            
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">Architecture Purpose</h3>
+                <p id="detail-purpose" class="text-sm text-gray-300 leading-relaxed">Description goes here.</p>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">System Health</h3>
+                <div id="health-metrics" class="space-y-2 font-mono text-xs">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-500 uppercase mb-2">Hardware Specifications</h3>
+                <div id="spec-list" class="space-y-1 text-xs text-gray-400">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <button id="btn-inspect-slice" class="w-full py-3 btn-technical rounded-md text-blue-400 border-blue-500/50 hover:bg-blue-500/20 mb-4">
+                Inspect Slice
+            </button>
+        </div>
+        <div id="empty-panel" class="h-full flex items-center justify-center text-gray-600 text-center italic text-sm">
+            Select a server from the rack<br>to view architecture details.
+        </div>
+    </div>
+
+    <!-- BOTTOM TOOLBAR -->
+    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 ui-panel rounded-full px-6 py-3 z-50 flex items-center gap-3 border border-white/10">
+        <button id="view-rack" class="px-4 py-2 rounded-full btn-technical active">Rack View</button>
+        <button id="view-slice" class="px-4 py-2 rounded-full btn-technical">Slice View</button>
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        <button id="toggle-cover" class="px-4 py-2 rounded-full btn-technical">Open Cover</button>
+        <button id="toggle-cutaway" class="px-4 py-2 rounded-full btn-technical">Cutaway</button>
+        <button id="toggle-explode" class="px-4 py-2 rounded-full btn-technical">Explode</button>
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        <button id="toggle-airflow" class="px-4 py-2 rounded-full btn-technical">Airflow</button>
+        <button id="toggle-power" class="px-4 py-2 rounded-full btn-technical">Power</button>
+        <button id="toggle-data" class="px-4 py-2 rounded-full btn-technical">Data</button>
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        <button id="simulate-failure" class="px-4 py-2 rounded-full btn-technical text-red-400 border-red-500/30 hover:bg-red-500/20">Failures</button>
+        <button id="reset-lab" class="px-4 py-2 rounded-full btn-technical">Reset</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- CONSTANTS & CONFIG ---
+        const U_HEIGHT = 0.04445; // 1U in meters
+        const RACK_WIDTH = 0.6;
+        const RACK_DEPTH = 1.0;
+        const RACK_HEIGHT_U = 42;
+        const RACK_HEIGHT_M = RACK_HEIGHT_U * U_HEIGHT;
+
+        const ARCHETYPES = {
+            COMPUTE: {
+                name: 'General Purpose Compute',
+                height: 1,
+                purpose: 'Balanced architecture for web hosting, APIs, and lightweight application services.',
+                specs: { cpu: '2x 32-Core', ram: '256GB ECC', storage: '4x 1.92TB NVMe', net: '2x 25GbE', psu: '2x 800W' },
+                reasoning: 'Balanced power and space. Optimized for high-density compute where extreme GPU or storage capacity is not required.',
+                layout: 'balanced'
+            },
+            VIRTUALIZATION: {
+                name: 'Virtualization Server',
+                height: 2,
+                purpose: 'Optimized for high-density VM hosting and containerized cloud environments.',
+                specs: { cpu: '2x 64-Core', ram: '2TB ECC', storage: '12x 3.84TB NVMe', net: '4x 25GbE', psu: '2x 1200W' },
+                reasoning: 'Prioritizes memory capacity and CPU core count to maximize VM density per rack unit.',
+                layout: 'high-ram'
+            },
+            GPU_AI: {
+                name: 'AI Compute Node',
+                height: 4,
+                purpose: 'High-performance accelerator system for ML training and scientific computing.',
+                specs: { cpu: '2x 64-Core', ram: '1TB ECC', storage: '8x 3.2TB NVMe', net: '4x 100GbE', psu: '4x 2000W' },
+                reasoning: 'Massive airflow and power delivery to support multiple high-TDP GPU accelerators.',
+                layout: 'gpu-dense'
+            },
+            STORAGE: {
+                name: 'Storage Server',
+                height: 4,
+                purpose: 'High-capacity NAS/Object storage for backups and archival data.',
+                specs: { cpu: '1x 32-Core', ram: '256GB ECC', storage: '36x 20TB HDD', net: '2x 100GbE', psu: '2x 1600W' },
+                reasoning: 'Maximizes drive bay count. CPU and RAM are scaled to handle I/O throughput rather than compute.',
+                layout: 'storage-dense'
+            },
+            DATABASE: {
+                name: 'Database/High-Memory Server',
+                height: 2,
+                purpose: 'Low-latency, high-throughput system for transactional databases and in-memory analytics.',
+                specs: { cpu: '2x 64-Core', ram: '4TB ECC', storage: '16x 6.4TB NVMe', net: '4x 25GbE', psu: '2x 1600W' },
+                reasoning: 'Maximum memory bandwidth and low-latency NVMe storage to prevent I/O bottlenecks.',
+                layout: 'db-optimized'
+            },
+            NETWORK: {
+                name: 'Network Appliance',
+                height: 1,
+                purpose: 'High-throughput routing, firewalling, and load balancing.',
+                specs: { cpu: '1x 16-Core', ram: '64GB ECC', storage: '2x 480GB SSD', net: '32x SFP+', psu: '2x 600W' },
+                reasoning: 'Optimized for packet processing with minimal local storage and massive network port density.',
+                layout: 'network'
+            }
+        };
+
+        const RACK_LAYOUT = [
+            { u: 39, archetype: 'GPU_AI' },
+            { u: 37, archetype: 'VIRTUALIZATION' },
+            { u: 36, archetype: 'COMPUTE' },
+            { u: 35, archetype: 'COMPUTE' },
+            { u: 31, archetype: 'STORAGE' },
+            { u: 30, archetype: 'NETWORK' },
+            { u: 28, archetype: 'DATABASE' },
+            { u: 27, archetype: 'COMPUTE' },
+            { u: 26, archetype: 'COMPUTE' },
+        ];
+
+        // --- ENGINE STATE ---
+        const state = {
+            mode: 'RACK', // 'RACK' or 'SLICE'
+            selectedServer: null,
+            isCoverOpen: false,
+            isCutaway: false,
+            isExploded: false,
+            showAirflow: false,
+            showPower: false,
+            showData: false,
+            simulationFailure: null,
+            lastFrameTime: 0,
+            fps: 0
+        };
+
+        // --- THREE.JS SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(2, 2, 3);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        keyLight.position.set(5, 10, 7.5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 2048;
+        keyLight.shadow.mapSize.height = 2048;
+        scene.add(keyLight);
+
+        const fillLight = new THREE.PointLight(0x3b82f6, 0.5);
+        fillLight.position.set(-5, 2, -2);
+        scene.add(fillLight);
+
+        // --- MATERIALS ---
+        const MATS = {
+            CHASSIS: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.7, metalness: 0.8 }),
+            RAIL: new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.9 }),
+            PCB: new THREE.MeshStandardMaterial({ color: 0x062d1a, roughness: 0.6, metalness: 0.2 }), // Dark green
+            CPU_SINK: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3, metalness: 0.9 }),
+            DIMM: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.4 }),
+            GPU_BODY: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.4, metalness: 0.8 }),
+            FAN_BLADE: new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9, metalness: 0.1 }),
+            DRIVE: new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6, metalness: 0.7 }),
+            PSU: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8, metalness: 0.6 }),
+            CABLE_PWR: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 }),
+            CABLE_NET: new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.8 }),
+            GLOW_PWR: new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.6 }),
+            GLOW_AIR: new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 }),
+            GLOW_DATA: new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.6 }),
+        };
+
+        // --- GEOMETRY HELPERS ---
+        function createBox(w, h, d, mat) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            return new THREE.Mesh(geo, mat);
+        }
+
+        // --- SERVER CLASS ---
+        class Server {
+            constructor(id, uPosition, archetypeKey) {
+                this.id = id;
+                this.uPosition = uPosition;
+                this.archetypeKey = archetypeKey;
+                this.archetype = ARCHETYPES[archetypeKey];
+                this.heightU = this.archetype.height;
+                this.group = new THREE.Group();
+                this.components = new THREE.Group();
+                this.chassisParts = new THREE.Group();
+                this.visualizers = new THREE.Group();
+
+                this.group.add(this.chassisParts);
+                this.group.add(this.components);
+                this.group.add(this.visualizers);
+
+                this.build();
+                
+                // Position in rack
+                const yPos = RACK_HEIGHT_M - (uPosition * U_HEIGHT) - (this.heightU * U_HEIGHT / 2);
+                this.group.position.set(0, yPos, 0);
+            }
+
+            build() {
+                const h = this.heightU * U_HEIGHT;
+                const w = RACK_WIDTH - 0.02;
+                const d = RACK_DEPTH - 0.1;
+
+                // 1. Chassis Frame
+                const base = createBox(w, h, d, MATS.CHASSIS);
+                base.position.y = -h/2; 
+                // Note: Base is just a placeholder for the "box", internals will be added.
+                
+                // Create a proper shell
+                const shell = new THREE.Group();
+                
+                // Bottom
+                const bottom = createBox(w, 0.01, d, MATS.CHASSIS);
+                bottom.position.y = -h/2;
+                shell.add(bottom);
+
+                // Sides
+                const sideL = createBox(0.01, h, d, MATS.CHASSIS);
+                sideL.position.set(-w/2, 0, 0);
+                shell.add(sideL);
+                const sideR = createBox(0.01, h, d, MATS.CHASSIS);
+                sideR.position.set(w/2, 0, 0);
+                shell.add(sideR);
+
+                // Front bezel
+                const bezel = createBox(w, h, 0.01, MATS.CHASSIS);
+                bezel.position.z = d/2;
+                shell.add(bezel);
+
+                // Rear
+                const rear = createBox(w, h, 0.01, MATS.CHASSIS);
+                rear.position.z = -d/2;
+                shell.add(rear);
+
+                // Cover
+                this.cover = createBox(w, 0.01, d, MATS.CHASSIS);
+                this.cover.position.y = h/2;
+                shell.add(this.cover);
+
+                this.chassisParts.add(shell);
+
+                // 2. Internals based on archetype
+                this.buildInternals(w, h, d);
+            }
+
+            buildInternals(w, h, d) {
+                const layout = this.archetype.layout;
+                
+                // Motherboard
+                const mobo = createBox(w - 0.04, 0.01, d - 0.1, MATS.PCB);
+                mobo.position.y = -h/2 + 0.01;
+                this.components.add(mobo);
+
+                // Power Supplies (Rear)
+                const psuCount = this.archetype.specs.psu.startsWith('4') ? 4 : 2;
+                for(let i=0; i<psuCount; i++) {
+                    const psu = createBox(0.08, h - 0.02, 0.15, MATS.PSU);
+                    psu.position.set((i - (psuCount-1)/2)*0.1, 0, -d/2 + 0.08);
+                    this.components.add(psu);
+                }
+
+                // Fan Wall (Mid-front)
+                const fanCount = layout === 'gpu-dense' ? 8 : 6;
+                for(let i=0; i<fanCount; i++) {
+                    const fanGroup = new THREE.Group();
+                    const frame = createBox(0.08, h - 0.02, 0.06, MATS.CHASSIS);
+                    const blades = createBox(0.07, h - 0.04, 0.02, MATS.FAN_BLADE);
+                    fanGroup.add(frame, blades);
+                    fanGroup.position.set((i - (fanCount-1)/2)*0.09, 0, d/4);
+                    this.components.add(fanGroup);
+                }
+
+                // CPU & RAM
+                const cpuCount = this.archetypeKey === 'NETWORK' || this.archetypeKey === 'STORAGE' ? 1 : 2;
+                const ramCount = this.archetypeKey === 'VIRTUALIZATION' || this.archetypeKey === 'DATABASE' ? 32 : 16;
+                
+                for(let i=0; i<cpuCount; i++) {
+                    const cpuX = (i === 0) ? -0.15 : 0.15;
+                    const cpu = createBox(0.06, 0.05, 0.06, MATS.CPU_SINK);
+                    cpu.position.set(cpuX, -h/2 + 0.04, 0);
+                    this.components.add(cpu);
+
+                    // RAM slots around CPU
+                    const slotsPerRow = ramCount / (cpuCount * 2);
+                    for(let j=0; j<slotsPerRow * 2; j++) {
+                        const ram = createBox(0.01, 0.03, 0.04, MATS.DIMM);
+                        const side = j < slotsPerRow ? -1 : 1;
+                        const offset = (j % slotsPerRow) * 0.02;
+                        ram.position.set(cpuX + side * 0.08 + offset, -h/2 + 0.03, 0);
+                        this.components.add(ram);
+                    }
+                }
+
+                // Storage
+                if(layout === 'storage-dense') {
+                    // Massive drive array in front
+                    for(let i=0; i<36; i++) {
+                        const drive = createBox(0.04, 0.08, 0.1, MATS.DRIVE);
+                        const col = i % 6;
+                        const row = Math.floor(i / 6);
+                        drive.position.set((col - 2.5)*0.08, (row - 1.5)*0.09, d/2 - 0.06);
+                        this.components.add(drive);
+                    }
+                } else {
+                    // A few NVMe drives
+                    for(let i=0; i<4; i++) {
+                        const drive = createBox(0.04, 0.02, 0.08, MATS.DRIVE);
+                        drive.position.set((i-1.5)*0.06, -h/2 + 0.02, d/3);
+                        this.components.add(drive);
+                    }
+                }
+
+                // GPUs
+                if(layout === 'gpu-dense') {
+                    for(let i=0; i<8; i++) {
+                        const gpu = createBox(0.06, h - 0.04, 0.25, MATS.GPU_BODY);
+                        gpu.position.set((i - 3.5)*0.07, 0, -d/6);
+                        this.components.add(gpu);
+                    }
+                }
+            }
+
+            updateHealth() {
+                if (!this.health) {
+                    this.health = {
+                        cpuTemp: 60,
+                        gpuTemp: 70,
+                        ramUsage: 40,
+                        power: 1200,
+                        fanRpm: 10000
+                    };
+                }
+                this.health.cpuTemp += (Math.random() - 0.5) * 2;
+                this.health.gpuTemp += (Math.random() - 0.5) * 2;
+                this.health.ramUsage += (Math.random() - 0.5);
+                this.health.power += (Math.random() - 0.5) * 10;
+                this.health.fanRpm += (Math.random() - 0.5) * 100;
+            }
+        }
+
+        // --- RACK CONSTRUCTION ---
+        const rackGroup = new THREE.Group();
+        scene.add(rackGroup);
+
+        // Frame
+        const frameMat = MATS.RAIL;
+        const railL = createBox(0.02, RACK_HEIGHT_M, 0.02, frameMat);
+        railL.position.set(-RACK_WIDTH/2, RACK_HEIGHT_M/2, RACK_DEPTH/2);
+        rackGroup.add(railL);
+        const railR = createBox(0.02, RACK_HEIGHT_M, 0.02, frameMat);
+        railR.position.set(RACK_WIDTH/2, RACK_HEIGHT_M/2, RACK_DEPTH/2);
+        rackGroup.add(railR);
+
+        const railLBack = createBox(0.02, RACK_HEIGHT_M, 0.02, frameMat);
+        railLBack.position.set(-RACK_WIDTH/2, RACK_HEIGHT_M/2, -RACK_DEPTH/2);
+        rackGroup.add(railLBack);
+        const railRBack = createBox(0.02, RACK_HEIGHT_M, 0.02, frameMat);
+        railRBack.position.set(RACK_WIDTH/2, RACK_HEIGHT_M/2, -RACK_DEPTH/2);
+        rackGroup.add(railRBack);
+
+        const topFrame = createBox(RACK_WIDTH, 0.02, RACK_DEPTH, frameMat);
+        topFrame.position.set(0, RACK_HEIGHT_M, 0);
+        rackGroup.add(topFrame);
+        const botFrame = createBox(RACK_WIDTH, 0.02, RACK_DEPTH, frameMat);
+        botFrame.position.set(0, 0, 0);
+        rackGroup.add(botFrame);
+
+        // PDUs
+        const pduL = createBox(0.05, RACK_HEIGHT_M * 0.8, 0.1, MATS.PSU);
+        pduL.position.set(-RACK_WIDTH/2 - 0.04, RACK_HEIGHT_M/2, 0);
+        rackGroup.add(pduL);
+        const pduR = createBox(0.05, RACK_HEIGHT_M * 0.8, 0.1, MATS.PSU);
+        pduR.position.set(RACK_WIDTH/2 + 0.04, RACK_HEIGHT_M/2, 0);
+        rackGroup.add(pduR);
+
+        // Populate Servers
+        const servers = [];
+        RACK_LAYOUT.forEach((cfg, idx) => {
+            const s = new Server(idx, cfg.u, cfg.archetype);
+            servers.push(s);
+            rackGroup.add(s.group);
+        });
+
+        // --- UI LOGIC ---
+        const serverListEl = document.getElementById('server-list');
+        servers.forEach(s => {
+            const item = document.createElement('div');
+            item.className = 'p-2 text-xs rounded cursor-pointer hover:bg-white/5 border border-transparent transition-all';
+            item.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="font-bold">${s.archetype.name}</span>
+                    <span class="text-gray-500 font-mono">U${s.uPosition}</span>
+                </div>
+                <div class="text-gray-400 text-[10px]">${s.archetype.height}U Form Factor</div>
+            `;
+            item.onclick = () => selectServer(s);
+            serverListEl.appendChild(item);
+        });
+
+        function selectServer(s) {
+            state.selectedServer = s;
+            
+            document.getElementById('empty-panel').classList.add('hidden');
+            document.getElementById('detail-panel').classList.remove('hidden');
+            document.getElementById('detail-title').innerText = s.archetype.name;
+            document.getElementById('detail-subtitle').innerText = `${s.archetype.height}U | U${s.uPosition}-${s.uPosition + s.heightU - 1}`;
+            document.getElementById('detail-purpose').innerText = s.archetype.purpose;
+            
+            const specs = s.archetype.specs;
+            document.getElementById('spec-list').innerHTML = Object.entries(specs)
+                .map(([k, v]) => `<div class="flex justify-between"><span>${k.toUpperCase()}:</span><span class="text-gray-200">${v}</span></div>`)
+                .join('');
+        }
+
+        function updateHealthPanel() {
+            if(!state.selectedServer) return;
+            const s = state.selectedServer;
+            s.updateHealth();
+            const h = s.health;
+            document.getElementById('health-metrics').innerHTML = `
+                <div class="flex justify-between"><span>CPU Temp:</span><span class="metric-value">${h.cpuTemp.toFixed(1)}°C</span></div>
+                <div class="flex justify-between"><span>GPU Temp:</span><span class="metric-value">${h.gpuTemp.toFixed(1)}°C</span></div>
+                <div class="flex justify-between"><span>RAM Usage:</span><span class="metric-value">${h.ramUsage.toFixed(1)}%</span></div>
+                <div class="flex justify-between"><span>Power Draw:</span><span class="metric-value">${h.power.toFixed(0)}W</span></div>
+                <div class="flex justify-between"><span>Fan Speed:</span><span class="metric-value">${h.fanRpm.toFixed(0)} RPM</span></div>
+            `;
+        }
+
+        // --- INTERACTION & MODES ---
+        document.getElementById('btn-inspect-slice').onclick = () => {
+            if(!state.selectedServer) return;
+            enterSliceMode();
+        };
+
+        function enterSliceMode() {
+            state.mode = 'SLICE';
+            const s = state.selectedServer;
+            
+            // Animate transition
+            // 1. Move server forward
+            s.group.position.z = 1.0; 
+            
+            // 2. Fade out rack
+            rackGroup.visible = false;
+            
+            // 3. Re-center server at origin for inspection
+            s.group.position.set(0, 0, 0);
+            
+            // 4. Camera preset
+            camera.position.set(1, 1, 1);
+            controls.target.set(0, 0, 0);
+            
+            document.getElementById('view-rack').classList.remove('active');
+            document.getElementById('view-slice').classList.add('active');
+        }
+
+        function returnToRack() {
+            state.mode = 'RACK';
+            const s = state.selectedServer;
+            
+            // 1. Reset server position
+            const yPos = RACK_HEIGHT_M - (s.uPosition * U_HEIGHT) - (s.heightU * U_HEIGHT / 2);
+            s.group.position.set(0, yPos, 0);
+            
+            // 2. Restore rack
+            rackGroup.visible = true;
+            
+            // 3. Camera preset
+            camera.position.set(2, 2, 3);
+            controls.target.set(0, RACK_HEIGHT_M/2, 0);
+            
+            document.getElementById('view-rack').classList.add('active');
+            document.getElementById('view-slice').classList.remove('active');
+        }
+
+        document.getElementById('view-rack').onclick = returnToRack;
+        document.getElementById('view-slice').onclick = () => {
+            if(state.selectedServer) enterSliceMode();
+        };
+
+        // Cover Animation
+        document.getElementById('toggle-cover').onclick = (e) => {
+            state.isCoverOpen = !state.isCoverOpen;
+            e.target.innerText = state.isCoverOpen ? 'Close Cover' : 'Open Cover';
+            e.target.classList.toggle('active');
+            
+            if(state.selectedServer) {
+                const s = state.selectedServer;
+                s.cover.position.z = state.isCoverOpen ? -0.5 : 0;
+                s.cover.position.y = state.isCoverOpen ? s.heightU * U_HEIGHT / 2 + 0.1 : s.heightU * U_HEIGHT / 2;
+            }
+        };
+
+        // Cutaway
+        document.getElementById('toggle-cutaway').onclick = (e) => {
+            state.isCutaway = !state.isCutaway;
+            e.target.classList.toggle('active');
+            if(state.selectedServer) {
+                state.selectedServer.chassisParts.visible = !state.isCutaway;
+            }
+        };
+
+        // Explode
+        document.getElementById('toggle-explode').onclick = (e) => {
+            state.isExploded = !state.isExploded;
+            e.target.classList.toggle('active');
+            if(state.selectedServer) {
+                const s = state.selectedServer;
+                s.components.children.forEach((child, i) => {
+                    child.position.y = state.isExploded ? child.position.y + (i * 0.01) : child.position.y - (i * 0.01);
+                });
+            }
+        };
+
+        // Visualizers
+        document.getElementById('toggle-airflow').onclick = (e) => {
+            state.showAirflow = !state.showAirflow;
+            e.target.classList.toggle('active');
+            toggleVisuals('airflow');
+        };
+        document.getElementById('toggle-power').onclick = (e) => {
+            state.showPower = !state.showPower;
+            e.target.classList.toggle('active');
+            toggleVisuals('power');
+        };
+        document.getElementById('toggle-data').onclick = (e) => {
+            state.showData = !state.showData;
+            e.target.classList.toggle('active');
+            toggleVisuals('data');
+        };
+
+        function toggleVisuals(type) {
+            if(!state.selectedServer) return;
+            const s = state.selectedServer;
+            s.visualizers.clear();
+            
+            if(type === 'airflow' && state.showAirflow) {
+                for(let i=0; i<20; i++) {
+                    const line = createBox(0.01, 0.01, 0.2, MATS.GLOW_AIR);
+                    line.position.set((Math.random()-0.5)*0.5, (Math.random()-0.5)*0.1, (Math.random()-0.5));
+                    s.visualizers.add(line);
+                }
+            }
+            if(type === 'power' && state.showPower) {
+                const pwrLine = createBox(0.01, 0.01, 0.4, MATS.GLOW_PWR);
+                pwrLine.position.set(0, -0.1, 0);
+                s.visualizers.add(pwrLine);
+            }
+            if(type === 'data' && state.showData) {
+                const dataLine = createBox(0.01, 0.01, 0.3, MATS.GLOW_DATA);
+                dataLine.position.set(0, 0, 0);
+                s.visualizers.add(dataLine);
+            }
+        }
+
+        document.getElementById('reset-lab').onclick = () => {
+            state.isCoverOpen = false;
+            state.isCutaway = false;
+            state.isExploded = false;
+            state.showAirflow = false;
+            state.showPower = false;
+            state.showData = false;
+            state.simulationFailure = null;
+            
+            document.querySelectorAll('.btn-technical').forEach(b => b.classList.remove('active'));
+            document.getElementById('view-rack').classList.add('active');
+            
+            returnToRack();
+            
+            if(state.selectedServer) {
+                const s = state.selectedServer;
+                s.cover.position.set(0, s.heightU * U_HEIGHT / 2, 0);
+                s.chassisParts.visible = true;
+                s.visualizers.clear();
+            }
+        };
+
+        document.getElementById('simulate-failure').onclick = (e) => {
+            state.simulationFailure = (state.simulationFailure) ? null : 'FAN_FAILURE';
+            e.target.classList.toggle('active');
+            if(state.selectedServer) {
+                const s = state.selectedServer;
+                const fans = s.components.children.filter(c => c.type === 'Group');
+                fans.forEach(f => {
+                    f.children[1].material.color.set(state.simulationFailure ? 0xff0000 : 0x000000);
+                });
+            }
+        };
+
+        // --- RENDER LOOP ---
+        function animate(time) {
+            requestAnimationFrame(animate);
+            
+            const delta = time - state.lastFrameTime;
+            state.lastFrameTime = time;
+            state.fps = Math.round(1000 / delta);
+            
+            controls.update();
+            
+            // Update UI stats
+            document.getElementById('fps-val').innerText = state.fps;
+            document.getElementById('draw-val').innerText = renderer.info.render.calls;
+            document.getElementById('tri-val').innerText = renderer.info.render.triangles;
+            
+            updateHealthPanel();
+            
+            // Animate airflow particles
+            if(state.showAirflow && state.selectedServer) {
+                state.selectedServer.visualizers.children.forEach(p => {
+                    p.position.z -= 0.01;
+                    if(p.position.z < -0.6) p.position.z = 0.6;
+                });
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        setTimeout(() => {
+            document.getElementById('loading-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading-overlay').style.display = 'none';
+            }, 500);
+        }, 1000);
+
+        animate(0);
+
+        // Selection Raycaster
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (e) => {
+            if(e.target.closest('.ui-panel') || e.target.closest('.btn-technical')) return;
+            
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(servers.map(s => s.group), true);
+            
+            if(intersects.length > 0) {
+                let obj = intersects[0].object;
+                while(obj.parent && !servers.find(s => s.group === obj)) {
+                    obj = obj.parent;
+                }
+                const s = servers.find(srv => srv.group === obj);
+                if(s) selectServer(s);
+            }
+        });
+
+    </script>
+</body>
+</html>
