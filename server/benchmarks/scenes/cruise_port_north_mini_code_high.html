@@ -255,7 +255,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing RenderPass.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { Water } from 'three/addons/objects/Water.js';
         import { Sky } from 'three/addons/objects/Sky.js';
@@ -1393,7 +1393,7 @@
             const personGeometry = new THREE.BoxGeometry(0.3, 0.8, 0.2);
             const personMaterial = new THREE.MeshPhongMaterial({ color: 0x2a2a2a });
             
-            const persons = [];
+            persons = [];
             for (let i = 0; i < 50; i++) {
                 const person = createPerson(
                     (Math.random() - 0.5) * 100,
@@ -1510,8 +1510,15 @@
         }
         
         // Animation and movement
+        let ship;
+        let tram;
+        let bowLine;
+        let sternLine;
+        let gangway;
+        let persons = [];
         const mixers = [];
-        let ship departureTimer = 0;
+        let departureTimer = 0;
+        let shipDepartureTimer = 0;
         let shipReturnTimer = 0;
         let shipMoveProgress = 0;
         let timeSpeed = 0.2; // hours per second
@@ -1799,7 +1806,7 @@
             
             // Update UI
             timeSlider.value = state.time;
-            timeLabel.textContent = `${Math.floor(state.time)}:${Math.round((state.time % 1) * 60).toString().padStart(2, '0')} (${['Midnight', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', 'Noon', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'][Math.floor(state.time)])}`;
+            timeLabel.textContent = `${Math.floor(state.time)}:${Math.round((state.time % 1) * 60).toString().padStart(2, '0')} (${['Midnight', '1 AM', '2 AM', '3 AM', '4 AM', '5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', 'Noon', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM', '11 PM'][Math.floor(state.time)]})`;
             
             // Start animations
             animate();
