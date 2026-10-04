@@ -2565,9 +2565,9 @@ function rackCameraPreset(name) {
   const target = new THREE.Vector3(0, RACK.base + RACK.H * .49, 0);
   const presets = {
     front: { p: new THREE.Vector3(0, 1.15, 3.35), t: target },
-    three: { p: new THREE.Vector3(2.2, 1.62, 2.8), t },
-    side: { p: new THREE.Vector3(3.1, 1.12, .05), t },
-    rear: { p: new THREE.Vector3(0, 1.15, -3.35), t }
+    three: { p: new THREE.Vector3(2.2, 1.62, 2.8), t: target },
+    side: { p: new THREE.Vector3(3.1, 1.12, .05), t: target },
+    rear: { p: new THREE.Vector3(0, 1.15, -3.35), t: target }
   };
   const p = presets[name] || presets.three;
   state.activePreset = name;
