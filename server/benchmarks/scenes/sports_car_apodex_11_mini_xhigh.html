@@ -750,9 +750,9 @@ scene.add(spotA);
 const spotB = new THREE.DirectionalLight(0xaaccff, 30);
 spotB.position.set(-10, 10, -10);
 scene.add(spotB);
-const rim = new THREE.PointLight(0x00f0ff, 20, 20);
-rim.position.set(0, 2, 8);
-scene.add(rim);
+const rimLight = new THREE.PointLight(0x00f0ff, 20, 20);
+rimLight.position.set(0, 2, 8);
+scene.add(rimLight);
 
 // Camera
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
