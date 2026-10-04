@@ -587,7 +587,7 @@ function getMat(c){
   return m;
 }
 const dummy=new THREE.Object3D();
-buckets.forEach((arr,c)==>{
+buckets.forEach((arr,c)=>{
   const color=parseInt(c.slice(1));
   const n=arr.length/3;
   const geo=new THREE.BoxGeometry(VS,VS,VS);
