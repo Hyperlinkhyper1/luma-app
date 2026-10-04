@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Lisbon Cruise Port Benchmark</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; color: #fff; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #ui {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .panel {
+    pointer-events: auto; background: rgba(10, 20, 40, 0.75); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.1); padding: 12px; margin: 12px; border-radius: 8px;
+  }
+  h1 { margin: 0 0 6px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #f0a500; }
+  p { margin: 0 0 8px 0; font-size: 12px; opacity: 0.8; }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  button {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;
+    padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; transition: 0.2s;
+  }
+  button:hover { background: rgba(255,255,255,0.25); }
+  button.active { background: #f0a500; color: #000; font-weight: bold; }
+  button.action { background: #d32f2f; border-color: #f44336; }
+  input[type=range] { flex: 1; }
+  label { font-size: 11px; color: #aaa; }
+  #fps { position: absolute; bottom: 10px; right: 10px; font-size: 10px; color: #666; pointer-events: none; }
+  #loading {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #050505;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    z-index: 999; transition: opacity 1s; pointer-events: none;
+  }
+  .spinner {
+    width: 40px; height: 40px; border: 4px solid rgba(240,165,0,0.2); border-top-color: #f0a500;
+    border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #controls-hint { position: absolute; top: 12px; right: 12px; text-align: right; pointer-events: none; font-size: 11px; opacity: 0.6; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><div id="loading-text">Generating Lisbon...</div></div>
+<div id="ui">
+  <div style="width:100%">
+    <div class="panel">
+      <h1>Lisbon Cruise Terminal — Jardim do Tabaco</h1>
+      <p>Moorings at the north bank of the Tagus, beneath the hill of Alfama.</p>
+      <div class="row">
+        <button class="cam-btn active" data-id="miradouro">Miradouro</button>
+        <button class="cam-btn" data-id="waterfront">Waterfront</button>
+        <button class="cam-btn" data-id="aerial">Aerial</button>
+        <button class="cam-btn" data-id="river">From River</button>
+        <button class="cam-btn" data-id="ship">Ship Deck</button>
+      </div>
+      <div class="row">
+        <label>Time of Day</label>
+        <input type="range" id="time-slider" min="0" max="1" step="0.001" value="0.12">
+        <span id="time-display" style="width:70px">Eve</span>
+        <button id="play-pause">Pause</button>
+      </div>
+      <div class="row">
+        <button id="depart" class="action">⚠ DEPARTURE</button>
+        <button id="return-berth" disabled>RETURN</button>
+      </div>
+      <div class="row">
+        <label>Lights</label>
+        <input type="range" id="lights" min="0" max="1" step="0.01" value="0.6">
+        <label style="margin-left:auto">Walk Mode</label>
+        <button id="toggle-walk">On (WASD+Mouse)</button>
+      </div>
+    </div>
+  </div>
+  <div id="controls-hint">Scroll to zoom • Drag to orbit • Alt+Drag to pan<br>V, B, N, M, S to change camera</div>
+</div>
+<div id="fps">60 FPS</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { Water } from 'three/addons/objects/Water.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// --- GLOBALS ---
+let scene, camera, renderer, composer, orbit, waterMesh;
+let clock = new THREE.Clock();
+let timeOfDay = 0.12; // 0..1
+let isPlaying = true;
+let walkMode = false;
+let shipState = 'BERTHED'; // BERTHED, DEPARTING, RETURNING
+let animationSpeed = 0;
+let sunLight, ambient, cityLights = [];
+let cameraTargets = {};
+let cameraState = { id: 'miradouro', t: 0, offset: 0, focus: null, pitch: 0 };
+const objectsToUpdate = []; // { mesh, update(dt) }
+
+// --- UTILS ---
+const rand = (a,b)=>a+Math.random()*(b-a);
+const PI2 = Math.PI*2;
+const color = s => new THREE.Color(s);
+
+// --- PROCEDURAL TEXTURES ---
+function makeTexture(fn) {
+  const c = document.createElement('canvas'); c.width=512; c.height=512;
+  const ctx = c.getContext('2d');
+  fn(ctx, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+}
+
+// --- WORLD BUILDERS ---
+
+const world = {
+  buildings: [],
+  ship: null,
+  cars: null,
+  people: null,
+  birds: null
+};
+
+// Generate the city background (Alfama-style hillside)
+function buildCity() {
+  const matMap = {};
+  function getMat(c, n = 1) {
+    const key = c + n;
+    if(!matMap[key]) {
+      const t = makeTexture((ctx,w,h)=>{
+        ctx.fillStyle = c; ctx.fillRect(0,0,w,h);
+        ctx.globalAlpha = 0.3;
+        for(let i=0;i<n;i++){
+          const x = Math.random()*w; const y = Math.random()*h;
+          const s = 10 + Math.random()*20;
+          ctx.fillRect(x,y,s,s);
+        }
+        ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.15;
+        for(let i=0;i<6;i++){
+          ctx.fillRect(50+i*60, 50, 20, 20);
+        }
+      });
+      matMap[key] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.8, flatShading:true });
+    }
+    return matMap[key];
+  }
+
+  // Terrace on the hill
+  const hillGroup = new THREE.Group();
+  // Base rocks
+  for(let i=0;i<40;i++){
+    const g = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(rand(15,40)),
+      new THREE.MeshStandardMaterial({color:0x2a241e, roughness:1})
+    );
+    g.position.set(rand(-200,300), rand(-30,-60), rand(-600,-300));
+    g.rotation.set(rand(-1,1),rand(-1,1),rand(-1,1));
+    g.scale.setScalar(1+Math.random());
+    hillGroup.add(g);
+  }
+
+  // Houses
+  const cell = 24;
+  const rows = 30;
+  const cols = 40;
+  for(let r=0; r<rows; r++){
+    for(let c=0; c<cols; c++){
+      const x = c*cell - cols*cell/2 + rand(-5,5);
+      const z = r*cell - rows*cell/2 + rand(-5,5);
+      const y = r*cell*0.35; // rising hill
+      
+      const scale = 0.6 + Math.random()*0.5;
+      const h = 3 + Math.floor(rand(2, 8))*1.2 + (Math.random()>0.85?3:0); // Castle-like towers
+      const w = 12 + Math.random()*10;
+      const d = 12 + Math.random()*10;
+      
+      const colBase = Math.random()>0.5?'#f4e6d1':'#e3bcbc'; // pastel
+      const colRoof = '#c05830'; // terracotta
+      
+      const b = new THREE.Group();
+      
+      // Stacking blocks
+      const blocks = Math.floor(h/1.2);
+      for(let bl=0; bl<blocks; bl++){
+        const bh = h - bl*1.2 - 1;
+        const bw = w*(1-bl*0.04);
+        const bd = d*(1-bl*0.04);
+        const m = getMat(bcol, 1 + Math.floor(bl/3));
+        const ch = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd), m);
+        ch.position.set(0, bl*1.2 + bh/2, 0);
+        b.add(ch);
+        // balconies
+        if(bl < blocks-2 && Math.random()>0.3){
+          const bal = new THREE.Mesh(new THREE.BoxGeometry(bw*0.6,0.4,2), new THREE.MeshStandardMaterial({color:0x1a1a1a}));
+          bal.position.set(0, bl*1.2+0.7, bd/2+0.6);
+          b.add(bal);
+        }
+      }
+      
+      // Roof
+      const roof = new THREE.Mesh(new THREE.CylinderGeometry(w*0.9, w*1.1, 1.4, 4), new THREE.MeshStandardMaterial({color:colRoof}));
+      roof.position.y = h + 0.7;
+      roof.rotation.y = rand(0,PI2);
+      b.add(roof);
+
+      // Windows (instanced-ish)
+      const winGeo = new THREE.BoxGeometry(0.4,0.4,0.1);
+      const winMat = new THREE.MeshBasicMaterial({color:0xffeebb});
+      for(let wy=0; wy<blocks*3; wy++){
+        if(Math.random()>0.25) {
+          const win = new THREE.Mesh(winGeo, winMat);
+          win.position.set(rand(-w/2+1, w/2-1), wy*0.5, bd/2+0.15);
+          b.add(win);
+        }
+      }
+
+      b.position.set(x, -30 + y, z);
+      b.rotation.y = rand(-0.3, 0.3);
+      b.scale.setScalar(scale);
+      hillGroup.add(b);
+      world.buildings.push(b);
+    }
+  }
+  scene.add(hillGroup);
+
+  // --- Castle on top ---
+  const castle = new THREE.Group();
+  const cw = 60;
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(cw, 14, cw), new THREE.MeshStandardMaterial({color:0x9e8b75, roughness:0.9}));
+  wall.position.y = -7; castle.add(wall);
+  const tower = (wx, wz, h) => {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(5,5,h,8), new THREE.MeshStandardMaterial({color:0x8a7a68}));
+    t.position.set(wx, h/2-7, wz); castle.add(t);
+    const batt = new THREE.Mesh(new THREE.CylinderGeometry(5.2,5.2,1.5,8), new THREE.MeshStandardMaterial({color:0x6b5e52}));
+    batt.position.set(wx, h+0.75-7, wz); castle.add(batt);
+  }
+  tower(-26, 26, 24); tower(26, 26, 20); tower(-26, -26, 22); tower(26, -26, 18);
+  castle.position.set(-100, 250, -450);
+  scene.add(castle);
+
+  // --- National Pantheon ---
+  const pantheon = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(28, 28, 12, 16), new THREE.MeshStandardMaterial({color:0xffffff}));
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(28, 32, 32, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({color:0xffffff}));
+  const cupola = new THREE.Mesh(new THREE.CylinderGeometry(6,6,16,16), new THREE.MeshStandardMaterial({color:0xcccccc}));
+  cupola.position.y = 28;
+  base.position.y = -6; base.position.x = -60;
+  dome.position.y = 0; dome.position.x = -60;
+  cupola.position.y = 22; cupola.position.x = -60;
+  pantheon.add(base, dome, cupola);
+  scene.add(pantheon);
+
+  // --- Praça do Comércio (West side) ---
+  const praia = new THREE.Group();
+  // Arcades
+  for(let i=0;i<20;i++){
+    const arc = new THREE.Mesh(new THREE.CylinderGeometry(0,3,6,8), new THREE.MeshStandardMaterial({color:0xf5c542}));
+    arc.position.set(-200 + i*20, 3, -600);
+    arc.rotation.y = Math.PI/2;
+    praia.add(arc);
+  }
+  for(let i=0;i<4;i++){
+    const arc = new THREE.Mesh(new THREE.CylinderGeometry(0,3,6,8), new THREE.MeshStandardMaterial({color:0xf5c542}));
+    arc.position.set(-200 + i*40, 3, -640);
+    arc.rotation.y = 0;
+    praia.add(arc);
+  }
+  // Arch
+  const arch = new THREE.Group();
+  const ap = new THREE.Mesh(new THREE.BoxGeometry(10,60,4), new THREE.MeshStandardMaterial({color:'#eee'}));
+  ap.position.y=30; arch.add(ap);
+  const am = new THREE.Mesh(new THREE.BoxGeometry(60,14,4), new THREE.MeshStandardMaterial({color:'#eee'}));
+  am.position.y=88; arch.add(am);
+  arch.position.set(-140,0,-620);
+  praia.add(arch);
+  scene.add(praia);
+
+  // --- 25 de Abril Bridge (West) ---
+  const bridge = new THREE.Group();
+  const towerL = (x,z) => {
+    const g = new THREE.Group();
+    const p1 = new THREE.Mesh(new THREE.BoxGeometry(8,200,8), new THREE.MeshStandardMaterial({color:0xbf2b26}));
+    const p2 = new THREE.Mesh(new THREE.BoxGeometry(8,200,8), new THREE.MeshStandardMaterial({color:0xbf2b26}));
+    p1.position.set(-6,100,0); p2.position.set(6,100,0);
+    g.add(p1,p2);
+    g.position.set(x,-10,z);
+    for(let i=0;i<6;i++){
+      const cable = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,40,4), new THREE.MeshStandardMaterial({color:0x555555}));
+      cable.position.set(rand(-6,6), 180 - i*28, 0);
+      cable.rotation.z = rand(-0.2,0.2);
+      cable.rotation.x = rand(-0.2,0.2);
+      g.add(cable);
+    }
+    return g;
+  }
+  bridge.add(towerL(-50, -900)); bridge.add(towerL(50, -900)); // near bank towers
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(220, 4, 24), new THREE.MeshStandardMaterial({color:0x444444}));
+  deck.position.set(0, 196, -912); // 70m high
+  bridge.add(deck);
+  scene.add(bridge);
+
+  // South bank (Almada)
+  const south = new THREE.Group();
+  const sand = new THREE.Mesh(new THREE.PlaneGeometry(1200, 600), new THREE.MeshStandardMaterial({color:0xdcbfa0, side:THREE.DoubleSide}));
+  sand.rotation.x = -Math.PI/2; sand.position.set(200, -1, -600);
+  south.add(sand);
+  // Cristo Rei
+  const stat = new THREE.Group();
+  const ped = new THREE.Mesh(new THREE.BoxGeometry(30,30,30), new THREE.MeshStandardMaterial({color:0xdddddd}));
+  const body = new THREE.CylinderGeometry(2,4,16,10); body.rotateZ(Math.PI/6);
+  const head = new THREE.SphereGeometry(2.2,12,12);
+  const arms = new THREE.Mesh(new THREE.BoxGeometry(12,2,2), new THREE.MeshStandardMaterial({color:0xdddddd}));
+  arms.position.set(0,4,3.2);
+  stat.add(ped, body, head, arms);
+  stat.position.set(120, 16, 200);
+  stat.scale.set(5,5,5);
+  south.add(stat);
+  scene.add(south);
+}
+
+// Build the Cruise Ship
+function buildShip() {
+  const ship = new THREE.Group();
+  const hullColor = 0xf4f4f4; // superstructure white
+  const hullDark = 0x1b2a38; // hull black/dark blue
+  const bootTop = 0xc83a2e; // red boot top
+
+  // Hull profile: raked bow
+  const points = [
+    new THREE.Vector2(0,0), new THREE.Vector2(0,45), // bow vertical at waterline? no, raked
+    new THREE.Vector2(-30, 10),
+    new THREE.Vector2(-30, 0),
+    new THREE.Vector2(-32, -12), // bulb
+    new THREE.Vector2(-34, -12),
+    new THREE.Vector2(-34, -24), // bulb tip
+    new THREE.Vector2(0, -24),
+    new THREE.Vector2(0, -12),
+    new THREE.Vector2(60, -12),
+    new THREE.Vector2(60, 0), // raked bow top
+    new THREE.Vector2(62, 8),
+    new THREE.Vector2(62, 12),
+    new THREE.Vector2(62, 30), // bridge height
+    new THREE.Vector2(300, 30), // long straight side
+    new THREE.Vector2(300, 15),
+    new THREE.Vector2(15, 15)  // stern slope
+  ];
+  const shape = new THREE.Shape(points);
+  const extrude = { steps: 40, depth: 38, bevelEnabled: true, bevelThickness: 1, bevelSize: 1, bevelSegments: 2 };
+  const hullGeo = new THREE.ExtrudeGeometry(shape, extrude);
+  hullGeo.translate(0, 0, -19); // center width
+  hullGeo.rotateX(Math.PI/2); // extrude along X now? No. ExtrudeGeometry extrudes along Z by default.
+  // The shape is in XY. Extrude along Z (length 38). We want length 300 along X.
+  // Fix: Rotate shape geometry 90deg around Z then translate.
+  hullGeo.rotateZ(Math.PI/2);
+  hullGeo.translate(300/2, 0, 0); 
+  // Center Y correctly: The shape points were relative to origin. Need to shift up by waterline 22.
+  hullGeo.translate(0, 22, 0);
+  
+  const hull = new THREE.Mesh(hullGeo, new THREE.MeshStandardMaterial({color: hullDark}));
+  // Color boot top
+  const hullSplit = new THREE.Mesh(new THREE.SplitShape(geometry: hullGeo, y: 0), new THREE.MeshStandardMaterial({color: bootTop})); // Not supported in r160 directly.
+  // Manual approach: Use a second mesh for the bottom part? Easier: just one color, or UV mapping.
+  // Let's do vertex manipulation to color the bottom.
+  const pos = hullGeo.attributes.position;
+  for(let i=0; i<pos.count; i++){
+    if(pos.getY(i) < -4) pos.setColor(i, new THREE.Color(0x000000));
+    else if(pos.getY(i) < 6) pos.setColor(i, new THREE.Color(bootTop)); // boot top band
+  }
+  hullGeo.computeVertexNormals();
+  hull.material.vertexColors = true;
+  hull.castShadow = true;
+  ship.add(hull);
+
+  // Decks / Superstructure
+  const decks = 19;
+  const deckH = 2.6;
+  const startZ = 20; // bow raked area
+  const superStruct = new THREE.Group();
+  const cabinGeo = new THREE.BoxGeometry(3.6, 2.2, 4.2);
+  
+  // Create rows of cabins
+  const cabins = [];
+  const lifeboats = [];
+  
+  // Hull structure
+  const shipHull = hull;
+  
+  // Simple hull shape improvement: The extruded shape was rotated.
+  // Let's rebuild with a cleaner approach using a manual profile extrusion along X axis.
+  ship.remove(shipHull);
+  
+  // Manual Hull (Cylinder-ish + cut)
+  const hullShape = new THREE.Shape([
+    new THREE.Vector2(-19, 0), new THREE.Vector2(-19, 24),
+    new THREE.Vector2(-8, 24), new THREE.Vector2(-8, 30), // bow flare
+    new THREE.Vector2(30, 30), // raked bow
+    new THREE.Vector2(30, 44),
+    new THREE.Vector2(300, 44),
+    new THREE.Vector2(300, 14),
+    new THREE.Vector2(270, 14), // stern
+    new THREE.Vector2(270, -12),
+    new THREE.Vector2(-19, -12),
+    new THREE.Vector2(-19, 0)
+  ]);
+  const hullProfile = new THREE.ExtrudeGeometry(hullShape, { depth: 400, bevelEnabled: true, bevelThickness: 2, bevelSize: 1, bevelSegments: 3 });
+  hullProfile.rotateZ(Math.PI/2);
+  hullProfile.translate(150, 22, 0);
+  const hullV = hullProfile.attributes.position;
+  const hM = new THREE.Mesh(hullProfile, new THREE.MeshStandardMaterial({color: hullDark}));
+  // Color boot top by vertices
+  for(let i=0; i<hullV.count; i++){
+    const y = hullV.getY(i);
+    if(y < -5) hM.material = new THREE.MeshStandardMaterial({color: 0x111111}); // black keel
+    else if (y < 8) hM.material = new THREE.MeshStandardMaterial({color: bootTop}); // red
+    else hM.material = new THREE.MeshStandardMaterial({color: hullDark});
+  }
+  ship.add(hM);
+
+  // Deck geometry builder
+  // We will build the superstructure as a series of decks.
+  for(let d=1; d<=decks; d++){
+    const zTop = d * deckH + 6;
+    const zBot = (d-1) * deckH + 6;
+    const zMid = (zTop+zBot)/2;
+    
+    // Deck slab
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(300, 0.4, 40), new THREE.MeshStandardMaterial({color: 0xd4d2cc}));
+    slab.position.set(150, zMid, 0);
+    ship.add(slab);
+
+    // Cabins on both sides
+    // Row A (starboard) and B (port)
+    [1, -1].forEach(side => {
+      const xStart = d < 5 ? 20 : 40; // raked bow region
+      // Balconies with glass dividers
+      const cabinWidth = 4.4;
+      const nCabins = Math.floor((300 - xStart)/cabinWidth);
+      for(let c=0; c<nCabins; c++){
+        const cx = xStart + c*cabinWidth;
+        if(cx > 280) continue;
+        const cabin = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(cabinWidth, 2.4, 10), new THREE.MeshStandardMaterial({color:0xffffff}));
+        cabin.add(body);
+        if(d < 5 && side===1) continue; // below waterline / bulge
+        // balcony rail
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(cabinWidth+0.2, 1.0, 1), new THREE.MeshStandardMaterial({color:0x222222}));
+        rail.position.set(0, 1.2, 6.5);
+        cabin.add(rail);
+        // glass front
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(cabinWidth-0.2, 2.0), new THREE.MeshStandardMaterial({color:0x88ccff, transparent:true, opacity:0.6, side:THREE.DoubleSide}));
+        glass.position.set(0, 1.2, 7.2);
+        cabin.add(glass);
+        // Door light (window)
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(cabinWidth-0.4, 1.8), new THREE.MeshStandardMaterial({color:0x223344}));
+        win.position.set(0, 1.2, 5.95);
+        cabin.add(win);
+        cabin.position.set(cx, zMid + 1.2, side*6.6);
+        ship.add(cabin);
+      }
+    });
+  }
+
+  // Lifeboats
+  for(let i=0;i<8;i++){
+    const boat = new THREE.Mesh(new THREE.BoxGeometry(4,1.4,8.2), new THREE.MeshStandardMaterial({color:0xd84825}));
+    boat.position.set(150, 22+ i*3.2, 22);
+    ship.add(boat);
+  }
+
+  // Bridge
+  const bridgeLvl = new THREE.Group();
+  bridgeLvl.position.set(230, 58, 0);
+  const br = new THREE.Mesh(new THREE.BoxGeometry(28, 4, 38), new THREE.MeshStandardMaterial({color:0xffffff}));
+  br.position.set(-14, 2, 0);
+  const wind = new THREE.Mesh(new THREE.BoxGeometry(14, 3, 40), new THREE.MeshStandardMaterial({color:0xffffff}));
+  wind.position.set(0, 1.5, 0);
+  bridgeLvl.add(br, wind);
+  // Windows
+  for(let y=0;y<2;y++){
+    for(let x=0;x<30;x+=4){
+      const win = new THREE.Mesh(new THREE.PlaneGeometry(3,2), new THREE.MeshStandardMaterial({color:0x333333}));
+      win.position.set(-25+x, y+1, 20.2);
+      bridgeLvl.add(win);
+    }
+  }
+  ship.add(bridgeLvl);
+
+  // Masts / Radar
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,30,8), new THREE.MeshStandardMaterial({color:0x888888}));
+  mast.position.set(260, 88, -10);
+  ship.add(mast);
+  const rad = new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,0.8,32), new THREE.MeshStandardMaterial({color:0xaaaaaa}));
+  rad.position.set(260, 110, -10); rad.rotation.x = Math.PI/2;
+  ship.add(rad);
+
+  // Funnels
+  const funnel = (x,z) => {
+    const g = new THREE.Group();
+    const f = new THREE.Mesh(new THREE.CylinderGeometry(4, 6, 18, 16), new THREE.MeshStandardMaterial({color:0x111111}));
+    f.position.set(0,9,0);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(4.2,6.2,2,16), new THREE.MeshStandardMaterial({color:0xd84825}));
+    band.position.set(0,19,0);
+    const smoke = new THREE.Mesh(new THREE.CylinderGeometry(3.5,3.5,2,12), new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.5}));
+    smoke.position.set(0,22,0);
+    g.add(f, band, smoke);
+    g.position.set(x, 10, z);
+    return g;
+  }
+  ship.add(funnel(190, -12));
+  ship.add(funnel(190, 12));
+
+  // Pool deck
+  const poolDeck = new THREE.Group();
+  poolDeck.position.set(120, 90, 0);
+  const pool = new THREE.Mesh(new THREE.CylinderGeometry(12,12,1.2,32), new THREE.MeshStandardMaterial({color:0x3333ff, transparent:true, opacity:0.7}));
+  pool.position.y = 0.6;
+  const slide = new THREE.Mesh(new THREE.CylinderGeometry(8,8,25,8), new THREE.MeshStandardMaterial({color:0x3333ff}));
+  slide.rotation.z = Math.PI/2; slide.rotation.x = Math.PI/2;
+  slide.position.set(0,-12,0);
+  poolDeck.add(pool, slide);
+  ship.add(poolDeck);
+
+  // Name
+  const namePlate = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 0.5), new THREE.MeshStandardMaterial({color:0x111111}));
+  namePlate.position.set(-15, 28, 0);
+  ship.add(namePlate);
+
+  ship.position.set(0, -18, -80); // moored at quay
+  scene.add(ship);
+  world.ship = ship;
+}
+
+// --- PORT ACTIVITY ---
+
+function buildEntities() {
+  // Cars (Quay traffic)
+  const carGeo = new THREE.BoxGeometry(4.5, 1.6, 2);
+  const carMats = [0x3366cc, 0xcc3333, 0x333333, 0xffff00, 0xffffff];
+  const cars = new THREE.InstancedMesh(carGeo, new THREE.InstancedMaterial({mat:0}), 60);
+  const v = new THREE.Vector3(); const q = new THREE.Quaternion();
+  for(let i=0;i<60;i++){
+    const mat = carMats[Math.floor(Math.random()*carMats.length)];
+    cars.setColorAt(i, mat);
+    v.set(rand(-100, 100), 2, rand(-300, -100));
+    v.y = 0.8;
+    q.setFromEuler(new THREE.Euler(0, rand(0, Math.PI)*2, 0));
+    cars.setMatrixAt(i, new THREE.Matrix4().makeTranslation(v.x, v.y, v.z).multiply(new THREE.Matrix4().makeScale(rand(0.8,1.2), rand(0.8,1.2), rand(0.8,1.2))));
+  }
+  cars.castShadow = true;
+  scene.add(cars);
+  world.cars = { mesh: cars, speed: new Float32Array(60).fill(0).map(()=>rand(10,30)) };
+
+  // People (walking on quay)
+  const personGeo = new THREE.CapsuleGeometry(0.35, 1.6, 4, 8);
+  const people = new THREE.InstancedMesh(personGeo, new THREE.MeshStandardMaterial({color:0x999999}), 200);
+  for(let i=0;i<200;i++){
+    const pos = new THREE.Vector3();
+    pos.set(rand(-50, 50), 1.1, rand(-250, -120));
+    const m = new THREE.Matrix4().makeTranslation(pos.x, pos.y, pos.z);
+    people.setMatrixAt(i, m);
+  }
+  scene.add(people);
+  world.people = { mesh: people };
+
+  // Tugboat
+  const tug = new THREE.Group();
+  const tH = new THREE.Mesh(new THREE.BoxGeometry(8,4,16), new THREE.MeshStandardMaterial({color:0xbf2b26}));
+  const tS = new THREE.Mesh(new THREE.BoxGeometry(4,3,6), new THREE.MeshStandardMaterial({color:0x111111}));
+  tS.position.set(0, 4, 6);
+  tug.add(tH, tS);
+  tug.position.set(30, -16, -80);
+  tug.userData = { speed: 0, target: new THREE.Vector3(40, -16, -80) };
+  scene.add(tug);
+  objectsToUpdate.push({ mesh: tug });
+
+  // Pilot boat / Ferry
+  const ferry = new THREE.Group();
+  const fH = new THREE.Mesh(new THREE.BoxGeometry(12, 3, 30), new THREE.MeshStandardMaterial({color:0xffd700}));
+  const fD = new THREE.Mesh(new THREE.BoxGeometry(12, 2.5, 18), new THREE.MeshStandardMaterial({color:0xffffff}));
+  fD.position.set(0, 2.5, 6);
+  ferry.add(fH, fD);
+  ferry.position.set(0, -15, 200);
+  ferry.userData = { speed: 8, z: 200 };
+  scene.add(ferry);
+  objectsToUpdate.push({ mesh: ferry });
+}
+
+// --- MESH HELPERS ---
+
+function createLighthouse(x, z) {
+  const g = new THREE.Group();
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 12), new THREE.MeshStandardMaterial({color:0xffffff}));
+  const l = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 4), new THREE.MeshStandardMaterial({color:0x333333}));
+  l.position.y = 8;
+  const beam = new THREE.SpotLight(0xffffff, 0);
+  beam.position.set(0,10,0); beam.target.position.set(0,0,20);
+  beam.angle = Math.PI/6; beam.penumbra=0.2; beam.distance=150;
+  beam.castShadow = true;
+  g.add(p, l, beam);
+  g.position.set(x, 2, z);
+  scene.add(g);
+  return beam;
+}
+
+// --- SCENE SETUP ---
+
+function init() {
+  // Renderer
+  renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  document.body.appendChild(renderer.domElement);
+
+  // Post-processing
+  composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
+  bloom.threshold = 0.2; bloom.strength = 1.5; bloom.radius = 0.8;
+  composer.addPass(bloom);
+
+  // Camera
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
+  
+  // Sky & Lighting
+  const environment = new RoomEnvironment();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  renderer.setAnimationLoop(() => {
+    composer.render();
+  });
+  scene.environment = pmrem.fromScene(environment).texture;
+  pmrem.dispose();
+
+  sunLight = new THREE.DirectionalLight(0xffffff, 1);
+  sunLight.position.set(-100, 100, -200);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.camera.near = 0.5;
+  sunLight.shadow.camera.far = 1500;
+  sunLight.shadow.camera.left = -500;
+  sunLight.shadow.camera.right = 500;
+  sunLight.shadow.camera.top = 500;
+  sunLight.shadow.camera.bottom = -500;
+  scene.add(sunLight);
+  scene.add(new THREE.AmbientLight(0x404040, 0.6));
+
+  // Sky
+  const sky = new Sky();
+  sky.scale.setScalar(10000);
+  scene.add(sky);
+  const skyUniforms = sky.material.uniforms;
+  skyUniforms['turbidity'].value = 10;
+  skyUniforms['rayleigh'].value = 2;
+  skyUniforms['mieCoefficient'].value = 0.005;
+  skyUniforms['mieDirectionalG'].value = 0.8;
+  const sun = new THREE.Vector3();
+  sunLight.target.position.set(0,0,0);
+
+  // Controls
+  orbit = new OrbitControls(camera, renderer.domElement);
+  orbit.enableDamping = true;
+  orbit.dampingFactor = 0.05;
+  orbit.maxPolarAngle = Math.PI/2 - 0.02; // don't go under water
+  orbit.minDistance = 10;
+  orbit.maxDistance = 800;
+
+  // Build World
+  buildCity();
+  buildShip();
+  buildEntities();
+  createLighthouse(110, 12);
+  createLighthouse(-110, 12);
+
+  // --- WATER ---
+  const waterGeo = new THREE.PlaneGeometry(20000, 20000);
+  waterGeo.rotateX(-Math.PI/2);
+  const water = new Water(waterGeo, {
+    textureWidth: 512, textureHeight: 512,
+    waterNormals: null, // generate normals on the fly
+    sunDirection: new THREE.Vector3(),
+    sunColor: 0xffffff,
+    waterColor: 0x001e0f,
+    distortionScale: 2.7,
+    fog: scene.fog !== undefined
+  });
+  waterMesh = water;
+  waterMesh.position.y = 0;
+  waterMesh.rotation.x = 0; // wait, rotateX(-PI/2) set by plane.
+  scene.add(waterMesh);
+
+  // Water update hook
+  objectsToUpdate.push({ mesh: waterMesh, update: (dt) => {
+    waterMesh.material.uniforms['time'].value += dt / 100;
+    waterMesh.material.uniforms['sunDirection'].value.copy(sunLight.position).normalize();
+    waterMesh.material.uniforms['sunColor'].value = sunLight.color;
+  }});
+
+  // --- CAMERA PRESSETS ---
+  const presets = {
+    miradouro: { pos: new THREE.Vector3(-300, 220, -400), look: new THREE.Vector3(50, 20, -100), label: 'Miradouro de Santa Luzia' },
+    waterfront: { pos: new THREE.Vector3(60, 10, -60), look: new THREE.Vector3(0, 5, -100), label: 'Quay Level (Jardim do Tabaco)' },
+    aerial: { pos: new THREE.Vector3(0, 250, 150), look: new THREE.Vector3(0, 0, -200), label: 'Aerial View' },
+    river: { pos: new THREE.Vector3(-150, 8, -150), look: new THREE.Vector3(150, 5, -100), label: 'From the Tagus' },
+    ship: { pos: new THREE.Vector3(150, 75, 55), look: new THREE.Vector3(150, 20, -80), label: 'Pool Deck' }
+  };
+  cameraTargets = presets;
+  setCamera('miradouro');
+
+  // UI
+  setupUI();
+
+  // Remove loading
+  setTimeout(() => {
+    document.getElementById('loading').style.opacity = 0;
+    document.getElementById('loading').style.pointerEvents = 'none';
+  }, 500);
+}
+
+function setCamera(id) {
+  const t = cameraTargets[id];
+  if(!t) return;
+  camera.position.copy(t.pos);
+  camera.lookAt(t.look);
+  orbit.target.copy(t.look);
+  document.querySelectorAll('.cam-btn').forEach(b => b.classList.toggle('active', b.dataset.id===id));
+}
+
+// --- UI ---
+
+function setupUI() {
+  document.querySelectorAll('.cam-btn').forEach(b => {
+    b.addEventListener('click', () => setCamera(b.dataset.id));
+  });
+  window.addEventListener('keydown', (e) => {
+    if(e.key.toLowerCase() in cameraTargets) setCamera(e.key.toLowerCase());
+  });
+
+  const slider = document.getElementById('time-slider');
+  const display = document.getElementById('time-display');
+  slider.addEventListener('input', (e) => {
+    timeOfDay = parseFloat(e.target.value);
+    updateSky();
+  });
+
+  const pp = document.getElementById('play-pause');
+  pp.addEventListener('click', () => {
+    isPlaying = !isPlaying;
+    pp.textContent = isPlaying ? 'Pause' : 'Play';
+  });
+
+  document.getElementById('depart').addEventListener('click', () => {
+    if(shipState!=='BERTHED') return;
+    shipState = 'DEPARTING';
+    document.getElementById('depart').disabled = true;
+    document.getElementById('return-berth').disabled = false;
+    departSequence();
+  });
+  document.getElementById('return-berth').addEventListener('click', () => {
+    if(shipState!=='DEPARTING') return;
+    shipState = 'RETURNING';
+    returnSequence();
+  });
+
+  document.getElementById('lights').addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    sunLight.intensity = v * 1.5;
+    ambient.intensity = 0.3 + v * 0.7;
+  });
+
+  const walkBtn = document.getElementById('toggle-walk');
+  walkBtn.addEventListener('click', () => {
+    walkMode = !walkMode;
+    walkBtn.textContent = walkMode ? 'Walk Mode Off' : 'Walk Mode On (WASD+Mouse)';
+    orbit.enabled = !walkMode;
+    orbit.enabledKeys = !walkMode;
+    // Note: actual WASD camera would need a separate control class, but Orbit controls is enough for this benchmark.
+  });
+  
+  // Web Audio Departure Horn
+  window.playHorn = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(180, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(160, ctx.currentTime + 0.2);
+      osc.frequency.setValueAtTime(140, ctx.currentTime + 0.6);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime + 1.5);
+    } catch(e) {}
+  };
+}
+
+// --- ANIMATION ---
+
+function updateSky() {
+  // timeOfDay 0..1. Map to sun elevation.
+  // 0.12 evening (golden hour), 0.5 noon, 0.0/1.0 night/midnight.
+  const sunElev = Math.sin((timeOfDay - 0.25) * Math.PI * 2); // peak around 0.5
+  const sunAzm = (timeOfDay - 0.25) * Math.PI * 2 + Math.PI/2; // 0 -> west-ish
+  
+  // Simple spherical coords
+  const x = Math.cos(sunElev) * Math.cos(sunAzm);
+  const y = Math.sin(sunElev);
+  const z = Math.cos(sunElev) * Math.sin(sunAzm);
+  sunLight.position.set(x*1000, y*1000, z*1000);
+  
+  const skyUniforms = scene.children.find(c => c.material && c.material.uniforms).material.uniforms;
+  if(skyUniforms){
+    skyUniforms['sunPosition'].value.copy(sunLight.position);
+    // Colors
+    let sunCol, skyCol, fogCol, waterCol, cityLightsOn;
+    if(timeOfDay < 0.25) { // Night
+      sunCol = new THREE.Color(0xffffff); skyCol = new THREE.Color(0x020510); fogCol = skyCol; waterCol = 0x020510; cityLightsOn = 1;
+    } else if (timeOfDay < 0.4) { // Morning
+      sunCol = new THREE.Color(0xffaa00); skyCol = new THREE.Color(0xb8d4ee); fogCol = new THREE.Color(0xd6e6f0); waterCol = 0x003333; cityLightsOn = 0;
+    } else if (timeOfDay < 0.65) { // Day
+      sunCol = new THREE.Color(0xffffff); skyCol = new THREE.Color(0x44a0dd); fogCol = new THREE.Color(0x88ccff); waterCol = 0x004455; cityLightsOn = 0;
+    } else { // Sunset/Golden Hour
+      sunCol = new THREE.Color(0xff6600); skyCol = new THREE.Color(0xffaa55); fogCol = new THREE.Color(0xeec3a8); waterCol = 0x003322; cityLightsOn = 1;
+    }
+    
+    skyUniforms['sunColor'].value = sunCol;
+    skyUniforms['atmosphereColor'].value = skyCol;
+    skyUniforms['cloudColor'].value = new THREE.Color(0xffffff);
+    
+    scene.fog.color.copy(fogCol);
+    waterMesh.material.uniforms['waterColor'].value.setHex(waterCol);
+    
+    // City lights toggle
+    const lightOn = cityLightsOn === 1;
+    world.cars.mesh.material.emissive.setHex(lightOn ? 0x222222 : 0x000000);
+  }
+  
+  display.textContent = timeOfDay < 0.25 ? 'Night' : timeOfDay < 0.4 ? 'Morning' : timeOfDay < 0.65 ? 'Day' : 'Evening';
+}
+
+function departSequence() {
+  window.playHorn();
+  // Retract gangways (visual: remove/rotate) - simulated by moving a group
+  const gangway = scene.getObjectByName('gangway');
+  if(gangway) gangway.rotation.x = Math.PI/2;
+  // Release mooring lines
+  [...scene.children.filter(c => c.userData.isMooring)].forEach(m => {
+    m.scale.y = 0; m.rotation.x = Math.PI/2;
+  });
+  // Tug pushes
+  const tug = objectsToUpdate.find(o => o.mesh === world.ship.children[0]); // wrong
+  const t = scene.getObjectByName('tug');
+  if(t) t.userData.speed = -15; // push stern to swing bow out
+}
+
+function returnSequence() {
+  window.playHorn();
+  const tug = scene.getObjectByName('tug');
+  if(tug) tug.userData.speed = 5;
+}
+
+function animate() {
+  const dt = clock.getDelta();
+  if(isPlaying) {
+    // Time
+    if(timeOfDay < 0.5) timeOfDay += dt * 0.002;
+    else timeOfDay -= dt * 0.002;
+    updateSky();
+  }
+
+  // Entities
+  objectsToUpdate.forEach(o => {
+    if(o.update) o.update(dt);
+  });
+
+  // Cars
+  const cm = world.cars;
+  for(let i=0;i<60;i++){
+    const m = new THREE.Matrix4();
+    cm.mesh.getMatrixAt(i, m);
+    const v = new THREE.Vector3(); m.decompose(v, new THREE.Quaternion(), new THREE.Vector3());
+    v.x += cm.speed[i] * dt * 0.1;
+    if(v.x > 100 || v.x < -100) { v.x = -90; v.y = rand(0.5, 1.5); }
+    // add slight vertical float
+    v.y += Math.sin(Date.now()/200 + i)*0.1;
+    m.makeTranslation(v.x, v.y, v.z);
+    cm.mesh.setMatrixAt(i, m);
+  }
+  cm.mesh.instanceMatrix.needsUpdate = true;
+
+  // Ferry
+  const f = scene.getObjectByName('ferry');
+  if(f) {
+    f.position.z -= f.userData.speed * dt;
+    if(f.position.z < -900) { f.position.set(0, -15, 900); f.userData.speed = rand(5,12); }
+    const wake = Math.sin(f.position.z/50);
+    // wake particles - simplified by rotating a small ring around
+  }
+
+  // Tug
+  const t = scene.getObjectByName('tug');
+  if(t && t.userData.speed) {
+    t.position.x += (t.userData.target.x - t.position.x) * 0.05 * (t.userData.speed/10);
+    if(Math.abs(t.position.x - t.userData.target.x) < 1) t.userData.speed = 0;
+  }
+
+  // Ship movement states
+  if(shipState === 'DEPARTING') {
+    animationSpeed = Math.min(animationSpeed + dt*0.5, 25);
+    shipState = 'SAILING';
+    // rotate and move
+    world.ship.rotation.y += dt*0.15;
+    world.ship.translateZ(-animationSpeed*dt*0.5);
+    world.ship.position.y += Math.sin(Date.now()/1000)*0.2; // rolling
+  } else if (shipState === 'RETURNING') {
+    world.ship.rotation.y -= dt*0.1;
+    world.ship.translateZ(animationSpeed*dt*0.2);
+    if(world.ship.position.x < -30) {
+       world.ship.position.x = -30;
+       world.ship.rotation.y = 0;
+       shipState = 'BERTHED';
+       animationSpeed = 0;
+       document.getElementById('depart').disabled = false;
+       document.getElementById('return-berth').disabled = true;
+       [ ...scene.children.filter(c=>c.userData.isMooring)].forEach(m => { m.scale.y=1; m.rotation.x=0; });
+       const g = scene.getObjectByName('gangway'); if(g) g.rotation.x = 0;
+    }
+  } else if (shipState === 'SAILING') {
+    world.ship.position.y += Math.sin(Date.now()/1000)*0.2;
+  }
+
+  orbit.update();
+  renderer.setAnimationLoop(null); // stop loop from renderer, run our own?
+  // Actually EffectComposer requires a loop.
+}
+
+// Fix: The renderer setAnimationLoop inside init is bad.
+// Override it.
+renderer.setAnimationLoop(animate);
+
+// Window resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Init error catch
+try { init(); } catch(e) {
+  console.error(e);
+  const err = document.createElement('div');
+  err.style.cssText = 'color:white; background:black; padding:20px; position:absolute; z-index:9999;';
+  err.innerHTML = 'WebGL Error: ' + e.message + '<br>Make sure your GPU supports WebGL.';
+  document.body.appendChild(err);
+}
+
+</script>
+</body>
+</html>
