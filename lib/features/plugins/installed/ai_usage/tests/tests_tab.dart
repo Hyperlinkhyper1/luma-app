@@ -132,6 +132,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'Pagoda Test',
           subtitle: 'Open the test screen',
           imageFile: _tileArt(repo, 'pagoda'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.temple_buddhist_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -142,6 +143,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'Engine Test',
           subtitle: 'Open the test screen',
           imageFile: _tileArt(repo, 'engine'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.precision_manufacturing_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -152,6 +154,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'PC Test',
           subtitle: 'Open the test screen',
           imageFile: _tileArt(repo, 'pc'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.computer_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -162,6 +165,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'Cathedral Test',
           subtitle: 'New · Open the test screen',
           imageFile: _tileArt(repo, 'cathedral'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.church_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -172,6 +176,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'Keyboard Test',
           subtitle: 'New · Open the test screen',
           imageFile: _tileArt(repo, 'keyboard'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.keyboard_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -182,6 +187,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'Server Rack Test',
           subtitle: 'New · Open the test screen',
           imageFile: _tileArt(repo, 'server_rack'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.dns_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -192,6 +198,7 @@ class _TestsTabState extends State<TestsTab> {
           title: 'Cruise Ship Test',
           subtitle: 'New · Open the test screen',
           imageFile: _tileArt(repo, 'cruise_ship'),
+          artworkAboveBand: true,
           fallbackIcon: Icons.directions_boat_rounded,
           width: width,
           onTap: () => Navigator.of(context).push(
@@ -203,6 +210,7 @@ class _TestsTabState extends State<TestsTab> {
             title: test.title,
             subtitle: 'New · Open the test screen',
             imageFile: _tileArt(repo, test.kind),
+            artworkAboveBand: true,
             fallbackIcon: test.icon,
             width: width,
             onTap: () => Navigator.of(context).push(

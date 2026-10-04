@@ -75,7 +75,15 @@ class LumaHeroTile extends StatefulWidget {
     required this.onTap,
     this.width = 340,
     this.aspectRatio = 1,
+    this.artworkAboveBand = false,
   });
+
+  /// Lays the artwork over the top of the tile only, down to just past where
+  /// the band turns solid, instead of under the whole tile. For wide scene
+  /// screenshots: filling a square crops away their sides and puts their
+  /// subject, in the middle of the frame, right where the wash begins;
+  /// fitted above the band the whole frame shows, centred in the clear part.
+  final bool artworkAboveBand;
 
   final String title;
   final String subtitle;
@@ -99,6 +107,11 @@ class LumaHeroTile extends StatefulWidget {
 
 class _LumaHeroTileState extends State<LumaHeroTile> {
   bool _hovered = false;
+
+  /// Height of the artwork when [LumaHeroTile.artworkAboveBand] is set: a
+  /// little past [HeroTileWash.solidStart], so its bottom edge is hidden
+  /// under the solid band rather than showing as a line.
+  static const double _aboveBandHeight = HeroTileWash.solidStart + 0.04;
 
   @override
   Widget build(BuildContext context) {
@@ -136,10 +149,18 @@ class _LumaHeroTileState extends State<LumaHeroTile> {
                   duration: const Duration(milliseconds: 320),
                   curve: Curves.easeOutCubic,
                   scale: _hovered ? 1.04 : 1,
-                  child: _TileArtwork(
-                    imageAsset: widget.imageAsset,
-                    imageFile: widget.imageFile,
-                    fallbackIcon: widget.fallbackIcon,
+                  child: FractionallySizedBox(
+                    alignment: Alignment.topCenter,
+                    heightFactor:
+                        widget.artworkAboveBand ? _aboveBandHeight : 1,
+                    child: _TileArtwork(
+                      imageAsset: widget.imageAsset,
+                      imageFile: widget.imageFile,
+                      fallbackIcon: widget.fallbackIcon,
+                      alignment: widget.artworkAboveBand
+                          ? Alignment.center
+                          : Alignment.topCenter,
+                    ),
                   ),
                 ),
                 const DecoratedBox(
@@ -229,11 +250,13 @@ class _TileArtwork extends StatelessWidget {
     this.imageAsset,
     this.imageFile,
     required this.fallbackIcon,
+    this.alignment = Alignment.topCenter,
   });
 
   final String? imageAsset;
   final File? imageFile;
   final IconData fallbackIcon;
+  final Alignment alignment;
 
   @override
   Widget build(BuildContext context) {
@@ -256,7 +279,7 @@ class _TileArtwork extends StatelessWidget {
       return Image.file(
         file,
         fit: BoxFit.cover,
-        alignment: Alignment.topCenter,
+        alignment: alignment,
         errorBuilder: (context, error, stack) => fallback(),
       );
     }
@@ -265,7 +288,7 @@ class _TileArtwork extends StatelessWidget {
       return Image.asset(
         asset,
         fit: BoxFit.cover,
-        alignment: Alignment.topCenter,
+        alignment: alignment,
         errorBuilder: (context, error, stack) => fallback(),
       );
     }

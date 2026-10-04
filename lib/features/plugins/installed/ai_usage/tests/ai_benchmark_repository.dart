@@ -190,8 +190,13 @@ class AiBenchmarkRepository extends ChangeNotifier {
     try {
       final root = await _cacheRoot();
       for (final b in _manifest.benchmarks) {
-        if (!b.hasPreview) continue;
         final file = File('${root.path}/previews/${b.id}.png');
+        if (!b.hasPreview) {
+          // The server dropped a banner that showed an error or loading
+          // screen; the cached copy must go too, or the tile keeps it.
+          if (await file.exists()) await file.delete().catchError((_) => file);
+          continue;
+        }
         final expected = _manifest.previewHashes[b.id] ?? b.previewSha256;
         if (await file.exists() && await _matchesHash(file, expected)) {
           continue;

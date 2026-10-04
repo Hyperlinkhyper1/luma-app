@@ -353,15 +353,168 @@ async function settleCanvas(page) {
   step(0.2, 'waiting for the canvas');
   await waitForCanvas(page);
   step(0.5, 'letting it draw');
-  await sleep(5000);
+  await sleep(10000);
 }
 
 const shootEngine = settleCanvas;
 const shootServerRack = settleCanvas;
 
-// The newer scene tests have no scene-specific setup: every page is a
-// model's own, so it is shot once it has drawn and had time to settle.
-const shootCanvasScene = settleCanvas;
+// A failure that is the scene's own fault (it gave up and said so, or never
+// got past its loading screen), as opposed to the renderer's. Its old banner
+// is a picture of the same problem, so it is removed rather than kept.
+class BadSceneError extends Error {}
+
+// Visible text that means the page gave up instead of drawing.
+const ERROR_SCREEN =
+  /webgl\s*(2(\.0)?\s*)?(is\s+)?(not\s+|un)(available|supported)|(failed|unable) to (initiali[sz]e|create|get)\s+(a\s+)?webgl|your (browser|device) does(n't| not) support|error creating webgl/i;
+
+// Visible text that means the page is still getting ready: a verb, then an
+// ellipsis or a percentage within the same short label.
+const LOADING_SCREEN =
+  /\b(loading|generating|initiali[sz]ing|preparing|compiling|building|baking|downloading)\b[^\n]{0,40}?(\.\.\.|…|\d+\s*%)/i;
+
+async function sceneScreen(page) {
+  return page.evaluate((errorSrc, loadingSrc) => {
+    const text = document.body?.innerText ?? '';
+    const error = text.match(new RegExp(errorSrc, 'i'));
+    if (error) return { error: error[0] };
+    const loading = text.match(new RegExp(loadingSrc, 'i'));
+    return { loading: loading ? loading[0] : null };
+  }, ERROR_SCREEN.source, LOADING_SCREEN.source);
+}
+
+// The scene's largest canvas and where it sits.
+async function mainCanvasRect(page) {
+  return page.evaluate(() => {
+    const canvas = [...document.querySelectorAll('canvas')].sort(
+      (a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight,
+    )[0];
+    if (!canvas) return null;
+    const r = canvas.getBoundingClientRect();
+    return { x: r.x, y: r.y, width: r.width, height: r.height };
+  });
+}
+
+// Hides every positioned layer that isn't the canvas or one of its
+// ancestors: HUDs, control panels, title cards. A banner is the scene, not
+// the page's chrome around it. Returns how many were hidden.
+async function hideOverlays(page) {
+  return page.evaluate(() => {
+    const canvas = [...document.querySelectorAll('canvas')].sort(
+      (a, b) => b.clientWidth * b.clientHeight - a.clientWidth * a.clientHeight,
+    )[0];
+    if (!canvas) return 0;
+    let hidden = 0;
+    for (const el of document.body.querySelectorAll('*')) {
+      if (el === canvas || el.contains(canvas) || canvas.contains(el)) continue;
+      if (el.closest('[data-luma-hidden]')) continue;
+      const s = getComputedStyle(el);
+      if (s.position !== 'fixed' && s.position !== 'absolute') continue;
+      if (s.visibility === 'hidden' || s.display === 'none') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      el.dataset.lumaHidden = '1';
+      el.style.setProperty('visibility', 'hidden', 'important');
+      hidden++;
+    }
+    return hidden;
+  });
+}
+
+async function unhideOverlays(page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('[data-luma-hidden]')) {
+      el.style.removeProperty('visibility');
+      delete el.dataset.lumaHidden;
+    }
+  });
+}
+
+// How much the middle of the frame varies; near zero is a flat colour
+// (a black canvas that hasn't drawn, or a plain loading backdrop).
+async function centreSpread(page) {
+  const buf = await page.screenshot({
+    clip: { x: W * 0.15, y: H * 0.15, width: W * 0.7, height: H * 0.7, scale: 0.25 },
+  });
+  return lumaStats(buf).spread;
+}
+
+// The newer scene tests are each a model's own page, so nothing about them
+// can be assumed beyond "there is a canvas". Many open on a loading or
+// "generating…" card, a cinematic fade from black, or a click-to-start
+// splash, so this waits for all of that to clear and for the canvas to
+// actually show something, then gives the scene a long while to settle
+// before hiding the HUD and shooting the scene itself.
+async function shootCanvasScene(page) {
+  step(0.15, 'waiting for the canvas');
+  await waitForCanvas(page, 180000);
+  const t0 = Date.now();
+  let pressed = false;
+  step(0.25, 'waiting for the loading screen');
+  for (;;) {
+    const screen = await sceneScreen(page);
+    if (screen.error) throw new BadSceneError(`the scene showed an error screen: "${screen.error}"`);
+    if (!screen.loading && (await canvasVisible(page))) break;
+    if (!pressed && Date.now() - t0 > 3000) pressed = await pressStart(page);
+    if (Date.now() - t0 > 240000) {
+      throw new BadSceneError(`scene never got past its loading screen${screen.loading ? ` ("${screen.loading}")` : ''}`);
+    }
+    step(0.25 + 0.2 * Math.min(1, (Date.now() - t0) / 240000), 'waiting for the loading screen');
+    await sleep(1000);
+  }
+  if (!pressed) await pressStart(page);
+  step(0.5, 'waiting for the scene to draw');
+  const t1 = Date.now();
+  while (Date.now() - t1 < 60000 && (await centreSpread(page)) < 0.03) await sleep(1500);
+  step(0.65, 'letting it settle');
+  await sleep(15000);
+  const late = await sceneScreen(page);
+  if (late.error) throw new BadSceneError(`the scene showed an error screen: "${late.error}"`);
+  const before = await centreSpread(page);
+  const hidden = await hideOverlays(page);
+  if (hidden > 0) {
+    await sleep(500);
+    // A scene that draws in the DOM rather than on the canvas would be left
+    // blank; keep its overlays then.
+    const after = await centreSpread(page);
+    if (after < 0.02 && after < before * 0.4) await unhideOverlays(page);
+    else note(`hid ${hidden} overlay${hidden === 1 ? '' : 's'}`);
+  }
+}
+
+// Where to crop the banner: the canvas itself when it shares the page with a
+// sidebar or panel, so the scene fills the banner rather than the chrome.
+// Full-page canvases, and odd shapes that wouldn't fit a banner, shoot the
+// whole viewport as before.
+async function sceneClip(page) {
+  const r = await mainCanvasRect(page);
+  if (!r) return null;
+  const x = Math.max(0, r.x);
+  const y = Math.max(0, r.y);
+  const width = Math.min(W, r.x + r.width) - x;
+  const height = Math.min(H, r.y + r.height) - y;
+  const share = (width * height) / (W * H);
+  const aspect = width / Math.max(1, height);
+  if (share > 0.9 || share < 0.35 || aspect < 1.2 || aspect > 2.4) return null;
+  return { x, y, width, height };
+}
+
+// Takes away the one WebGL option that turns a slow-but-working context
+// (SwiftShader, or a GPU Chromium half-trusts) into "WebGL is unavailable".
+function relaxWebGl() {
+  const patch = (proto) => {
+    if (!proto?.getContext) return;
+    const original = proto.getContext;
+    proto.getContext = function (type, attrs) {
+      if (attrs && typeof attrs === 'object' && attrs.failIfMajorPerformanceCaveat) {
+        attrs = { ...attrs, failIfMajorPerformanceCaveat: false };
+      }
+      return original.call(this, type, attrs);
+    };
+  };
+  patch(globalThis.HTMLCanvasElement?.prototype);
+  patch(globalThis.OffscreenCanvas?.prototype);
+}
 
 async function shootSvgScene(page) {
   // World Timeline pages are SVG by rule, never canvas: wait for an svg with
@@ -369,10 +522,19 @@ async function shootSvgScene(page) {
   step(0.2, 'waiting for the svg');
   await page.waitForFunction(
     `[...document.querySelectorAll('svg')].some((s) => s.querySelectorAll('path,circle,ellipse,rect,polygon').length > 5)`,
-    { timeout: 90000, polling: 500 },
+    { timeout: 180000, polling: 500 },
   );
+  const t0 = Date.now();
+  for (;;) {
+    const screen = await sceneScreen(page);
+    if (screen.error) throw new BadSceneError(`the scene showed an error screen: "${screen.error}"`);
+    if (!screen.loading) break;
+    if (Date.now() - t0 > 120000) throw new BadSceneError(`scene never finished loading ("${screen.loading}")`);
+    await sleep(1000);
+  }
+  await pressStart(page);
   step(0.5, 'letting it animate');
-  await sleep(8000);
+  await sleep(15000);
 }
 
 const SCENE_KINDS = ['engine', 'pc', 'cathedral', 'keyboard', 'cruise_ship', 'server_rack',
@@ -764,6 +926,7 @@ async function main() {
       const framing = framingOf(id);
       // Engine and PC scenes keep their own clock; with a saved framing
       // they get just the camera hook.
+      if (kind !== 'cathedral') await page.evaluateOnNewDocument(relaxWebGl);
       if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
       else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
       if (kind === 'cathedral') {
@@ -799,7 +962,9 @@ async function main() {
         if (framing) note(`framing: ${(await applyFraming(page, framing)).camera}`);
       }
       step(0.97, 'capturing');
-      const png = await page.screenshot({ type: 'png' });
+      const clip = CANVAS_SCENE_KINDS.has(kind) && !framing ? await sceneClip(page) : null;
+      if (clip) note(`cropped to the canvas (${Math.round(clip.width)}×${Math.round(clip.height)})`);
+      const png = await page.screenshot(clip ? { type: 'png', clip } : { type: 'png' });
       const { spread } = lumaStats(png);
       if (spread < 0.02) throw new Error('blank frame (solid colour), keeping the old banner');
       // Write beside the target and rename, so the server never serves a
@@ -813,6 +978,9 @@ async function main() {
       const problem = pageProblem || (page?.lumaConsole?.length ? `console error: ${page.lumaConsole[0]}` : '');
       console.log(`FAIL ${id}: ${problem ? `${reason} (${problem.slice(0, 300)})` : reason}`);
       failed.push(id);
+      if (e instanceof BadSceneError) {
+        await fs.promises.rm(path.join(outDir, `${id}.png`), { force: true }).catch(() => {});
+      }
     } finally {
       if (page) await page.close().catch(() => {});
       await sleep(1000);
