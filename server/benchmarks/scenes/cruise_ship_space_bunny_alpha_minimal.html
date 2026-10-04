@@ -68,7 +68,7 @@ const clock=new THREE.Clock();
 const materials={};
 function mat(color,rough=.65,metal=.05,emissive=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive:emissive||0x000000,emissiveIntensity:emissive?1:0});}
 materials.white=mat(0xf5f3e9,.5,.05);materials.hull=mat(0x182630,.42,.28);materials.navy=mat(0x10202b,.45,.18);materials.glass=mat(0x183f51,.18,.75);materials.gold=mat(0xc49a51,.35,.65);materials.orange=mat(0xe65d27,.48,.08);materials.rail=mat(0xd6d9d8,.25,.9);materials.deck=mat(0xd8d2bd,.88,.02);materials.dark=mat(0x20292d,.65,.2);materials.teal=mat(0x168c9b,.22,.25);materials.red=mat(0x8e1725,.4,.1);
-function mesh(g,m,parent,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function mesh(g,m,parent=ship,x=0,y=0,z=0){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
 function box(w,h,d,m,x,y,z,parent=ship){return mesh(new THREE.BoxGeometry(w,h,d),m,parent,x,y,z)}
 function cyl(rt,rb,h,m,x,y,z,parent=ship,seg=24){return mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m,parent,x,y,z)}
 function sphere(r,m,x,y,z,parent=ship){return mesh(new THREE.SphereGeometry(r,20,12),m,parent,x,y,z)}
