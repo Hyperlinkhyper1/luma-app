@@ -3,7 +3,7 @@ import {
   Fn, vec2, vec3, vec4, float, uniform, mix, smoothstep, saturate, abs, sin, cos, fract, floor, time, step,
   positionGeometry, normalWorld, mx_noise_float, max, min, length, dot, uv, texture, If,
 } from 'three/tsl';
-import { deckY, POOL_DECK, wallLine, railZ, wallZ, frontX, backX, BALCONY_D, RECESS, CABIN_DECKS } from './dims.js';
+import { deckY, POOL_DECK, wallLine, railZ, wallZ, frontX, backX, BALCONY_D, BOW_LEN, RECESS, CABIN_DECKS } from './dims.js';
 import { Builder, Instancer, mat, prism, offsetPolyline } from './kit.js';
 import { shipPos, shipU, canvasTexture, drawCompass } from './materials.js';
 import { closedOutline } from './superstructure.js';
@@ -195,7 +195,7 @@ export function buildTopDecks(M, col, pois) {
   const I = new Instancer();
 
   const outline = deck16Outline();
-  TOP.fwd[1] = frontX(15) + BALCONY_D - 2;
+  TOP.fwd[1] = frontX(18);
   const xFront = TOP.fwd[1];
 
   // --- deck 16 slab: floor of the top decks, roof over the top balconies -------
@@ -214,13 +214,26 @@ export function buildTopDecks(M, col, pois) {
     // floor band between the two glazed decks
     B.add('paint', prism(band(outline, TOP.mid[0], TOP.mid[1], 2.1, 2), Y17 - 0.25, Y17 + 0.25));
 
-    const fwd = band(outline, TOP.fwd[0], xFront, 2.2, 1.5);
-    B.add('navyGlass', prism(fwd, Y16, Y19 - 0.4));
-    B.add('paint', prism(band(outline, TOP.fwd[0] - 0.3, xFront + 0.3, 0.3, 1.5), Y19 - 0.4, Y19));
-    B.add('paint', prism(band(outline, TOP.fwd[0], xFront, 2.1, 1.5), Y17 - 0.25, Y17 + 0.25));
-    B.add('paint', prism(band(outline, TOP.fwd[0], xFront, 2.1, 1.5), Y18 - 0.25, Y18 + 0.25));
-    col.prism(fwd, Y16, Y19);
-    col.prism(band(outline, TOP.fwd[0] - 0.3, xFront + 0.3, 0.3, 1.5), Y19 - 0.6, Y19);
+    // Forward: the top decks keep stepping back like the cabin decks below
+    // (a raked, terraced front): a windowed white deck, then two decks of
+    // dark lounge glass, each under a white slab, the roof carrying the mast.
+    const x0f = TOP.fwd[0];
+    const fwdPlan = (n, inset, out = 0) => {
+      const zs = EDGE - inset, xs = frontX(n) - BOW_LEN;
+      const half = [[x0f, zs + out]];
+      for (let i = 0; i <= 16; i++) {
+        const a = (i / 16) * Math.PI / 2;
+        half.push([xs + Math.sin(a) * (BOW_LEN + out), Math.cos(a) * (zs + out)]);
+      }
+      return [...half, ...half.slice(0, -1).reverse().map(([x, z]) => [x, -z])];
+    };
+    const tiers = [[16, 'frontFacade', 2.0], [17, 'navyGlass', 2.3], [18, 'navyGlass', 2.6]];
+    for (const [n, key, inset] of tiers) {
+      const y0 = deckY(n), y1 = deckY(n + 1);
+      B.add(key, prism(fwdPlan(n, inset), y0, y1 - 0.3));
+      B.add('paint', prism(fwdPlan(n, inset, 0.45), y1 - 0.3, y1 + 0.15));
+      col.prism(fwdPlan(n, inset, 0.45), y0, y1 + 0.15);
+    }
   }
 
   // --- screen block at the forward end of the pool (photo 4) --------------------
@@ -243,16 +256,9 @@ export function buildTopDecks(M, col, pois) {
     }
   }
 
-  // --- mast and radar domes ---------------------------------------------------
+  // --- radar domes ----------------------------------------------------------
   {
     const xm = (TOP.screen[0] + TOP.screen[1]) / 2;
-    const yb = Y19 + 3.2;
-    for (const zz of [-3.2, 3.2]) B.boxMM('black', xm - 0.5, yb, zz - 0.5, xm + 0.5, yb + 9, zz + 0.5);
-    B.boxMM('black', xm - 0.6, yb + 8.2, -3.8, xm + 0.6, yb + 9.4, 3.8);
-    B.boxMM('paint', xm - 1.8, yb + 9.4, -2.2, xm + 1.8, yb + 9.8, 2.2);
-    B.tube('steel', new THREE.Vector3(xm, yb + 9.8, 0), new THREE.Vector3(xm, yb + 15, 0), 0.12, true);
-    B.box('steelDark', xm, yb + 10.6, 0, 0.4, 0.4, 5.5);
-    I.add('navWhite', mat(xm, yb + 15.1, 0, 0, 0, 0, 0.25, 0.25, 0.25));
     for (const [zz, r] of [[-11.5, 2.2], [-15.5, 1.9], [11.5, 2.2], [15.5, 1.9]]) {
       B.tube('paint', new THREE.Vector3(xm, Y19, zz), new THREE.Vector3(xm, Y19 + 2.6, zz), 0.45);
       I.add('dome', mat(xm, Y19 + 2.6 + r * 0.95, zz, 0, 0, 0, r, r, r));
@@ -414,48 +420,51 @@ export function buildTopDecks(M, col, pois) {
     for (const s of [1, -1]) stairs(B, col, -12.5, Y17, -22.4, Y18, s * 18.6, s * 20.3, 'orangeStair');
   }
 
-  // --- funnel: twin lattice shells with stacks, compass rose ------------------------
+  // --- funnel: twin lattice hoods with the exhaust stacks, compass rose -------------
+  // Side profile measured off a broadside photo: low and long at the front,
+  // rising to a rounded crown near x = -78 (about 58 m above the sea), then
+  // a steep, rounded aft end; the stacks rise from the crown to about 66 m.
   {
     const shape = new THREE.Shape();
-    // Side elevation in (x, y), relative to deck 18: low forward, high aft.
-    const yb = 0;
-    shape.moveTo(-32, yb);
-    shape.lineTo(-26, yb);
-    shape.quadraticCurveTo(-30, 2.5, -40, 4.6);
-    shape.quadraticCurveTo(-70, 10.5, -92, 16.2);
-    shape.quadraticCurveTo(-101, 18.4, -105.5, 13.5);
-    shape.quadraticCurveTo(-108.5, 8, -106, yb);
+    shape.moveTo(-23.5, 0);
+    shape.quadraticCurveTo(-28, 1.2, -36, 3.2);
+    shape.quadraticCurveTo(-58, 8.4, -72, 11.7);
+    shape.quadraticCurveTo(-80, 13.4, -85.5, 11.0);
+    shape.quadraticCurveTo(-89, 8.0, -88.6, 0);
     shape.closePath();
-    const geo = new THREE.ExtrudeGeometry(shape, { depth: 2.2, bevelEnabled: true, bevelThickness: 0.5, bevelSize: 0.5, bevelSegments: 3, curveSegments: 24 });
-    geo.translate(0, 0, -1.1);
+    const T = 3.4, BV = 0.9;
+    const geo = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: true, bevelThickness: BV, bevelSize: BV, bevelSegments: 4, curveSegments: 32 });
+    geo.translate(0, 0, -T / 2);
     const fmat = funnelMaterial();
-    for (const zz of [-8.6, 8.6]) {
+    const ZC = 8.8;
+    for (const zz of [-ZC, ZC]) {
       const m = new THREE.Mesh(geo, fmat);
       m.position.set(0, Y18, zz);
       m.castShadow = m.receiveShadow = true;
       group.add(m);
-      col.boxMM(-106, Y18, zz - 1.7, -28, Y18 + 12, zz + 1.7);
+      col.boxMM(-89, Y18, zz - T / 2 - BV, -24, Y18 + 11, zz + T / 2 + BV);
     }
-    // Compass rose on both outer faces.
+    // Compass rose flat on each outer face.
     const roseTex = canvasTexture(1024, 1024, (g, w, h) => { g.clearRect(0, 0, w, h); drawCompass(g, w / 2, h / 2, w * 0.46, '#f2f4f6', '#0d1b33'); });
-    const roseMat = new THREE.MeshStandardNodeMaterial({ map: roseTex, transparent: true, alphaTest: 0.2, roughness: 0.4 });
+    const roseMat = new THREE.MeshStandardNodeMaterial({ map: roseTex, transparent: true, alphaTest: 0.2, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -2 });
     for (const zz of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.CircleGeometry(4.6, 48), roseMat);
-      p.position.set(-74, Y18 + 7.8, zz * (8.6 + 1.62));
+      const p = new THREE.Mesh(new THREE.CircleGeometry(3.4, 48), roseMat);
+      p.position.set(-66, Y18 + 6.2, zz * (ZC + T / 2 + BV + 0.005));
       p.rotation.y = zz > 0 ? 0 : Math.PI;
       group.add(p);
     }
-    // Exhaust stacks between the shells, raked aft (photos 5, 16).
-    for (let i = 0; i < 6; i++) {
-      const zz = -3.6 + (i % 3) * 3.6;
-      const x = -98 + Math.floor(i / 3) * 3.0;
-      B.tube('steel', new THREE.Vector3(x, Y18 + 6, zz), new THREE.Vector3(x - 2.8, Y18 + 19.8 - (i % 3 === 1 ? 0 : 0.8), zz), 0.62 - (i % 3 === 1 ? 0 : 0.1));
-      B.tube('black', new THREE.Vector3(x - 2.75, Y18 + 19.6 - (i % 3 === 1 ? 0 : 0.8), zz), new THREE.Vector3(x - 2.85, Y18 + 20.0 - (i % 3 === 1 ? 0 : 0.8), zz), 0.5);
+    // The casing between the hoods, and two clusters of exhaust stacks rising
+    // out of it at the crown, raked slightly aft.
+    B.boxMM('navy', -87, Y18, -ZC + 2, -60, Y18 + 7.5, ZC - 2);
+    col.boxMM(-87, Y18, -ZC + 2, -60, Y18 + 7.5, ZC - 2);
+    const stacks = [[-83.2, -4.6, 0.7, 20.6], [-81.4, -3.0, 0.55, 19.4], [-79.6, -4.2, 0.6, 20.2], [-77.8, -2.4, 0.5, 18.4], [-76.4, -4.4, 0.45, 17.6]];
+    for (const [x, z, r, h] of stacks) {
+      for (const zs of [z, -z]) {
+        B.tube('steel', new THREE.Vector3(x, Y18 + 6, zs), new THREE.Vector3(x - 1.2, Y18 + h, zs), r);
+        B.tube('black', new THREE.Vector3(x - 1.18, Y18 + h - 0.1, zs), new THREE.Vector3(x - 1.22, Y18 + h + 0.12, zs), r * 0.82);
+      }
     }
-    // Bridge between shells (casing) at the aft end.
-    B.boxMM('navy', -104, Y18, -7.5, -86, Y18 + 10.5, 7.5);
-    col.boxMM(-104, Y18, -7.5, -86, Y18 + 10.5, 7.5);
-    pois.funnel = { x: -100, y: Y18 + 20, z: 0 };
+    pois.funnel = { x: -80, y: Y18 + 20, z: 0 };
   }
 
   // --- aqua park: yellow rope-course truss and water slides ------------------------
@@ -496,19 +505,37 @@ export function buildTopDecks(M, col, pois) {
 
   // --- forward top sun deck (deck 19) ------------------------------------------
   {
-    const x0 = TOP.fwd[0], x1 = xFront - 18;
-    const poly = band(outline, x0, x1, 2.6, 1.5);
-    B.add('teak', prism(poly, Y19, Y19 + 0.03));
-    const edge = [];
-    for (let x = x0; x <= x1 + 1e-6; x += 1.5) edge.push([x, halfWidthAt(outline, x) - 2.8]);
-    const ring = [...edge.map(([x, z]) => [x, z]), [x1, 0], ...edge.slice().reverse().map(([x, z]) => [x, -z])];
+    // On the roof of the forward block, following its rounded front.
+    const x0 = TOP.fwd[0];
+    const zs = EDGE - 2.9, xs = frontX(18) - BOW_LEN;
+    const half = [[x0, zs]];
+    for (let i = 0; i <= 16; i++) {
+      const a = (i / 16) * Math.PI / 2;
+      half.push([xs + Math.sin(a) * (BOW_LEN - 0.3), Math.cos(a) * zs]);
+    }
+    const ring = [...half, ...half.slice(0, -1).reverse().map(([x, z]) => [x, -z])];
+    B.add('teak', prism(ring, Y19, Y19 + 0.03));
     glassRail(B, col, ring, Y19);
-    // Glass observation lounge at the very front (photo 13: the glass dome).
-    const lx0 = x1, lx1 = xFront;
-    const lounge = band(outline, lx0 - 1, lx1, 2.6, 1);
-    B.add('navyGlass', prism(lounge, Y19, Y19 + 3.4));
-    B.add('paint', prism(band(outline, lx0 - 1.5, lx1 + 0.3, 2.2, 1), Y19 + 3.4, Y19 + 3.8));
-    col.prism(lounge, Y19, Y19 + 3.8);
+    // The mast on the forward roof: a navy tower stepping in, white
+    // platforms with the radar scanners, signal yard and lights.
+    {
+      const xm = 84, yb = Y19;
+      B.boxMM('paint', xm - 4.5, yb, -3.4, xm + 2.5, yb + 1.2, 3.4);
+      const tiers = [[2.4, 2.2, 2.4], [1.7, 1.6, 2.8], [1.1, 1.0, 2.6], [0.6, 0.6, 2.2]];
+      let y = yb + 1.2;
+      for (const [hx, hz, h] of tiers) {
+        B.boxMM('navy', xm - hx, y, -hz, xm + hx * 0.7, y + h, hz);
+        B.boxMM('paint', xm - hx - 0.5, y + h, -hz - 0.6, xm + hx * 0.7 + 0.5, y + h + 0.18, hz + 0.6);
+        y += h + 0.18;
+      }
+      // Radar scanners on the platforms, a yard and the masthead light.
+      B.box('steelDark', xm + 1.6, yb + 4.5, 0, 0.5, 0.25, 6.4);
+      B.box('steelDark', xm + 1.1, yb + 7.9, 0, 0.5, 0.25, 5.0);
+      B.box('paint', xm, y + 0.6, 0, 0.4, 0.4, 9.0);
+      B.tube('steel', new THREE.Vector3(xm, y, 0), new THREE.Vector3(xm, y + 4.2, 0), 0.1, true);
+      I.add('navWhite', mat(xm, y + 4.3, 0, 0, 0, 0, 0.22, 0.22, 0.22));
+      col.boxMM(xm - 4.5, yb, -3.4, xm + 2.5, y, 3.4);
+    }
     // Stairs: gallery 17 -> deck 19 alongside the screen block.
     for (const s of [1, -1]) stairs(B, col, 52.8, Y17, 64.0, Y19, s * 12.9, s * 14.5, 'orangeStair');
   }
@@ -529,7 +556,7 @@ export function buildTopDecks(M, col, pois) {
       for (let x = -16; x < 44; x += 1.05) put(x, Y16, s * 17.2, s > 0 ? Math.PI / 2 : -Math.PI / 2);
       for (let x = -18; x < 44; x += 1.05) put(x, Y17, s * 16.4, s > 0 ? -Math.PI / 2 : Math.PI / 2);
       // Top sun deck.
-      for (let x = 68; x < 118; x += 1.05) put(x, Y19, s * 12.5, s > 0 ? Math.PI / 2 : -Math.PI / 2);
+      for (let x = 66; x < 97; x += 1.05) if (x < 80 || x > 88) put(x, Y19, s * 12.5, s > 0 ? Math.PI / 2 : -Math.PI / 2);
       // Aft deck.
       for (let x = -156; x < -136; x += 1.05) put(x, Y16, s * 9.5, s > 0 ? Math.PI / 2 : -Math.PI / 2);
     }

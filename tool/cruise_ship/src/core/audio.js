@@ -126,7 +126,7 @@ export class Audio {
   /**
    * s: { height (m above sea), nearRail (0..1), wind (apparent m/s), speed,
    *      rain, sheltered, day (0..1), pool (0..1 proximity), funnel (0..1),
-   *      tender (bool), port (bool), fog, people }
+   *      tender (bool), port (bool), fog }
    */
   update(dt, s) {
     if (!this.ctx || this.ctx.state !== 'running') return;
@@ -153,7 +153,7 @@ export class Audio {
     this._set(this.rainOpen, s.rain * (s.sheltered ? 0.12 : 0.35));
     this._set(this.rainRoof, s.rain * (s.sheltered ? 0.3 : 0.05));
 
-    const crowd = s.people ? s.pool * s.day * (1 - s.rain) : 0;
+    const crowd = s.pool * s.day * (1 - s.rain) * 0.5;   // distant pool-deck murmur
     this._set(this.murmur, crowd * 0.25, 0.8);
     for (const [b, f] of this.formants) b.frequency.setTargetAtTime(f * (0.85 + 0.3 * Math.random()), t, 0.12);
 

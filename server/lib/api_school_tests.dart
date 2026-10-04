@@ -302,12 +302,17 @@ extension SchoolTestsApi on Api {
         '.st-detail td.nowrap{white-space:nowrap}'
         '.st-judge{margin-top:10px;grid-template-columns:minmax(150px,1fr) minmax(220px,2fr) 3fr}'
         '.st-note{font-size:11.5px;color:#a9a0c3;margin-top:4px}'
+        '.st-group-label{font-size:12px;font-weight:600;color:#c5bed9;'
+        'margin:16px 0 8px}'
+        '.st-judge{margin-top:0;padding-top:0}'
+        '.st-form{background:#12101e;border:1px solid #221c33;'
+        'border-radius:12px;padding:12px 14px}'
         '@media (max-width:900px){.st-form,.st-judge{grid-template-columns:1fr}'
         '.st-judge .muted{grid-column:auto!important}}'
         '</style>'
         '<div class="card">'
-        '<h2>School test</h2>'
-        '<div class="maint-desc">Runs your test prompts against one provider '
+        '${Api._cardHead('clipboard', 'School test')}'
+        '<div class="maint-desc" tabindex="0">Runs your test prompts against one provider '
         'and model and scores how well it would do as the classroom tutor. '
         'Answers with a number or an option letter are checked by the '
         'server, not by the model; grading cases compare the model\'s '
@@ -319,6 +324,7 @@ extension SchoolTestsApi on Api {
         'Assistant tab. Paste an API key to run a model on a key the server '
         'doesn\'t have, or on your own account; the key is used for that run '
         'only and is never saved.</div>'
+        '<div class="st-group-label">Model under test</div>'
         '<div class="st-form">'
         '<div><label for="stUpstream">Provider</label>'
         '<select id="stUpstream">$upstreamOptions</select></div>'
@@ -338,6 +344,7 @@ extension SchoolTestsApi on Api {
         '<button id="stStopBtn" type="button" class="btn btn-ghost" hidden>Stop</button>'
         '</div>'
         '</div>'
+        '<div class="st-group-label">Judge</div>'
         '<div class="st-form st-judge">'
         '<div><label for="stJudgeUpstream">Judge provider</label>'
         '<select id="stJudgeUpstream">$upstreamOptions</select></div>'
@@ -351,7 +358,8 @@ extension SchoolTestsApi on Api {
         'server\'s key, or the pasted key when it is on the same provider.'
         '</div>'
         '</div>'
-        '<div id="stStatus" class="maint-status" style="margin-top:12px"></div>'
+        '<div id="stStatus" class="maint-status" style="margin-top:12px" '
+        'aria-live="polite"></div>'
         '<div id="stProgress" class="bn-progress" hidden>'
         '<div class="bn-progress-head"><span id="stProgressLabel"></span></div>'
         '<div class="bn-bar" role="progressbar" aria-label="School test progress" '
@@ -365,9 +373,11 @@ extension SchoolTestsApi on Api {
         '<tbody id="stRuns"><tr><td colspan="11" class="muted">Loading…</td></tr>'
         '</tbody></table></div>'
         '</div>'
-        '<div class="card st-suite">'
-        '<h2>Test prompts</h2>'
-        '<div class="maint-desc">The cases every run goes through, as JSON. '
+        '<details class="card fold st-suite">'
+        '<summary>${Api._cardHead('code', 'Test prompts', extra: '<span '
+            'id="stSuiteBadge" class="badge"></span>')}</summary>'
+        '<div class="fold-body">'
+        '<div class="maint-desc" tabindex="0">The cases every run goes through, as JSON. '
         'Each case has an <code>id</code>, a <code>kind</code> and a '
         '<code>lesson</code> (country, school, year, level, subject, '
         'publisher, chapter, paragraph, topic). '
@@ -395,7 +405,8 @@ extension SchoolTestsApi on Api {
         '<button id="stSuiteReset" type="button" class="btn btn-ghost">Reset to starter set</button>'
         '<span id="stSuiteStatus" class="muted" style="font-size:12px"></span>'
         '</div>'
-        '</div>';
+        '</div>'
+        '</details>';
   }
 
   String get _adminSchoolTestsScript => _schoolTestsScript;
@@ -521,6 +532,12 @@ const _schoolTestsScript = r'''
     if (!suiteLoaded) {
       suite.value = state.suite || '';
       suiteLoaded = true;
+    }
+    const badge = document.getElementById('stSuiteBadge');
+    if (badge) {
+      badge.className = 'badge ' + (state.suiteError ? 'err' : state.customSuite ? 'ok' : 'warn');
+      badge.textContent = state.suiteError ? 'needs fixing'
+        : state.cases + ' cases' + (state.customSuite ? '' : ' · starter set');
     }
     suiteStatus.textContent = state.suiteError
       ? 'The saved prompts have a problem: ' + state.suiteError

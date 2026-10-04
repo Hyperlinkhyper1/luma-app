@@ -8,6 +8,10 @@ import '../../_shared/windows_webview.dart'
     show WindowsWebview, windowsAssetPath;
 import 'pagoda_test_page.dart' show ModelButton;
 import 'ai_benchmark_scope.dart';
+import 'ai_benchmark.dart';
+import 'model_banner.dart';
+import 'model_search_field.dart';
+import 'test_view_prefs.dart';
 
 class _BundledRackTest {
   const _BundledRackTest({
@@ -19,38 +23,52 @@ class _BundledRackTest {
   final String model;
   final String description;
   final String asset;
+
+  AiBenchmark get benchmark => AiBenchmark(
+    id: 'server_rack_${asset.split('/').last.replaceFirst('.html', '')}',
+    kind: 'server_rack',
+    model: model,
+    description: description,
+    sizeBytes: 0,
+    sha256: '',
+  );
 }
 
 const _bundledRackTests = <_BundledRackTest>[
   _BundledRackTest(
     model: 'Sonnet 5.5 (Low)',
-    description: 'Full 42U rack plus single-slice server inspection by '
+    description:
+        'Full 42U rack plus single-slice server inspection by '
         'Sonnet 5.5 Low.',
     asset: 'assets/ai_usage/server_rack_tests/sonnet_5_5_low.html',
   ),
   _BundledRackTest(
     model: 'Sonnet 5.5 (Xhigh)',
-    description: 'A 42U rack of nine inspectable servers; each one slides '
+    description:
+        'A 42U rack of nine inspectable servers; each one slides '
         'out on its rails into an open single-slice view with exploded, '
         'cutaway and airflow modes.',
     asset: 'assets/ai_usage/server_rack_tests/sonnet_5_5_xhigh.html',
   ),
   _BundledRackTest(
     model: 'Sonnet 5.5 (High)',
-    description: 'A 42U rack with labelled units that opens into a '
+    description:
+        'A 42U rack with labelled units that opens into a '
         'per-server detail view with airflow simulation.',
     asset: 'assets/ai_usage/server_rack_tests/sonnet_5_5_high.html',
   ),
   _BundledRackTest(
     model: 'Opus 5.5 (Low)',
-    description: 'A cabled 42U rack of nine servers across five archetypes; '
+    description:
+        'A cabled 42U rack of nine servers across five archetypes; '
         'each slides out into an open-chassis slice with exploded, '
         'cutaway and obstacle-aware airflow views.',
     asset: 'assets/ai_usage/server_rack_tests/opus_5_5_low.html',
   ),
   _BundledRackTest(
     model: 'Opus 5.5 (XHigh)',
-    description: 'A cabled, power-budgeted 42U rack of nine servers with '
+    description:
+        'A cabled, power-budgeted 42U rack of nine servers with '
         'nine different layouts; each unlatches, slides out on its rails '
         'and opens into a hoverable slice with exploded, cutaway and '
         'solved-airflow views.',
@@ -58,7 +76,8 @@ const _bundledRackTests = <_BundledRackTest>[
   ),
   _BundledRackTest(
     model: 'Muse Spark 1.3 (Max)',
-    description: 'RACKSCOPE·42U: a cabled rack with a unit browser and '
+    description:
+        'RACKSCOPE·42U: a cabled rack with a unit browser and '
         'an inspectable single-slice server view.',
     asset: 'assets/ai_usage/server_rack_tests/muse_spark_1_3_max.html',
   ),
@@ -76,6 +95,9 @@ class ServerRackTestPage extends StatefulWidget {
 }
 
 class _ServerRackTestPageState extends State<ServerRackTestPage> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  bool _bannerView = false;
   _BundledRackTest? _selected;
   String? _uploadedModel;
   Future<File>? _uploadedScene;
@@ -87,6 +109,15 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
     if (_started) return;
     _started = true;
     AiBenchmarkScope.of(context).load();
+    TestViewPrefs.loadBannerView('server_rack').then((banners) {
+      if (mounted) setState(() => _bannerView = banners);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -101,6 +132,25 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
   Widget _buildContent(BuildContext context) {
     final repo = AiBenchmarkScope.of(context);
     final uploads = repo.benchmarksOfKind('server_rack');
+    final query = _query.trim().toLowerCase();
+    final models = [
+      ...uploads,
+      for (final entry in _bundledRackTests) entry.benchmark,
+    ].where((entry) => entry.model.toLowerCase().contains(query)).toList();
+    void pick(AiBenchmark entry) {
+      final bundled = _bundledRackTests
+          .where((rack) => rack.benchmark.id == entry.id)
+          .firstOrNull;
+      setState(() {
+        if (uploads.any((upload) => identical(upload, entry))) {
+          _uploadedModel = entry.model;
+          _uploadedScene = repo.sceneFile(entry.id);
+        } else {
+          _selected = bundled;
+        }
+      });
+    }
+
     final luma = context.luma;
     final selected = _selected;
     final back = IconButton(
@@ -122,36 +172,37 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
         ),
         body: Platform.isWindows
             ? selected != null
-                ? WindowsWebview(
-                    key: ValueKey(selected.asset),
-                    fileUrl:
-                        Uri.file(windowsAssetPath(selected.asset)).toString(),
-                  )
-                : FutureBuilder<File>(
-                    future: _uploadedScene,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
+                  ? WindowsWebview(
+                      key: ValueKey(selected.asset),
+                      fileUrl: Uri.file(
+                        windowsAssetPath(selected.asset),
+                      ).toString(),
+                    )
+                  : FutureBuilder<File>(
+                      future: _uploadedScene,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        if (snapshot.hasError || !snapshot.hasData) {
+                          return Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: LumaEmptyState(
+                              icon: Icons.cloud_off_rounded,
+                              title: 'Could not load $_uploadedModel',
+                              subtitle:
+                                  '${snapshot.error ?? 'The download failed.'}',
+                            ),
+                          );
+                        }
+                        return WindowsWebview(
+                          key: ValueKey(snapshot.data!.path),
+                          fileUrl: Uri.file(snapshot.data!.path).toString(),
                         );
-                      }
-                      if (snapshot.hasError || !snapshot.hasData) {
-                        return Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: LumaEmptyState(
-                            icon: Icons.cloud_off_rounded,
-                            title: 'Could not load $_uploadedModel',
-                            subtitle:
-                                '${snapshot.error ?? 'The download failed.'}',
-                          ),
-                        );
-                      }
-                      return WindowsWebview(
-                        key: ValueKey(snapshot.data!.path),
-                        fileUrl: Uri.file(snapshot.data!.path).toString(),
-                      );
-                    },
-                  )
+                      },
+                    )
             : const Padding(
                 padding: EdgeInsets.all(24),
                 child: LumaEmptyState(
@@ -190,37 +241,59 @@ class _ServerRackTestPageState extends State<ServerRackTestPage> {
               style: TextStyle(color: luma.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 20),
-            Text(
-              'Select a Model',
-              style: TextStyle(
-                color: luma.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
+            ModelSearchField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _query = value),
+            ),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 24,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Select a Model',
+                  style: TextStyle(
+                    color: luma.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                LumaSegmentedTabs(
+                  tabs: const ['List', 'Banners'],
+                  selectedIndex: _bannerView ? 1 : 0,
+                  onSelect: (index) {
+                    final banners = index == 1;
+                    setState(() => _bannerView = banners);
+                    TestViewPrefs.saveBannerView('server_rack', banners);
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            for (final entry in uploads) ...[
-              ModelButton(
-                model: entry.model,
-                vendor: entry.vendor,
-                description: entry.description,
-                onTap: () => setState(() {
-                  _uploadedModel = entry.model;
-                  _uploadedScene = repo.sceneFile(entry.id);
-                }),
-                isSelected: false,
-              ),
-              const SizedBox(height: 12),
-            ],
-            for (final entry in _bundledRackTests) ...[
-              ModelButton(
-                model: entry.model,
-                description: entry.description,
-                onTap: () => setState(() => _selected = entry),
-                isSelected: false,
-              ),
-              const SizedBox(height: 12),
-            ],
+            if (models.isEmpty)
+              LumaEmptyState(
+                icon: Icons.search_off_rounded,
+                title: 'No models match "${_query.trim()}"',
+                subtitle: 'Try a shorter search.',
+              )
+            else if (_bannerView)
+              ModelBannerGrid(
+                models: models,
+                fallbackIcon: Icons.dns_rounded,
+                onPick: pick,
+              )
+            else
+              for (final entry in models) ...[
+                ModelButton(
+                  model: entry.model,
+                  vendor: entry.vendor,
+                  description: entry.description,
+                  onTap: () => pick(entry),
+                  isSelected: false,
+                ),
+                const SizedBox(height: 12),
+              ],
           ],
         ),
       ),

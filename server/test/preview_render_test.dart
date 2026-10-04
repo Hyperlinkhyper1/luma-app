@@ -113,6 +113,29 @@ void main() {
   });
 
   group('PreviewRenderService', () {
+    test('selected rack scenes can be rendered from the admin catalog',
+        () async {
+      const id = 'server_rack_test';
+      await File('${seed.path}/scenes/$id.html')
+          .writeAsString('<html><canvas></canvas></html>');
+      final manifestFile = File('${seed.path}/manifest.json');
+      final manifest = jsonDecode(await manifestFile.readAsString()) as Map;
+      (manifest['benchmarks'] as List).add({
+        'id': id,
+        'kind': 'server_rack',
+        'model': 'Rack',
+      });
+      await manifestFile.writeAsString(jsonEncode(manifest));
+      final s = service();
+      expect(await s.start(PreviewRenderMode.selected, only: [id]), isNull);
+      expect(idsOf(launches.single), [id]);
+      process.line('START $id');
+      process.line('OK   $id');
+      await process.exit(0);
+      await settle();
+      expect(s.status.items.single.state, 'ok');
+    });
+
     test('missing renders only scenes without a banner, into the data dir',
         () async {
       final s = service();

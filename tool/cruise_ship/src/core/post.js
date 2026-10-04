@@ -21,6 +21,8 @@ export const postU = {
   vignette: uniform(0.22),
   grain: uniform(0.018),
   flash: uniform(0.0),
+  saturation: uniform(1.08),
+  contrast: uniform(1.06),
 };
 
 export class Post {
@@ -80,7 +82,14 @@ export class Post {
     }
 
     const graded = Fn(() => {
-      const mapped = renderOutput(color, THREE.AgXToneMapping, THREE.SRGBColorSpace).toVar();
+      // Khronos PBR Neutral: whites stay white and paint keeps its hue,
+      // where AgX greyed the hull and pushed everything toward blue.
+      const tm = renderOutput(color, THREE.NeutralToneMapping, THREE.LinearSRGBColorSpace).toVar();
+      // A touch of contrast and saturation, as a camera's picture profile.
+      const l = luminance(tm.rgb);
+      const sat = mix(vec3(l), tm.rgb, postU.saturation);
+      const con = saturate(sat.sub(0.18).mul(postU.contrast).add(0.18));
+      const mapped = renderOutput(vec4(con, 1.0), THREE.NoToneMapping, THREE.SRGBColorSpace).toVar();
       const q = uv().sub(0.5);
       const v = float(1.0).sub(smoothstep(0.35, 0.95, length(q.mul(vec2(1.0, 0.85)))).mul(postU.vignette));
       const g = fract(sin(dot(screenCoordinate.xy.add(float(frameId).mul(13.37)), vec2(12.9898, 78.233))).mul(43758.5453)).sub(0.5);

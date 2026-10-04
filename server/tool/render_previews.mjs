@@ -299,6 +299,11 @@ async function shootEngine(page) {
   await sleep(5000);
 }
 
+async function shootServerRack(page) {
+  await page.waitForSelector('canvas', { timeout: 120000 });
+  await sleep(5000);
+}
+
 async function shootKeyboard(page) {
   // Keyboard scenes are drawn every which way — canvas, SVG, or plain CSS
   // keycaps — so wait for the page to have painted anything rather than for
@@ -476,7 +481,8 @@ async function main() {
     manifest.benchmarks.find((x) => x.id === id)?.kind ??
     (id.startsWith('engine_') ? 'engine' : id.startsWith('pc_') ? 'pc' :
       id.startsWith('cathedral_') ? 'cathedral' : id.startsWith('keyboard_') ? 'keyboard' :
-        id.startsWith('cruise_ship_') ? 'cruise_ship' : 'pagoda');
+        id.startsWith('cruise_ship_') ? 'cruise_ship' :
+          id.startsWith('server_rack_') ? 'server_rack' : 'pagoda');
   const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
   const sceneFile = (id) => {
     const ext = sceneExtension(id);
@@ -590,6 +596,7 @@ async function main() {
         if (kind === 'pagoda') await shootPagoda(page, framing);
         else if (kind !== 'cathedral') {
           if (kind === 'engine') await shootEngine(page);
+          else if (kind === 'server_rack') await shootServerRack(page);
           else if (kind === 'keyboard') await shootKeyboard(page);
           else if (kind === 'cruise_ship') await shootCruiseShip(page);
           else await shootPc(page);

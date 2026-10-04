@@ -56,7 +56,6 @@ export const DEFAULTS = {
     effects: 0.8,
     muted: false,
   },
-  people: { enabled: true },
 };
 
 function clone(o) { return JSON.parse(JSON.stringify(o)); }

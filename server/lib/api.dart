@@ -20,7 +20,9 @@ import 'ai_preferred.dart';
 import 'ai_price_guard.dart';
 import 'preview_render.dart';
 import 'ai_usage_store.dart';
+import 'benchmark_generate.dart';
 import 'benchmark_github.dart';
+import 'benchmark_prompts.dart';
 import 'chat_store.dart';
 import 'classroom.dart';
 import 'cs2_offline_store.dart';
@@ -39,6 +41,7 @@ import 'subway_store.dart';
 import 'util.dart';
 import 'web_search.dart';
 
+part 'api_benchmark_generate.dart';
 part 'api_classroom.dart';
 part 'api_school_tests.dart';
 
@@ -709,6 +712,16 @@ class Api {
           _requireAdmin(_adminBenchmarkUploadStatus))
       ..get('/admin/benchmarks/entries',
           _requireAdmin(_adminBenchmarkEntries))
+      ..get('/admin/benchmarks/generate',
+          _requireAdmin(_adminBenchmarkGenState))
+      ..post('/admin/benchmarks/generate',
+          _requireAdmin(_adminBenchmarkGenStart))
+      ..post('/admin/benchmarks/generate/<id>/stop',
+          _requireAdmin(_adminBenchmarkGenStop))
+      ..post('/admin/benchmarks/generate/<id>/dismiss',
+          _requireAdmin(_adminBenchmarkGenDismiss))
+      ..get('/admin/benchmarks/generate/<id>/output',
+          _requireAdmin(_adminBenchmarkGenOutput))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..post('/admin/system/check-updates',
@@ -4955,7 +4968,20 @@ class Api {
     } on ArgumentError catch (e) {
       return errorResponse(400, 'bad_upload', '${e.message}');
     }
+    return jsonResponse(200, {
+      'saved': true,
+      'id': id,
+      'entry': entry,
+      ...await _publishBenchmarkScene(entry, kind: kind, id: id, bytes: data),
+    });
+  }
 
+  /// After a scene is saved: commits it to the repo when a GitHub token is
+  /// set, and renders its banner. Shared by the upload dialog and "Add
+  /// benchmark". Returns `github` (`off`/`committed`/`failed`) plus
+  /// `commitUrl`, `githubError` and `render` when they apply.
+  Future<Map<String, Object>> _publishBenchmarkScene(Map<String, dynamic> entry,
+      {required String kind, required String id, List<int>? bytes}) async {
     var github = 'off';
     String? commitUrl;
     String? githubError;
@@ -4964,7 +4990,7 @@ class Api {
         commitUrl = await benchmarkGithub.publish(
           entry: entry,
           fileName: '$id.${AiBenchmarkStore.extForKind(kind)}',
-          bytes: data,
+          bytes: bytes,
         );
         github = 'committed';
       } catch (e) {
@@ -4975,19 +5001,16 @@ class Api {
 
     String? render;
     // A new or replaced scene gets a fresh banner; an edit keeps its own.
-    if (data != null || await aiBenchmarks.readPreview(id) == null) {
+    if (bytes != null || await aiBenchmarks.readPreview(id) == null) {
       final queued = await previewRenders.enqueue([id]);
       render = queued == null ? 'started' : queued;
     }
-    return jsonResponse(200, {
-      'saved': true,
-      'id': id,
-      'entry': entry,
+    return {
       'github': github,
       if (commitUrl != null) 'commitUrl': commitUrl,
       if (githubError != null) 'githubError': githubError,
       if (render != null) 'render': render,
-    });
+    };
   }
 
   /// Back to automatic framing. Doesn't re-render; the catalog offers that.
@@ -10386,7 +10409,7 @@ syncToolbar();
     final body = '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<title>luma admin</title>'
-        '<style>$_adminCss$_bannersCss$_bmCss</style>'
+        '<style>$_adminCss$_bannersCss$_bmCss$_adminPolishCss$_bgCss</style>'
         '</head><body class="no-js"><div class="wrap admin-wrap">'
         '<header class="top"><h1>luma<span class="dot">.</span> admin</h1>'
         '<span class="sub">server console</span>'
@@ -10524,38 +10547,36 @@ syncToolbar();
         '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-control">'
+        '${_panelHead('Maintenance', 'Refresh the data the app reads from '
+            'this server, and keep the server and its host up to date.')}'
+        '${_sectionLabel('Data sources')}'
         '<div class="maint-grid">'
         '<div class="card">'
-        '<h2>Groceries database</h2>'
-        '<div class="maint-desc">Pulls the latest products and prices from '
+        '${_cardHead('cart', 'Groceries database')}'
+        '<div class="maint-desc" tabindex="0">Pulls the latest products and prices from '
         'each supermarket, records price changes, and marks products that '
         'disappeared as unavailable.</div>'
-        '<div style="display:flex;flex-direction:column;gap:8px">'
-        '<div class="maint-actions" style="align-items:flex-start;gap:8px">'
+        '<div class="maint-split">'
         '<form method="post" action="/admin/groceries/sync" style="margin:0">'
         '<button type="submit" class="btn btn-primary">Sync all markets</button></form>'
-        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
-        '<input type="hidden" name="market" value="jumbo">'
-        '<button type="submit" class="btn btn-ghost">Jumbo</button></form>'
-        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
-        '<input type="hidden" name="market" value="ah">'
-        '<button type="submit" class="btn btn-ghost">Albert Heijn</button></form>'
-        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
-        '<input type="hidden" name="market" value="lidl">'
-        '<button type="submit" class="btn btn-ghost">Lidl</button></form>'
-        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
-        '<input type="hidden" name="market" value="hoogvliet">'
-        '<button type="submit" class="btn btn-ghost">Hoogvliet</button></form>'
-        '<form method="post" action="/admin/groceries/sync" style="margin:0">'
-        '<input type="hidden" name="market" value="picnic">'
-        '<button type="submit" class="btn btn-ghost">Picnic</button></form>'
-        '</div>'
         '<div style="display:flex;gap:6px">'
         '<button id="groceriesLogBtn" type="button" class="btn btn-ghost btn-sm">'
         'Show sync log</button>'
         '<form method="post" action="/admin/groceries/reload" style="margin:0" onsubmit="return confirm(\'Reload the entire groceries database — this deletes all products and re-fetches every market. Continue?\')">'
-        '<button type="submit" class="btn btn-ghost btn-sm" style="color:#e0a0a0;border-color:#4a2a3a">Reload DB</button></form>'
+        '<button type="submit" class="btn btn-danger btn-sm">Reload DB</button></form>'
         '</div>'
+        '</div>'
+        '<div class="chip-row" style="margin-bottom:12px">'
+        '<span class="chip-row-label">Or one market:</span>'
+        '${[
+          ('jumbo', 'Jumbo'),
+          ('ah', 'Albert Heijn'),
+          ('lidl', 'Lidl'),
+          ('hoogvliet', 'Hoogvliet'),
+          ('picnic', 'Picnic'),
+        ].map((m) => '<form method="post" action="/admin/groceries/sync">'
+            '<input type="hidden" name="market" value="${m.$1}">'
+            '<button type="submit" class="chip">${m.$2}</button></form>').join()}'
         '</div>'
         '<div id="groceriesSummary" class="maint-status">Loading groceries '
         'status…</div>'
@@ -10569,8 +10590,8 @@ syncToolbar();
         '</div>'
         '</div>'
         '<div class="card">'
-        '<h2>AI model leaderboard</h2>'
-        '<div class="maint-desc">Re-fetches the model catalogue and news '
+        '${_cardHead('chart', 'AI model leaderboard')}'
+        '<div class="maint-desc" tabindex="0">Re-fetches the model catalogue and news '
         'that back the AI Usage plugin\'s leaderboard.</div>'
         '<div class="maint-actions">'
         '<button id="aiModelsBtn" type="button" class="btn btn-primary">'
@@ -10584,9 +10605,12 @@ syncToolbar();
         '<tbody id="aiModelsRows"></tbody></table>'
         '</div>'
         '</div>'
+        '</div>'
+        '${_sectionLabel('Server &amp; host', note: 'Each of these restarts the server; the dashboard is briefly unreachable.')}'
+        '<div class="maint-grid">'
         '<div class="card">'
-        '<h2>Server update</h2>'
-        '<div class="maint-desc">Pulls the latest code, rebuilds the image '
+        '${_cardHead('download', 'Server update')}'
+        '<div class="maint-desc" tabindex="0">Pulls the latest code, rebuilds the image '
         'and recreates the container. <strong>The server restarts and is '
         'briefly unavailable.</strong></div>'
         '<div class="maint-actions">'
@@ -10597,27 +10621,27 @@ syncToolbar();
         '<pre id="deployLog" class="log maint-out" style="display:none"></pre>'
         '</div>'
         '<div class="card">'
-        '<h2>System updates</h2>'
-        '<div class="maint-desc">Installs apt package upgrades and graphics '
+        '${_cardHead('package', 'System updates', tone: 'warn')}'
+        '<div class="maint-desc" tabindex="0">Installs apt package upgrades and graphics '
         'driver updates on the host (Ubuntu Desktop), then immediately '
         'restarts the server and wiki. <strong>The server is briefly '
         'unavailable during the restart.</strong></div>'
         '<div class="maint-actions">'
-        '<button id="updateCheckBtn" type="button" class="btn btn-primary">'
+        '<button id="updateCheckBtn" type="button" class="btn btn-ghost">'
         'Install updates &amp; restart</button>'
         '</div>'
         '<div id="updateCheckStatus" class="maint-status"></div>'
         '<pre id="updateCheckLog" class="log maint-out" style="display:none"></pre>'
         '</div>'
-        '<div class="card">'
-        '<h2>Reboot server</h2>'
-        '<div class="maint-desc">Reboots the whole host machine — needed '
+        '<div class="card card-danger">'
+        '${_cardHead('power', 'Reboot server', tone: 'danger')}'
+        '<div class="maint-desc" tabindex="0">Reboots the whole host machine — needed '
         'for kernel and driver updates to take effect. Docker, the server, '
         'the wiki and the deploy watcher all start again on their own. '
         '<strong>Everything is offline until it has booted, usually a '
         'minute or two.</strong></div>'
         '<div class="maint-actions">'
-        '<button id="rebootBtn" type="button" class="btn btn-primary">'
+        '<button id="rebootBtn" type="button" class="btn btn-danger solid">'
         'Reboot server</button>'
         '</div>'
         '<div id="rebootStatus" class="maint-status"></div>'
@@ -10626,27 +10650,36 @@ syncToolbar();
         '</div>'
         '</div>'
         '<div class="tab-panel" id="panel-tests">'
-        '${_adminSchoolTestsCard()}'
+        '${_panelHead('Tests', 'Score models as the classroom tutor, and add '
+            'models\' runs of the AI Usage plugin\'s 3D tests — generated '
+            'here on the server\'s keys, or uploaded by hand.')}'
+        '${_sectionLabel('AI benchmarks')}'
         '<div class="maint-grid">'
         '<div class="card">'
-        '<h2>AI benchmark scenes</h2>'
-        '<div class="maint-desc">Adds a model\'s run of one of the AI Usage '
-        'plugin\'s tests. The scene is live in the app right away and is '
-        'committed to <code>server/benchmarks/</code> on GitHub (with '
-        '<code>[skip ci]</code>, so no release build runs), so the repo '
-        'keeps every test.</div>'
+        '${_cardHead('cube', 'AI benchmark scenes')}'
+        '<div class="maint-desc" tabindex="0">Adds a model\'s run of one of the AI Usage '
+        'plugin\'s tests. "Add benchmark" has a model on one of the '
+        'server\'s keys write the scene from the test\'s prompt; "Upload" '
+        'takes a page you already have. Either way the scene is live in the '
+        'app right away and is committed to <code>server/benchmarks/</code> '
+        'on GitHub (with <code>[skip ci]</code>, so no release build runs), '
+        'so the repo keeps every test.</div>'
         '<div class="maint-actions">'
-        '<button id="bmUploadBtn" type="button" class="btn btn-primary">'
+        '<button id="bgOpenBtn" type="button" class="btn btn-primary">'
+        '${_ico('plus')}Add benchmark…</button>'
+        '<button id="bmUploadBtn" type="button" class="btn btn-ghost">'
         'Upload test…</button>'
         '<button id="bmEditBtn" type="button" class="btn btn-ghost">'
         'Edit test…</button>'
         '</div>'
         '<div id="bmUploadSummary" class="maint-status"></div>'
+        '<div id="bgRuns" class="bg-runs" aria-live="polite"></div>'
         '$_bmUploadDialogHtml'
+        '${_bgDialogHtml()}'
         '</div>'
         '<div class="card">'
-        '<h2>AI benchmark banners</h2>'
-        '<div class="maint-desc">Renders the model-card banners of the AI '
+        '${_cardHead('image', 'AI benchmark banners')}'
+        '<div class="maint-desc" tabindex="0">Renders the model-card banners of the AI '
         'Usage plugin\'s Tests tab, one scene at a time in a headless '
         'browser. Pagoda banners are shot in daylight, framed as the whole '
         'garden from above, unless you framed one by hand in the catalog. '
@@ -10680,6 +10713,8 @@ syncToolbar();
         '$_bnDialogsHtml'
         '</div>'
         '</div>'
+        '${_sectionLabel('School test')}'
+        '${_adminSchoolTestsCard()}'
         '</div>'
         '<script>$_adminMenuScript</script>'
         '<script>$_adminTabScript</script>'
@@ -10690,6 +10725,7 @@ syncToolbar();
         '<script>$_adminAssistantScript</script>'
         '<script>$_adminBannersScript</script>'
         '<script>$_adminBenchmarkUploadScript</script>'
+        '<script>$_bgScript</script>'
         '<script>$_adminSchoolTestsScript</script>'
         '<script>${DeployConsole.deployScript}</script>'
         '<script>${UpdateCheckConsole.updateCheckScript}</script>'
@@ -10737,6 +10773,7 @@ syncToolbar();
           'cacheRead': pricing ? model?.cacheReadPerM : null,
           'cacheWrite': pricing ? model?.cacheWritePerM : null,
           'intelligenceSource': model?.sources.contains('artificial-analysis') ?? false,
+          'maxOutput': model?.maxOutputTokens,
         };
     final catalogById = {for (final model in aiCatalog.models) model.id: model};
     final pickerModels = <Map<String, Object?>>[
@@ -10807,7 +10844,7 @@ syncToolbar();
         status = '<span class="badge ok">custom</span>';
       }
       return '<tr>'
-          '<td class="nowrap"><strong>${esc(aiModeRoutes.displayName(mode))}</strong>'
+          '<td class="nowrap"><strong class="ai-mode-name">${esc(aiModeRoutes.displayName(mode))}</strong>'
           '<div class="muted" style="font-size:11px">$mode</div></td>'
           '<td><select name="$mode.upstream" class="ai-upstream" '
           'data-mode="$mode">$upstreamOptions</select></td>'
@@ -10834,9 +10871,21 @@ syncToolbar();
     };
     final keyLine = AiUpstream.values.map((u) {
       final ok = configured.contains(u);
-      return '<span class="badge ${ok ? 'ok' : 'err'}">${esc(u.label)}: '
-          '${ok ? 'key set' : 'no ${upstreamEnvVar[u]}'}</span>';
-    }).join(' ');
+      return '<span class="key-chip${ok ? ' ok' : ''}" title="'
+          '${ok ? 'Key set' : 'Set ${upstreamEnvVar[u]} on the server'}">'
+          '${esc(u.label)} <span class="muted">${ok ? 'key set' : 'no key'}'
+          '</span></span>';
+    }).join();
+    const sections = [
+      ('ai-sec-modes', 'sparkles', 'Chat modes'),
+      ('ai-sec-detector', 'scan', 'AI Detector'),
+      ('ai-sec-bookreview', 'book', 'Book reviewer'),
+      ('ai-sec-classroom', 'cap', 'Classroom tutor'),
+      ('ai-sec-picture', 'image', 'Pictures'),
+    ];
+    final subnav = '<nav class="subnav" aria-label="Assistant sections">'
+        '${sections.map((s) => '<a href="#${s.$1}">${_ico(s.$2)}${s.$3}</a>').join()}'
+        '</nav>';
 
     return '<div class="tab-panel" id="panel-assistant">'
         '<style>'
@@ -10894,9 +10943,14 @@ syncToolbar();
         '.ai-picker-card button{margin-top:auto}.ai-picker-foot{border-top:1px solid #2d2645;'
         'border-bottom:0;color:#a9a0c3;font-size:11.5px}'
         '</style>'
+        '${_panelHead('Assistant', 'Which provider and model answer for each '
+            'Luma AI feature. Changes apply to the next request; no app '
+            'update needed.', extra: keyLine)}'
+        '$subnav'
+        '<section class="ai-sec" id="ai-sec-modes">'
         '<div class="card">'
-        '<h2>Assistant models</h2>'
-        '<div class="maint-desc">Pick which provider and model serve each '
+        '${_cardHead('sparkles', 'Chat modes')}'
+        '<div class="maint-desc" tabindex="0">Pick which provider and model serve each '
         'Luma AI mode in the Assistant. Changes apply to the next message, '
         'no app update needed. Leave a model blank to use the default shown '
         'in grey. Each saved provider, model or reasoning change advances that mode\'s '
@@ -10911,16 +10965,14 @@ syncToolbar();
         'answers first whenever it can, and the main model takes over when '
         'it is unset, its provider has no key, it fails, or its own price '
         'guard paused it.</div>'
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'
-        '$keyLine</div>'
         '<form method="post" action="/admin/ai-routes" class="ai-routes">'
         '<div style="overflow-x:auto">'
         '<table><thead><tr><th>Mode</th><th>Provider</th><th>Model</th>'
         '<th>Price / 1M tokens</th><th>Reasoning</th><th>Status</th><th></th></tr></thead>'
         '<tbody>$rows</tbody></table></div>'
-        '<div class="maint-actions" style="margin:16px 0 0">'
+        '<div class="form-foot">'
         '<button type="submit" class="btn btn-primary">Save models</button>'
-        '<span class="muted" style="font-size:12px">Test checks the current '
+        '<span class="muted">Test checks the current '
         'provider and model. Save models to apply them to chats.</span>'
         '</div>'
         '</form>'
@@ -10948,6 +11000,7 @@ syncToolbar();
         '</dialog>'
         '<script type="application/json" id="aiPickerData">$pickerJson</script>'
         '</div>'
+        '</section>'
         '${_adminAiDetectorCard(configured)}'
         '${_adminAiBookReviewCard(configured)}'
         '${_adminAiClassroomCard(configured)}'
@@ -11160,9 +11213,15 @@ syncToolbar();
     final instructionsBadge = instructions == null
         ? '<span class="badge warn">built-in</span>'
         : '<span class="badge ok">custom</span>';
-    return '<div class="card" style="margin-top:18px">'
-        '<h2>${esc(title)}</h2>'
-        '<div class="maint-desc">${esc(description)}</div>'
+    final icon = switch (mode) {
+      'detector' => 'scan',
+      'bookreview' => 'book',
+      'classroom' => 'cap',
+      _ => 'sparkles',
+    };
+    return '<section class="ai-sec" id="ai-sec-$mode"><div class="card">'
+        '${_cardHead(icon, esc(title))}'
+        '<div class="maint-desc" tabindex="0">${esc(description)}</div>'
         '<form method="post" action="$action" class="ai-routes ai-reviewer-form" '
         'data-mode="$mode">'
         '<div class="ai-detector-grid">'
@@ -11200,12 +11259,12 @@ syncToolbar();
         '${esc(instructions ?? defaultInstructions)}</textarea>'
         '<input type="hidden" name="$mode.reset" value="0">'
         '<template>${esc(defaultInstructions)}</template>'
-        '<div class="maint-actions" style="margin:16px 0 0">'
+        '<div class="form-foot">'
         '<button type="submit" class="btn btn-primary">${esc(saveLabel)}</button>'
-        '<span class="muted" style="font-size:12px">Leave the model blank to follow Nebula.</span>'
+        '<span class="muted">Leave the model blank to follow Nebula.</span>'
         '</div>'
         '</form>'
-        '</div>';
+        '</div></section>';
   }
 
   /// The Assistant tab's picture model card: which model the Assistant's
@@ -11238,9 +11297,9 @@ syncToolbar();
     final costs = kAiImageWeeklyPercent.entries
         .map((e) => '${esc(e.key)} ${e.value}%')
         .join(', ');
-    return '<div class="card" style="margin-top:18px">'
-        '<h2>Picture model</h2>'
-        '<div class="maint-desc">The model behind the Assistant\'s picture '
+    return '<section class="ai-sec" id="ai-sec-picture"><div class="card">'
+        '${_cardHead('image', 'Picture model')}'
+        '<div class="maint-desc" tabindex="0">The model behind the Assistant\'s picture '
         'mode. Google AI Studio draws with Imagen through its images '
         'endpoint; OpenRouter draws through its images endpoint with any '
         'image model (Gemini Flash Image, Ming, FLUX…). Each picture takes a flat share of the '
@@ -11268,12 +11327,12 @@ syncToolbar();
         '${_aiPriceBlock('picture')}</div>'
         '</div>'
         '${_aiPreferredGrid('picture', configured)}'
-        '<div class="maint-actions" style="margin:16px 0 0">'
+        '<div class="form-foot">'
         '<button type="submit" class="btn btn-primary">Save picture model</button>'
-        '<span class="muted" style="font-size:12px">Leave the model blank for the default.</span>'
+        '<span class="muted">Leave the model blank for the default.</span>'
         '</div>'
         '</form>'
-        '</div>';
+        '</div></section>';
   }
 
   /// Assistant tab: swaps a row's model suggestions when its provider
@@ -11574,6 +11633,135 @@ syncToolbar();
 
   /// Embedded stylesheet for the admin dashboard. Self-contained (no external
   /// fonts or CDNs), dark-only, built around the app's purple accent.
+  /// Stroke icons (24-unit, Lucide-style) for card headers. One visual
+  /// language: 1.8 stroke, round caps, drawn in `currentColor`.
+  static const _icoPaths = <String, String>{
+    'sparkles': 'M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'
+        'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
+    'scan': 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 '
+        '2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10',
+    'book': 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z'
+        'M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5',
+    'cap': 'M22 10 12 5 2 10l10 5 10-5zM6 12v5c3 2 9 2 12 0v-5',
+    'image': 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 '
+        '1 1-1zM3 16l5-5 4 4 3-3 6 6M15.5 9.5h.01',
+    'cart': 'M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 8H6'
+        'M10 21h.01M17 21h.01',
+    'chart': 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+    'download': 'M12 3v12M7 10l5 5 5-5M5 21h14',
+    'package': 'M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8',
+    'power': 'M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0',
+    'clipboard': 'M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M9 14l2 2 4-4',
+    'cube': 'M12 2l9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10',
+    'code': 'M8 6l-6 6 6 6M16 6l6 6-6 6',
+    'plus': 'M12 5v14M5 12h14',
+    'key': 'M15 7a4 4 0 1 1-3.9 4.9L3 20v-3h3v-3h3l1.1-1.1A4 4 0 0 1 15 7z'
+        'M16 9h.01',
+  };
+
+  static String _ico(String name) =>
+      '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">'
+      '<path d="${_icoPaths[name] ?? ''}"/></svg>';
+
+  /// A card's header: tinted icon tile, title and optional trailing [extra]
+  /// (a badge, a link). [tone] is '', `warn` or `danger`.
+  static String _cardHead(String icon, String title,
+          {String tone = '', String extra = '', String? id}) =>
+      '<div class="card-head"><span class="card-ico${tone.isEmpty ? '' : ' $tone'}">'
+      '${_ico(icon)}</span><h2${id == null ? '' : ' id="$id"'}>$title</h2>'
+      '${extra.isEmpty ? '' : '<div class="card-head-extra">$extra</div>'}</div>';
+
+  /// The intro at the top of a tab: what the tab is for, plus [extra] on
+  /// the right (status chips, a jump menu).
+  static String _panelHead(String title, String description,
+          {String extra = ''}) =>
+      '<div class="panel-head"><div><h2 class="panel-title">$title</h2>'
+      '<p>$description</p></div>'
+      '${extra.isEmpty ? '' : '<div class="panel-head-extra">$extra</div>'}</div>';
+
+  static String _sectionLabel(String label, {String note = ''}) =>
+      '<div class="section-label"><span>$label</span>'
+      '${note.isEmpty ? '' : '<span class="section-note">$note</span>'}</div>';
+
+  /// Shared look for the Assistant, Tests and Maintenance tabs: tab intros,
+  /// section dividers, icon card headers and the danger treatment for
+  /// actions that restart or wipe something.
+  static const _adminPolishCss = r'''
+.ico{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn .ico{width:15px;height:15px;margin-right:7px}
+.panel-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px 24px;flex-wrap:wrap;margin:2px 0 20px}
+.panel-head h2.panel-title{font-size:20px;font-weight:700;letter-spacing:-.015em;text-transform:none;color:#ece8f7;margin:0}
+.panel-head p{margin:5px 0 0;color:#9b94b3;font-size:13px;line-height:1.55;max-width:72ch}
+.panel-head-extra{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.section-label{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#7f7898;margin:28px 0 12px}
+.section-label:first-of-type{margin-top:4px}
+.section-label::after{content:"";flex:1;height:1px;background:#241e36;order:3}
+.section-note{order:2;text-transform:none;letter-spacing:0;font-weight:500;color:#8d86a8;font-size:12px}
+.card-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;min-width:0}
+.card-head h2,.maint-grid .card .card-head h2{margin:0;font-size:14.5px;font-weight:650;letter-spacing:-.005em;text-transform:none;color:#ece8f7;min-width:0}
+.card-head-extra{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.bn-dlg-head h2{text-transform:none;letter-spacing:-.01em;color:#ece8f7;font-weight:700}
+.card-ico{width:34px;height:34px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;flex:none;background:rgba(138,126,224,.12);border:1px solid rgba(138,126,224,.2);color:#b9b0f5}
+.card-ico.warn{background:rgba(224,200,126,.10);border-color:rgba(224,200,126,.22);color:#e0c87e}
+.card-ico.danger{background:rgba(224,126,126,.10);border-color:rgba(224,126,126,.24);color:#ec9a9a}
+.card{transition:border-color .15s}
+.maint-grid .card:hover,.ai-sec .card:hover{border-color:#2f2748}
+.card.card-danger{border-color:#3a2430;background:linear-gradient(180deg,#1a1220,#151122 60%)}
+.card.card-danger:hover{border-color:#4d2c3a}
+.maint-desc{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.55;font-size:12.5px;color:#958eae}
+.maint-desc:hover{color:#aaa3c4}
+.maint-desc.open{display:block;-webkit-line-clamp:unset}
+.maint-desc:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px;border-radius:4px}
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip-row-label{font-size:12px;color:#8d86a8;margin-right:2px}
+.chip-row form{margin:0}
+.chip{display:inline-flex;align-items:center;min-height:32px;padding:5px 12px;border-radius:999px;background:#1a1530;border:1px solid #2d2645;color:#c5bed9;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.chip:hover{border-color:#463d6b;color:#ece8f7;background:#1f1937}
+.chip:focus-visible{outline:2px solid #8a7ee0;outline-offset:2px}
+.maint-split{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px}
+.btn-danger.solid{background:#c95f6a;color:#160c10;border-color:#c95f6a}
+.btn-danger.solid:hover{background:#d8737d;border-color:#d8737d}
+.btn-danger:disabled{opacity:.5;cursor:not-allowed}
+.btn[hidden]{display:none}
+.key-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;background:#151122;border:1px solid #262038;color:#c5bed9}
+.key-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:#e07e7e;box-shadow:0 0 0 3px rgba(224,126,126,.14)}
+.key-chip.ok::before{background:#7ee08a;box-shadow:0 0 0 3px rgba(126,224,138,.14)}
+.key-chip .muted{font-weight:500}
+.subnav{position:sticky;top:0;z-index:30;display:flex;gap:4px;flex-wrap:wrap;padding:8px 0 10px;margin:0 0 14px;background:linear-gradient(180deg,#0f0d17 75%,rgba(15,13,23,0))}
+.subnav a{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 12px;border-radius:9px;font-size:12.5px;font-weight:500;color:#9b94b3;text-decoration:none;border:1px solid transparent;transition:color .15s,background .15s,border-color .15s}
+.subnav a .ico{width:15px;height:15px}
+.subnav a:hover{color:#ece8f7;background:#161225;border-color:#262038}
+.subnav a:focus-visible{outline:2px solid #8a7ee0;outline-offset:1px}
+.subnav a.on{color:#ece8f7;background:#1c1730;border-color:#352c55}
+.ai-sec{scroll-margin-top:64px}
+.ai-routes table{border-collapse:separate;border-spacing:0}
+.ai-routes thead th{position:sticky;top:0;background:#151122;z-index:1}
+.ai-routes tbody tr:not(.ai-pref-row) td{border-bottom:0;border-top:1px solid #262038;padding-top:14px}
+.ai-routes tbody tr:first-child td{border-top:0}
+.ai-routes tbody tr.ai-pref-row td{background:#120f1d;padding-top:10px;padding-bottom:12px;border-bottom:0}
+.ai-routes tbody tr.ai-pref-row td:first-child{box-shadow:inset 3px 0 #3a3160;border-radius:0 0 0 10px}
+.ai-routes tbody tr.ai-pref-row td:last-child{border-radius:0 0 10px 0}
+.ai-routes tbody tr:hover td{background:transparent}
+.ai-routes tbody tr.ai-pref-row:hover td{background:#120f1d}
+.ai-mode-name{font-size:14px}
+.ai-detector-grid{background:#12101e;border:1px solid #221c33;border-radius:12px;padding:14px}
+.ai-pref-grid{background:#110e1b;border-style:dashed}
+.ai-pref-head{border-top:0;padding-top:0;margin-top:14px;display:flex;align-items:center;gap:8px}
+.ai-pref-head::before{content:"\21B3";color:#7f7898}
+.form-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid #221c33}
+.form-foot .muted{font-size:12px}
+details.fold{padding:0}
+details.fold>summary{list-style:none;cursor:pointer;padding:18px 22px;display:flex;align-items:center;gap:12px;border-radius:14px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary:focus-visible{outline:2px solid #8a7ee0;outline-offset:-2px}
+details.fold>summary .card-head{margin:0;flex:1}
+details.fold>summary::after{content:"";width:8px;height:8px;border-right:2px solid #8d86a8;border-bottom:2px solid #8d86a8;transform:rotate(45deg);transition:transform .2s;margin:-4px 6px 0 0;flex:none}
+details.fold[open]>summary::after{transform:rotate(225deg);margin-top:4px}
+details.fold>.fold-body{padding:0 22px 20px}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+@media (max-width:640px){.panel-head h2.panel-title{font-size:18px}.subnav{position:static}details.fold>summary{padding:16px}details.fold>.fold-body{padding:0 16px 16px}}
+''';
+
   static const _adminCss = r'''
 *{box-sizing:border-box}
 body{background:#0f0d17;color:#ece8f7;margin:0;-webkit-font-smoothing:antialiased;
@@ -11880,8 +12068,39 @@ window.lumaAskReason = function (form, message) {
   document.addEventListener('click', close);
   document.addEventListener('click', function (e) {
     var d = e.target.closest && e.target.closest('.maint-desc');
-    if (d) d.classList.toggle('open');
+    if (d && !e.target.closest('a')) d.classList.toggle('open');
   });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var d = e.target.classList && e.target.classList.contains('maint-desc') ? e.target : null;
+    if (!d) return;
+    e.preventDefault();
+    d.classList.toggle('open');
+  });
+  // The Assistant tab's jump links: mark the section in view.
+  var subLinks = document.querySelectorAll('.subnav a');
+  // Scroll without touching the hash: it holds the open tab.
+  subLinks.forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var target = document.querySelector(a.getAttribute('href'));
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ block: 'start' });
+      var focusable = target.querySelector('h2');
+      if (focusable) { focusable.tabIndex = -1; focusable.focus({ preventScroll: true }); }
+    });
+  });
+  if (subLinks.length && 'IntersectionObserver' in window) {
+    var seen = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        subLinks.forEach(function (a) {
+          a.classList.toggle('on', a.getAttribute('href') === '#' + en.target.id);
+        });
+      });
+    }, { rootMargin: '-80px 0px -60% 0px' });
+    document.querySelectorAll('.ai-sec').forEach(function (s) { seen.observe(s); });
+  }
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape' || !open) return;
     var btn = open.btn;

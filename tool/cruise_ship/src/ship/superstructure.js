@@ -1,9 +1,10 @@
 import * as THREE from 'three/webgpu';
 import {
   deckY, CABIN_DECKS, BRIDGE_DECK, POOL_DECK, BALCONY_D, CABIN_W, wallLine, wallZ, railZ, recessWallZ,
-  frontX, backX, RECESS, PROM, hullHalf, DECK_H,
+  frontX, backX, RECESS, PROM, hullHalf, DECK_H, STERN_CORNER, STERN_X, HULL_HALF_TOP,
 } from './dims.js';
 import { Builder, Instancer, prism, walkPolyline, offsetPolyline, mat } from './kit.js';
+import { buildForward, isFrontWall } from './forward.js';
 
 // The cabin block, decks 9-15: a stack of extruded deck outlines dressed in
 // instanced balconies along each deck's wall line, the stepped side recess
@@ -65,10 +66,12 @@ export function buildSuperstructure(M, col) {
       const samples = walkPolyline(pts, CABIN_W, side > 0 ? 1 : -1);
       for (const s of samples) {
         if (inTower(s.x) && (s.tag === 'side')) continue;
+        // The stern corners are plain curved walls on the real ship.
+        if (s.tag === 'corner') continue;
         // The bridge deck has glazing across the front instead of balconies.
         if (n === BRIDGE_DECK && s.x > frontX(n) - 30) continue;
-        // Keep the very tip of the bow and stern arcs clear (flag staff, crew).
-        if (s.tag === 'bow' && Math.abs(s.z) < 1.2) continue;
+        // The front of the block is a windowed wall (forward.js), not balconies.
+        if (s.tag === 'bow' && isFrontWall(n, s.x)) continue;
         placeBalcony(s.x, y, s.z, s.nx, s.nz, side, n === CABIN_DECKS[CABIN_DECKS.length - 1] ? 'top' : 'std');
         facadeCount.total++;
       }
@@ -154,53 +157,50 @@ export function buildSuperstructure(M, col) {
     }
   }
 
-  // --- bridge (deck 12) across the bow, wings past the hull ----------------------
+  // --- front walls of windows and the bridge (forward.js) -------------------------
+  buildForward(B, col, CABIN_DECKS);
+
+  // --- stern corners: blank curved walls flush with the balcony fronts ------------
+  // (photos from astern: the aft balconies sit between two big white rounded
+  // corners that run from deck 9 up to the top decks).
   {
-    const n = BRIDGE_DECK;
-    const y0 = deckY(n), y1 = deckY(n + 1);
-    const xf = frontX(n);
-    const wing = 24.6;
-    // Bridge house: from the front line back 22 m, full wing span.
-    B.boxMM('paint', xf - 24, y0, -wing, xf - 6, y0 + 0.9, wing);         // lower apron
-    B.boxMM('navyGlass', xf - 24, y0 + 0.9, -wing + 0.1, xf - 6.3, y1 - 0.35, wing - 0.1); // window band
-    B.boxMM('paint', xf - 24, y1 - 0.35, -wing - 0.2, xf - 5.6, y1 + 0.25, wing + 0.2);    // roof lip
-    // Centre bridge front (curved in plan, approximated by segments).
-    const seg = 10;
-    for (let i = 0; i < seg; i++) {
-      const a0 = -Math.PI / 2 + (i / seg) * Math.PI, a1 = -Math.PI / 2 + ((i + 1) / seg) * Math.PI;
-      const r = 14.5;
-      const p0 = [xf - 6 + Math.cos(a0) * 6, Math.sin(a0) * r], p1 = [xf - 6 + Math.cos(a1) * 6, Math.sin(a1) * r];
-      const cx = (p0[0] + p1[0]) / 2, cz = (p0[1] + p1[1]) / 2;
-      const len = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]);
-      const ang = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
-      B.add('navyGlass', new THREE.BoxGeometry(len + 0.05, y1 - y0 - 1.25, 0.12), mat(cx, y0 + 0.9 + (y1 - y0 - 1.25) / 2, cz, 0, -ang, 0));
-      B.add('paint', new THREE.BoxGeometry(len + 0.05, 0.9, 0.3), mat(cx, y0 + 0.45, cz, 0, -ang, 0));
-    }
-    // Wing undersides with small brackets (they hang out over the sea).
+    const n0 = CABIN_DECKS[0], n1 = CABIN_DECKS[CABIN_DECKS.length - 1];
+    const rc = STERN_CORNER, D = BALCONY_D;
+    const arc = (cx, cz, r, side, N = 16) => {
+      const pts = [];
+      for (let i = 0; i <= N; i++) {
+        const a = (i / N) * Math.PI / 2;
+        pts.push([cx - Math.cos(a) * r, side * (cz + Math.sin(a) * r)]);
+      }
+      return pts;
+    };
     for (const side of [1, -1]) {
-      for (let k = 0; k < 4; k++) {
-        const x = xf - 22 + k * 5;
-        B.tube('paint', new THREE.Vector3(x, y0 - 0.1, side * (wing - 0.4)), new THREE.Vector3(x, y0 - 2.6, side * (wallZ(11) + 0.2)), 0.12, true);
+      const cx = backX(n0) + rc, cz = wallZ(n0) - rc;
+      const ring = [...arc(cx, cz, rc + D, side), ...arc(cx, cz, rc - 0.2, side).reverse()];
+      B.add('paint', prism(ring, deckY(n0) - 0.35, deckY(n1 + 1)));
+      // A shallow joint line at every deck, like the panel seams on the real walls.
+      for (let n = n0 + 1; n <= n1; n++) {
+        const groove = [...arc(cx, cz, rc + D + 0.025, side), ...arc(cx, cz, rc + D - 0.05, side).reverse()];
+        B.add('paintShade', prism(groove, deckY(n) - 0.05, deckY(n) + 0.05));
       }
     }
-    col?.box(xf - 15, (y0 + y1) / 2, 0, 18, y1 - y0, wing * 2);
   }
 
-  // --- stern: dark glass band around the decks 7-8 stern bay ----------------------
+  // --- stern: the dark two-deck glass block of decks 7-8 ---------------------------
+  // It wraps the stern and runs forward along both sides to the start of the
+  // promenade, standing slightly proud of the hull (photos from astern).
   {
-    const y0 = deckY(7), y1 = deckY(9);
-    const xb = backX(9) + 0.4;
-    // Stern bay closed with glazing (aft restaurant), wrapping round the corners.
-    const pts = [];
-    const sr = 13, zw = wallZ(9) - 0.4;
-    for (let i = 0; i <= 12; i++) {
-      const a = (i / 12) * Math.PI / 2;
-      pts.push([xb + sr - Math.cos(a) * sr, Math.sin(a) * zw]);
+    const y0 = deckY(7) - 0.3, y1 = deckY(9) - 0.35;
+    const xb = STERN_X - 0.25, zo = HULL_HALF_TOP + 0.55, rc = 6;
+    const half = [[PROM.x0, zo]];
+    for (let i = 0; i <= 10; i++) {
+      const a = (i / 10) * Math.PI / 2;
+      half.push([xb + rc - Math.sin(a) * rc, zo - rc + Math.cos(a) * rc]);
     }
-    pts.push([PROM.x0, zw]);
-    const outline = closedOutline(pts.map((p) => [p[0], p[1], 'stern']));
-    B.add('navyGlass', prism(outline, y0, y1 - 0.25));
-    B.add('paint', prism(outline, y1 - 0.3, y1));
+    const loop = [...half, ...half.slice().reverse().map(([x, z]) => [x, -z])];
+    B.add('navyGlass', prism(loop, y0 + 0.35, y1 - 0.3));
+    B.add('paint', prism(loop, y1 - 0.3, y1 + 0.05));        // white edge on top (deck 9 floor)
+    B.add('paint', prism(loop, y0, y0 + 0.35));               // and below it
   }
 
   // --- the bow below the cabins: closed front over the forecastle ------------------

@@ -39,6 +39,12 @@ export const sky = {
   starMatrix: uniform(new THREE.Matrix3()),
   moonPhase: uniform(0.5),
   cloudShadow: uniform(1.0),     // average cloud transmittance toward the sun (weather)
+  // Higher-order scattering. Single scattering alone leaves a daytime sky
+  // several times too dark next to sunlit white paint; real skies get a
+  // large share of their light from second and later bounces, which also
+  // whitens them toward the horizon.
+  msGain: uniform(3.0),
+  gain: uniform(1.5),
 };
 
 // ---------------------------------------------------------------------------
@@ -162,11 +168,11 @@ export const scatter = /*@__PURE__*/ Fn(([rd, l, E, haze, altKm]) => {
     const sM = vec3(MIE_S).mul(haze).mul(d.y);
     // Multiple scattering, approximated as an isotropic term that grows
     // with optical depth (keeps twilight and hazy skies from going black).
-    const ms = iso.mul(0.55);
+    const ms = iso.mul(sky.msGain);
     const s = sR.mul(pR.add(ms)).add(sM.mul(pM.add(ms)));
     L.addAssign(tView.mul(tSun).mul(s).mul(dt));
   });
-  return L.mul(E);
+  return L.mul(E).mul(sky.gain);
 });
 
 // ---------------------------------------------------------------------------

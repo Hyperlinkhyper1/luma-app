@@ -308,7 +308,9 @@ static int le32(std::string const &s, size_t offset) {
   uint32_t v = 0; for (size_t i=0; i<4; ++i) v |= uint32_t(uint8_t(s[offset+i])) << (8*i);
   return static_cast<int32_t>(v);
 }
-static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stripPlayers = false) {
+#include "bedrock_projectiles.hpp"
+
+static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stripPlayers = false, bool normalizeActors = false) {
   auto raw = readFile(p/"level.dat"); require(raw.size() > 8, "Truncated Bedrock level.dat");
   auto level = CompoundTag::Read(Bytes(raw.begin()+8,raw.end()), mcfile::Encoding::LittleEndian);
   require(bool(level), "Invalid Bedrock level.dat NBT");
@@ -325,26 +327,55 @@ static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stri
   require(status.ok(), "Cannot open Bedrock database: " + status.ToString());
   std::unique_ptr<leveldb::DB> db(ptr);
   std::unique_ptr<leveldb::Iterator> it(db->NewIterator({}));
-  json result = {{"edition","bedrock"},{"version",numbers},{"entities",json::array()},{"remotePlayers",0},{"localPlayer",false}};
+  json result = {{"edition","bedrock"},{"version",numbers},{"entities",json::array()},{"remotePlayers",0},{"localPlayer",false},{"warnings",json::array()}};
   leveldb::WriteBatch removals;
-  std::set<std::string> actors;
+  struct References { std::set<int> dimensions; size_t count = 0; };
+  std::map<std::string,References> actors;
+  for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    auto key = it->key().ToString(), value = it->value().ToString();
+    if (!key.starts_with("digp")) continue;
+    require(key.size() == 12 || key.size() == 16, "Invalid actor index key");
+    int dim = key.size() == 16 ? le32(key,12) : 0;
+    require(dim >= 0 && dim <= 2, "Unsupported entity dimension");
+    require(value.size()%8 == 0, "Truncated actor index");
+    for (size_t i=0;i<value.size();i+=8) {
+      auto &refs = actors[value.substr(i,8)]; refs.dimensions.insert(dim); ++refs.count;
+    }
+    if (normalizeActors && !stripEntities) removals.Delete(key);
+  }
+  require(it->status().ok(),"Could not read actor indexes");
+  std::map<std::string,std::string> normalized;
+  size_t repeated = 0, stale = 0;
+  for (auto const &[id,refs] : actors) {
+    std::string bytes;
+    auto status = db->Get({},"actorprefix"+id,&bytes);
+    if (status.IsNotFound()) { stale += refs.count; continue; }
+    require(status.ok(),"Could not read indexed entity: " + status.ToString());
+    auto actor = CompoundTag::Read(bytes,mcfile::Encoding::LittleEndian);
+    require(bool(actor),"Corrupt actor NBT");
+    auto explicitDimension = actor->int32(u8"DimensionId");
+    require(explicitDimension || refs.dimensions.size() == 1,
+      "Actor indexes disagree on the entity dimension; its dimension cannot be determined safely");
+    int dim = explicitDimension ? *explicitDimension : *refs.dimensions.begin();
+    require(dim >= 0 && dim <= 2,"Unsupported actor dimension");
+    json records = json::array(); entity(records,*actor,dim,true);
+    auto const &pos = records.front()["position"];
+    double cx = std::floor(pos[0].get<double>() / 16), cz = std::floor(pos[2].get<double>() / 16);
+    require(std::isfinite(cx) && std::isfinite(cz) && cx >= INT32_MIN && cx <= INT32_MAX && cz >= INT32_MIN && cz <= INT32_MAX,
+      "Actor position is outside the valid chunk range");
+    auto dimension = dim == 0 ? mcfile::Dimension::Overworld : dim == 1 ? mcfile::Dimension::Nether : mcfile::Dimension::End;
+    normalized[mcfile::be::DbKey::Digp(static_cast<int32_t>(cx),static_cast<int32_t>(cz),dimension)] += id;
+    for (auto const &record : records) result["entities"].push_back(record);
+    repeated += refs.count - 1;
+  }
+  if (normalizeActors && !stripEntities) for (auto const &[key,value] : normalized) removals.Put(key,value);
+  if (repeated) result["warnings"].push_back("Counted live entities once despite " + std::to_string(repeated) + " repeated Bedrock actor index references. These references are normalized on the temporary conversion copy.");
+  if (stale) result["warnings"].push_back("Ignored " + std::to_string(stale) + " stale Bedrock actor index references with no saved entity record. No existing entity was discarded.");
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     auto key = it->key().ToString(); auto value = it->value().ToString();
     if (key == "~local_player") { result["localPlayer"] = true; if (stripPlayers) removals.Delete(key); }
     if (key.starts_with("player_") || key.starts_with("player_server_")) { result["remotePlayers"] = result["remotePlayers"].get<int>()+1; if (stripPlayers) removals.Delete(key); }
     if (key.starts_with("digp")) {
-      require(key.size() == 12 || key.size() == 16, "Invalid actor index key");
-      int dim = key.size() == 16 ? le32(key,12) : 0;
-      require(dim >= 0 && dim <= 2, "Unsupported entity dimension");
-      require(value.size()%8 == 0, "Truncated actor index");
-      for (size_t i=0;i<value.size();i+=8) {
-        auto actorKey = "actorprefix" + value.substr(i,8);
-        require(actors.insert(actorKey).second, "Duplicate actor index reference");
-        std::string actor;
-        require(db->Get({}, actorKey, &actor).ok(), "Actor index references a missing entity");
-        auto e = CompoundTag::Read(actor, mcfile::Encoding::LittleEndian);
-        require(bool(e), "Corrupt actor NBT"); entity(result["entities"], *e, dim, true);
-      }
       if (stripEntities) removals.Delete(key);
     }
     auto parsed = mcfile::be::DbKey::Parse(key);
@@ -389,7 +420,7 @@ static json scanBedrock(fs::path const &p, bool stripEntities = false, bool stri
   }
   require(it->status().ok(), "Could not read the complete entity database");
   it.reset();
-  if (stripEntities || stripPlayers) require(db->Write({}, &removals).ok(), "Cannot remove excluded records");
+  if (stripEntities || stripPlayers || normalizeActors) require(db->Write({}, &removals).ok(), "Cannot save normalized actor indexes or remove excluded records");
   return result;
 }
 static json scan(fs::path const &p, bool stripEntities = false, bool stripPlayers = false) {
@@ -524,7 +555,11 @@ static void overlayBedrock(fs::path const &records, fs::path const &terrain, boo
 static int run(std::vector<std::string> const &args) {
   require(args.size() >= 3, "Expected scan or convert command");
   auto input = fs::u8path(args[2]);
-  if (args[1] == "scan") { std::cout << scan(input).dump() << std::endl; return 0; }
+  if (args[1] == "scan") {
+    auto result = args.size() == 4 && args[3] == "normalize" && fs::is_directory(input/"db")
+      ? scanBedrock(input,false,false,true) : scan(input);
+    std::cout << result.dump() << std::endl; return 0;
+  }
   if (args[1] == "identity") {
     auto root = javaLevel(input); auto data = root->compoundTag(u8"Data");
     auto player = data ? data->compoundTag(u8"Player") : nullptr;
@@ -583,7 +618,7 @@ static int run(std::vector<std::string> const &args) {
   }
   auto output = fs::u8path(args[3]); bool entities = args[5] == "1", players = args[6] == "1";
   require(!fs::exists(output), "Output folder must not already exist");
-  auto census = scan(input);
+  auto census = fs::is_directory(input/"db") ? scanBedrock(input,false,false,true) : scan(input);
   if (entities) {
     for (auto const &e : census["entities"]) {
       auto type = e["type"].get<std::string>();
@@ -628,6 +663,7 @@ static int run(std::vector<std::string> const &args) {
     }
     throw std::runtime_error("World engine failed to convert the save: " + details);
   }
+  if (entities && args[4] == "java") recoverBedrockProjectiles(input,output);
   if (args[4] == "java" && je2be::kJavaDataVersion < 4556) {
     auto level = javaLevel(output); adaptJavaTag(*level,je2be::kJavaDataVersion); saveJavaLevel(output,*level);
     json ignored = json::array();
@@ -655,6 +691,7 @@ static int run(std::vector<std::string> const &args) {
   }
   std::cout << saved.dump() << std::endl; return 0;
 }
+#ifndef LUMA_WORLD_CONVERTER_NO_ENTRYPOINT
 #ifdef _WIN32
 int wmain(int argc, wchar_t **argv) {
   std::vector<std::string> args;
@@ -666,3 +703,4 @@ int main(int argc, char **argv) {
   try { return run(args); }
   catch (std::exception const &e) { std::cerr << e.what() << std::endl; return 1; }
 }
+#endif

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Registered entity schemas from the pinned je2be engine. Unknown generic output is refused.
+// Registered je2be schemas and Luma's explicit thrown-trident mapping. Unknown generic output is refused.
 #pragma once
 #include <set>
 #include <string>
 inline const std::set<std::string> kJavaEntityTypes = {
+  "minecraft:trident",
   "minecraft:acacia_boat",
   "minecraft:acacia_chest_boat",
   "minecraft:allay",

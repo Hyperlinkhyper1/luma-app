@@ -7,15 +7,17 @@ import '../world/world_conversion.dart';
 import '../world/world_converter_service.dart';
 
 class WorldConverterView extends StatefulWidget {
-  const WorldConverterView({super.key, required this.onBack});
+  const WorldConverterView({super.key, required this.onBack, this.service});
   final VoidCallback onBack;
+  final WorldConverterService? service;
 
   @override
   State<WorldConverterView> createState() => _WorldConverterViewState();
 }
 
 class _WorldConverterViewState extends State<WorldConverterView> {
-  final _service = WorldConverterService();
+  late final _service = widget.service ?? WorldConverterService();
+  final _sourcePath = TextEditingController();
   String? _source;
   String? _outputParent;
   WorldCensus? _census;
@@ -33,6 +35,30 @@ class _WorldConverterViewState extends State<WorldConverterView> {
       dialogTitle: 'Select the world folder containing level.dat',
     );
     if (path == null || !mounted) return;
+    await _loadWorld(path);
+  }
+
+  Future<void> _pickArchive() async {
+    final files = await FilePicker.pickFiles(
+      dialogTitle: 'Select an exported Minecraft world',
+      type: FileType.custom,
+      allowedExtensions: ['mcworld', 'zip'],
+    );
+    final path = files?.files.single.path;
+    if (path == null || !mounted) return;
+    await _loadWorld(path);
+  }
+
+  @override
+  void dispose() {
+    _sourcePath.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadWorld(String sourcePath) async {
+    final path = normalizeWorldSourcePath(sourcePath);
+    if (path.isEmpty) return;
+    _sourcePath.text = path;
     setState(() {
       _source = path;
       _census = null;
@@ -78,11 +104,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
     final source = _source;
     final parent = _outputParent;
     if (source == null || parent == null) return;
-    final name = source
-        .replaceAll('\\', '/')
-        .split('/')
-        .where((s) => s.isNotEmpty)
-        .last;
+    final name = worldSourceName(source);
     setState(() {
       _busy = true;
       _error = null;
@@ -140,7 +162,7 @@ class _WorldConverterViewState extends State<WorldConverterView> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Close this world in Minecraft before converting. Select its folder containing level.dat. The original stays unchanged.',
+                  'Close this world in Minecraft before converting. Choose its folder or an exported .mcworld / .zip file, or paste its path below. The original stays unchanged.',
                   style: TextStyle(color: luma.textSecondary),
                 ),
                 const SizedBox(height: 12),
@@ -149,13 +171,47 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                   icon: const Icon(Icons.folder_open),
                   label: const Text('Choose world folder'),
                 ),
-                if (_source != null)
-                  Text(_source!, style: TextStyle(color: luma.textMuted)),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _pickArchive,
+                  icon: const Icon(Icons.file_open_outlined),
+                  label: const Text('Choose .mcworld file'),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _sourcePath,
+                  enabled: !_busy,
+                  decoration: const InputDecoration(
+                    labelText: 'World folder or .mcworld / .zip path',
+                    hintText: 'Paste a path here',
+                  ),
+                  onChanged: (_) => setState(() {
+                    _census = null;
+                    _source = null;
+                    _result = null;
+                    _error = null;
+                  }),
+                  onSubmitted: _busy ? null : _loadWorld,
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _loadWorld(_sourcePath.text),
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Load world'),
+                ),
                 if (census != null) ...[
                   const SizedBox(height: 12),
                   Text(
                     '${census.edition.label} · ${census.entities.length} entities · ${census.localPlayer ? 1 : 0} local player · ${census.remotePlayers} additional players',
                   ),
+                  for (final warning in census.warnings)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        warning,
+                        style: TextStyle(color: luma.textSecondary),
+                      ),
+                    ),
                 ],
               ],
             ),
@@ -243,8 +299,10 @@ class _WorldConverterViewState extends State<WorldConverterView> {
                       SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Convert players'),
-                        subtitle: const Text(
-                          'Single-player inventory, equipment and position. Additional players require account mappings and cause an error when selected.',
+                        subtitle: Text(
+                          census != null && census.remotePlayers > 0
+                              ? 'This world has ${census.remotePlayers} additional player records. Turn off Convert players to convert terrain and entities. Moving these players requires account mappings.'
+                              : 'Single-player inventory, equipment and position. Additional players require account mappings and cause an error when selected.',
                         ),
                         value: _players,
                         onChanged: _busy

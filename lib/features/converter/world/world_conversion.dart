@@ -8,6 +8,23 @@ enum WorldEdition {
   final String label;
 }
 
+String normalizeWorldSourcePath(String path) {
+  final trimmed = path.trim();
+  if (trimmed.length >= 2 &&
+      ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+          (trimmed.startsWith("'") && trimmed.endsWith("'")))) {
+    return trimmed.substring(1, trimmed.length - 1);
+  }
+  return trimmed;
+}
+
+String worldSourceName(String path) => normalizeWorldSourcePath(path)
+    .replaceAll('\\', '/')
+    .split('/')
+    .where((part) => part.isNotEmpty)
+    .last
+    .replaceFirst(RegExp(r'\.(mcworld|zip)$', caseSensitive: false), '');
+
 class WorldTarget {
   const WorldTarget(this.edition, this.version);
   final WorldEdition edition;
@@ -96,6 +113,7 @@ class WorldEntityRecord {
       'xp_bottle' => 'experience_bottle',
       'tropicalfish' => 'tropical_fish',
       'zombie_pigman' => 'zombified_piglin',
+      'thrown_trident' => 'trident',
       'pig_zombie' => 'zombified_piglin',
       'lava_slime' => 'magma_cube',
       'mushroom_cow' => 'mooshroom',
@@ -116,12 +134,14 @@ class WorldCensus {
     required this.localPlayer,
     required this.remotePlayers,
     required this.version,
+    this.warnings = const [],
   });
   final WorldEdition edition;
   final List<WorldEntityRecord> entities;
   final bool localPlayer;
   final int remotePlayers;
   final Object version;
+  final List<String> warnings;
 
   factory WorldCensus.fromJson(Map<String, dynamic> json) => WorldCensus(
     edition: WorldEdition.values.byName(json['edition'] as String),
@@ -131,6 +151,7 @@ class WorldCensus {
     localPlayer: json['localPlayer'] as bool,
     remotePlayers: json['remotePlayers'] as int,
     version: json['version'] as Object,
+    warnings: (json['warnings'] as List?)?.cast<String>() ?? const [],
   );
 }
 

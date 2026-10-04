@@ -247,7 +247,7 @@ export function canvasTexture(w, h, draw, { repeat = false } = {}) {
 }
 
 /** The MSC compass-rose emblem, drawn as vector art into a canvas. */
-export function drawCompass(g, cx, cy, r, color = '#0d1b33', bg = null) {
+export function drawCompass(g, cx, cy, r, color = '#0d1b33', bg = null, cutout = false) {
   g.save();
   g.translate(cx, cy);
   if (bg) { g.fillStyle = bg; g.beginPath(); g.arc(0, 0, r * 1.02, 0, Math.PI * 2); g.fill(); }
@@ -262,9 +262,12 @@ export function drawCompass(g, cx, cy, r, color = '#0d1b33', bg = null) {
   }
   g.closePath();
   g.fill();
-  // Inner disc with the lowercase monogram.
+  // Inner disc with the lowercase monogram (punched out when only coverage
+  // is used, e.g. painted straight onto the hull).
+  if (cutout) g.globalCompositeOperation = 'destination-out';
   g.fillStyle = bg || '#ffffff';
   g.beginPath(); g.arc(0, 0, r * 0.4, 0, Math.PI * 2); g.fill();
+  g.globalCompositeOperation = 'source-over';
   g.strokeStyle = color; g.lineWidth = r * 0.045;
   g.beginPath(); g.arc(0, 0, r * 0.4, 0, Math.PI * 2); g.stroke();
   g.fillStyle = color;

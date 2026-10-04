@@ -70,7 +70,9 @@ jobs:
         run: |
           cmake -S tool/world_converter -B build/world_converter -A x64
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake --build build/world_converter --config Release --target luma-world-converter --parallel 2
+          cmake --build build/world_converter --config Release --target luma-world-converter luma-world-converter-actor-test --parallel 2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & build/world_converter/Release/luma-world-converter-actor-test.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dart run tool/world_converter/build_version_engine.dart build/world_converter
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -181,7 +183,8 @@ jobs:
         timeout-minutes: 30
         run: |
           cmake -S tool/world_converter -B build/world_converter -DCMAKE_BUILD_TYPE=Release
-          cmake --build build/world_converter --target luma-world-converter --parallel 2
+          cmake --build build/world_converter --target luma-world-converter luma-world-converter-actor-test --parallel 2
+          build/world_converter/luma-world-converter-actor-test
           dart run tool/world_converter/build_version_engine.dart build/world_converter
           dart run tool/world_converter/verify_round_trip.dart build/world_converter/luma-world-converter --versions
           cmake --install build/world_converter --component WorldConverter --prefix build/linux/x64/release/bundle

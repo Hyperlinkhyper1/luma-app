@@ -6,12 +6,14 @@ import { buildPromenade } from './promenade.js';
 import { buildTopDecks } from './topdecks.js';
 import { Collider } from './collider.js';
 import { buildShadowProxy } from './shadowProxy.js';
+import { frontFacadeMaterial } from './forward.js';
 
 // Assembles the ship. Each builder adds its meshes, its share of the
 // walkable collider, and points of interest (spawn spots, doors, lamps).
 
 export async function buildShip(progress = () => {}) {
   const M = makeMaterials();
+  M.frontFacade = frontFacadeMaterial();
   const col = new Collider();
   const pois = { spots: [], doors: [], lamps: [] };
   const root = new THREE.Group();

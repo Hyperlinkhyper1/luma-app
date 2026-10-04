@@ -2,9 +2,60 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/features/converter/tools/other_tools_view.dart';
 import 'package:luma/features/converter/tools/world_converter_view.dart';
+import 'package:luma/features/converter/world/world_conversion.dart';
+import 'package:luma/features/converter/world/world_converter_service.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 void main() {
+  testWidgets('pasted quoted world path loads and displays scan warnings', (
+    tester,
+  ) async {
+    final service = _WorldImportService();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LumaTheme.dark,
+        home: Scaffold(
+          body: WorldConverterView(onBack: () {}, service: service),
+        ),
+      ),
+    );
+    await tester.enterText(
+      find.byType(TextField),
+      r'"C:\Users\ayden\Downloads\resort - Kopiëren.mcworld"',
+    );
+    await tester.ensureVisible(find.text('Load world'));
+    await tester.tap(find.text('Load world'));
+    await tester.pumpAndSettle();
+    expect(
+      service.loadedPath,
+      r'C:\Users\ayden\Downloads\resort - Kopiëren.mcworld',
+    );
+    expect(find.textContaining('513 entities'), findsOneWidget);
+    expect(
+      find.text('Repeated actor references normalized on a temporary copy.'),
+      findsOneWidget,
+    );
+    expect(find.text('26.3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('world import exposes a pasteable path and .mcworld picker', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LumaTheme.dark,
+        home: Scaffold(body: WorldConverterView(onBack: () {})),
+      ),
+    );
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('Choose .mcworld file'), findsOneWidget);
+    await tester.enterText(
+      find.byType(TextField),
+      r'"C:\Users\ayden\Downloads\resort - Kopiëren.mcworld"',
+    );
+    expect(find.text('Load world'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets(
     'Other opens world conversion with entity transfer selected at 320px',
     (tester) async {
@@ -51,4 +102,25 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+}
+
+class _WorldImportService extends WorldConverterService {
+  String? loadedPath;
+  @override
+  Future<WorldCensus> inspect(String path) async {
+    loadedPath = path;
+    return WorldCensus(
+      edition: WorldEdition.bedrock,
+      entities: List.generate(
+        513,
+        (_) => const WorldEntityRecord('minecraft:cow', 0, [0, 64, 0]),
+      ),
+      localPlayer: true,
+      remotePlayers: 11,
+      version: [1, 20, 81],
+      warnings: const [
+        'Repeated actor references normalized on a temporary copy.',
+      ],
+    );
+  }
 }

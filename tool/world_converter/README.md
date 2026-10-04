@@ -52,8 +52,26 @@ Commands: `scan <world folder>` and
 Internal commands also strip excluded records, preserve player identity and
 overlay version-adapted records. Their inputs must be disposable staging copies.
 The source passed to `convert` MUST be a disposable copy: unchecked options remove
-records from that copy before invoking the engine. Output is a JSON census. Luma
-matches every source entity to a saved output entity by kind, dimension and
+records from that copy before invoking the engine. Output is a JSON census.
+
+Luma accepts world folders and `.mcworld` / `.zip` exports, including quoted pasted
+paths and archives with one enclosing world folder. It validates archive paths,
+links and checksums before reading a staged world; the original export remains
+unchanged. `scan <world> normalize` rebuilds Bedrock actor indexes on a disposable
+copy from each active actor's actual position and unambiguous dimension. Repeated
+references count once; stale references with no actor NBT are reported and
+removed. Unindexed historical actor NBT remains inactive, matching Minecraft's
+index-based loading. Corrupt live actor records and ambiguous dimensions still
+fail. The native `luma-world-converter-actor-test` target covers these cases.
+
+For Java 1.20.5+ entity records, an additional projectile writer recovers indexed
+arrows and thrown tridents even when their chunk has no terrain record. Existing
+saved UUIDs are retained without duplication; trident items use the engine's
+item/component conversion, including damage and enchantments. The native fixture
+checks projectile-only chunks, owner identity and trident durability. Older
+targets still refuse selected projectiles they cannot transfer.
+
+Luma matches every source entity to a saved output entity by kind, dimension and
 position, including passengers, hive occupants, legacy entity storage and modern actor indexes.
 Missing/corrupt records are errors. Counts alone do not establish success.
 Generic records without a registered target-edition entity schema are also

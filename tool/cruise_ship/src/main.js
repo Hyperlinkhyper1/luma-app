@@ -18,9 +18,8 @@ import { shipU } from './ship/materials.js';
 import { Modes, MODE_LABEL } from './player/modes.js';
 import { Tender } from './player/tender.js';
 import { Port } from './world/port.js';
-import { People } from './world/people.js';
 import { Ambient } from './world/ambient.js';
-import { deckY } from './ship/dims.js';
+import { deckY, PROM } from './ship/dims.js';
 import { describe } from './ship/areas.js';
 import { Hud } from './ui/hud.js';
 import { Menu } from './ui/menu.js';
@@ -89,11 +88,10 @@ class App {
     this.port = new Port(this.scene, ship.materials);
     ship.pois.spots.push(...this.port.pois.spots);
     ship.pois.doors.push(...this.port.pois.doors);
-    ship.pois.doors.push({ x: -25, y: 20.5, z: 14.2, label: 'Gangway — go ashore', ashore: true, portOnly: true });
+    ship.pois.doors.push({ x: -25, y: deckY(7), z: PROM.wallZ + 0.6, label: 'Gangway — go ashore', ashore: true, portOnly: true });
     this.port.setVisible(this.inPort());
-    this.people = new People(ship.root, ship.pois);
     this.ambient = new Ambient(this.scene, ship.root);
-    this.funnelTop = new THREE.Vector3(-100.5, deckY(18) + 19.5, 0);
+    this.funnelTop = new THREE.Vector3(-82, deckY(18) + 20.6, 0);
     this.tender = new Tender(this.scene, this.ocean, ship.materials);
     this.modes = new Modes({ camera: this.camera, shipRoot: ship.root, collider: ship.collider, input: this.input, tender: this.tender });
     this.modes.walker.cols.push(this.port.collider);
@@ -112,7 +110,7 @@ class App {
     settings.onChange((p) => { if (p.startsWith('audio') || p === '*') this.audio.applyVolumes(); });
     this.modes.walker.onStep = (speed) => {
       const pos = this.modes.walker.pos;
-      const surface = pos.y > 52 && pos.y < 54 ? 'paint' : (this._onStairs ? 'metal' : 'teak');
+      const surface = Math.abs(pos.y - deckY(18)) < 0.6 ? 'paint' : (this._onStairs ? 'metal' : 'teak');
       this.audio.step(surface, speed);
     };
     this.hud = new Hud();
@@ -199,10 +197,10 @@ class App {
     const walking = this.modes.mode === 'walk';
     const roof = roofAt(this.rain.roof, v.x, v.z);
     const sheltered = v.y < roof - 0.3;
-    const edge = v.y < 30 ? 16.2 : 18.8;
+    const edge = v.y < deckY(9) ? PROM.railZ - 1 : 20.5;
     const nearRail = walking ? THREE.MathUtils.smoothstep(Math.abs(v.z), edge - 2, edge + 1) : (this.modes.mode === 'drone' ? 1 : 0.4);
-    const poolD = Math.hypot(Math.max(0, Math.abs(v.x - 16) - 38), (v.y - 48) * 2, Math.max(0, Math.abs(v.z) - 14));
-    const funD = Math.hypot(v.x + 75, (v.y - 58) * 0.7, v.z);
+    const poolD = Math.hypot(Math.max(0, Math.abs(v.x - 16) - 38), (v.y - deckY(16) - 1) * 2, Math.max(0, Math.abs(v.z) - 14));
+    const funD = Math.hypot(v.x + 78, (v.y - deckY(18) - 10) * 0.7, v.z);
     this._onStairs = false;
     this.audio.update(dt, {
       height: this.camera.position.y,
@@ -217,7 +215,6 @@ class App {
       tender: this.modes.mode === 'tender',
       port,
       fog: w.fog,
-      people: settings.get().people.enabled,
     });
   }
 
@@ -314,7 +311,6 @@ class App {
     this.rain.update(dt, this.t, this.camera, this.weather, windWorld);
     this.lightning.update(dt, this.weather, this.camera.position);
     this._audio(dt, w, port, speed, windWorld);
-    this.people.update(dt, { night: this.lighting.night, rain: w.rain, hour: this.clock.hour });
     this.ambient.update(dt, this.t, { port, speed, windWorld, day: 1 - this.lighting.night, camera: this.camera, funnelTop: this.funnelTop, shipRoot: this.shipRoot });
 
     this._doors();
@@ -365,6 +361,47 @@ if (import.meta.env.DEV) {
     const url = c.toDataURL('image/jpeg', 0.88);
     await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: url });
     return `${name}: ${c.width}x${c.height}`;
+  };
+  // Compare against a reference photo: render the ship broadside from far
+  // away with a long lens (starboard side, bow to the right), then draw the
+  // photo over it, scaled so its stern, bow and waterline land on ours.
+  // ref = { url, sternPx, bowPx, wlPx } in the photo's own pixels.
+  window.__compare = async (name, ref, { alpha = 0.5, W = 1600, H = 900, dist = 2600, mode = 'blend' } = {}) => {
+    const cam = app.camera;
+    const fov0 = cam.fov;
+    app.modes.set('drone');
+    const d = app.modes.drone;
+    d.pos.set(0, 22, dist); d.yaw = -Math.PI / 2; d.pitch = 0;
+    cam.fov = 2 * Math.atan((370 / (W / H)) / 2 / dist) * 180 / Math.PI;
+    cam.updateProjectionMatrix();
+    await window.__shot(name + '_raw', 24, W, H);
+    const gl = $('view');
+    const out = document.createElement('canvas'); out.width = W; out.height = H;
+    const g = out.getContext('2d');
+    g.drawImage(gl, 0, 0, W, H);
+    // Where our stern (waterline) and bow tip land on screen.
+    const proj = (x, y) => { const v = new THREE.Vector3(x, y, 0).project(cam); return [(v.x + 1) / 2 * W, (1 - v.y) / 2 * H]; };
+    const [sx0, sy0] = proj(-165.7, 0), [sx1] = proj(166.1, 0);
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.src = ref.url;
+    await new Promise((r, e) => { img.onload = r; img.onerror = e; });
+    const k = (sx1 - sx0) / (ref.bowPx - ref.sternPx);
+    const ox = sx0 - ref.sternPx * k, oy = sy0 - ref.wlPx * k;
+    if (mode === 'stack') {
+      // Photo band on top, our render of the same band below, same scale.
+      const top = proj(0, 80)[1] - 10, bot = sy0 + 25, bh = bot - top;
+      out.height = Math.round(bh * 2 + 6);
+      g.fillStyle = '#000'; g.fillRect(0, 0, W, out.height);
+      g.drawImage(img, ox, oy - top, img.naturalWidth * k, img.naturalHeight * k);
+      g.clearRect(0, bh, W, out.height - bh);
+      g.fillRect(0, bh, W, 6);
+      g.drawImage(gl, 0, top * gl.height / H, gl.width, bh * gl.height / H, 0, bh + 6, W, bh);
+    } else {
+      g.globalAlpha = alpha;
+      g.drawImage(img, ox, oy, img.naturalWidth * k, img.naturalHeight * k);
+    }
+    cam.fov = fov0; cam.updateProjectionMatrix();
+    await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: out.toDataURL('image/jpeg', 0.9) });
+    return { k, ox, oy };
   };
   // Put the walker somewhere (ship-local), or the drone at a world position looking at a target.
   window.__walk = (x, y, z, yaw = 0, pitch = 0) => { app.modes.set('walk'); app.modes.walker.place({ x, y, z, yaw, pitch }); };

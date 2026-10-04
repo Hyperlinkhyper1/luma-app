@@ -38,6 +38,16 @@ export function buildPromenade(M, col, pois) {
     const fpoly = closedOutline(fo);
     B.add('crewDeck', prism(fpoly, deckY(9) - 0.35, deckY(9)));
     col.prism(fpoly, deckY(9) - 1.0, deckY(9));
+    // White bulwark round the forecastle: the hull plating carried up past
+    // the deck, which is why the bow reads as one smooth white mass.
+    const yb = deckY(9);
+    const edge = [];
+    for (let x = 118; x <= BOW_X - 0.6; x += 1) edge.push([x, Math.max(0.05, hullHalf(x, yb) - 0.02)]);
+    const inner = edge.map(([x, z]) => [x - (x > BOW_X - 6 ? 0.3 : 0), Math.max(0.02, z - 0.28)]);
+    const ring = [...edge, ...edge.slice().reverse().map(([x, z]) => [x, -z]),
+      ...inner.map(([x, z]) => [x, -z]), ...inner.slice().reverse()];
+    B.add('paint', prism(ring, yb - 0.3, yb + 1.35));
+    col.prism(ring, yb, yb + 1.35);
   }
 
   for (const side of [1, -1]) {

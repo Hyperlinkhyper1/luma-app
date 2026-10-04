@@ -162,7 +162,6 @@ export class Menu {
       this.row('Invert Y', null, this.toggleSw('controls.invertY'));
       this.row('Head bob', 'A little sway while walking.', this.toggleSw('controls.headBob'));
       this.row('Feel the roll', 'Let the ship\'s roll tilt your view. Turn off if it makes you queasy.', this.toggleSw('controls.rollCamera'));
-      this.row('People on board', 'Passengers on the decks and in the pools.', this.toggleSw('people.enabled'));
       const keys = document.createElement('div');
       keys.className = 'ctl';
       keys.style.display = 'block';

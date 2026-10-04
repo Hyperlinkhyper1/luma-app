@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:archive/archive_io.dart';
+
 import 'world_conversion.dart';
 
 typedef WorldWorker = Future<WorldCensus> Function(List<String> arguments);
@@ -112,18 +114,14 @@ class WorldConverterService {
   }
 
   Future<WorldCensus> inspect(String path) async {
-    if (!await File('$path/level.dat').exists()) {
-      throw const FormatException(
-        'Select a world folder containing level.dat.',
-      );
-    }
+    path = normalizeWorldSourcePath(path);
     final snapshot = await Directory.systemTemp.createTemp(
       'luma-world-inspect-',
     );
     try {
       final copy = Directory('${snapshot.path}/world');
-      await _copyTree(Directory(path), copy);
-      return await _run(['scan', copy.path]);
+      await _snapshotSource(path, copy);
+      return await _run(['scan', copy.path, 'normalize']);
     } finally {
       await snapshot.delete(recursive: true);
     }
@@ -142,7 +140,10 @@ class WorldConverterService {
     )) {
       throw const FormatException('Unsupported target version.');
     }
-    final input = await Directory(source).resolveSymbolicLinks();
+    source = normalizeWorldSourcePath(source);
+    final input = await Directory(source).exists()
+        ? await Directory(source).resolveSymbolicLinks()
+        : await File(source).resolveSymbolicLinks();
     final parent = await Directory(destination).parent.resolveSymbolicLinks();
     final target = Directory(
       '$parent/${Directory(destination).uri.pathSegments.where((s) => s.isNotEmpty).last}',
@@ -163,10 +164,10 @@ class WorldConverterService {
     final staging = await Directory(parent).createTemp('.luma-world-');
     try {
       final copy = Directory('${staging.path}/source');
-      onProgress?.call('Copying the source world…');
-      await _copyTree(Directory(input), copy);
+      onProgress?.call('Opening a temporary copy of the source world…');
+      await _snapshotSource(input, copy);
       onProgress?.call('Checking entities and players…');
-      final before = await _run(['scan', copy.path]);
+      final before = await _run(['scan', copy.path, 'normalize']);
       if (before.edition == options.target.edition) {
         throw const FormatException('Choose the other Minecraft edition.');
       }
@@ -313,7 +314,7 @@ class WorldConverterService {
       }
       onProgress?.call('Verifying entities in the saved world…');
       await Isolate.run(() => verifyWorldConversion(before, after, options));
-      final notes = <String>[];
+      final notes = <String>[...before.warnings];
       if (options.statistics) {
         await _statistics(copy, output, options.target, notes);
       }
@@ -381,6 +382,22 @@ class WorldConverterService {
     }
   }
 
+  Future<void> _snapshotSource(String path, Directory target) async {
+    if (await Directory(path).exists()) {
+      await _copyTree(Directory(path), target);
+    } else if (await File(path).exists() &&
+        RegExp(r'\.(mcworld|zip)$', caseSensitive: false).hasMatch(path)) {
+      await Isolate.run(() => _extractWorldArchive(path, target.path));
+    } else {
+      throw const FormatException(
+        'Choose a world folder or an exported .mcworld / .zip file.',
+      );
+    }
+    if (!await File('${target.path}/level.dat').exists()) {
+      throw const FormatException('The selected world is missing level.dat.');
+    }
+  }
+
   Future<void> _statistics(
     Directory source,
     Directory output,
@@ -408,5 +425,99 @@ class WorldConverterService {
           ? 'Java statistics restored from the archive.'
           : 'Java statistics archived for a later conversion back to Java. Bedrock cannot display them.',
     );
+  }
+}
+
+void _extractWorldArchive(String path, String destination) {
+  final input = InputFileStream(path);
+  try {
+    final decoder = ZipDecoder();
+    final archive = decoder.decodeStream(input);
+    String safeName(String name) {
+      final normalized = name.replaceAll('\\', '/');
+      final parts = normalized
+          .split('/')
+          .where((p) => p.isNotEmpty && p != '.')
+          .toList();
+      if (normalized.startsWith('/') ||
+          parts.isEmpty ||
+          parts.any(
+            (p) =>
+                p == '..' ||
+                p.contains(':') ||
+                p.contains('\u0000') ||
+                p.endsWith('.') ||
+                p.endsWith(' '),
+          )) {
+        throw const FormatException(
+          'The world archive contains an unsafe file path.',
+        );
+      }
+      return parts.join('/');
+    }
+
+    final names = <String>{};
+    for (final header in decoder.directory.fileHeaders) {
+      final name = safeName(header.filename);
+      if (!names.add(Platform.isWindows ? name.toLowerCase() : name)) {
+        throw const FormatException(
+          'The world archive contains duplicate file paths.',
+        );
+      }
+    }
+    for (final entry in archive) {
+      if (entry.isSymbolicLink) {
+        throw const FormatException(
+          'Linked files in world archives are not supported.',
+        );
+      }
+    }
+    final levels = archive
+        .where(
+          (e) => e.isFile && safeName(e.name).split('/').last == 'level.dat',
+        )
+        .toList();
+    if (levels.length != 1) {
+      throw const FormatException(
+        'The archive must contain exactly one world with level.dat.',
+      );
+    }
+    final level = safeName(levels.single.name);
+    final prefix = level.substring(0, level.length - 'level.dat'.length);
+    for (final entry in archive) {
+      final name = safeName(entry.name);
+      if (!name.startsWith(prefix) || !entry.isFile) continue;
+      final relative = name.substring(prefix.length);
+      if (relative == 'session.lock') continue;
+      final file = File('$destination/$relative');
+      file.parent.createSync(recursive: true);
+      final output = OutputFileStream(file.path);
+      try {
+        entry.writeContent(output);
+      } finally {
+        output.closeSync();
+      }
+      if (file.lengthSync() != entry.size) {
+        throw FormatException(
+          'The world archive contains a truncated file: $relative',
+        );
+      }
+      final content = InputFileStream(file.path);
+      var crc = 0;
+      try {
+        while (!content.isEOS) {
+          crc = getCrc32(content.readBytes(65536).toUint8List(), crc);
+        }
+      } finally {
+        content.closeSync();
+      }
+      if (crc != entry.crc32) {
+        throw FormatException(
+          'The world archive contains a damaged file: $relative',
+        );
+      }
+    }
+  } finally {
+    input.closeSync();
   }
 }
