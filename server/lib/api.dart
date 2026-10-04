@@ -752,6 +752,8 @@ class Api {
           _requireAdmin(_adminBenchmarkGenStop))
       ..post('/admin/benchmarks/generate/<id>/dismiss',
           _requireAdmin(_adminBenchmarkGenDismiss))
+      ..post('/admin/benchmarks/generate/<id>/recheck',
+          _requireAdmin(_adminBenchmarkGenRecheck))
       ..get('/admin/benchmarks/generate/<id>/output',
           _requireAdmin(_adminBenchmarkGenOutput))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))

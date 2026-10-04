@@ -35,7 +35,13 @@ class BenchmarkGenJob {
       maxTokens: (j['maxTokens'] as num?)?.toInt() ?? 0,
       startedAtMs: (j['startedAtMs'] as num).toInt(),
       batchId: batchId,
-    );
+    )
+      ..status = j['status'] == 'failed' || j['status'] == 'stopped'
+          ? j['status'] as String
+          : 'running'
+      ..error = j['error'] as String?
+      ..finishedAtMs = (j['finishedAtMs'] as num?)?.toInt()
+      ..batchStatus = j['batchStatus'] as String?;
   }
 
   final String id;
@@ -100,6 +106,7 @@ class BenchmarkGenJob {
         'hasOutput': hasOutput,
         'batch': batch,
         'batchStatus': batchStatus,
+        'batchId': batchId,
         ...publish,
       };
 
@@ -115,6 +122,10 @@ class BenchmarkGenJob {
         'maxTokens': maxTokens,
         'startedAtMs': startedAtMs,
         'batchId': batchId,
+        'batchStatus': batchStatus,
+        'status': status,
+        'error': error,
+        'finishedAtMs': finishedAtMs,
       };
 }
 
@@ -166,14 +177,18 @@ extension BenchmarkGenerateApi on Api {
       }
       job.phase = 'queued';
       _benchmarkGenJobs.add(job);
-      unawaited(_runBenchmarkGen(job));
+      // Failed and stopped ones come back as cards that can be checked again.
+      if (job.status == 'running') unawaited(_runBenchmarkGen(job));
     }
   }
 
+  /// Saves every submitted batch that hasn't produced its scene: the ones
+  /// still waiting, and failed or stopped ones that may yet finish at
+  /// OpenRouter and can be checked again. Dismissing a card drops it.
   Future<void> _saveBenchmarkBatches() async {
     final pending = [
       for (final j in _benchmarkGenJobs)
-        if (j.batch && j.status == 'running' && j.batchId != null) j.toState(),
+        if (j.batch && j.batchId != null && j.status != 'done') j.toState(),
     ];
     try {
       await Directory(_genOutputDir).create(recursive: true);
@@ -332,7 +347,31 @@ extension BenchmarkGenerateApi on Api {
     }
     _benchmarkGenJobs.remove(job);
     await _deleteBenchmarkGenOutput(job);
+    if (job.batchId != null) await _saveBenchmarkBatches();
     return jsonResponse(200, {'ok': true});
+  }
+
+  /// Goes back to waiting on a batch that failed or was stopped here. The
+  /// batch itself kept running at OpenRouter, so its scene can still come.
+  Future<Response> _adminBenchmarkGenRecheck(Request request) async {
+    final job = _findBenchmarkGenJob(request);
+    if (job == null ||
+        !job.batch ||
+        job.batchId == null ||
+        job.status == 'running' ||
+        job.status == 'done') {
+      return errorResponse(
+          404, 'not_found', 'No submitted batch to check again with that id.');
+    }
+    job
+      ..status = 'running'
+      ..phase = 'queued'
+      ..error = null
+      ..finishedAtMs = null
+      ..stopRequested = false;
+    await _saveBenchmarkBatches();
+    unawaited(_runBenchmarkGen(job));
+    return jsonResponse(200, job.toJson());
   }
 
   /// The model's raw reply, for working out why a run failed. Plain text,
@@ -366,6 +405,7 @@ extension BenchmarkGenerateApi on Api {
       if (old.status == 'running') break;
       _benchmarkGenJobs.remove(old);
       await _deleteBenchmarkGenOutput(old);
+      if (old.batchId != null) await _saveBenchmarkBatches();
     }
   }
 
@@ -514,12 +554,27 @@ extension BenchmarkGenerateApi on Api {
     }
     job.phase = 'queued';
     var misses = 0;
+    // OpenRouter persists a new batch asynchronously, so a GET straight
+    // after the submit can 404 for a while. Only a batch that was seen and
+    // then vanished, or one never seen for half an hour, is really gone.
+    var seen = false;
+    final graceUntil = DateTime.now().add(const Duration(minutes: 30));
+    var wait = const Duration(seconds: 5);
     while (!job.stopRequested) {
+      final wake = job.wake = Completer<void>();
+      await Future.any([wake.future, Future<void>.delayed(wait)]);
+      job.wake = null;
+      wait = _batchPollEvery;
+      if (job.stopRequested) break;
       if (DateTime.now().isAfter(deadline)) throw TimeoutException('batch');
       final (status, body) =
           await _openRouterBatchCall(job, 'GET', '/batches/${job.batchId}');
       if (job.stopRequested) break;
+      final missing =
+          status == HttpStatus.notFound || status == HttpStatus.gone;
+      if (missing && !seen && DateTime.now().isBefore(graceUntil)) continue;
       if (status == HttpStatus.ok && body is Map) {
+        seen = true;
         misses = 0;
         final s = body['status'];
         if (s is String) job.batchStatus = s;
@@ -543,8 +598,7 @@ extension BenchmarkGenerateApi on Api {
                   .then((_) {}, onError: (_) {}));
           return;
         }
-      } else if (status == HttpStatus.notFound ||
-          status == HttpStatus.gone ||
+      } else if (missing ||
           status == HttpStatus.unauthorized ||
           status == HttpStatus.forbidden) {
         job.status = 'failed';
@@ -557,9 +611,6 @@ extension BenchmarkGenerateApi on Api {
             '$misses polls failed (last HTTP $status)');
         misses = 0;
       }
-      final wake = job.wake = Completer<void>();
-      await Future.any([wake.future, Future<void>.delayed(_batchPollEvery)]);
-      job.wake = null;
     }
     job.status = 'stopped';
   }
@@ -1187,6 +1238,9 @@ const _bgScript = r'''
       if (running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="stop"' + (j.batch ? ' data-batch="1"' : '') + '>Stop</button>');
       if (j.commitUrl) actions.push('<a class="btn btn-ghost btn-sm" href="' + esc(j.commitUrl) + '" target="_blank" rel="noopener">Commit</a>');
       if (j.hasOutput) actions.push('<a class="btn btn-ghost btn-sm" href="/admin/benchmarks/generate/' + encodeURIComponent(j.id) + '/output" target="_blank" rel="noopener">Reply</a>');
+      if (j.batch && j.batchId && (j.status === 'failed' || j.status === 'stopped')) {
+        actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="recheck" title="The batch may still be running at OpenRouter: wait for it again">Check again</button>');
+      }
       if (!running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="dismiss" aria-label="Dismiss this run">Dismiss</button>');
       return '<div class="bg-run is-' + esc(j.status) + '" data-id="' + esc(j.id) + '">'
         + '<div><div class="bg-run-name">' + esc(j.name) + ' <span class="badge">' + esc(j.kindLabel) + '</span>'
