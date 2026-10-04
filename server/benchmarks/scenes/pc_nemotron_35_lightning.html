@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>3D PC Build Benchmark</title>
+<style>
+  body { margin:0; overflow:hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+  #hud {
+    position: fixed; bottom: 20px; right: 20px; width: 220px; 
+    background: rgba(10,10,20,0.75); color: #e0e0e0; padding: 18px; 
+    border-radius: 10px; box-shadow: 0 0 12px rgba(0,0,0,0.5); 
+    line-height: 1.4; z-index: 100;
+  }
+  button, input, select { width:100%; margin: 6px 0; padding: 8px; 
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); 
+    color: #fff; border-radius: 6px; font-size: 13px; cursor: pointer; }
+  input[type=color] { height: 32px; padding: 0; background: none; }
+  .small { font-size: 11px; color: #aaa; margin-top: 4px; }
+  .hudTitle { font-size: 14px; font-weight: 600; margin-bottom: 12px; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="hudTitle">PC Control Panel</div>
+  <div>Power: <button id="powerBtn">ON</button></div>
+  <div>RGB: <input type="color" id="rgbPicker" value="#ff6b6b"></div>
+  <div>Fan Speed: <input type="range" id="fanSpeed" min="0" max="1" step="0.05" value="1"></div>
+  <div>Animation: <select id="animMode">
+    <option value="spin">Spin</option>
+    <option value="breathing">Breathing</option>
+    <option value="rainbow">Rainbow</option>
+  </select></div>
+  <div class="small">Temp: <span id="tempVal">30</span>°C</div>
+</div>
+<canvas id="threeCanvas"></canvas>
+
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.155.0/examples/jsm/controls/OrbitControls.min.js"></script>
+<script>
+// ----- Scene Setup -----
+const canvas = document.getElementById('threeCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2000);
+camera.position.set(0, 120, 380);
+camera.lookAt(0, 0, 0);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.maxPolarAngle = Math.PI / 2.2;
+controls.minPolarAngle = Math.PI / 4;
+controls.target.set(0, 60, 0);
+
+// Ground plane
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(800, 800),
+  new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Ambient light
+const ambient = new THREE.AmbientLight(0x2a2a3a, 0.4);
+scene.add(ambient);
+
+// Directional light (key)
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(200, 300, 150);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.near = 10;
+dirLight.shadow.camera.far = 500;
+dirLight.shadow.radius = 4;
+scene.add(dirLight);
+
+// ----- PC State -----
+let isOn = false;
+let startupStart = 0;
+let shutdownStart = 0;
+const DURATION = 1800; // ms
+
+// Temperature simulation
+let temp = 30;
+let tempDir = 1; // 1 = heating, -1 = cooling
+
+// ----- HUD elements -----
+const powerBtn = document.getElementById('powerBtn');
+const rgbPicker = document.getElementById('rgbPicker');
+const fanSpeedInput = document.getElementById('fanSpeed');
+const animModeSelect = document.getElementById('animMode');
+const tempVal = document.getElementById('tempVal');
+
+// ----- Helper to parse color -----
+function parseHex(hex) {
+  const v = parseInt(hex.replace('#', ''), 16);
+  return new THREE.Color(
+    ((v >> 16) & 255) / 255,
+    ((v >> 8) & 255) / 255,
+    (v & 255) / 255
+  );
+}
+
+// ----- PC Group -----
+const pcGroup = new THREE.Group();
+scene.add(pcGroup);
+
+// --- Case Shell ---
+const caseMat = new THREE.MeshStandardMaterial({
+  color: 0x2a2a3a,
+  metalness: 0.4,
+  roughness: 0.6,
+  transparent: true,
+  opacity: 0.85,
+  side: THREE.DoubleSide
+});
+// Main box
+const caseBox = new THREE.Mesh(
+  new THREE.BoxGeometry(420, 320, 520),
+  caseMat
+);
+caseBox.position.set(0, 160, 0);
+caseBox.castShadow = true;
+caseBox.receiveShadow = true;
+pcGroup.add(caseBox);
+
+// Transparent side panel (left)
+const sidePanelMat = new THREE.MeshStandardMaterial({
+  color: 0x111111,
+  metalness: 0.1,
+  roughness: 0.9,
+  transparent: true,
+  opacity: 0.35,
+  side: THREE.BackSide
+});
+const sidePanel = new THREE.Mesh(
+  new THREE.BoxGeometry(20, 320, 520),
+  sidePanelMat
+);
+sidePanel.position.set(-210, 160, 0);
+sidePanel.castShadow = false;
+pcGroup.add(sidePanel);
+
+// --- Motherboard ---
+const mbMat = new THREE.MeshStandardMaterial({
+  color: 0x1c1c24,
+  metalness: 0.2,
+  roughness: 0.7
+});
+const motherboard = new THREE.Mesh(
+  new THREE.BoxGeometry(380, 1, 260),
+  mbMat
+);
+motherboard.position.set(0, 20, 0);
+motherboard.rotation.z = Math.PI / 8; // slight angle
+motherboard.castShadow = true;
+motherboard.receiveShadow = true;
+pcGroup.add(motherboard);
+
+// --- CPU ---
+const cpuMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.5, roughness: 0.4 });
+const cpuBlock = new THREE.Mesh(
+  new THREE.BoxGeometry(40, 40, 40),
+  cpuMat
+);
+cpuBlock.position.set(0, 80, -80);
+cpuBlock.castShadow = true;
+cpuBlock.receiveShadow = true;
+pcGroup.add(cpuBlock);
+
+// CPU heat sink base
+const hsBase = new THREE.Mesh(
+  new THREE.BoxGeometry(50, 10, 50),
+  cpuMat
+);
+hsBase.position.set(0, 95, -80);
+hsBase.castShadow = true;
+pcGroup.add(hsBase);
+
+// CPU heat sink fins (cylinders)
+for (let i = 0; i < 6; i++) {
+  const fin = new THREE.Mesh(
+    new THREE.CylinderGeometry(1, 1, 30, 8, 1, true),
+    new THREE.MeshStandardMaterial({ color: 0x5a5a5a, metalness: 0.6, roughness: 0.3 })
+  );
+  fin.rotation.x = Math.PI / 2;
+  fin.rotation.z = (i / 5) * Math.PI * 2;
+  fin.position.set(
+    (Math.random() - 0.5) * 20,
+    95 + Math.random() * 10,
+    -80 + Math.random() * 10
+  );
+  pcGroup.add(fin);
+}
+
+// --- GPU ---
+const gpuMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.7, roughness: 0.3 });
+const gpuBase = new THREE.Mesh(
+  new THREE.BoxGeometry(200, 80, 30),
+  gpuMat
+);
+gpuBase.position.set(120, 40, 60);
+gpuBase.castShadow = true;
+pcGroup.add(gpuBase);
+
+// GPU bracket
+const gpuBracket = new THREE.Mesh(
+  new THREE.BoxGeometry(180, 10, 6),
+  new THREE.MeshStandardMaterial({ color: 0x4a4a4a, metalness: 0.8, roughness: 0.5 })
+);
+gpuBracket.position.set(120, 20, 65);
+pcGroup.add(gpuBracket);
+
+// GPU fan (large)
+const gpuFanMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, metalness: 0.2, roughness: 0.8, emissive: new THREE.Color(0x000000), emissiveIntensity: 0 });
+const gpuFan = new THREE.Mesh(
+  new THREE.CylinderGeometry(55, 55, 12, 24, 1, true),
+  gpuFanMat
+);
+gpuFan.rotation.x = Math.PI / 2;
+gpuFan.position.set(120, 55, 60);
+gpuFan.castShadow = true;
+pcGroup.add(gpuFan);
+
+// GPU fan blades (simple torus knots not needed, just a rotation)
+
+// --- RAM sticks ---
+const ramMat = new THREE.MeshStandardMaterial({ color: 0x3a5a7c, metalness: 0.8, roughness: 0.2 });
+for (let i = 0; i < 4; i++) {
+  const offsetX = (i % 2) * 80 - 40;
+  const offsetY = Math.floor(i / 2) * 25 + 20;
+  const ram = new THREE.Mesh(
+    new THREE.BoxGeometry(15, 80, 25),
+    ramMat
+  );
+  ram.position.set(offsetX, offsetY + 40, -120);
+  ram.castShadow = true;
+  ram.receiveShadow = true;
+  pcGroup.add(ram);
+}
+
+// --- Storage (SSD) ---
+const ssdMat = new THREE.MeshStandardMaterial({ color: 0x1e1e2f, metalness: 0.9, roughness: 0.1 });
+for (let i = 0; i < 3; i++) {
+  const ssdx = new THREE.Mesh(
+    new THREE.BoxGeometry(25, 12, 8),
+    ssdMat
+  );
+  ssdx.position.set(-160 + i * 35, 20, -150);
+  ssdx.castShadow = true;
+  ssdx.receiveShadow = true;
+  pcGroup.add(ssdx);
+}
+
+// --- Power Supply ---
+const psuMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.6, roughness: 0.5 });
+const psu = new THREE.Mesh(
+  new THREE.BoxGeometry(80, 140, 160),
+  psuMat
+);
+psu.position.set(0, 70, 200);
+psu.rotation.z = Math.PI / 6;
+psu.castShadow = true;
+pcGroup.add(psu);
+
+// PSU fan (rear)
+const psuFan = new THREE.Mesh(
+  new THREE.CylinderGeometry(20, 20, 25, 16, 1, true),
+  new THREE.MeshStandardMaterial({ color: 0x1a1a2a, metalness: 0.2, roughness: 0.8, emissive: new THREE.Color(0x000000), emissiveIntensity: 0 })
+);
+psuFan.rotation.x = Math.PI / 2;
+psuFan.position.set(0, 70, 230);
+pcGroup.add(psuFan);
+
+// --- RGB LED strips (edge of case) ---
+const ledMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: new THREE.Color('#ff6b6b'), emissiveIntensity: 0 });
+const ledStripGeometry = new THREE.PlaneGeometry(400, 8);
+const ledTop = new THREE.Mesh(ledStripGeometry, ledMat);
+ledTop.position.set(0, 156, 250);
+ledTop.rotation.x = -Math.PI / 2;
+pcGroup.add(ledTop);
+
+const ledBottom = ledTop.clone();
+ledBottom.position.set(0, 164, -250);
+pcGroup.add(ledBottom);
+
+// side leds (shorter)
+const ledSideGeo = new THREE.PlaneGeometry(20, 8);
+for (const pos of [{x: -206, z: 0}, {x: 206, z: 0}]) {
+  const ledSide = new THREE.Mesh(ledSideGeo, ledMat);
+  ledSide.position.set(pos.x, 160, pos.z);
+  ledSide.rotation.z = Math.PI / 2;
+  pcGroup.add(ledSide);
+}
+
+// --- Cables (simple cylinders) ---
+const cableMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4 });
+function addCable(start, end, radius = 3) {
+  const dir = new THREE.Vector3().subVectors(end, start);
+  const length = dir.length();
+  const mid = start.clone().add(dir.multiplyScalar(0.5));
+  const up = new THREE.Vector3(0, 1, 0);
+  const quat = new THREE.Quaternion();
+  quat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize());
+  const cable = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, length, 12, 1, true),
+    cableMat
+  );
+  cable.position.copy(mid);
+  cable.quaternion.copy(quat);
+  cable.rotation.z = Math.PI / 2; // align vertically
+  pcGroup.add(cable);
+}
+// a few example cables
+addCable(new THREE.Vector3(-150, 50, -100), new THREE.Vector3(-150, 50, 100), 4);
+addCable(new THREE.Vector3(130, 50, 50), new THREE.Vector3(130, 150, 50), 4);
+
+// ----- Animation variables -----
+let fanSpinSpeed = 1; // normalized 0-1 from UI
+let animMode = 'spin'; // spin, breathing, rainbow
+let hue = 0;
+
+// Fan rotation state
+const fanObjects = [gpuFan, psuFan]; // additional fans can be added
+let fanPhase = 0;
+
+// ----- Lighting state for LEDs -----
+function updateLEDs(intensity) {
+  const targetIntensity = intensity;
+  // Top/bottom strips
+  ledTop.material.emissiveIntensity = targetIntensity;
+  ledBottom.material.emissiveIntensity = targetIntensity;
+  // side leds
+  pcGroup.traverse(obj => {
+    if (obj.isMesh && obj.material && obj.material.emissive) {
+      obj.material.emissiveIntensity = targetIntensity;
+    }
+  });
+}
+
+// ----- Power / Startup / Shutdown -----
+function startStartup() {
+  isOn = true;
+  powerBtn.textContent = 'ON';
+  startupStart = performance.now();
+  // ensure base lighting enabled
+  updateLEDs(1);
+  // reset temperature direction
+  tempDir = 1;
+}
+
+function startShutdown() {
+  isOn = false;
+  powerBtn.textContent = 'OFF';
+  shutdownStart = performance.now();
+  // fade LEDs out over duration
+  startupStart = 0; // reuse variable for fade-out logic
+}
+
+function applyPowerState(progress) {
+  if (!isOn) {
+    // progress goes 0->1 during shutdown
+    const inv = 1 - progress;
+    updateLEDs(inv);
+    // stop fan rotation
+    fanObjects.forEach(f => { f.rotation.y += 0; });
+    return;
+  }
+  // progress 0->1 during startup
+  const ease = 1 - Math.cos(progress * Math.PI) / 2; // smoothstep
+  updateLEDs(ease);
+  // start fans spinning progressively
+  const spinSpeed = fanSpeedInput.value * ease;
+  fanObjects.forEach(f => { f.rotation.y += spinSpeed * 0.05; });
+}
+
+// ----- Temperature simulation -----
+function updateTemperature(delta) {
+  if (isOn) {
+    temp += delta * 0.04 * tempDir;
+    if (temp > 70) { tempDir = -1; }
+  } else {
+    temp -= delta * 0.06;
+    if (temp < 30) { tempDir = 1; }
+  }
+  tempVal.textContent = Math.round(temp);
+}
+
+// ----- Main animation loop -----
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+
+  const elapsed = clock.getElapsedMilliseconds();
+  const delta = elapsed - (clock.getDelta() ? clock.getDelta() * 1000 : 0); // fallback
+  const realDelta = (elapsed - (prev || 0)) / 1000;
+  prev = elapsed;
+
+  // Temperature update
+  updateTemperature(realDelta);
+
+  // Power state progression
+  if (isOn) {
+    if (startupStart && (elapsed - startupStart) < DURATION) {
+      const prog = (elapsed - startupStart) / DURATION;
+      applyPowerState(prog);
+    } else {
+      // fully on
+      isOn = true; // ensure flag
+      const speed = fanSpeedInput.value;
+      fanObjects.forEach(f => { f.rotation.y += speed * 0.04; });
+      updateLEDs(1);
+    }
+  } else {
+    if (shutdownStart && (elapsed - shutdownStart) < DURATION) {
+      const prog = (elapsed - shutdownStart) / DURATION;
+      applyPowerState(prog);
+    } else {
+      // fully off
+      isOn = false;
+      powerBtn.textContent = 'OFF';
+      updateLEDs(0);
+      fanObjects.forEach(f => { f.rotation.y = 0; });
+    }
+  }
+
+  // Fan breathing / rainbow based on mode
+  if (isOn) {
+    if (animMode === 'breathing') {
+      const pulse = 0.5 + 0.5 * Math.sin((elapsed / 1200) * Math.PI);
+      fanObjects.forEach(f => {
+        f.scale.setScalar(pulse);
+        // also adjust emissive intensity slightly
+        if (f.material && f.material.emissive) {
+          f.material.emissiveIntensity = 0.3 * pulse;
+        }
+      });
+    } else if (animMode === 'rainbow') {
+      hue += 0.0008 * realDelta;
+      const c = new THREE.Color();
+      c.setHSL(hue % 1, 0.8, 0.5);
+      fanObjects.forEach(f => {
+        if (f.material && f.material.emissive) {
+          f.material.emissive = c;
+          f.material.emissiveIntensity = 0.5;
+        }
+      });
+    }
+  }
+
+  // Rotate case side panel slowly for visual interest
+  pcGroup.children[1].rotation.y += 0.001; // side panel
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+let prev = performance.now();
+animate();
+
+// ----- HUD event listeners -----
+powerBtn.addEventListener('click', () => {
+  if (isOn) {
+    startShutdown();
+  } else {
+    startStartup();
+  }
+});
+
+rgbPicker.addEventListener('input', () => {
+  const col = parseHex(rgbPicker.value);
+  // apply to all emissive materials in the scene
+  scene.traverse(obj => {
+    if (obj.isMesh && obj.material && obj.material.emissive) {
+      obj.material.emissive = col;
+    }
+  });
+  // also update led materials directly
+  if (ledTop.material) ledTop.material.emissive = col;
+  if (ledBottom.material) ledBottom.material.emissive = col;
+});
+
+fanSpeedInput.addEventListener('input', (e) => {
+  // value already between 0 and 1
+});
+
+animModeSelect.addEventListener('change', (e) => {
+  animMode = e.target.value;
+});
+
+// ----- Resize handling -----
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ----- Initial temperature setpoint -----
+tempVal.textContent = Math.round(temp);
+
+</script>
+</body>
+</html>
