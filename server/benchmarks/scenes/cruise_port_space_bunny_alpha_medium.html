@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lisbon — Tagus Cruise Port</title>
+<style>
+  *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07131c;color:#eef8ff;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+  #app{position:fixed;inset:0}canvas{display:block}
+  #hud{position:fixed;left:14px;top:14px;width:min(350px,calc(100vw - 28px));padding:13px 14px;border:1px solid #ffffff2b;border-radius:13px;background:linear-gradient(135deg,#07131cdd,#0b1c26c9);backdrop-filter:blur(12px);box-shadow:0 12px 40px #0005;transition:.25s;z-index:4}
+  #hud.hidden{transform:translateX(-390px);opacity:0;pointer-events:none}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}.mark{width:34px;height:34px;border:1px solid #f0bd67;border-radius:50%;display:grid;place-items:center;color:#ffd58a;font-size:18px}.brand h1{font-size:14px;letter-spacing:.15em;margin:0}.brand small{display:block;color:#a8c0cc;font-size:10px;letter-spacing:.08em;margin-top:3px}
+  .row{display:flex;gap:6px;flex-wrap:wrap}.row+.row{margin-top:7px}
+  button,select{font:inherit;color:#eaf7ff;background:#ffffff10;border:1px solid #ffffff25;border-radius:7px;padding:7px 9px;cursor:pointer;font-size:11px;letter-spacing:.04em;transition:.15s}button:hover,select:hover{background:#ffffff25;border-color:#ffd28a}button.active{background:#e7ad50;color:#14202a;border-color:#f3c978}
+  button.primary{background:#edb458;color:#17212a;font-weight:750;border-color:#ffd68b}button.danger{background:#b33b3bcc}
+  .panel{margin-top:9px;padding-top:8px;border-top:1px solid #ffffff1c}.label{display:flex;justify-content:space-between;font-size:10px;color:#bfd0d8;letter-spacing:.08em;margin-bottom:5px}input[type=range]{width:100%;accent-color:#efb85c;cursor:pointer}
+  #show{position:fixed;right:14px;top:14px;z-index:5;background:#07131ccc}
+  #status{position:fixed;right:16px;bottom:15px;padding:8px 11px;background:#06121bb8;border:1px solid #ffffff20;border-radius:8px;font-size:10px;letter-spacing:.08em;color:#c8dce5;z-index:3}
+  #help{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);padding:7px 12px;border-radius:18px;background:#06121baf;border:1px solid #ffffff20;font-size:10px;color:#d5e4ea;white-space:nowrap;z-index:3}
+  #cross{position:fixed;inset:45% auto auto 50%;width:18px;height:18px;border:1px solid #fff9;border-radius:50%;display:none;z-index:3;transform:translate(-50%,-50%)}
+  #loading{position:fixed;inset:0;z-index:20;background:#07131c;display:grid;place-items:center;text-align:center;transition:opacity .5s}.loader{width:48px;height:48px;border:2px solid #ffffff22;border-top-color:#f3bd63;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}@keyframes spin{to{transform:rotate(360deg)}}
+  #webgl{position:fixed;inset:0;display:none;place-items:center;background:#07131c;z-index:50;padding:30px;text-align:center}
+  @media(max-width:650px){#hud{width:calc(100vw - 28px)}#status{display:none}#help{font-size:9px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<section id="hud">
+  <div class="brand"><div class="mark">⚓</div><div><h1>CRUISE PORT · LISBOA</h1><small>JARDIM DO TABACO · TAGUS ESTUARY</small></div></div>
+  <div class="row" id="views">
+    <button data-view="miradouro" class="active">MIRADOURO</button><button data-view="waterfront">WATERFRONT</button><button data-view="aerial">AERIAL</button><button data-view="river">FROM THE RIVER</button><button data-view="deck">SHIP'S DECK</button>
+  </div>
+  <div class="row"><button id="walk">WALK THE QUAY</button><button id="orbit" class="active">ORBIT</button><button id="hide">HIDE UI · H</button></div>
+  <div class="panel">
+    <div class="label"><span>TIME OF DAY</span><span id="clock">18:10</span></div>
+    <input id="time" type="range" min="0" max="24" step=".01" value="18.17">
+    <div class="row"><button id="play">❚❚ PAUSE</button><select id="weather"><option value="clear">CLEAR</option><option value="haze">HAZE</option><option value="rain">LIGHT RAIN</option></select></div>
+  </div>
+  <div class="row" style="margin-top:9px"><button id="depart" class="primary">DEPARTURE</button><button id="return" class="danger disabled">RETURN TO BERTH</button></div>
+</section>
+<button id="show" style="display:none">SHOW UI · H</button>
+<div id="cross"></div>
+<div id="status">SANTA APOLÓNIA · 18 KNOT · NW 8</div>
+<div id="help">DRAG TO ORBIT · SCROLL TO ZOOM · WASD IN WALK MODE</div>
+<div id="loading"><div><div class="loader"></div><b>Building the Tagus waterfront…</b><p style="color:#8fa9b6;font-size:12px">Procedural architecture, vessels and harbor systems</p></div></div>
+<div id="webgl"><div><h1>WebGL is unavailable</h1><p>This interactive Lisbon harbor needs hardware-accelerated WebGL. Please enable it or try another browser.</p></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { Water } from 'three/addons/objects/Water.js';
+
+const $ = s => document.querySelector(s);
+let renderer;
+try { renderer = new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); }
+catch(e) { $('#loading').style.display='none'; $('#webgl').style.display='grid'; throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05; renderer.outputColorSpace=THREE.SRGBColorSpace;
+$('#app').appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0xb7c8cc,.00125);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.2,3500);
+camera.position.set(270,145,320);
+const orbit=new OrbitControls(camera,renderer.domElement); orbit.enableDamping=true; orbit.dampingFactor=.07; orbit.maxPolarAngle=Math.PI*.49; orbit.minDistance=18; orbit.maxDistance=1100;
+const pointer=new PointerLockControls(camera,renderer.domElement); pointer.pointerSpeed=.65;
+const clock=new THREE.Clock();
+const world=new THREE.Group(); scene.add(world);
+const cityGroup=new THREE.Group(), ship=new THREE.Group(), portGroup=new THREE.Group(), traffic=new THREE.Group(), boats=new THREE.Group();
+world.add(cityGroup,ship,portGroup,traffic,boats);
+const mat=(c,o={})=>new THREE.MeshStandardMaterial({color:c,roughness:.72,metalness:.08,...o});
+const M={white:mat(0xf4f1e8),cream:mat(0xe9dfc8),navy:mat(0x102e43),hull:mat(0xf5f4ee),red:mat(0x6f111b),gold:mat(0xd29a2e),dark:mat(0x15232b),glass:mat(0x8bc7d3,{transparent:true,opacity:.55,metalness:.45,roughness:.12}),quay:mat(0x777b77),roof:mat(0xad4c2e),road:mat(0x444847),stone:mat(0xc5b694)};
+const emissives=[]; const litMat=mat(0xffd59a,{emissive:0xff9d32,emissiveIntensity:0}); emissives.push(litMat);
+
+function box(w,h,d,m,x=0,y=0,z=0,parent=world){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function cyl(r1,r2,h,m,x=0,y=0,z=0,parent=world,seg=24){const o=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o}
+function sphere(r,m,x=0,y=0,z=0,parent=world,w=20){const o=new THREE.Mesh(new THREE.SphereGeometry(r,w,12),m);o.position.set(x,y,z);o.castShadow=true;parent.add(o);return o}
+function line(points,color=0xffffff,opacity=1,parent=world){const g=new THREE.BufferGeometry().setFromPoints(points.map(p=>new THREE.Vector3(...p)));const o=new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:opacity<1,opacity}));parent.add(o);return o}
+function canvasTexture(text,bg='#102e43',fg='#fff',w=1024,h=128){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle=bg;x.fillRect(0,0,w,h);x.fillStyle=fg;x.textAlign='center';x.textBaseline='middle';x.font='700 48px sans-serif';x.fillText(text,w/2,h/2);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+function textPlane(text,w,h,x,y,z,parent,bg,fg){const p=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:canvasTexture(text,bg,fg),transparent:true,side:THREE.DoubleSide}));p.position.set(x,y,z);parent.add(p);return p}
+
+// Sky, water, and estuary
+const sky=new Sky(); sky.scale.setScalar(2000); scene.add(sky);
+const skyU=sky.material.uniforms; skyU.turbidity.value=4; skyU.rayleigh.value=1.4; skyU.mieCoefficient.value=.006; skyU.mieDirectionalG.value=.82;
+const N=128, data=new Uint8Array(N*N*4);
+for(let y=0;y<N;y++)for(let x=0;x<N;x++){let i=(y*N+x)*4,a=Math.sin(x*.39+y*.12)*18,b=Math.cos(y*.31-x*.08)*18;data[i]=128+a;data[i+1]=128+b;data[i+2]=248;data[i+3]=255}
+const normalTex=new THREE.DataTexture(data,N,N,THREE.RGBAFormat);normalTex.wrapS=normalTex.wrapT=THREE.RepeatWrapping;normalTex.repeat.set(22,22);normalTex.needsUpdate=true;
+const water=new Water(new THREE.PlaneGeometry(2400,1800),{textureWidth:256,textureHeight:256,waterNormals:normalTex,sunDirection:new THREE.Vector3(),sunColor:0xffdfa8,waterColor:0x174c58,distortionScale:2.2,fog:true});
+water.rotation.x=-Math.PI/2;water.position.set(0,-.5,-450);world.add(water);
+const sun=new THREE.DirectionalLight(0xffd4a0,3.2);sun.position.set(-350,260,180);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-420;sun.shadow.right=420;sun.shadow.top=260;sun.shadow.bottom=-260;sun.shadow.bias=-.0004;scene.add(sun);
+const hemi=new THREE.HemisphereLight(0xbdd7e5,0x6b5545,1.1);scene.add(hemi);
+
+// Terminal and quay
+box(1500,4,55,M.quay,0,-1,70); box(1500,1,8,mat(0xd0c5a5),0,.8,48);
+for(let x=-650;x<650;x+=16){box(1,.08,2,M.dark,x,1.5,47);cyl(.7,.8,3.2,M.cream,x,2,46,world,10);sphere(.72,litMat,x,3.8,46,world,8)}
+box(100,10,24,mat(0xd8d1bd),45,5,72);box(104,3,27,mat(0x385d68),45,11.5,72);
+textPlane('TERMINAL DE LISBOA',48,3,45,12,85.6,world,'#263f49','#e9c67d');
+const terminalGlass=mat(0x294956,{metalness:.55,roughness:.2});for(let x=0;x<100;x+=8)box(6,7,.4,terminalGlass,x,5,84);
+for(let x=-30;x<=120;x+=18){box(10,1.2,4,M.cream,x,2,54);for(let z=50;z<90;z+=5)cyl(.25,.3,4.5,M.dark,x,3,z,world,8)}
+// Cranes
+function crane(x,z){const g=new THREE.Group();g.position.set(x,0,z);world.add(g);box(3,35,3,M.gold,0,17,0,g);box(44,2,3,M.gold,18,34,0,g);line([[38,34,0],[30,15,0]],0x554d3c,1,g);cyl(.15,.15,19,M.dark,30,24,0,g,6);g.rotation.y=x<0?0:Math.PI*.96;return g}crane(-210,87);crane(260,90);
+
+// Curving Alfama street ribbons
+for(let i=0;i<6;i++){let pts=[];for(let j=0;j<24;j++){let z=115+i*23,x=-220+Math.sin(j*.24+i)*55;pts.push([x,4+i*2.1,z])}line(pts,0xd0c3a4,1,world)}
+
+// Instanced hillside houses
+const houseCount=145, houseGeo=new THREE.BoxGeometry(1,1,1), roofGeo=new THREE.BufferGeometry();
+{
+ const v=[-.5,0,-.5,.5,0,-.5,0,.55,0, -.5,0,.5,.5,0,.5,0,.55,.5]; roofGeo.setAttribute('position',new THREE.Float32BufferAttribute(v,3));roofGeo.setIndex([0,2,1,0,3,2,0,1,3,1,2,3]);roofGeo.computeVertexNormals();
+}
+const hm=new THREE.InstancedMesh(houseGeo,mat(0xffffff),houseCount),rm=new THREE.InstancedMesh(roofGeo,mat(0xffffff),houseCount);hm.castShadow=rm.castShadow=true;cityGroup.add(hm,rm);
+const dummy=new THREE.Object3D(),houseColors=[0xf1ede1,0xe6c8b2,0xe9d6bb,0xc4d0c6,0xabc3c5,0xf1c4a4,0xd9b1a3];
+for(let i=0;i<houseCount;i++){let row=Math.floor(i/29),col=i%29,x=-250+col*18+(row%2)*8+Math.sin(col*.5+row)*4,z=122+row*22+Math.sin(col*.34+row)*10,h=10+(i%5)*2.2+(row%3)*1.3,w=12+(i%4)*1.4,d=12+(i%3)*1.2,y=4+row*2.35;dummy.position.set(x,y+h/2,z);dummy.scale.set(w,h,d);dummy.rotation.y=Math.sin(col+row)*.08;dummy.updateMatrix();hm.setMatrixAt(i,dummy.matrix);hm.setColorAt(i,new THREE.Color(houseColors[i%houseColors.length]));dummy.position.y=y+h;dummy.scale.set(w+1,5+(i%3),d+1);dummy.rotation.y=0;dummy.updateMatrix();rm.setMatrixAt(i,dummy.matrix);rm.setColorAt(i,new THREE.Color(i%7===0?0x527f91:0xb85c3c));for(let yy=y+3;yy<y+h-1;yy+=3.2)for(let xx=-w*.3;xx<=w*.3;xx+=2.6)box(.9,1.5,.15,(i%3===0?litMat:M.dark),x+xx,yy,z+d/2+.1,cityGroup);}
+
+// São Jorge Castle
+const castle=new THREE.Group();cityGroup.add(castle);castle.position.set(15,57,224);
+function wallSegment(x,z,w,d){const m=box(w,8,d,M.stone,x,4,z,castle);const top=box(w,2,d,M.cream,x,5,z,castle);return m}
+wallSegment(0,-36,82,4);wallSegment(0,34,82,4);wallSegment(-40,0,4,74);wallSegment(40,0,4,74);
+for(let x=-34;x<=34;x+=17){cyl(3.8,4.2,12,M.stone,x,6,-36,castle,12);cyl(3.4,4,12,M.stone,x,6,34,castle,12)}
+for(let z=-28;z<30;z+=16){cyl(3.4,3.8,11,M.stone,-40,5.5,z,castle,12);cyl(3.4,3.8,11,M.stone,40,5.5,z,castle,12)}
+line([[-40,18,0],[40,18,0]],0x6c5844,1,castle);
+
+// Santa Engrácia Pantheon
+const pant=new THREE.Group();cityGroup.add(pant);pant.position.set(178,11,110);cyl(13,15,27,M.cream,0,13.5,0,pant,48);cyl(14,13,3,M.stone,0,28,0,pant,48);
+const dome=sphere(13,M.white,0,29,0,pant,48);dome.scale.y=.76;cyl(3,4,6,M.gold,0,41,0,pant,24);sphere(3.3,M.gold,0,45,0,pant,24);line([[0,48,0],[0,53,0]],0x8c6c31,1,pant);line([[-5,53,0],[5,53,0]],0x8c6c31,1,pant);
+cyl(15,15,1,mat(0xe2d8bf),0,2,0,pant,48);for(let i=0;i<8;i++){let a=i*Math.PI/4;cyl(.6,1,22,M.cream,Math.cos(a)*13.2,13.5,Math.sin(a)*13.2,pant,8)}
+
+// Lisbon Cathedral
+const cath=new THREE.Group();cityGroup.add(cath);cath.position.set(112,12,126);
+box(38,19,17,M.cream,0,9.5,0,cath);box(40,3,19,M.stone,0,20,0,cath);
+for(let x of [-12,12]){box(8,30,9,M.cream,x,15,0,cath);cyl(3.5,4,5,M.gold,x,31,0,cath,16);cyl(2.5,2.5,8,M.stone,x,23,0,cath,16);for(let z of [-3,3])box(1,8,1,M.dark,x,29,z,cath)}
+box(4,19,.5,M.dark,0,9.5,8.6,cath);cyl(0,6.5,7,M.cream,0,23,0,cath,8);
+
+// Praça do Comércio
+const commerce=new THREE.Group();cityGroup.add(commerce);commerce.position.set(-430,2,77);
+for(let x=-55;x<=55;x+=11){box(10,19,17,mat(0xe9bd59),x,9.5,0,commerce);for(let z=-8;z<=8;z+=8)box(1,13,1,M.cream,x-4,6.5,z,commerce);box(10,2,19,M.cream,x,20,0,commerce)}
+box(22,23,18,mat(0xe9bd59),0,11.5,0,commerce);cyl(0,8,4,M.gold,0,24,0,commerce,4);cyl(0,5,3,M.gold,0,27,0,commerce,4);
+for(let i=0;i<7;i++){let x=-45+i*15;cyl(1.6,2,2,M.gold,x,4,9,commerce,12);sphere(2,M.gold,x,6,9,commerce,12);cyl(0,2.4,2,M.gold,x,8,9,commerce,12)}
+textPlane('PRAÇA DO COMÉRCIO',46,3,0,13,9.1,commerce,'#dbae52','#68451f');
+
+// 25 de Abril bridge
+const bridge=new THREE.Group();world.add(bridge);bridge.position.set(-650,0,-285);bridge.rotation.y=.18;
+for(let x of [-235,235]){for(let z of [-17,17]){cyl(4,8,190,M.red,x,95,z,bridge,16)}box(12,12,48,M.red,x,185,0,bridge);box(8,55,34,M.red,x,57,0,bridge)}
+box(900,6,34,M.red,0,70,0,bridge);box(900,1.5,36,M.cream,0,73.5,0,bridge);
+const cableMat=mat(0xb42325);for(let side of [-1,1]){line([[-450,70,side*17],[-235,184,side*17],[0,73,side*17],[235,184,side*17],[450,70,side*17]],0xb42325,1,bridge);for(let x=-440;x<450;x+=22)line([[x,74,side*17],[x,Math.max(74,184-((Math.abs(x)/235)**1.35)*110),side*17]],0xc02a29,1,bridge)}
+
+// Cristo Rei
+const cristo=new THREE.Group();world.add(cristo);cristo.position.set(-575,0,-450);box(48,18,44,mat(0xb7a98b),0,9,0,cristo);box(35,78,30,M.cream,0,57,0,cristo);box(28,17,24,M.cream,0,103,0,cristo);sphere(7,M.white,0,118,0,cristo,24);line([[-20,104,0],[-35,122,0]],0xeee7d7,1,cristo);line([[20,104,0],[35,122,0]],0xeee7d7,1,cristo);cyl(4,6,8,M.white,0,61,-17,cristo,16);
+
+// Yellow tram climbing a street
+const tram=new THREE.Group();world.add(tram);tram.position.set(-95,18,157);tram.rotation.y=.5;box(4.2,4.2,13,mat(0xe6b92e),0,2,0,tram);box(4.3,1,13.2,M.cream,0,2,0,tram);for(let z=-5;z<=5;z+=2)box(4.35,1.6,.7,M.glass,0,2.5,z,tram);for(let x of [-2.1,2.1])for(let z of [-4,4]){let w=cyl(.85,.85,.35,M.dark,x,.2,z,tram,16);w.rotation.z=Math.PI/2}textPlane('28',2.5,1,0,3.2,6.6,tram,'#e6b92e','#4b3514');
+
+// Ship hull custom stations
+const shipName='AURORA LISBOA';
+const hullMat=M.hull.clone();ship.add(new THREE.Mesh(new THREE.BufferGeometry(),hullMat));
+{
+ const xs=[-150,-140,-115,-70,-20,35,85,125,145,155,150,138,115,70,20,-30,-80,-125,-145,-150];
+ const ws=xs.map((x,i)=>i<10?[2,8,15,24,31,34,34,30,20,5]:i<15?[18,24,29,32,32,31,28,20,10,1]:[1,8,15,22,27,29,30,29,26,18]);
+ const pos=[],idx=[]; for(let i=0;i<xs.length;i++){let w=ws[i],x=xs[i],rake=i<10?(1-x/150)*12:(i>14?(1-(i-14)/5)*4:0);pos.push(x,-6-rake*.1,-w*.55,x,3,-w*.78,x,17,-w*.92,x,24,-w*.95,x,25.5,-w,x,25.5,w,x,24,w*.95,x,17,w*.92,x,3,w*.78,x,-6,-w*.55);if(i<xs.length-1)for(let j=0;j<10;j++){let a=i*10+j,b=i*10+(j+1)%10,c=(i+1)*10+j,d=(i+1)*10+(j+1)%10;idx.push(a,c,b,b,c,d)}}
+ let g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();hullMat.side=THREE.DoubleSide;ship.add(new THREE.Mesh(g,hullMat));
+}
+box(295,4,30,M.red,0,10,0,ship);box(297,2,31,mat(0x182c3c),0,6.3,0,ship);
+// Waterline stripe and name
+for(let z of [-17.2,17.2]){box(270,1.1,.25,mat(0x2b6670),0,14,z,ship);textPlane(shipName,42,2.1,95,19,z<0?-19.8:19.8,ship,'#f5f3e9','#18384a')}
+// Main superstructure tiers
+for(let d=0;d<15;d++){let len=245-d*2,w=30-d*.25,y=27+d*2.35;let bm=box(len,2.1,w,d%4===0?M.white:M.cream, -d*1.8,y,0,ship);box(len,2,w-1,M.white,-d*1.8,y+1,w,ship)}
+// Balcony rows / cabins
+const bg=new THREE.BoxGeometry(1.45,.18,.72),gg=new THREE.BoxGeometry(1.4,1.05,.12), balconyMat=mat(0xd8d4c8),glassMat=M.glass;
+const bal=new THREE.InstancedMesh(bg,balconyMat,1050),gl=new THREE.InstancedMesh(gg,glassMat,1050);ship.add(bal,gl);
+let bi=0;for(let d=2;d<15;d++)for(let side of [-1,1])for(let i=0;i<70;i++){let x=-134+i*3.7,y=28+d*2.35,z=side*(14.2-d*.11);dummy.position.set(x,y,z);dummy.scale.set(1,1,1);dummy.rotation.set(0,0,0);dummy.updateMatrix();bal.setMatrixAt(bi,dummy.matrix);dummy.position.z+=side*.31;dummy.position.y+=.55;dummy.rotation.y=side<0?0:Math.PI;dummy.updateMatrix();gl.setMatrixAt(bi,dummy.matrix);bi++}
+// dark cabin windows behind balconies
+for(let d=1;d<15;d++)for(let side of [-1,1])for(let i=0;i<70;i++)box(2.1,.9,.15,litMat,-134+i*3.7,28+d*2.35,side*(14.1-d*.11),ship);
+// lifeboats and davits
+for(let x=-105;x<=105;x+=18){for(let side of [-1,1]){const z=side*19;const lb=sphere(3.8,M.red,x,29,z,ship,18);lb.scale.set(2.1,.65,.78);box(5,.2,3.2,M.cream,x,30.5,z,ship);cyl(.35,.35,7,M.cream,x-3,32,z,ship,8);cyl(.35,.35,7,M.cream,x+3,32,z,ship,8);line([[x-3,35,z],[x,37,z],[x+3,35,z]],0xe2ddd2,1,ship)}}
+// Bridge, wings, mast, funnels
+box(34,8,25,M.white,115,43,0,ship);for(let z=-12;z<=12;z+=3)box(28,3.1,.2,terminalGlass,115,44,z,ship);box(52,1.5,39,M.white,113,39,0,ship);cyl(1,1.2,18,M.white,112,56,0,ship,12);box(9,1,7,M.cream,112,63,0,ship);sphere(.5,litMat,112,65,0,ship,10);
+for(let x of [-48,30]){const f=cyl(7,9,17,M.white,x,71,0,ship,28);f.rotation.z=-.1;const cap=sphere(7,M.navy,x,79,0,ship,28);cap.scale.y=.45;cyl(5,5,3,M.red,x,82,0,ship,24)}
+textPlane('AURORA',18,3,-40,67,-7.2,ship,'#f3f1e9','#18384a');
+// pools, slides, loungers, track
+box(33,1,10,mat(0x28a9c0,{transparent:true,opacity:.8}),-52,66,0,ship);box(35,.4,12,M.white,-52,65.4,0,ship);box(29,.7,6,mat(0x41bdd0),25,66,0,ship);
+for(let i=0;i<5;i++){const r=new THREE.Mesh(new THREE.TorusGeometry(4+i*2,.65,8,24,Math.PI),mat(i%2?0xefb630:0x29b9ce));r.rotation.x=Math.PI/2;r.position.set(53,67+i*1.3,0);ship.add(r)}
+for(let i=0;i<28;i++){let l=box(2.2,.35,.85,M.white,-105+i*3.2,65.7,(i%2?1:-1)*6.7,ship);l.rotation.y=(i%2?.35:-.35)}
+for(let side of [-1,1])line([[-95,65,side*11],[70,65,side*11]],0xca5142,1,ship);
+
+// anchors, mooring equipment
+for(let side of [-1,1]){let a=sphere(2.1,M.gold,125,18,side*17,ship,18);a.scale.set(1,1,.25);cyl(1.2,1.2,1,M.dark,125,18,side*17.5,ship,12).rotation.x=Math.PI/2}
+for(let x of [-130,-80,0,80,130]){cyl(2,2,3,M.dark,x,27,0,ship,16);sphere(2,M.dark,x,29,0,ship,12)}
+// gangways
+const gangways=[];for(let x of [-38,72]){const g=new THREE.Group();world.add(g);g.position.set(x,8,35);const plank=box(3.5,1,17,M.cream,0,0,0,g);plank.rotation.x=-.22;for(let z=-7;z<=7;z+=2.5)box(3.6,.08,.1,M.gold,0,.7,z,g);gangways.push(g)}
+// mooring line dynamic
+const moorMat=new THREE.LineBasicMaterial({color:0xd6c297});const moors=[];for(let p of [[[-139,25,0],[-190,3,47]],[[-112,25,0],[-135,3,47]],[[132,25,0],[175,3,47]],[[140,25,0],[205,3,47]]]){const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute([...p[0],...p[1]],3));const l=new THREE.Line(geo,moorMat);world.add(l);moors.push({line:l,local:new THREE.Vector3(...p[0]),quay:new THREE.Vector3(...p[1])})}
+
+// vehicles and people
+function person(color){const g=new THREE.Group();cyl(.23,.28,1.15,mat(color),0,.85,0,g,6);sphere(.23,mat(0xd39b73),0,1.65,0,g,7);traffic.add(g);return g}
+const people=[];for(let i=0;i<70;i++){let p=person([0xf0c54c,0xc94b46,0x397d92,0xeeeee8,0x4a4e66][i%5]);p.scale.setScalar(.9+(i%4)*.08);people.push(p)}
+function vehicle(type,color){const g=new THREE.Group();world.add(g);if(type==='car'){box(4.7,1.5,2,M.glass,0,.9,0,g);box(4.5,.65,1.9,mat(color),0,.55,0,g);for(let x of [-1.45,1.45])for(let z of [-1,1]){let w=cyl(.45,.45,.25,M.dark,x,.5,z,g,12);w.rotation.x=Math.PI/2}}if(type==='truck'){box(10,3,3,mat(0xe6e5df),0,2,0,g);box(3,2.5,2.8,mat(color),4,1.9,0,g);for(let x of [-3,1,3])for(let z of [-1.5,1.5]){let w=cyl(.55,.55,.3,M.dark,x,.6,z,g,10);w.rotation.x=Math.PI/2}}if(type==='bus'){box(12,3.2,3,mat(color),0,2.3,0,g);for(let x=-4.5;x<5;x+=1.8)box(1.2,1.3,.1,M.glass,x,2.7,1.55,g);for(let x of [-4,4])for(let z of [-1.6,1.6]){let w=cyl(.6,.6,.3,M.dark,x,.65,z,g,10);w.rotation.x=Math.PI/2}}g.rotation.y=Math.PI/2;return g}
+const vehicles=[];for(let i=0;i<13;i++){let v=vehicle(i%5===0?'truck':i%7===0?'bus':'car',[0xddb52e,0xc83c36,0x376e81,0xeeeee8][i%4]);vehicles.push({v,offset:i*43,speed:5+i%3,lane:i%2?1:-1})}
+const forklift=vehicle('truck',0xe5aa26);forklift.scale.set(.6,.75,.7);forklift.position.set(110,0,56);
+// port cargo
+for(let i=0;i<20;i++)box(3,1.5,2,mat(0xb58b55),-220+(i%10)*4,2+Math.floor(i/10)*1.6,57+(i%2)*3,portGroup);
+// boat factory
+function boat(kind,color){const g=new THREE.Group();boats.add(g);if(kind==='ferry'){box(18,4,6,mat(color),0,1,0,g);box(13,2,5,M.white,0,4,0,g);for(let x=-5;x<=5;x+=2.5)box(1.4,1,.1,M.glass,x,4,2.55,g);cyl(1,1.2,3,M.red,-7,6,0,g)}if(kind==='tug'){box(11,3,5,mat(color),0,1,0,g);box(5,3,4,mat(color),2,3,0,g);cyl(1.5,1.8,3,M.dark,-4,4,0,g);cyl(.18,.18,5,M.white,2,7,0,g)}if(kind==='sail'){box(5,1.2,1.5,M.white,0,.5,0,g);cyl(.1,.12,12,M.white,0,6,0,g,8);const sh=new THREE.BufferGeometry();sh.setAttribute('position',new THREE.Float32BufferAttribute([0,12,0,0,1,0,6,1,0],3));sh.computeVertexNormals();const sailMat=mat(0xf6f0dc,{side:THREE.DoubleSide});boats.add(new THREE.Mesh(sh,sailMat));g.children.at(-1).position.set(0,0,0)}return g}
+const tug=boat('tug',0x1c5961),pilot=boat('ferry',0xead138),ferry1=boat('ferry',0x246c8a),ferry2=boat('ferry',0xd95143);tug.position.set(-175,0,-7);pilot.position.set(170,0,-3);ferry1.position.set(-330,0,-250);ferry2.position.set(410,0,-390);
+const sails=[];for(let i=0;i<8;i++){let s=boat('sail',0xfff);s.position.set(-550+i*150,0,-120-(i%3)*60);s.scale.setScalar(.6+(i%2)*.3);sails.push(s)}
+// wakes behind moving boats
+function wake(g,len=30){const pts=[],geo=new THREE.BufferGeometry(),m=new THREE.MeshBasicMaterial({color:0xc5e2e5,transparent:true,opacity:.26,side:THREE.DoubleSide,depthWrite:false});for(let i=0;i<14;i++){let z=-i*len/14,ww=1.5+i*.8;pts.push(-ww,.03,z,ww,.03,z)}for(let i=0;i<13;i++){let a=i*2;geo.setAttribute('position',new THREE.Float32BufferAttribute(pts.slice(a*2,a*2+6),3));geo.setIndex([0,1,2,1,3,2]);m=geo}return m}
+const tugWake=wake(tug,35),ferryWake=wake(ferry1,60);world.add(tugWake,ferryWake);
+
+// gulls
+const gulls=[];for(let i=0;i<14;i++){const g=new THREE.Group();const body=sphere(1,mat(0xf2f2e9),0,0,0,g,12);body.scale.set(1.8,.55,.55);const wing1=box(4,.12,1.2,M.white,0,0,0,g),wing2=box(4,.12,1.2,M.white,0,0,0,g);gulls.push({g,w1:wing1,w2:wing2,seed:i});world.add(g)}
+
+// rain
+const rainCount=650,rp=new Float32Array(rainCount*6),rd=new Float32Array(rainCount*2);for(let i=0;i<rainCount;i++){rd[i*2]=Math.random()*800-400;rd[i*2+1]=Math.random()*250}const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.BufferAttribute(rp,3));const rain=new THREE.Points(rg,new THREE.PointsMaterial({color:0xb9d3dc,size:.55,transparent:true,opacity:.5,depthWrite:false}));rain.visible=false;scene.add(rain);
+
+// state and interaction
+let timeOfDay=18.17,playing=true,weather='clear',walkMode=false,viewMode='miradouro',departing=false,returning=false,departT=0,hornPlaying=false;
+const keys={},departStart=new THREE.Vector3(0,0,3),departRot=0;
+function setView(name){viewMode=name;walkMode=false;pointer.unlock();orbit.enabled=true;$('#walk').classList.remove('active');$('#orbit').classList.add('active');document.querySelectorAll('#views button').forEach(b=>b.classList.toggle('active',b.dataset.view===name));let p,t;
+ if(name==='miradouro'){p=[245,135,285];t=[0,40,-20];}
+ if(name==='waterfront'){p=[70,11,58];t=[35,35,0];}
+ if(name==='aerial'){p=[440,390,360];t=[0,20,-20];}
+ if(name==='river'){p=[420,36,-190];t=[0,45,0];}
+ if(name==='deck'){p=[40,78,5];t=[155,30,110];}
+ camera.position.set(...p);orbit.target.set(...t);camera.lookAt(orbit.target);orbit.update();}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+$('#orbit').onclick=()=>{$('#walk').classList.add('active');$('#orbit').classList.remove('active')};
+$('#walk').onclick=()=>{walkMode=true;orbit.enabled=false;$('#walk').classList.add('active');$('#orbit').classList.remove('active');pointer.lock();};
+pointer.addEventListener('lock',()=>{$('#cross').style.display='block';$('#help').textContent='WASD TO WALK · MOUSE TO LOOK · ESC TO RELEASE'});
+pointer.addEventListener('unlock',()=>{$('#cross').style.display='none';$('#help').textContent='DRAG TO ORBIT · SCROLL TO ZOOM · WASD IN WALK MODE'});
+$('#time').oninput=e=>{timeOfDay=+e.target.value;playing=false;$('#play').textContent='▶ PLAY'};
+$('#play').onclick=()=>{playing=!playing;$('#play').textContent=playing?'❚❚ PAUSE':'▶ PLAY'};
+$('#weather').onchange=e=>{weather=e.target.value;rain.visible=weather==='rain';scene.fog.density=weather==='haze'?.0032:weather==='rain'?.0025:.00125};
+function toggleUI(){let h=$('#hud').classList.toggle('hidden');$('#show').style.display=h?'block':'none'};$('#hide').onclick=toggleUI;$('#show').onclick=toggleUI;addEventListener('keydown',e=>{if(e.code==='KeyH')toggleUI();keys[e.code]=true});addEventListener('keyup',e=>keys[e.code]=false);
+function horn(){hornPlaying=true;try{const ac=new (window.AudioContext||window.webkitAudioContext)();const gain=ac.createGain();gain.gain.setValueAtTime(0,ac.currentTime);gain.gain.linearRampToValueAtTime(.11,ac.currentTime+.25);gain.gain.setValueAtTime(.11,ac.currentTime+1.2);gain.gain.exponentialRampToValueAtTime(.001,ac.currentTime+2.4);gain.connect(ac.destination);[104,132,156].forEach((f,i)=>{let o=ac.createOscillator();o.type='sawtooth';o.frequency.value=f;const filt=ac.createBiquadFilter();filt.type='lowpass';filt.frequency.value=650;o.connect(filt);filt.connect(gain);o.start(ac.currentTime+i*.03);o.stop(ac.currentTime+2.5)});}catch(e){}setTimeout(()=>hornPlaying=false,2600)}
+$('#depart').onclick=()=>{if(departing||returning)return;departing=true;horn();$('#depart').classList.add('disabled');$('#return').classList.remove('disabled');$('#status').textContent='LINES RELEASED · TUG ASSIST · WESTBOUND'};
+$('#return').onclick=()=>{if(!departing||returning)return;returning=true;horn();$('#return').classList.add('disabled');$('#status').textContent='PILOT BOARDED · RETURNING TO BERTH'};
+setView('miradouro');
+// sun/night
+const dayColor=new THREE.Color(0xffd19b),nightColor=new THREE.Color(0x8aa9d0);
+function updateLight(){let a=(timeOfDay/24)*Math.PI*2-.5;let elev=Math.sin((timeOfDay-6)/12*Math.PI);sun.position.set(Math.cos(a)*400,Math.max(-180,elev*420),Math.sin(a)*280);let night=THREE.MathUtils.smoothstep(-elev,0,.55);let gold=Math.max(0,1-Math.abs(timeOfDay-18)/2.5);sun.color.copy(nightColor).lerp(dayColor,Math.max(.08,elev));sun.color.lerp(new THREE.Color(0xff9e55),gold*.7);sun.intensity=THREE.MathUtils.lerp(.08,3.5,Math.max(0,elev));hemi.intensity=THREE.MathUtils.lerp(.15,1.2,Math.max(0,elev));litMat.emissiveIntensity=night*2.7+.08;water.material.uniforms.sunDirection.value.copy(sun.position).normalize();water.material.uniforms.sunColor.value.copy(sun.color);water.material.uniforms.waterColor.value.set(0x174c58).lerp(new THREE.Color(0x06151f),night*.7);renderer.toneMappingExposure=THREE.MathUtils.lerp(.72,1.08,Math.max(0,elev));skyU.sunPosition.value.copy(sun.position);scene.background.set(0x07131c);scene.fog.color.set(0x9bb0b9).lerp(new THREE.Color(0x0a1723),night*.9);let h=Math.floor(timeOfDay),m=Math.floor((timeOfDay-h)*60);$('#clock').textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight)});
+let firstFrame=true;
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ if(playing){timeOfDay=(timeOfDay+dt*.055)%24;$('#time').value=timeOfDay}updateLight();
+ water.material.uniforms.time.value+=dt*.42;
+ // traffic quay
+ for(let q of vehicles){let x=((q.offset+t*q.speed+750)%1500)-750,z=57+q.lane*5;q.v.position.set(x,0,z);q.v.rotation.y=q.lane>0?Math.PI:0}
+ forklift.position.x=110+Math.sin(t*.18)*38;forklift.rotation.y=Math.sin(t*.18)>0?0:Math.PI;
+ for(let i=0;i<people.length;i++){let p=people[i],u=(t*(.018+(i%5)*.003)+i*.137)%1;if(i<38)p.position.set(-70+u*220,1,46+(i%3)*2);else p.position.set(90+Math.sin(i)*30,1,58+u*60);p.rotation.y=Math.sin(t+i)>0?Math.PI/2:-Math.PI/2;p.position.y=1+Math.abs(Math.sin(t*4+i))*.05}
+ // boats
+ tug.position.set(-175+Math.sin(t*.12)*9,Math.sin(t*2)*.12,-7+Math.sin(t*.1)*4);pilot.position.set(170+Math.sin(t*.15)*15,Math.sin(t*2.1)*.1,-3);ferry1.position.set(-350+(t*8)%1300,0,-245+Math.sin(t*.05)*35);ferry1.rotation.y=Math.PI/2;ferry2.position.set(430-Math.sin(t*.035)*850,0,-390+Math.sin(t*.04)*25);ferry2.rotation.y=-Math.PI/2;
+ for(let i=0;i<sails.length;i++)sails[i].position.x+=dt*(1+i%2);if(sails[i].position.x>700)sails[i].position.x=-650;
+ // gulls
+ gulls.forEach((o,i)=>{let a=t*.25+i*1.7,r=22+i*3;o.g.position.set(Math.cos(a)*r,55+i*3+Math.sin(t*1.4+i)*4,Math.sin(a)*r-10);o.g.rotation.y=-a;o.w1.rotation.z=Math.sin(t*5+i)*.45;o.w2.rotation.z=-Math.sin(t*5+i)*.45});
+ // departure sequence
+ if(departing||returning){let goal=departing?1:0;departT=THREE.MathUtils.damp(departT,goal,.18,dt);let e=departT*departT*(3-2*departT);ship.position.set(-e*390,Math.sin(t*1.2)*.08*Math.max(0,1-e),3-e*100);ship.rotation.y=e*.34;tug.position.set(-175-e*390,0,-7-e*90);gangways.forEach(g=>{let s=1-THREE.MathUtils.clamp(e*7-(g.position.x>0?2:0),0,1);g.scale.z=s;g.visible=s>.02});moors.forEach(m=>{m.line.visible=e<.08;m.line.geometry.attributes.position.setXYZ(1,m.quay.x,m.quay.y,m.quay.z);m.line.geometry.attributes.position.needsUpdate=true});if(departT>.998){departing=false;ship.position.set(-390,0,-97);departT=1}if(returning&&departT<.002){returning=false;departT=0;ship.position.copy(departStart);ship.rotation.y=0;gangways.forEach(g=>g.scale.z=1);moors.forEach(m=>m.line.visible=true);$('#return').classList.add('disabled');$('#depart').classList.remove('disabled');$('#status').textContent='ALL FAST · LINES SECURED · SANTA APOLÓNIA'}}
+ // camera deck follows departure
+ if(viewMode==='deck'&&departT>0){camera.position.set(40-departT*390,78,5-departT*100);camera.lookAt(155-departT*390,30,110-departT*100)}
+ if(walkMode){let speed=dt*12;pointer.moveRight((keys.KeyD?1:0)-(keys.KeyA?1:0),speed);pointer.moveForward((keys.KeyW?1:0)-(keys.KeyS?1:0),speed);camera.position.y=3.5;camera.position.x=THREE.MathUtils.clamp(camera.position.x,-700,700);camera.position.z=THREE.MathUtils.clamp(camera.position.z,45,240)}else orbit.update();
+ if(rain.visible){for(let i=0;i<rainCount;i++){rd[i*2+1]-=dt*70;if(rd[i*2+1]<0)rd[i*2+1]=250;rp[i*6]=rd[i*2];rp[i*6+1]=rd[i*2+1];rp[i*6+2]=rd[i*2+1]*.72;rp[i*6+3]=rd[i*2]-.5;rp[i*6+4]=rd[i*2+1]-1.5;rp[i*6+5]=rd[i*2+1]*.72-.5}rg.attributes.position.needsUpdate=true}
+ renderer.render(scene,camera);if(firstFrame){firstFrame=false;$('#loading').style.opacity=0;setTimeout(()=>$('#loading').style.display='none',550)}}
+animate();
+</script>
+</body>
+</html>
