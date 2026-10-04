@@ -142,15 +142,89 @@ String applyBenchmarkRepair(String source, String reply) {
 }
 
 class BenchmarkRepairJob {
-  BenchmarkRepairJob(this.id);
+  BenchmarkRepairJob(this.id, {this.name = '', this.kind = ''})
+      : startedAtMs = DateTime.now().millisecondsSinceEpoch;
   final String id;
+
+  /// The test's model name and kind, for the dashboard's run cards.
+  final String name;
+  final String kind;
+  final int startedAtMs;
+  int? finishedAtMs;
   String state = 'running';
   String detail = 'Checking price guard…';
   double? costUsd;
+
+  /// Settles the job, stamping when, so a card can say how long it took.
+  void finish(String result, String note) {
+    state = result;
+    detail = note;
+    finishedAtMs = DateTime.now().millisecondsSinceEpoch;
+  }
+
   Map<String, dynamic> toJson() => {
         'id': id,
+        'name': name,
+        'kind': kind,
         'state': state,
         'detail': detail,
         'costUsd': costUsd,
+        'startedAtMs': startedAtMs,
+        'finishedAtMs': finishedAtMs,
+      };
+}
+
+/// "Repair all": every scene that failed to render, repaired by the chosen
+/// model a few at a time. Each scene gets exactly the one model call a
+/// single repair gets; a scene whose repair fails is not retried, so the
+/// run always ends and its cost is bounded by the scene count times the
+/// per-repair limit.
+class BenchmarkRepairAll {
+  /// How many repairs run side by side.
+  static const workers = 3;
+
+  bool running = false;
+  bool stopped = false;
+  int total = 0;
+  int? startedAtMs;
+  int? finishedAtMs;
+
+  /// Scenes still waiting for a worker, with the render error each was
+  /// repaired from (snapshotted when the run started, because the
+  /// renderer's own list resets as repaired scenes re-render).
+  final List<({String id, String diagnostic})> queue = [];
+
+  void begin(Iterable<({String id, String diagnostic})> scenes) {
+    queue
+      ..clear()
+      ..addAll(scenes);
+    total = queue.length;
+    running = true;
+    stopped = false;
+    startedAtMs = DateTime.now().millisecondsSinceEpoch;
+    finishedAtMs = null;
+  }
+
+  void end() {
+    running = false;
+    finishedAtMs = DateTime.now().millisecondsSinceEpoch;
+  }
+
+  void reset() {
+    queue.clear();
+    total = 0;
+    stopped = false;
+    startedAtMs = null;
+    finishedAtMs = null;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'running': running,
+        'stopped': stopped,
+        'total': total,
+        'workers': workers,
+        'startedAtMs': startedAtMs,
+        'finishedAtMs': finishedAtMs,
+        'queued': [for (final q in queue) q.id],
       };
 }

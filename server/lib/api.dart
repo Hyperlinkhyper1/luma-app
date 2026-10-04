@@ -425,6 +425,7 @@ class Api {
   late final BenchmarkRepairSettings benchmarkRepairSettings =
       BenchmarkRepairSettings(config.dataDir);
   final Map<String, BenchmarkRepairJob> benchmarkRepairJobs = {};
+  final BenchmarkRepairAll benchmarkRepairAll = BenchmarkRepairAll();
   bool benchmarkRepairStarting = false;
   final Future<AiPrice?> Function(AiModeRoute)? benchmarkRepairPrice;
   final Future<void> Function(
@@ -715,6 +716,12 @@ class Api {
           _requireAdmin(_adminRepairSettings))
       ..put('/admin/benchmark-banners/repair/settings',
           _requireAdmin(_adminRepairSettingsSave))
+      ..post('/admin/benchmark-banners/repair-all',
+          _requireAdmin(_adminRepairAll))
+      ..post('/admin/benchmark-banners/repair-all/stop',
+          _requireAdmin(_adminRepairAllStop))
+      ..post('/admin/benchmark-banners/repair-all/dismiss',
+          _requireAdmin(_adminRepairAllDismiss))
       ..post('/admin/benchmark-banners/repair/<id>',
           _requireAdmin(_adminRepairStart))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
@@ -4811,6 +4818,7 @@ class Api {
   /// it via [_adminBannersStatus].
   Future<Response> _adminBannersRender(Request request) async {
     if (benchmarkRepairStarting ||
+        benchmarkRepairAll.running ||
         benchmarkRepairJobs.values.any((j) => j.state == 'running')) {
       return errorResponse(
           409, 'repair_running', 'Wait for the requested repair to finish.');
@@ -4890,6 +4898,15 @@ class Api {
     return jsonResponse(200, {
       ...previewRenders.status.toJson(),
       'repairs': [for (final job in benchmarkRepairJobs.values) job.toJson()],
+      'repairAll': benchmarkRepairAll.toJson(),
+      'repairModel': switch (benchmarkRepairSettings.route) {
+        final route? => {
+            'upstream': route.upstream.label,
+            'model': route.model,
+            'maxCostUsd': benchmarkRepairSettings.maxCostUsd,
+          },
+        null => null,
+      },
       'sceneCount': coverage.scenes,
       'missingCount': coverage.missing,
     });
@@ -10736,14 +10753,15 @@ syncToolbar();
         '</div>'
         '<div id="bmUploadSummary" class="maint-status"></div>'
         '<div id="bgRuns" class="bg-runs" aria-live="polite"></div>'
+        '<div id="bgRepairs" class="bg-runs" aria-live="polite"></div>'
         '$_bmUploadDialogHtml'
         '${_bgDialogHtml()}'
         '</div>'
         '<div class="card">'
         '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="bn-icon-btn bn-icon-btn--sm" aria-label="Banner render settings" title="Banner render settings">${_ico('cog')}</button>')}'
         '<div class="maint-desc" tabindex="0">Renders the model-card banners of the AI '
-        'Usage plugin\'s Tests tab, one scene at a time in a headless '
-        'browser. Pagoda banners are shot in daylight, framed as the whole '
+        'Usage plugin\'s Tests tab in a headless browser, a few scenes at a '
+        'time (set in the cog). Pagoda banners are shot in daylight, framed as the whole '
         'garden from above, unless you framed one by hand in the catalog. '
         '<strong>Each scene takes a minute or two;</strong> a scene that '
         'fails to render keeps its old banner.</div>'
@@ -10754,6 +10772,8 @@ syncToolbar();
         '$_bnGridIcon Browse &amp; pick…</button>'
         '<button id="bannersAllBtn" type="button" class="btn btn-ghost">'
         'Re-render all</button>'
+        '<button id="bannersRepairAllBtn" type="button" class="btn btn-ghost" '
+        'style="display:none">Repair all</button>'
         '<button id="bannersStopBtn" type="button" class="btn btn-ghost btn-sm" '
         'style="display:none">Stop</button>'
         '</div>'
@@ -13510,6 +13530,8 @@ window.lumaAskReason = function (form, message) {
   const allBtn = $('bannersAllBtn');
   const stopBtn = $('bannersStopBtn');
   const catalogBtn = $('bannersCatalogBtn');
+  const repairAllBtn = $('bannersRepairAllBtn');
+  const repairBox = $('bgRepairs');
   const summary = $('bannersSummary');
   const logBox = $('bannersLog');
   const rows = $('bannersRows');
@@ -13693,14 +13715,118 @@ window.lumaAskReason = function (form, message) {
     }
   }
 
+  // ---- Repair all ----------------------------------------------------------
+
+  // Whether any repair is under way or still waiting its turn.
+  function repairActive(d) {
+    return !!d && (!!(d.repairAll && d.repairAll.running)
+      || (d.repairs || []).some((r) => r.state === 'running'));
+  }
+
+  // Cards under the "AI benchmark scenes" tile, laid out like its run cards:
+  // one summary for the whole run, then a card per scene being repaired.
+  function drawRepairs(data) {
+    const all = data.repairAll || {};
+    const model = data.repairModel;
+    const jobs = (data.repairs || []).slice().sort((a, b) =>
+      (a.state === 'running' ? 0 : 1) - (b.state === 'running' ? 0 : 1)
+      || b.startedAtMs - a.startedAtMs);
+    if (!jobs.length && !all.startedAtMs) {
+      repairBox.innerHTML = '';
+      return;
+    }
+    const doneN = jobs.filter((j) => j.state === 'done').length;
+    const failedN = jobs.filter((j) => j.state === 'failed').length;
+    const workingN = jobs.filter((j) => j.state === 'running').length;
+    const waitingN = (all.queued || []).length;
+    const repairLabel = model ? esc(model.upstream) + ' · <code>' + esc(model.model) + '</code>' : '';
+    let head = '';
+    if (all.startedAtMs) {
+      const settled = doneN + failedN;
+      const total = Math.max(all.total || 0, settled + workingN + waitingN);
+      const pct = total ? Math.round(100 * settled / total) : 0;
+      const live = !!all.running;
+      const badge = live ? '<span class="badge warn">' + (all.stopped ? 'Stopping' : 'Repairing') + '</span>'
+        : all.stopped ? '<span class="badge">Stopped</span>'
+        : failedN ? '<span class="badge warn">Finished</span>' : '<span class="badge ok">All repaired</span>';
+      const took = duration((all.finishedAtMs || Date.now()) - all.startedAtMs);
+      head = '<div class="bg-run is-' + (live ? 'running' : failedN ? 'failed' : 'done') + '" data-repair-head="1">'
+        + '<div><div class="bg-run-name">Repair all ' + badge + '</div>'
+        + '<div class="bg-run-meta">' + repairLabel + ' · ' + (all.workers || 3) + ' at a time</div></div>'
+        + '<div class="bg-run-actions">'
+        + (live ? '<button type="button" class="btn btn-ghost btn-sm" data-repair-act="stop">Stop</button>'
+          : '<button type="button" class="btn btn-ghost btn-sm" data-repair-act="dismiss">Dismiss</button>')
+        + '</div>'
+        + '<div style="grid-column:1/-1"><div class="bn-bar' + (live ? ' is-live' : failedN ? ' is-warn' : ' is-done') + '">'
+        + '<div class="bn-bar-fill" style="width:' + pct + '%"></div></div></div>'
+        + '<div class="bg-run-line">' + settled + ' of ' + total + ' done'
+        + (workingN ? ' · ' + workingN + ' repairing' : '')
+        + (waitingN ? ' · ' + waitingN + ' waiting' : '')
+        + (failedN ? ' · ' + failedN + ' failed' : '') + ' · ' + took + '</div></div>';
+    }
+    const cards = jobs.map((j) => {
+      const running = j.state === 'running';
+      const badge = running ? '<span class="badge warn">Repairing</span>'
+        : j.state === 'done' ? '<span class="badge ok">Repaired</span>'
+        : '<span class="badge err">Failed</span>';
+      const took = duration((j.finishedAtMs || Date.now()) - j.startedAtMs);
+      const cost = j.costUsd != null ? ' · $' + Number(j.costUsd).toFixed(4) : '';
+      return '<div class="bg-run is-' + esc(j.state) + '" data-id="' + esc(j.id) + '">'
+        + '<div><div class="bg-run-name">' + esc(j.name || j.id)
+        + (j.kind ? ' <span class="badge">' + esc(j.kind) + '</span>' : '') + badge + '</div>'
+        + '<div class="bg-run-meta">' + repairLabel + (repairLabel ? ' → ' : '') + '<code>' + esc(j.id) + '</code></div></div>'
+        + '<div class="bg-run-actions"></div>'
+        + (running ? '<div class="bg-bar" role="progressbar" aria-label="' + esc(j.id) + ' is being repaired"></div>' : '')
+        + (j.state === 'failed'
+          ? '<div class="bg-run-err">' + esc(j.detail) + '</div>'
+          : '<div class="bg-run-line">' + esc(j.detail) + '</div>')
+        + '<div class="bg-run-line muted">' + esc(took + cost) + '</div></div>';
+    }).join('');
+    repairBox.innerHTML = head + cards;
+  }
+  repairBox.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-repair-act]');
+    if (!b) return;
+    b.disabled = true;
+    json('/admin/benchmark-banners/repair-all/' + b.dataset.repairAct, { method: 'POST' })
+      .then(() => load());
+  });
+  repairAllBtn.addEventListener('click', async () => {
+    const model = last && last.repairModel;
+    if (!model) {
+      summary.innerHTML = '<span class="badge err">failed</span> Choose a repair model using the cog first.';
+      return;
+    }
+    const n = Number(repairAllBtn.dataset.count) || 0;
+    const cap = n * Number(model.maxCostUsd);
+    if (!confirm('Repair ' + n + ' failed scene' + (n === 1 ? '' : 's') + ' with ' + model.model + '?\n\n'
+      + 'Three at a time, one model call each. Each call is capped at $' + model.maxCostUsd
+      + ', so this costs at most $' + cap.toFixed(2) + '. A scene that still fails is not retried.')) return;
+    repairAllBtn.disabled = true;
+    const { ok, body } = await json('/admin/benchmark-banners/repair-all', { method: 'POST' });
+    if (!ok) {
+      summary.innerHTML = '<span class="badge err">failed</span> ' + esc(body.message || 'Could not start repair all.');
+      repairAllBtn.disabled = false;
+      return;
+    }
+    watchUntil = Date.now() + 60000;
+    load();
+  });
+
   // ---- Job status ----------------------------------------------------------
 
   function render(data) {
     last = data;
     const running = !!data.running;
     const repairs = data.repairs || [];
-    const repairing = repairs.some((r) => r.state === 'running');
+    const repairing = repairActive(data);
     const items = data.items || [];
+    const repairable = items.filter((i) => i.state === 'failed' && i.detail
+      && !i.id.startsWith('cathedral_')).length;
+    repairAllBtn.dataset.count = repairable;
+    repairAllBtn.style.display = repairable > 0 || repairing ? '' : 'none';
+    repairAllBtn.disabled = running || repairing || repairable === 0;
+    repairAllBtn.textContent = 'Repair all' + (repairable > 0 ? ' (' + repairable + ')' : '');
     missingBtn.disabled = running || repairing || data.missingCount === 0;
     allBtn.disabled = running || repairing || data.sceneCount === 0;
     missingBtn.textContent = 'Render missing banners'
@@ -13760,6 +13886,7 @@ window.lumaAskReason = function (form, message) {
         + '<td class="muted" style="font-size:12px">' + note + repairDetail + repairControl + '</td></tr>';
     }).join('');
     catalog.onStatus(data);
+    drawRepairs(data);
     return running || repairing || (data.queued || []).length > 0;
   }
 
@@ -13789,14 +13916,14 @@ window.lumaAskReason = function (form, message) {
         failures++;
         if (failures >= 3) summary.textContent = 'Could not read the banner status — retrying…';
         clearTimeout(timer);
-        if (!last || last.running || (last.repairs || []).some((r) => r.state === 'running') || (last.queued || []).length || Date.now() < watchUntil) {
+        if (!last || last.running || repairActive(last) || (last.queued || []).length || Date.now() < watchUntil) {
           timer = setTimeout(load, Math.min(15000, 2000 * failures));
         }
       });
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && last && (last.running || (last.repairs || []).some((r) => r.state === 'running') || (last.queued || []).length)) load();
+    if (!document.hidden && last && (last.running || repairActive(last) || (last.queued || []).length)) load();
   });
 
   function start(mode, ids) {

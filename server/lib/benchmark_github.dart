@@ -52,6 +52,25 @@ class BenchmarkGithubPublisher {
     required Map<String, dynamic> entry,
     required String fileName,
     required List<int>? bytes,
+  }) {
+    final result = _queue.then((_) => _publish(
+          entry: entry,
+          fileName: fileName,
+          bytes: bytes,
+        ));
+    _queue = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
+
+  /// Every commit rewrites the whole manifest on top of the branch head, and
+  /// a branch that moved under a commit only gets three retries. Repairs run
+  /// side by side, so their commits take turns instead of racing.
+  Future<void> _queue = Future<void>.value();
+
+  Future<String> _publish({
+    required Map<String, dynamic> entry,
+    required String fileName,
+    required List<int>? bytes,
   }) async {
     if (!enabled) {
       throw const GithubPublishException(

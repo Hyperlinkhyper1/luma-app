@@ -188,16 +188,36 @@ class AiBenchmarkStore {
       await tmp.rename(target.path);
     }
 
-    final uploads = await _readUploads();
-    uploads.removeWhere((e) => e['id'] == id);
-    uploads.add({
-      ...entry,
-      'uploadedAtMs': DateTime.now().millisecondsSinceEpoch,
+    await _serialized(_uploadsRoster.path, () async {
+      final uploads = await _readUploads();
+      uploads.removeWhere((e) => e['id'] == id);
+      uploads.add({
+        ...entry,
+        'uploadedAtMs': DateTime.now().millisecondsSinceEpoch,
+      });
+      final rosterTmp = File('${_uploadsRoster.path}.tmp');
+      await rosterTmp.writeAsString(jsonEncode(uploads));
+      await rosterTmp.rename(_uploadsRoster.path);
     });
-    final rosterTmp = File('${_uploadsRoster.path}.tmp');
-    await rosterTmp.writeAsString(jsonEncode(uploads));
-    await rosterTmp.rename(_uploadsRoster.path);
     return entry;
+  }
+
+  static final Map<String, Future<void>> _writeQueues = {};
+
+  /// Runs [body] after every earlier call with the same [key] has finished.
+  /// The roster is read, changed and rewritten whole, and the store is
+  /// opened fresh in many places, so two saves at once (parallel repairs)
+  /// would otherwise overwrite each other's entry or fight over the temp
+  /// file. The lock is process-wide for that reason.
+  static Future<T> _serialized<T>(String key, Future<T> Function() body) {
+    final previous = _writeQueues[key] ?? Future<void>.value();
+    final result = previous.then((_) => body());
+    final tail = result.then<void>((_) {}, onError: (Object _) {});
+    _writeQueues[key] = tail;
+    tail.whenComplete(() {
+      if (identical(_writeQueues[key], tail)) _writeQueues.remove(key);
+    });
+    return result;
   }
 
   /// Checks an upload's metadata and bytes (unless null, for an edit) and

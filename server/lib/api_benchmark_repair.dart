@@ -1,5 +1,21 @@
 part of 'api.dart';
 
+/// Why a scene cannot be repaired right now, in words for the dashboard.
+class _RepairRefusal implements Exception {
+  _RepairRefusal(this.code, this.message);
+  final String code;
+  final String message;
+}
+
+typedef _RepairPlan = ({
+  BenchmarkRepairJob job,
+  AiModeRoute route,
+  String ownerId,
+  Map<String, dynamic> entry,
+  ({List<int> bytes, String etag}) scene,
+  String diagnostic,
+});
+
 extension BenchmarkRepairApi on Api {
   Future<AiPrice?> _repairPrice(AiModeRoute route) async {
     if (benchmarkRepairPrice != null) return benchmarkRepairPrice!(route);
@@ -45,6 +61,7 @@ extension BenchmarkRepairApi on Api {
     if (!_sameOrigin(request))
       return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
     if (benchmarkRepairStarting ||
+        benchmarkRepairAll.running ||
         benchmarkRepairJobs.values.any((j) => j.state == 'running')) {
       return errorResponse(409, 'repair_running',
           'Wait for the repair to finish before changing settings.');
@@ -85,6 +102,63 @@ extension BenchmarkRepairApi on Api {
     }
   }
 
+  /// Everything a repair needs before its one model call: the chosen model,
+  /// the usage account, the test's entry and source, and a job to report on.
+  /// Throws [_RepairRefusal] when this scene cannot be repaired.
+  Future<_RepairPlan> _planRepair(String id, String? diagnostic) async {
+    final route = benchmarkRepairSettings.route;
+    if (route == null ||
+        !config.configuredAiUpstreams.contains(route.upstream)) {
+      throw _RepairRefusal(
+          'no_model', 'Choose a repair model using the cog first.');
+    }
+    final ownerId = store.userIdByEmail[benchmarkRepairOwner];
+    if (ownerId == null) {
+      throw _RepairRefusal('no_owner',
+          'The usage account $benchmarkRepairOwner does not exist on this server.');
+    }
+    if (diagnostic == null || diagnostic.trim().isEmpty) {
+      throw _RepairRefusal('no_error',
+          'Render this scene first; repairs require a recorded render error.');
+    }
+    final entries = await aiBenchmarks.editableEntries();
+    final matches = entries.where((e) => e['id'] == id);
+    if (matches.isEmpty ||
+        AiBenchmarkStore.extForKind(matches.first['kind'] as String) !=
+            'html') {
+      throw _RepairRefusal('unsupported',
+          'Only HTML render errors can be repaired. Binary GLB files require a source repair.');
+    }
+    final scene = await aiBenchmarks.readScene(id);
+    if (scene == null || scene.bytes.length > 200000) {
+      throw _RepairRefusal('source_size',
+          'No HTML source, or the source is over the 200 kB repair limit.');
+    }
+    final entry = matches.first;
+    final job = BenchmarkRepairJob(id,
+        name: entry['model'] as String? ?? id,
+        kind: entry['kind'] as String? ?? '');
+    return (
+      job: job,
+      route: route,
+      ownerId: ownerId,
+      entry: entry,
+      scene: scene,
+      diagnostic: diagnostic,
+    );
+  }
+
+  void _registerRepairJob(BenchmarkRepairJob job) {
+    if (benchmarkRepairJobs.length >= 100) {
+      final settled = benchmarkRepairJobs.entries
+          .where((e) => e.value.state != 'running')
+          .map((e) => e.key)
+          .firstOrNull;
+      benchmarkRepairJobs.remove(settled ?? benchmarkRepairJobs.keys.first);
+    }
+    benchmarkRepairJobs[job.id] = job;
+  }
+
   Future<Response> _adminRepairStart(Request request) async {
     if (!_sameOrigin(request))
       return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
@@ -93,6 +167,37 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(400, 'bad_id', 'Invalid scene id.');
     }
     if (benchmarkRepairStarting ||
+        benchmarkRepairAll.running ||
+        previewRenders.status.running ||
+        benchmarkRepairJobs.values.any((j) => j.state == 'running')) {
+      return errorResponse(
+          409, 'busy', 'Wait for the current render or repair to finish.');
+    }
+    final failures = previewRenders.status.items
+        .where((i) => i.id == id && i.state == 'failed');
+    benchmarkRepairStarting = true;
+    try {
+      final plan =
+          await _planRepair(id, failures.isEmpty ? null : failures.first.detail);
+      _registerRepairJob(plan.job);
+      unawaited(_runRepair(plan.job, plan.route, plan.ownerId, plan.entry,
+          plan.scene, plan.diagnostic));
+      return jsonResponse(202, {'started': true, 'job': plan.job.toJson()});
+    } on _RepairRefusal catch (e) {
+      return errorResponse(409, e.code, e.message);
+    } finally {
+      benchmarkRepairStarting = false;
+    }
+  }
+
+  /// Repairs every scene that failed in the last render,
+  /// [BenchmarkRepairAll.workers] at a time, each with the one model call a
+  /// single repair gets.
+  Future<Response> _adminRepairAll(Request request) async {
+    if (!_sameOrigin(request))
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    if (benchmarkRepairStarting ||
+        benchmarkRepairAll.running ||
         previewRenders.status.running ||
         benchmarkRepairJobs.values.any((j) => j.state == 'running')) {
       return errorResponse(
@@ -104,44 +209,74 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(
           409, 'no_model', 'Choose a repair model using the cog first.');
     }
-    final ownerId = store.userIdByEmail[benchmarkRepairOwner];
-    if (ownerId == null) {
-      return errorResponse(409, 'no_owner',
-          'The usage account $benchmarkRepairOwner does not exist on this server.');
+    final failed = [
+      for (final i in previewRenders.status.items)
+        if (i.state == 'failed' &&
+            i.detail.trim().isNotEmpty &&
+            !i.id.startsWith('cathedral_'))
+          (id: i.id, diagnostic: i.detail),
+    ];
+    if (failed.isEmpty) {
+      return errorResponse(409, 'no_failures',
+          'No failed scenes to repair. Render the banners first; repairs need a recorded render error.');
     }
-    final failures = previewRenders.status.items
-        .where((i) => i.id == id && i.state == 'failed');
-    if (failures.isEmpty || failures.first.detail.trim().isEmpty) {
-      return errorResponse(409, 'no_error',
-          'Render this scene first; repairs require a recorded render error.');
+    benchmarkRepairAll.begin(failed);
+    unawaited(_runRepairAll());
+    return jsonResponse(202, {
+      'started': true,
+      'count': failed.length,
+      'workers': BenchmarkRepairAll.workers,
+    });
+  }
+
+  Future<void> _runRepairAll() async {
+    final all = benchmarkRepairAll;
+    Future<void> worker() async {
+      while (!all.stopped && all.queue.isNotEmpty) {
+        final next = all.queue.removeAt(0);
+        try {
+          final plan = await _planRepair(next.id, next.diagnostic);
+          _registerRepairJob(plan.job);
+          await _runRepair(plan.job, plan.route, plan.ownerId, plan.entry,
+              plan.scene, plan.diagnostic);
+        } on _RepairRefusal catch (e) {
+          _registerRepairJob(
+              BenchmarkRepairJob(next.id)..finish('failed', e.message));
+        } catch (e) {
+          _registerRepairJob(
+              BenchmarkRepairJob(next.id)..finish('failed', '$e'));
+        }
+      }
     }
-    final diagnostic = failures.first.detail;
-    benchmarkRepairStarting = true;
+
     try {
-      final entries = await aiBenchmarks.editableEntries();
-      final matches = entries.where((e) => e['id'] == id);
-      if (matches.isEmpty ||
-          AiBenchmarkStore.extForKind(matches.first['kind'] as String) !=
-              'html') {
-        return errorResponse(409, 'unsupported',
-            'Only HTML render errors can be repaired. Binary GLB files require a source repair.');
-      }
-      final scene = await aiBenchmarks.readScene(id);
-      if (scene == null || scene.bytes.length > 200000) {
-        return errorResponse(409, 'source_size',
-            'No HTML source, or the source is over the 200 kB repair limit.');
-      }
-      final job = BenchmarkRepairJob(id);
-      if (benchmarkRepairJobs.length >= 100) {
-        benchmarkRepairJobs.remove(benchmarkRepairJobs.keys.first);
-      }
-      benchmarkRepairJobs[id] = job;
-      unawaited(
-          _runRepair(job, route, ownerId, matches.first, scene, diagnostic));
-      return jsonResponse(202, {'started': true, 'job': job.toJson()});
+      await Future.wait([
+        for (var i = 0; i < BenchmarkRepairAll.workers; i++) worker(),
+      ]);
     } finally {
-      benchmarkRepairStarting = false;
+      all.end();
     }
+  }
+
+  /// Stops queuing more repairs. The ones already calling the model finish:
+  /// a request that is under way can't be taken back, and is billed.
+  Response _adminRepairAllStop(Request request) {
+    if (!_sameOrigin(request))
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    final all = benchmarkRepairAll;
+    if (!all.running) return jsonResponse(200, {'stopped': false});
+    all.stopped = true;
+    all.queue.clear();
+    return jsonResponse(200, {'stopped': true});
+  }
+
+  /// Clears finished repair cards (and a finished run's summary).
+  Response _adminRepairAllDismiss(Request request) {
+    if (!_sameOrigin(request))
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    benchmarkRepairJobs.removeWhere((_, j) => j.state != 'running');
+    if (!benchmarkRepairAll.running) benchmarkRepairAll.reset();
+    return jsonResponse(200, {'dismissed': true});
   }
 
   Future<void> _runRepair(
@@ -236,13 +371,12 @@ extension BenchmarkRepairApi on Api {
           bytes: bytes);
       final published = await _publishBenchmarkScene(entry,
           kind: entry['kind'] as String, id: job.id, bytes: bytes);
-      job.state = 'done';
-      job.detail =
+      job.finish(
+          'done',
           'Minimal repair saved; original backed up. Banner: ${published['render'] ?? 'queued'}.'
-          '${published['github'] == 'failed' ? ' GitHub: ${published['githubError']}' : ''}';
+          '${published['github'] == 'failed' ? ' GitHub: ${published['githubError']}' : ''}');
     } catch (e) {
-      job.state = 'failed';
-      job.detail = '$e';
+      job.finish('failed', '$e');
     }
   }
 

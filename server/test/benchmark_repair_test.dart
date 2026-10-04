@@ -148,6 +148,28 @@ void main() {
     }
   });
 
+  test('saves from parallel repairs all land in the roster', () async {
+    final dir = await Directory.systemTemp.createTemp('repair_roster_race');
+    try {
+      final ids = [for (var n = 0; n < 8; n++) 'pagoda_race_$n'];
+      await Future.wait([
+        for (final id in ids)
+          (await AiBenchmarkStore.open(dir.path)).saveUpload(
+              kind: 'pagoda',
+              id: id,
+              model: 'Model $id',
+              vendor: '',
+              description: '',
+              bytes: utf8.encode(original)),
+      ]);
+      final roster =
+          await (await AiBenchmarkStore.open(dir.path)).editableEntries();
+      expect(roster.map((e) => e['id']).toSet(), ids.toSet());
+    } finally {
+      await dir.delete(recursive: true);
+    }
+  });
+
   group('on-demand repair endpoints', () {
     late Directory dir;
     late Api api;
@@ -422,6 +444,167 @@ void main() {
       hold!.complete();
       await finished();
       expect(calls, 1);
+    });
+
+    group('repair all', () {
+      Future<List<String>> failScenes(int extra) async {
+        final ids = ['pagoda_demo'];
+        for (var n = 1; n <= extra; n++) {
+          final id = 'pagoda_extra_$n';
+          await scenes.saveUpload(
+              kind: 'pagoda',
+              id: id,
+              model: 'Extra model $n',
+              vendor: 'openai',
+              description: '',
+              bytes: utf8.encode(original));
+          ids.add(id);
+        }
+        renderer.status.items = [
+          for (final id in ids)
+            PreviewRenderItem(id)
+              ..state = 'failed'
+              ..detail = 'ReferenceError: broken is not defined',
+          PreviewRenderItem('cathedral_glb')
+            ..state = 'failed'
+            ..detail = 'invalid GLB',
+          PreviewRenderItem('pagoda_fine')..state = 'ok',
+        ];
+        return ids;
+      }
+
+      Future<void> allDone() async {
+        for (var n = 0; n < 300 && api.benchmarkRepairAll.running; n++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        expect(api.benchmarkRepairAll.running, isFalse);
+      }
+
+      Future<void> until(bool Function() ready) async {
+        for (var n = 0; n < 300 && !ready(); n++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        expect(ready(), isTrue);
+      }
+
+      test('repairs three at a time and starts the next as each one finishes',
+          () async {
+        await save();
+        final ids = await failScenes(4);
+        hold = Completer<void>();
+        final started =
+            await request('POST', '/admin/benchmark-banners/repair-all');
+        expect(started['httpStatus'], 202);
+        expect(started['count'], 5);
+        expect(started['workers'], 3);
+        await until(() => calls == 3);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(calls, 3);
+        expect(api.benchmarkRepairAll.queue, hasLength(2));
+        final status = await request('GET', '/admin/benchmark-banners/status');
+        expect(status['repairAll']['running'], isTrue);
+        expect(status['repairAll']['queued'], hasLength(2));
+        expect(status['repairModel']['model'], 'test/model');
+        expect(
+            (status['repairs'] as List).where((j) => j['state'] == 'running'),
+            hasLength(3));
+        hold!.complete();
+        await allDone();
+        expect(calls, 5);
+        expect([
+          for (final j in api.benchmarkRepairJobs.values)
+            if (j.state != 'done') '${j.id}: ${j.state} ${j.detail}'
+        ], isEmpty);
+        expect(api.benchmarkRepairJobs.keys.toSet(), ids.toSet());
+        expect(
+            api.benchmarkRepairJobs['pagoda_extra_2']!.name, 'Extra model 2');
+        expect(api.benchmarkRepairJobs['pagoda_demo']!.finishedAtMs, isNotNull);
+        expect(renderer.rendered.toSet(), ids.toSet());
+        expect(usage.usageCalls('owner'), hasLength(5));
+      });
+
+      test('a scene that still fails is not retried, and the run ends',
+          () async {
+        await save();
+        await failScenes(3);
+        renderer.validationError = 'Still cannot render';
+        await request('POST', '/admin/benchmark-banners/repair-all');
+        await allDone();
+        expect(calls, 4);
+        expect(api.benchmarkRepairJobs.values.map((j) => j.state).toSet(),
+            {'failed'});
+        expect(renderer.rendered, isEmpty);
+        expect(api.benchmarkRepairAll.finishedAtMs, isNotNull);
+      });
+
+      test('stop lets the repairs under way finish and drops the rest',
+          () async {
+        await save();
+        await failScenes(4);
+        hold = Completer<void>();
+        await request('POST', '/admin/benchmark-banners/repair-all');
+        await until(() => calls == 3);
+        final stopped =
+            await request('POST', '/admin/benchmark-banners/repair-all/stop');
+        expect(stopped['stopped'], isTrue);
+        hold!.complete();
+        await allDone();
+        expect(calls, 3);
+        expect(api.benchmarkRepairAll.stopped, isTrue);
+        expect(api.benchmarkRepairJobs, hasLength(3));
+        final dismissed = await request(
+            'POST', '/admin/benchmark-banners/repair-all/dismiss');
+        expect(dismissed['httpStatus'], 200);
+        expect(api.benchmarkRepairJobs, isEmpty);
+        expect(api.benchmarkRepairAll.startedAtMs, isNull);
+      });
+
+      test(
+          'needs a chosen model, failed scenes, an idle service and the origin',
+          () async {
+        expect(
+            (await request(
+                'POST', '/admin/benchmark-banners/repair-all'))['error'],
+            'no_model');
+        await save();
+        renderer.status.items = [
+          PreviewRenderItem('pagoda_fine')..state = 'ok'
+        ];
+        expect(
+            (await request(
+                'POST', '/admin/benchmark-banners/repair-all'))['error'],
+            'no_failures');
+        await failScenes(1);
+        expect(
+            (await request('POST', '/admin/benchmark-banners/repair-all',
+                origin: 'http://evil.example'))['httpStatus'],
+            403);
+        expect(
+            (await request('POST', '/admin/benchmark-banners/repair-all',
+                admin: false))['httpStatus'],
+            302);
+        hold = Completer<void>();
+        expect(
+            (await request(
+                'POST', '/admin/benchmark-banners/repair-all'))['httpStatus'],
+            202);
+        await until(() => calls >= 1);
+        for (final path in [
+          '/admin/benchmark-banners/repair-all',
+          '/admin/benchmark-banners/repair/pagoda_demo',
+          '/admin/benchmark-banners/render',
+        ]) {
+          expect((await request('POST', path))['httpStatus'], 409,
+              reason: path);
+        }
+        expect(
+            (await request('PUT', '/admin/benchmark-banners/repair/settings',
+                body: {}))['httpStatus'],
+            409);
+        hold!.complete();
+        await allDone();
+        expect(calls, 2);
+      });
     });
   });
 }
