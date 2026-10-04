@@ -499,7 +499,7 @@ if(renderer){
     const sus=new THREE.Group();sus.position.set(side*.74,.39,z);part(sus,side<0?'DOUBLE-WISHBONE / LEFT CORNER':'DOUBLE-WISHBONE / RIGHT CORNER');
     const hub=mesh(new THREE.CylinderGeometry(.13,.13,.16,16),techSilver,sus,side*.18,0,0);hub.rotation.z=Math.PI/2;
     for(const y of [-.13,.13]){tube(sus,[new THREE.Vector3(0,y,-.36),new THREE.Vector3(side*.18,y*.8,-.13),new THREE.Vector3(side*.22,y,0)],.025,techOrange,10)}
-    const springPts=[];for(let i=0;i<=50;i++){const t=i/50;const a=t*TAU*4; springPts.push(new THREE.Vector3(side*.03+Math.cos(a)*.075,y0?.0:0,0).add(new THREE.Vector3(0,.08+t*.29,Math.sin(a)*.075)))}
+    const springPts=[];for(let i=0;i<=50;i++){const t=i/50;const a=t*TAU*4; springPts.push(new THREE.Vector3(side*.03+Math.cos(a)*.075,0,0).add(new THREE.Vector3(0,.08+t*.29,Math.sin(a)*.075)))}
     tube(sus,springPts,.018,techOrange,45);
     const damper=mesh(new THREE.CylinderGeometry(.045,.045,.38,12),techSilver,sus,side*.03,.13,-.16);damper.rotation.z=side*.12;
   }
@@ -529,7 +529,6 @@ if(renderer){
   const runoffMat=new THREE.MeshStandardMaterial({color:0x1b2927,roughness:1});
   ribbon(-6,-2.98,.012,runoffMat);ribbon(2.98,6,.012,runoffMat);
   const water=mesh(new THREE.PlaneGeometry(220,220),new THREE.MeshStandardMaterial({color:0x376c7c,metalness:.2,roughness:.25}),driveWorld,0,-.05,0);water.rotation.x=-Math.PI/2;
-  const curbWhite=mesh(new THREE.MeshStandardMaterial({color:0xdedbd0,roughness:.5}),driveWorld); // harmless parent marker
   const barrierMat=new THREE.MeshStandardMaterial({color:0x8b9a9d,metalness:.55,roughness:.38});
   for(let i=0;i<trackSamples;i+=8){
     const pt=trackPts[i],tan=trackTangents[i],right=new THREE.Vector3(-tan.z,0,tan.x);
@@ -674,7 +673,7 @@ if(renderer){
     drive.rel*=Math.exp(-dt*(hand?1.1:4.8));drive.rel=clamp(drive.rel,-.65,.65);
     drive.s+=drive.speed*dt*(1-drive.rel*drive.rel*.13);drive.lat+=drive.speed*Math.sin(drive.rel)*dt;
     if(Math.abs(drive.lat)>8){drive.lat=clamp(drive.lat,-8,8);drive.speed*=.94}
-    const pose=getTrack(drive.s),right=new THREE.Vector3(-pose.t.z,0,pose.t.x),pos=pose.p.clone().addScaledVector(right,drive.lat);
+    const pose=getTrack(drive.s),trackRight=new THREE.Vector3(-pose.t.z,0,pose.t.x),pos=pose.p.clone().addScaledVector(trackRight,drive.lat);
     carRoot.position.copy(pos);const yaw=Math.atan2(-pose.t.x,-pose.t.z)+drive.rel;carRoot.rotation.y=yaw;
     carVisual.rotation.z=lerp(carVisual.rotation.z,-steerAngle*drive.speed*.006,1-Math.exp(-dt*5));
     carVisual.rotation.x=lerp(carVisual.rotation.x,(brake?.055:0)-throttle*.018,1-Math.exp(-dt*5));
@@ -688,7 +687,7 @@ if(renderer){
     updateAudio();
     $('speed').textContent=String(Math.round(drive.speed*3.6)).padStart(3,'0');$('gear').textContent=drive.gear;$('rpmFill').style.width=clamp(drive.rpm/8000*100,0,100)+'%';
     $('lap').textContent=formatTime(drive.lap);$('best').textContent=drive.best===Infinity?'--:--.---':formatTime(drive.best);$('driveState').textContent=hand?'SLIDING':brake?'BRAKING':throttle?'ON POWER':drive.speed<1?'READY':'CRUISE';
-    drawMap();updateDriveCamera(pose,pos,right);
+    drawMap();updateDriveCamera(pose,pos,trackRight);
   }
   function formatTime(s){const m=Math.floor(s/60),sec=Math.floor(s%60),ms=Math.floor((s%1)*1000);return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')+'.'+String(ms).padStart(3,'0')}
   const mapCtx=$('minimap').getContext('2d');
