@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AETHER | A01 Sports Car Benchmark</title>
+<style>
+  :root { --ui: rgba(10, 15, 25, 0.85); --accent: #00f0ff; --text: #eef; --warn: #ff3366; }
+  body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--text); user-select: none; -webkit-font-smoothing: antialiased; }
+  canvas { display: block; width: 100vw; height: 100vh; outline: none; }
+  
+  /* Loading */
+  #loader { position: absolute; inset: 0; background: #020204; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+  .bar-wrap { width: 300px; height: 4px; background: #222; border-radius: 2px; margin-top: 20px; overflow: hidden; }
+  .bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.2s; box-shadow: 0 0 10px var(--accent); }
+  .loading-text { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin-top: 10px; }
+
+  /* UI Overlay */
+  #ui-layer { position: absolute; inset: 0; pointer-events: none; z-index: 100; opacity: 0; transition: opacity 0.4s ease-out; }
+  .interactive { pointer-events: auto; }
+  
+  /* HUD */
+  .hud-panel { position: absolute; background: var(--ui); backdrop-filter: blur(8px); border-left: 2px solid var(--accent); padding: 12px 16px; border-radius: 0 8px 8px 0; pointer-events: auto; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform: translateX(-120%); }
+  .hud-panel.active { transform: translateX(0); }
+  #hud-left { top: 20px; left: 20px; min-width: 240px; }
+  #hud-right { top: 20px; right: 20px; text-align: right; border-left: none; border-right: 2px solid var(--accent); border-radius: 8px 0 0 8px; }
+  #hud-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); text-align: center; min-width: 400px; display: flex; justify-content: space-between; align-items: flex-end; }
+  
+  .hud-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .hud-label { font-size: 11px; color: #88a; text-transform: uppercase; letter-spacing: 1px; }
+  .hud-value { font-size: 24px; font-weight: 700; color: #fff; }
+  .hud-value.warn { color: var(--warn); text-shadow: 0 0 10px var(--warn); }
+  .hud-value.bright { color: var(--accent); text-shadow: 0 0 15px var(--accent); }
+  .meter { height: 6px; background: #223; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .meter-fill { height: 100%; background: linear-gradient(90deg, #00f0ff, #0055ff); width: 0%; transition: width 0.1s linear; }
+  
+  /* Controls */
+  .controls-strip { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; background: var(--ui); padding: 8px 16px; border-radius: 30px; border: 1px solid #334; backdrop-filter: blur(10px); }
+  .key { width: 32px; height: 32px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: var(--accent); transition: all 0.2s; }
+  .key.active { background: var(--accent); color: #000; transform: translateY(2px); }
+  
+  /* Top Bar */
+  #top-bar { position: absolute; top: 0; left: 0; width: 100%; padding: 16px; display: flex; justify-content: space-between; align-items: flex-start; box-sizing: border-box; pointer-events: none; }
+  .brand { pointer-events: auto; }
+  .brand h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .brand span { font-size: 11px; color: var(--accent); letter-spacing: 2px; }
+  .mode-tag { pointer-events: auto; background: var(--ui); border: 1px solid #445; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+  
+  /* Configurator */
+  #config-panel { position: absolute; top: 80px; left: 20px; width: 260px; background: var(--ui); border-left: 2px solid var(--accent); border-radius: 0 8px 8px 0; padding: 16px; pointer-events: auto; max-height: 80vh; overflow-y: auto; transform: translateX(-320px); transition: transform 0.3s ease; z-index: 50; }
+  #config-panel.open { transform: translateX(0); }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 10px; color: #668; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #334; padding-bottom: 4px; }
+  .color-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .swatch { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.3); transition: transform 0.2s; }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+  .row-control { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
+  button { background: #223; border: 1px solid #445; color: #fff; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; text-transform: uppercase; font-weight: bold; transition: all 0.2s; }
+  button:hover { background: #335; border-color: var(--accent); }
+  button.action { background: var(--accent); color: #000; border: none; width: 100%; margin-top: 8px; }
+  button.action:hover { background: #4af; }
+  
+  /* Camera Presets */
+  #cam-presets { display: flex; gap: 6px; margin-top: 8px; }
+  .cam-btn { flex: 1; padding: 6px 0; background: transparent; border: 1px solid #445; color: #779; }
+  .cam-btn.active { background: #445; color: #fff; border-color: #668; }
+
+  /* Error */
+  #error-screen { display: none; position: absolute; inset: 0; background: #050505; z-index: 2000; align-items: center; justify-content: center; text-align: center; padding: 40px; }
+  #error-screen h2 { color: var(--warn); margin-bottom: 10px; }
+  
+  /* Door hinge markers (debug visual, subtle) */
+  .hinge { width: 10px; height: 10px; background: rgba(0,240,255,0.5); border-radius: 50%; position: absolute; transform: translate(-50%, -50%); pointer-events: none; display: none; }
+
+  @media (max-width: 768px) {
+    #config-panel { transform: translateX(calc(-100% - 20px)); width: 300px; }
+    #hud-bottom { display: none; }
+    .controls-strip { transform: scale(0.75); bottom: 10px; }
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+
+<div id="loader">
+  <h1 style="font-weight:800; letter-spacing: 4px; color:#fff;">AETHER A01</h1>
+  <div class="loading-text" id="load-msg">GENERATING ENVIRONMENT</div>
+  <div class="bar-wrap"><div class="bar" id="load-bar"></div></div>
+</div>
+
+<div id="error-screen">
+  <h2>WEBGL NOT AVAILABLE</h2>
+  <p>This benchmark requires a WebGL 2.0 compatible GPU.</p>
+  <button onclick="location.reload()">RETRY</button>
+</div>
+
+<div id="ui-layer">
+  <div id="top-bar" class="interactive">
+    <div class="brand">
+      <h1>AETHER</h1>
+      <span>MODEL A01 · HYPERCAR</span>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div id="mode-tag" class="mode-tag">SHOWROOM</div>
+      <button id="toggle-ui">UI HIDE</button>
+    </div>
+  </div>
+
+  <div id="config-panel">
+    <div class="section">
+      <div class="section-title">Finish</div>
+      <div id="colors">
+        <!-- JS populated -->
+      </div>
+      <div class="row-control">
+        <span>Body Material</span>
+        <select id="mat-select" style="background:#223; color:#fff; border:1px solid #445; padding:2px;">
+          <option value="metallic">Metallic (Clearcoat)</option>
+          <option value="matte">Matte (Flat)</option>
+        </select>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Details</div>
+      <div class="row-control">
+        <span>Rim Finish</span>
+        <select id="rim-select" style="background:#223; color:#fff; border:1px solid #445; padding:2px;">
+          <option value="silver">Silver</option>
+          <option value="black">Gunmetal</option>
+          <option value="bronze">Bronze</option>
+        </select>
+      </div>
+      <div class="row-control">
+        <span>Caliper Color</span>
+        <select id="caliper-select" style="background:#223; color:#fff; border:1px solid #445; padding:2px;">
+          <option value="red">Red</option>
+          <option value="blue">Blue</option>
+          <option value="gold">Gold</option>
+          <option value="white">White</option>
+        </select>
+      </div>
+      <div class="row-control">
+        <span>Wheels</span>
+        <div style="display:flex; gap:8px;">
+            <button id="wheel-l">LEFT</button>
+            <button id="wheel-r">RIGHT</button>
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Systems</div>
+      <div class="row-control">
+        <span>Headlights</span>
+        <button id="lights-btn" class="on">ON</button>
+      </div>
+      <div class="row-control">
+        <span>Scissor Doors</span>
+        <button id="doors-btn">CLOSE</button>
+      </div>
+      <div class="row-control">
+        <span>X-RAY / Exploded</span>
+        <button id="xray-btn">OFF</button>
+      </div>
+    </div>
+    <div id="cam-presets">
+      <button class="cam-btn active" data-cam="front34">FRONT 3/4</button>
+      <button class="cam-btn" data-cam="side">SIDE</button>
+      <button class="cam-btn" data-cam="rear34">REAR 3/4</button>
+      <button class="cam-btn" data-cam="top">TOP</button>
+      <button class="cam-btn" data-cam="wheel">WHEEL</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud-left" class="hud-panel interactive">
+    <div class="hud-label">Vehicle Status</div>
+    <div class="hud-row"><span class="hud-label">Speed</span> <span class="hud-value" id="hud-speed">0 <small style="font-size:12px">KM/H</small></span></div>
+    <div class="hud-row"><span class="hud-label">RPM</span> <span class="hud-value" id="hud-rpm">0</span></div>
+    <div class="meter"><div class="meter-fill" id="hud-rpm-bar"></div></div>
+    <div class="hud-row" style="margin-top:8px;"><span class="hud-label">Gear</span> <span class="hud-value" id="hud-gear">N</span></div>
+    <div class="hud-row"><span class="hud-label">Throttle</span> <span class="hud-value" id="hud-throttle">0%</span></div>
+    <div class="meter"><div class="meter-fill" id="hud-throttle-bar" style="background:#00f0ff;"></div></div>
+    <div class="hud-row"><span class="hud-label">Brake</span> <span class="hud-value" id="hud-brake">0%</span></div>
+    <div class="hud-row"><span class="hud-label">Tire Temp</span> <span class="hud-value" id="hud-temp">21°C</span></div>
+  </div>
+
+  <div id="hud-right" class="hud-panel interactive">
+    <div class="hud-label">Track Telemetry</div>
+    <div class="hud-row"><span class="hud-label">Lap</span> <span class="hud-value" id="hud-lap">00:00.000</span></div>
+    <div class="hud-row"><span class="hud-label">Best</span> <span class="hud-value" id="hud-best">—</span></div>
+    <div class="hud-row"><span class="hud-label">G-Force</span> <span class="hud-value" id="hud-gforce">0.0 G</span></div>
+  </div>
+
+  <div id="hud-bottom" class="interactive controls-strip">
+    <div class="key" id="k-w">W</div>
+    <div class="key" id="k-a">A</div>
+    <div class="key" id="k-s">S</div>
+    <div class="key" id="k-d">D</div>
+    <div class="key" id="k-q">Q</div>
+    <div class="key" id="k-e">E</div>
+    <div class="key" id="k-c">C</div>
+    <div class="key" id="k-r">R</div>
+    <div class="key" id="k-sp">SPACE</div>
+    <div style="width:1px; background:#445; margin:0 4px;"></div>
+    <div class="key" id="k-m">M</div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js'; // Avoided - will use procedural
+
+// ============================================================
+// GLOBAL STATE
+// ============================================================
+const STATE = {
+  mode: 'SHOWROOM', // SHOWROOM | DRIVE
+  cameraIndex: 0,
+  keys: {},
+  paused: false,
+  loadProgress: 0
+};
+
+const UI = {
+  panel: document.getElementById('config-panel'),
+  hudLeft: document.getElementById('hud-left'),
+  hudRight: document.getElementById('hud-right'),
+  loadBar: document.getElementById('load-bar'),
+  loadMsg: document.getElementById('load-msg')
+};
+
+// ============================================================
+// AUDIO ENGINE (Web Audio API)
+// ============================================================
+class AudioEngine {
+  constructor() {
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.4;
+    this.master.connect(this.ctx.destination);
+    
+    this.osc1 = null;
+    this.osc2 = null;
+    this.noise = null;
+    this.eg = this.ctx.createGain();
+    
+    // Engine filter
+    this.filter = this.ctx.createBiquadFilter();
+    this.filter.type = 'lowpass';
+    this.filter.frequency.value = 400;
+    
+    this.engineGain = this.ctx.createGain();
+    this.engineGain.gain.value = 0;
+    
+    this.eg.connect(this.filter);
+    this.filter.connect(this.engineGain);
+    this.engineGain.connect(this.master);
+  }
+
+  startEngine(rpm) {
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    this.eg.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.eg.gain.linearRampToValueAtTime(1, this.ctx.currentTime + 0.1);
+    
+    const now = this.ctx.currentTime;
+    if (this.osc1) { this.osc1.stop(); this.osc1.disconnect(); }
+    if (this.osc2) { this.osc2.stop(); this.osc2.disconnect(); }
+    if (this.noise) { this.noise.stop(); this.noise.disconnect(); }
+
+    // V8-ish engine: fundamental + odd harmonics
+    this.osc1 = this.ctx.createOscillator();
+    this.osc2 = this.ctx.createOscillator();
+    this.osc1.type = 'sawtooth';
+    this.osc2.type = 'square';
+    this.osc2.detune.value = 10; // slight wobble
+    this.osc1.detune.value = -10;
+
+    const baseFreq = Math.max(30, rpm / 100); // approx 40hz idle
+    this.osc1.frequency.value = baseFreq * 2; // fundamental
+    this.osc2.frequency.value = baseFreq; 
+
+    this.osc1.connect(this.eg);
+    this.osc2.connect(this.eg);
+    this.osc1.start(); this.osc2.start();
+
+    // Exhaust noise (static with lowpass modulation)
+    this.noise = this.ctx.createOscillator();
+    this.noise.type = 'sawtooth';
+    const noiseEnv = this.ctx.createGain();
+    noiseEnv.gain.value = 0.15;
+    // Simulate turbulence
+    const lfo = this.ctx.createOscillator();
+    lfo.type = 'sine'; lfo.frequency.value = 40;
+    const lfoEnv = this.ctx.createGain();
+    lfoEnv.gain.value = 200;
+    lfo.connect(lfoEnv.gain);
+    lfoEnv.gain.connect(this.filter.frequency);
+    this.noise.connect(this.eg);
+    this.noise.start(); lfo.start();
+  }
+
+  update(rpm, gearRatio, load, isRpmRed) {
+    const now = this.ctx.currentTime;
+    if (this.osc1) {
+      // Torque curve simulation: pitch slightly drops under load
+      const base = Math.max(20, rpm / 90);
+      this.osc1.frequency.setTargetAtTime(base, now, 0.1);
+      this.osc2.frequency.setTargetAtTime(base, now, 0.1);
+      // Volume envelope: higher pitch = louder
+      this.eg.gain.setTargetAtTime(Math.min(1, (rpm - 500) / 5000), now, 0.05);
+      // Redline whine / limiter cut
+      this.engineGain.gain.setTargetAtTime(isRpmRed ? 0 : 1, now, 0.05);
+      this.filter.frequency.setTargetAtTime(800 + (rpm/5), now, 0.1);
+    }
+  }
+
+  gearShift() {
+    // Simulate torque cut
+    if(this.engineGain) this.engineGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    if(this.eg) this.eg.gain.cancelScheduledValues(this.ctx.currentTime);
+  }
+
+  setMute(val) { this.master.gain.setTargetAtTime(val, this.ctx.currentTime, 0.2); }
+}
+
+// ============================================================
+// PROCEDURAL TEXTURES
+// ============================================================
+function createCarbon() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#111'; ctx.fillRect(0,0,512,512);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#333';
+  for(let i=0; i<64; i++) {
+    const y = Math.random()*512;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(512,y); ctx.stroke();
+    const x = Math.random()*512;
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,512); ctx.stroke();
+  }
+  // Add subtle noise
+  const id = ctx.getImageData(0,0,512,512);
+  for(let i=0; i<id.data.length; i+=4) {
+    const n = (Math.random()-0.5)*20;
+    id.data[i]+=n; id.data[i+1]+=n; id.data[i+2]+=n;
+  }
+  ctx.putImageData(id,0,0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(6,6);
+  return tex;
+}
+
+function createTireTread() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,256,64);
+  ctx.fillStyle = '#000';
+  for(let i=0; i<256; i+=8) {
+    if(Math.random()>0.3) ctx.fillRect(i, 5, 6, 54);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(30, 1);
+  return tex;
+}
+
+// ============================================================
+// SCENE SETUP
+// ============================================================
+const canvas = document.createElement('canvas');
+document.body.appendChild(canvas);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+// Post-processing
+const renderScene = new RenderPass(scene, camera);
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+bloom.threshold = 0.2; bloom.strength = 0.6; bloom.radius = 0.5;
+const composer = new EffectComposer(renderer);
+composer.addPass(renderScene);
+composer.addPass(bloom);
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
+
+// Environment Probe (Procedural)
+const envScene = new THREE.Scene();
+const cubeCamera = new THREE.CubeCamera(1, 1000, 10);
+// Build a fake studio around
+const geo = new THREE.BoxGeometry(4, 4, 4);
+const matL = new THREE.MeshBasicMaterial({ color: 0x333344 });
+for(let x of [-2,2]) for(let y of [-2,2]) for(let z of [-2,2]) {
+  if(Math.random()>0.7) envScene.add(new THREE.Mesh(geo, matL));
+}
+const plane = new THREE.Mesh(new THREE.PlaneGeometry(40,40), new THREE.MeshStandardMaterial({color:0x111111, roughness:0.2, metalness:0.8}));
+plane.rotation.x = -Math.PI/2; plane.position.y = -2;
+envScene.add(plane);
+// Lights that reflect
+for(let i=0;i<6;i++){
+  const l = new THREE.DirectionalLight(0xffffff, 5);
+  l.position.set(Math.random()*10-5, Math.random()*10-5, Math.random()*10-5);
+  envScene.add(l);
+}
+cubeCamera.position.set(0,0,0);
+cubeCamera.update(renderer, envScene);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envMap = pmrem.fromCubeCamera(cubeCamera).texture;
+envMap.minFilter = THREE.NearestFilter;
+
+// ============================================================
+// THE CAR: GENERATOR
+// ============================================================
+const CAR = new THREE.Group();
+const groupBody = new THREE.Group(); const groupWheelL = new THREE.Group(); const groupWheelR = new THREE.Group(); const groupChassis = new THREE.Group(); const groupInterior = new THREE.Group();
+CAR.add(groupBody, groupWheelL, groupWheelR, groupChassis, groupInterior);
+
+// Materials
+const carbonMat = new THREE.MeshStandardMaterial({ map: createCarbon(), roughness: 0.3 });
+const tintGlass = new THREE.MeshPhysicalMaterial({ color: 0x111122, metalness: 0.9, roughness: 0.05, transmission: 0.6, thickness: 0.1, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+const rubberMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9, map: createTireTread() });
+const chromeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1.0, roughness: 0.05 });
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, metalness: 0.9, roughness: 0.1 });
+const clearcoatMat = new THREE.MeshPhysicalMaterial({ 
+  color: 0xaa0033, metalness: 0.6, roughness: 0.15, clearcoat: 1.0, clearcoatRoughness: 0.03, envMap, envMapIntensity: 1.2, 
+});
+const matteMat = new THREE.MeshStandardMaterial({ color: 0xaa0033, metalness: 0.1, roughness: 0.85 });
+const headlightMat = new THREE.MeshPhysicalMaterial({ color: 0x88ccff, emission: 0xffffff, emissionIntensity: 2, transmission: 0.8, opacity: 0.8, transparent:true });
+const tailMat = new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000 });
+
+CAR.material = clearcoatMat; // Default body material applied to body parts
+const bodyParts = []; // reference for coloring
+
+function buildMesh(vs, fs, v) { return new THREE.Mesh(vs, fs); }
+
+// --- Body Construction: Spline Loft ---
+// Create a "chord" of cross sections. Each section is a set of points in local x/y.
+// We loft them by interpolating and triangulating.
+function loft(points, sections, closed) {
+  const v = new Float32Array(sections.length * points.length * 3);
+  const idx = new Array(sections.length * points.length);
+  let voff = 0;
+  for(let i=0; i<sections.length; i++) {
+    for(let j=0; j<points.length; j++) {
+      v[voff++] = points[j].x; v[voff++] = points[j].y; v[voff++] = i;
+      idx[i*points.length+j] = i*points.length+j;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  geo.setAttribute('idx', new THREE.Uint32BufferAttribute(idx, 1));
+  geo.computeVertexNormals();
+  
+  // Manual triangulation
+  const tris = [];
+  for(let i=0; i<sections.length-1; i++) {
+    for(let j=0; j<points.length-1; j++) {
+      const a = i*points.length+j; const b = i*points.length+j+1;
+      const c = (i+1)*points.length+j; const d = (i+1)*points.length+j+1;
+      tris.push(a,b,c); tris.push(b,d,c);
+    }
+  }
+  geo.setIndex(tris);
+  return new THREE.BufferGeometry();
+}
+
+// --- Main Body Sections ---
+// Points are [x, y]
+const sections = [
+  [ [0.00, 0.05], [0.00, -0.05], [0.00, -0.08], [0.02, -0.12], [0.05, -0.28], [0.12, -0.35], [0.22, -0.30], [0.28, -0.15], [0.28, -0.08], [0.28, 0.08], [0.28, 0.15], [0.22, 0.30], [0.12, 0.35], [0.05, 0.28], [0.02, 0.12] ], // Nose
+  [ [0.35, 0.0], [-0.35, 0.0], [-0.40, -0.02], [-0.45, -0.05], [-0.50, -0.25], [-0.30, -0.48], [0.00, -0.55], [0.30, -0.48], [0.50, -0.25], [0.55, 0.05], [0.58, 0.12], [0.58, 0.20], [0.55, 0.28], [0.50, 0.48], [0.45, 0.55], [0.30, 0.50], [0.20, 0.42], [0.15, 0.35], [0.10, 0.25], [0.05, 0.15] ], // Front wheel arch
+  [ [0.60, 0.0], [-0.60, 0.0], [-0.70, -0.08], [-0.78, -0.15], [-0.82, -0.40], [-0.55, -0.68], [0.00, -0.75], [0.55, -0.68], [0.82, -0.40], [0.85, 0.0], [0.85, 0.25], [0.82, 0.50], [0.78, 0.75], [0.68, 0.95], [0.50, 1.05], [0.25, 1.05], [-0.25, 1.05], [-0.50, 1.05], [-0.68, 0.95], [-0.78, 0.75], [-0.82, 0.50], [-0.85, 0.25], [-0.85, 0.0] ], // Cabin (roof line)
+  [ [0.82, 0.0], [-0.82, 0.0], [-0.85, -0.12], [-0.88, -0.25], [-0.85, -0.45], [-0.75, -0.62], [-0.55, -0.72], [-0.25, -0.72], [0.25, -0.72], [0.55, -0.72], [0.75, -0.62], [0.85, -0.45], [0.88, -0.25], [0.85, -0.12], [0.85, 0.0] ], // Rear arch
+  [ [0.55, 0.0], [-0.55, 0.0], [-0.60, -0.15], [-0.62, -0.30], [-0.55, -0.48], [-0.40, -0.58], [0.00, -0.60], [0.40, -0.58], [0.55, -0.48], [0.62, -0.30], [0.60, -0.15], [0.55, 0.0] ], // Tail
+  [ [0.25, 0.0], [-0.25, 0.0], [-0.28, -0.10], [-0.28, -0.22], [-0.25, -0.28], [0.00, -0.30], [0.25, -0.28], [0.28, -0.22], [0.28, -0.10], [0.25, 0.0] ], // Rear bumper lip
+  [ [-0.30, 0.0], [0.30, 0.0], [0.32, -0.08], [0.30, -0.18], [0.20, -0.24], [0.0, -0.26], [-0.20, -0.24], [-0.30, -0.18], [-0.32, -0.08], [-0.30, 0.0] ], // Nose cone tip
+];
+
+// Interpolate sections using Catmull-Rom-like easing
+function interpolateSections(sections, steps) {
+  const out = [];
+  for(let i=0; i<steps; i++) {
+    const t = i/(steps-1);
+    const s = t*sections.length;
+    const a = Math.floor(s); 
+    const b = Math.min(a+1, sections.length-1);
+    const f = s - a;
+    const p = [];
+    const secA = sections[a], secB = sections[b];
+    for(let j=0; j<secA.length; j++) {
+      const x = secA[j][0]*(1-f) + secB[j][0]*f;
+      const y = secA[j][1]*(1-f) + secB[j][1]*f;
+      p.push([x,y]);
+    }
+    out.push(p);
+  }
+  return out;
+}
+
+const lofted = interpolateSections(sections, 60);
+const bodyGeo = loft(lofted[0], lofted.length, false);
+const body = new THREE.Mesh(bodyGeo, new THREE.MeshPhysicalMaterial({ 
+  color: 0xaa0033, metalness: 0.6, roughness: 0.1, clearcoat: 1.0, clearcoatRoughness: 0.05, 
+  emissive: 0x000000, side: THREE.DoubleSide }));
+body.castShadow = true; body.receiveShadow = true;
+CAR.add(body); bodyParts.push(body);
+
+// --- Aerodynamics & Details (Sub-meshes) ---
+function part(verts, mat) { const m = new THREE.Mesh(new THREE.BufferGeometry().fromVertices(verts), mat); m.castShadow=true; m.receiveShadow=true; return m; }
+function line(p1, p2) { return [[...p1],[...p2]];}
+
+// Side Skirt / Door Bottom
+const doorPath = lofted.slice(12, 45); // Longitudinal slice
+{
+  const v = [];
+  for(let i=0; i<doorPath.length-1; i++){
+    // Extrude a vertical-ish line on the side
+    for(let j=0; j<doorPath[0].length; j++){
+       const s0 = doorPath[i][j], s1 = doorPath[i+1][j];
+       const up0 = [s0[0], s0[1]-0.55, i*1], up1 = [s1[0], s1[1]-0.55, (i+1)*1];
+       v.push(...s0, ...s1, ...up0, ...up1);
+    }
+  }
+  // Simple strip geometry - flattened quad approach manually
+  const strip = new THREE.BufferGeometry();
+  const sv = new Float32Array(doorPath.length*2*3*2); // 2 points per step * 2 faces * 3
+  let k=0;
+  for(let i=0; i<doorPath.length-1; i++){
+    const a = doorPath[i][0], b = doorPath[i+1][0];
+    const ca = [a[0], a[1]-0.6, i], cb = [b[0], b[1]-0.6, i+1];
+    const da = [a[0], a[1]-0.75, i], db = [b[0], b[1]-0.75, i+1];
+    sv[k++]=ca[0];sv[k++]=ca[1];sv[k++]=ca[2];
+    sv[k++]=cb[0];sv[k++]=cb[1];sv[k++]=cb[2];
+    sv[k++]=da[0];sv[k++]=da[1];sv[k++]=da[2];
+    sv[k++]=db[0];sv[k++]=db[1];sv[k++]=db[2];
+    sv[k++]=ca[0];sv[k++]=ca[1];sv[k++]=ca[2];
+    sv[k++]=db[0];sv[k++]=db[1];sv[k++]=db[2];
+    sv[k++]=cb[0];sv[k++]=cb[1];sv[k++]=cb[2];
+  }
+  const m = new THREE.Mesh(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(sv,3)), clearcoatMat);
+  CAR.add(m);
+}
+
+// Side Intakes (behind door)
+{
+  const s0 = lofted[20], s1 = lofted[21];
+  // Intake shape
+  const intake = new THREE.Group();
+  const side = part([s0[6], s1[6], s0[5], s1[5], s0[4], s1[4]], carbonMat);
+  // Offset inwards
+  [side].forEach(m => m.position.z += 0.3);
+  intake.add(side);
+  // Mesh detail inside
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1,0.5), new THREE.MeshStandardMaterial({color:0x050505, side:THREE.DoubleSide}));
+  mesh.position.set(0,-0.25, 0.7); mesh.rotation.y = 0.2; mesh.rotation.x = -0.4;
+  intake.add(mesh);
+  body.add(intake);
+}
+
+// --- Lights ---
+function headLight(pos, rot, size) {
+  const geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
+  const m = new THREE.Mesh(geo, headlightMat);
+  m.position.set(...pos); m.rotation.set(...rot); m.castShadow=true;
+  const pl = new THREE.SpotLight(0xaaccff, 20);
+  pl.position.set(...pos); pl.target.position.set(pos[0], pos[1]-1, pos[2]-5);
+  pl.angle = 0.6; pl.penumbra = 0.3; pl.distance = 40; pl.castShadow = true;
+  m.userData = { light: pl, target: pl.target };
+  return { mesh: m, light: pl };
+}
+
+function tailLight(pos, rot, size) {
+  const geo = new THREE.BoxGeometry(size[0], size[1], size[2]);
+  const m = new THREE.Mesh(geo, tailMat);
+  m.position.set(...pos); m.rotation.set(...rot); m.castShadow=false;
+  return m;
+}
+
+const hl_L = headLight([-2.4, -0.1, 3.0], [0, 0, 0], [0.8, 0.3, 0.3]);
+const hl_R = headLight([2.4, -0.1, 3.0], [0, 0, 0], [0.8, 0.3, 0.3]);
+hl_L.mesh.rotation.set(0.2, 0, 0.3); hl_R.mesh.rotation.set(-0.2, 0, 0.3);
+body.add(hl_L.mesh, hl_L.light, hl_L.target, hl_R.mesh, hl_R.light, hl_R.target);
+const tl_L = tailLight([-2.6, -0.05, -4.6], [0,0,0], [0.9, 0.2, 0.2]);
+const tl_R = tailLight([2.6, -0.05, -4.6], [0,0,0], [0.9, 0.2, 0.2]);
+body.add(tl_L, tl_R);
+
+// --- Chassis / Interior / Suspension ---
+// Carbon Tub
+const tub = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.4, 5.4), carbonMat);
+tub.position.y = -0.15; tub.scale.set(1,0.4,1);
+groupChassis.add(tub);
+// Wheels
+const wheelGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.26, 40, 1);
+const tireGeo = new THREE.CylinderGeometry(0.365, 0.365, 0.28, 40, 1);
+const rimGeo = new THREE.CylinderGeometry(0.26, 0.26, 0.27, 10, 1);
+const spokeGeo = new THREE.BoxGeometry(0.3, 0.04, 0.26);
+const caliperGeo = new THREE.BoxGeometry(0.08, 0.1, 0.28);
+
+const wGeo = new THREE.Group();
+const tire = new THREE.Mesh(tireGeo, rubberMat); tire.rotation.x = Math.PI/2;
+const rim = new THREE.Mesh(rimGeo, chromeMat); rim.rotation.x = Math.PI/2;
+const spokes = new THREE.Group();
+for(let i=0; i<5; i++){
+  const s = new THREE.Mesh(spokeGeo, chromeMat);
+  s.rotation.x = Math.PI/2; s.position.y = Math.sin(i*2*Math.PI/5)*0.2;
+  spokes.add(s);
+}
+const caliper = new THREE.Mesh(caliperGeo, new THREE.MeshStandardMaterial({color:0xff0000, metalness:0.8}));
+caliper.rotation.x = Math.PI/2; caliper.position.y = 0.12; caliper.position.z = 0.15;
+const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.01, 12), chromeMat);
+disc.rotation.x = Math.PI/2;
+wGeo.add(tire, rim, spokes, disc, caliper);
+tire.castShadow=true;
+
+const makeWheels = (x) => {
+  const g = new THREE.Group();
+  const wl = wGeo.clone();
+  wl.scale.set(1,1,1);
+  wl.position.set(x, 0.34, 0.55); g.add(wl); // FL
+  const wr = wGeo.clone();
+  wr.position.set(x, 0.34, -0.55); g.add(wr); // FR
+  return g;
+};
+groupWheelL.add(makeWheels(1.1), makeWheels(-1.3));
+
+// --- Interior (visible through canopy) ---
+const seatGeo = new THREE.BoxGeometry(0.55, 0.4, 0.5);
+const headGeo = new THREE.CylinderGeometry(0.2, 0.3, 0.15, 8);
+const seat = (x, z) => {
+  const m = new THREE.Mesh(seatGeo, new THREE.MeshStandardMaterial({color:0x111, roughness:0.9}));
+  m.position.set(x, 0.28, z); m.rotation.x = -0.15; m.rotation.y = x>0 ? 0.2 : -0.2;
+  m.castShadow=true;
+  const h = new THREE.Mesh(headGeo, new THREE.MeshStandardMaterial({color:0x222}));
+  h.position.set(x, 0.45, z); h.rotation.x=-0.1; h.rotation.y = x>0 ? 0.2 : -0.2;
+  m.add(h);
+  return m;
+};
+groupInterior.add(seat(-0.3, 0.6), seat(0.3, 0.6));
+const whl = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 8, 20), chromeMat);
+whl.position.set(0, 0.62, -0.8); whl.rotation.y = Math.PI/2;
+const dash = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.4), new THREE.MeshStandardMaterial({color:0x050505}));
+dash.position.set(0, 0.55, -1.05);
+const dashLight = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.08), new THREE.MeshBasicMaterial({color:0x00f0ff}));
+dashLight.position.set(0, 0.58, -0.99);
+groupInterior.add(whl, dash, dashLight);
+
+// Doors (Separate group for opening)
+const doorGroup = new THREE.Group();
+const doorShape = new THREE.Shape();
+// Generate door mesh from front-ish sections
+const doorSections = interpolateSections(sections.slice(13, 40), 24);
+const dGeo = loft(doorSections[0], doorSections.length, false);
+const door = new THREE.Mesh(dGeo, clearcoatMat);
+door.castShadow = true; door.receiveShadow = true;
+door.scale.x *= 1.15; door.position.z = 0.22;
+// Door handle & mirror
+const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.15, 0.22), chromeMat);
+mirror.position.set(0, 0.15, 0.3);
+const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.1), new THREE.MeshStandardMaterial({color:0xdddddd}));
+handle.position.set(0, -0.2, 0.15);
+door.add(mirror, handle);
+doorGroup.add(door);
+doorGroup.position.set(0.72, 0.3, 0);
+doorGroup.rotation.y = -0.05; // slight camber
+CAR.add(doorGroup);
+const doorL = doorGroup.clone(); doorL.position.set(-0.72, 0.3, 0); doorGroup.add(doorL);
+
+// --- Active Wing ---
+const wing = new THREE.Group();
+const wingH = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.0, 1.6), chromeMat);
+wingH.position.y = 1.5;
+const wingP = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 1.6), new THREE.MeshStandardMaterial({color:0x111}));
+wingP.position.y = 2.25;
+const wingW = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.3), new THREE.MeshStandardMaterial({color:0xff0000}));
+wingW.position.set(0, 2.32, 0.7);
+wingP.add(wingW);
+// Pivot point for hinge
+const hinge = new THREE.Group();
+hinge.position.set(0, 2.1, -1.1);
+hinge.add(wingP);
+wing.add(wingH, hinge);
+wing.position.set(0, -0.5, 4.2); // behind cabin
+CAR.add(wing);
+
+scene.add(CAR);
+
+// --- X-Ray Exploded Group ---
+const expl = new THREE.Group();
+const tubX = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.5, 5.4), new THREE.MeshPhysicalMaterial({color:0x222, metalness:1, roughness:0.2, transparent:true, opacity:0.8}));
+const engP = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 0.9), new THREE.MeshStandardMaterial({color:0xffaa00})); // plenum
+const engB = new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.2,0.8,8), chromeMat);
+engB.rotation.x = Math.PI/2;
+const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.2,6), chromeMat); exhaust.rotation.x = Math.PI/2; exhaust.position.z = -0.5;
+const gas = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.3, 0.6), new THREE.MeshStandardMaterial({color:0x114411}));
+const bat = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.15, 0.4), new THREE.MeshStandardMaterial({color:0x333333}));
+const susL = (z) => {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5), chromeMat));
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.5), new THREE.MeshStandardMaterial({color:0xcc0000})).rotation(-0.5,0,0)); // spring
+  return g;
+};
+expl.add(tubX, engP, engB, exhaust, gas, bat, susL(0.5), susL(-0.5), susL(-2.8), susL(2.8));
+expl.position.set(0,0,0);
+expl.visible = false;
+
+function rebuildExploded() {
+  CAR.add(expl);
+}
+
+// ============================================================
+// SHOWROOM: ENVIRONMENT, LIGHTS, CAMERA
+// ============================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020202);
+scene.environment = envMap;
+
+// Floor (mirror + grid)
+const floorGeo = new THREE.PlaneGeometry(40, 40);
+const floorMat = new THREE.MeshPhysicalMaterial({ 
+  color: 0x050505, metalness: 0.9, roughness: 0.1, clearcoat: 1.0, transparent: true, opacity: 0.9 
+});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI/2; floor.position.y = -1.2; floor.receiveShadow = true;
+scene.add(floor);
+
+// Grid helper below
+const grid = new THREE.GridHelper(40, 40, 0x222222, 0x111111);
+grid.position.y = -1.19;
+scene.add(grid);
+
+// Studio Lights
+const spotA = new THREE.SpotLight(0xffffff, 100);
+spotA.position.set(10, 15, 10); spotA.angle = Math.PI/4; spotA.penumbra = 0.5;
+spotA.castShadow = true; spotA.shadow.mapSize.width = 2048; spotA.shadow.mapSize.height = 2048;
+scene.add(spotA);
+const spotB = new THREE.DirectionalLight(0xaaccff, 30);
+spotB.position.set(-10, 10, -10);
+scene.add(spotB);
+const rim = new THREE.PointLight(0x00f0ff, 20, 20);
+rim.position.set(0, 2, 8);
+scene.add(rim);
+
+// Camera
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.target.set(0, 0.2, 0);
+
+const CAMS = {
+  front34: {p:[2.5, 0.5, 6.5], t:[0,0.2,0]},
+  side: {p:[0, 0.4, 7.5], t:[0,0.2,0]},
+  rear34: {p:[-3.5, 0.4, 6.0], t:[0,0.2,0]},
+  top: {p:[0, 6, 0], t:[0,0,0]},
+  wheel: {p:[2, 0.6, 2], t:[1.1, 0.34, 0.55]},
+  interior: {p:[-0.1, 1.6, 0.4], t:[0, 0.6, 0.3]}
+};
+
+let targetCam = CAMS.front34;
+controls.maxDistance = 20;
+
+function setCam(preset) {
+  targetCam = CAMS[preset];
+  controls.target.set(...targetCam.t);
+  camera.position.set(...targetCam.p);
+  camera.lookAt(...targetCam.t);
+}
+setCam('front34');
+
+// ============================================================
+// DRIVING ENGINE
+// ============================================================
+const DRIVE = {
+  roadWidth: 12,
+  trackLen: 600,
+  carSpeed: 0,
+  angle: 0,
+  throttle: 0,
+  brake: 0,
+  handbrake: false,
+  gear: 0,
+  rpm: 800,
+  maxRpm: 9000,
+  revLimiter: 8800,
+  gears: [3.5, 2.4, 1.7, 1.2, 0.9, 0.7, 0.6], // 6 forward, 0 = N
+  final: 3.2,
+  engineRPM: 800,
+  track: [],
+  trackPoints: 400,
+  trackRadius: 250,
+  time: 0,
+  lapTime: 0,
+  bestLap: Infinity,
+  camera: 0, // chase/bonnet/cockpit
+  lapStart: 0,
+  started: false,
+  smoke: [],
+  skids: [],
+  gForce: 0,
+  tireTemp: 21
+};
+
+// Generate track curve
+function genTrack(n) {
+  const pts = [];
+  for(let i=0; i<n; i++){
+    const t = i/n * Math.PI*2;
+    // Figure 8 with banked corners
+    const r = DRIVE.trackRadius * (1 + 0.3 * Math.sin(t*3));
+    pts.push(new THREE.Vector3(Math.cos(t)*r, 0, Math.sin(t)*r));
+  }
+  return pts;
+}
+const trackCurve = new THREE.CatmullRomCurve3(genTrack(DRIVE.trackPoints));
+trackCurve.closed = true;
+
+// Procedural terrain
+const terrainSize = 400;
+const segs = 200;
+const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, segs, segs);
+const terrPos = terrainGeo.attributes.position;
+// Simplex-ish noise
+const noise = (x, z) => {
+  return Math.sin(x*0.05)*Math.cos(z*0.05)*2 
+       + Math.sin(x*0.02+z*0.03)*5
+       + (Math.random()-0.5)*0.1;
+};
+for(let i=0; i<terrPos.count; i++){
+  const x = terrPos.getX(i) - terrainSize/2 + 2;
+  const z = terrPos.getZ(i) - terrainSize/2 + 2;
+  // Make a road flat
+  let d = 1e5;
+  for(let p of trackCurve.getPoints(100)){
+    d = Math.min(d, p.distanceTo(new THREE.Vector3(x,0,z)));
+  }
+  if(d < 9) terrPos.setY(i, -1.5);
+  else terrPos.setY(i, noise(x,z));
+}
+terrainGeo.computeVertexNormals();
+const terrMat = new THREE.MeshStandardMaterial({ color: 0x1a331a, roughness: 0.9, flatShading: true });
+const terrain = new THREE.Mesh(terrainGeo, terrMat);
+terrain.rotation.x = -Math.PI/2;
+terrain.position.set(terrainSize/2-2, -1, terrainSize/2-2);
+scene.add(terrain);
+
+// Trees
+const treeGeo = new THREE.ConeGeometry(3, 10, 7);
+const treeTrunk = new THREE.CylinderGeometry(0.5, 0.8, 3, 6);
+const treeMat = new THREE.MeshStandardMaterial({color:0x0b1a0b});
+const trunkMat = new THREE.MeshStandardMaterial({color:0x332211});
+for(let i=0; i<120; i++){
+  const t = new THREE.Group();
+  t.add(new THREE.Mesh(treeGeo, treeMat));
+  t.add(new THREE.Mesh(treeTrunk, trunkMat));
+  const tPos = genTrack(DRIVE.trackPoints)[Math.floor(Math.random()*DRIVE.trackPoints)];
+  const dist = DRIVE.trackRadius*1.2;
+  // Place somewhat randomly along track
+  const idx = Math.floor(Math.random()*DRIVE.trackPoints);
+  const p = genTrack(DRIVE.trackPoints)[idx];
+  const side = Math.random()>0.5 ? 1 : -1;
+  const rad = Math.abs(p.x) + Math.abs(p.z);
+  // simple heuristic to place trees outside radius but within map
+  const angle = Math.atan2(p.z, p.x);
+  const tx = p.x + Math.cos(angle + Math.PI/2)* (dist*side + 15 + Math.random()*10);
+  const tz = p.z + Math.sin(angle + Math.PI/2)* (dist*side + 15 + Math.random()*10);
+  t.position.set(tx, 2, tz);
+  t.scale.setScalar(0.8 + Math.random()*0.6);
+  scene.add(t);
+}
+
+// Skid & Smoke systems
+const skidMat = new THREE.MeshStandardMaterial({color:0x111, roughness:1, transparent:true, opacity:0.8});
+const skidGeo = new THREE.PlaneGeometry(1.2, 6, 4, 2);
+const skidPool = [];
+const smokeGeo = new THREE.PlaneGeometry(2,2);
+const smokeMat = new THREE.MeshBasicMaterial({color:0x555555, transparent:true, opacity:0.4, side:THREE.DoubleSide});
+const smokePool = [];
+
+function manageSmokes(dt) {
+  for(let i=smokePool.length-1; i>=0; i--){
+    const m = smokePool[i]; m.scale.multiplyScalar(1.02); m.material.opacity -= dt*0.3;
+    if(m.material.opacity <= 0){ m.visible=false; smokePool.splice(i,1); }
+  }
+}
+
+function addSkid(pos, angle) {
+  const m = skidPool.length ? skidPool.pop() : new THREE.Mesh(skidGeo, skidMat);
+  m.position.copy(pos);
+  m.rotation.y = angle;
+  m.rotation.x = -Math.PI/2;
+  m.visible = true;
+  m.scale.set(1,1,0.5);
+  skidPool.push(m);
+}
+
+// Physics loop variables
+const v = new THREE.Vector3();
+const q = new THREE.Quaternion();
+let carVel = 0;
+let carAngle = 0;
+const physics = {
+  update(dt) {
+    if(!DRIVE.started) return;
+    // Engine physics
+    const gear = DRIVE.gears[DRIVE.gear];
+    let wheelRPM = DRIVE.rpm;
+    
+    // Throttle
+    if(STATE.keys['w'] || STATE.keys['ArrowUp']) DRIVE.throttle += dt;
+    if(STATE.keys['s'] || STATE.keys['ArrowDown']) DRIVE.brake += dt;
+    if(!STATE.keys['a'] && !STATE.keys['d']) {} // friction
+    DRIVE.throttle *= 0.98; DRIVE.brake *= 0.98;
+    if(Math.abs(DRIVE.throttle)<0.001) DRIVE.throttle=0;
+    if(Math.abs(DRIVE.brake)<0.001) DRIVE.brake=0;
+
+    // Force
+    let force = (DRIVE.throttle / gear) * 60 * dt;
+    if(gear === 0) force = 0; // Neutral
+    if(DRIVE.handbrake) force = 0;
+    
+    // Gravity on slope (approx)
+    force -= 2*dt;
+
+    carVel += force;
+    
+    // Drag & rolling resistance
+    carVel *= (1 - 0.005*dt - 0.02*dt);
+    
+    // Braking
+    carVel -= DRIVE.brake * 30 * dt;
+    if(Math.abs(carVel) < 0.1 && !DRIVE.throttle && DRIVE.gear===0) carVel = 0;
+
+    // Steering
+    const steerSpeed = Math.abs(carVel)*2.5;
+    if(STATE.keys['a'] || STATE.keys['ArrowLeft']) carAngle -= steerSpeed*dt;
+    if(STATE.keys['d'] || STATE.keys['ArrowRight']) carAngle += steerSpeed*dt;
+
+    // Auto gear change
+    if(DRIVE.gear === 0 && carVel > 2) { DRIVE.gear = 1; audio.gearShift(); }
+    if(STATE.keys['e']) { if(DRIVE.gear < DRIVE.gears.length-1) { DRIVE.gear++; audio.gearShift(); } }
+    if(STATE.keys['q']) { if(DRIVE.gear > 0) { DRIVE.gear--; audio.gearShift(); } }
+    if(carVel < 1 && DRIVE.gear===1 && !DRIVE.throttle) DRIVE.gear = 0;
+
+    // RPM calc
+    // wheel speed approx: vel (m/s) * 3.6 = km/h; wheel circumference ~2m -> rev/s
+    const wheelRevPerSec = Math.abs(carVel)/2.0;
+    DRIVE.rpm = wheelRevPerSec * 60 * gear * DRIVE.final;
+    if(DRIVE.rpm > DRIVE.revLimiter) { carVel *= 0.96; DRIVE.rpm = DRIVE.revLimiter; } // rev limiter
+    
+    // Handbrake drift physics (yaw vs velocity angle divergence)
+    if(DRIVE.handbrake && Math.abs(carVel) > 15) {
+      // drift factor
+      const drift = carVel * 0.005;
+      // carAngle is heading, we add a yaw based on drift
+      // handled in update transform
+    }
+    
+    // Update transform
+    v.set(Math.sin(carAngle), 0, Math.cos(carAngle)).multiplyScalar(carVel*dt);
+    const p = CAR.position.clone().add(v);
+    
+    // Height adjustment for terrain
+    const terrH = terrainGeo.attributes.position;
+    // Simple sampling via curve offset
+    let h = -1.5;
+    // Sample terrain height at p.x, p.z
+    // Inverted due to plane rotation
+    const ix = Math.round((p.x - (terrainSize/2 - 2)) * segs / terrainSize);
+    const iz = Math.round((p.z - (terrainSize/2 - 2)) * segs / terrainSize);
+    if(ix>=0 && ix<segS && iz>=0 && iz<segS) {
+        const idx = iz*(segs+1) + ix;
+        h = terrPos.getY(idx);
+    }
+    CAR.position.y = h + 0.3;
+    
+    // Wheel rotation visual
+    groupWheelL.children.forEach(g => g.children.forEach(w => w.rotation.x += carVel*dt*2));
+
+    // Physics -> Visuals
+    DRIVE.lapTime += dt;
+    DRIVE.time += dt;
+    
+    // Tire smoke
+    const driftForce = Math.abs(carAngle - Math.atan2(v.x, v.z));
+    if(DRIVE.handbrake && Math.abs(carVel)>10) {
+       // smoke
+       for(let i=0; i<2; i++){
+         const s = smokePool.length ? smokePool.pop() : new THREE.Mesh(smokeGeo, smokeMat);
+         const wIdx = i%2;
+         s.position.set(p.x, p.y+0.35, p.z + (wIdx?-0.7:0.7));
+         s.lookAt(CAR.position.clone().add(new THREE.Vector3(0,0,-1)));
+         scene.add(s); smokePool.push(s);
+       }
+    }
+    // Tire skids
+    if(Math.abs(driftForce) > 0.3 && Math.abs(carVel) > 10) {
+      addSkid(new THREE.Vector3(p.x, p.y+0.05, p.z), carAngle + Math.PI/2);
+    }
+    // Remove old skids
+    for(let i=skidPool.length-1; i>=0; i--){
+      const m = skidPool[i]; m.scale.y -= 0.002;
+      if(m.scale.y<=0.1) { m.visible=false; skidPool.splice(i,1); }
+    }
+    
+    // Audio
+    audio.update(DRIVE.rpm, gear, DRIVE.throttle, DRIVE.rpm > DRIVE.revLimiter);
+
+    // UI updates
+    const kmh = Math.abs(carVel*3.6);
+    document.getElementById('hud-speed').querySelector('span').innerText = Math.floor(kmh);
+    document.getElementById('hud-rpm').innerText = Math.floor(DRIVE.rpm);
+    document.getElementById('hud-rpm-bar').style.width = (DRIVE.rpm/DRIVE.maxRpm*100) + '%';
+    document.getElementById('hud-gear').innerText = DRIVE.gear === 0 ? 'N' : DRIVE.gear;
+    document.getElementById('hud-throttle').innerText = Math.floor(DRIVE.throttle*100) + '%';
+    document.getElementById('hud-throttle-bar').style.width = (DRIVE.throttle*100) + '%';
+    document.getElementById('hud-brake').innerText = Math.floor(DRIVE.brake*100) + '%';
+    document.getElementById('hud-lap').innerText = (DRIVE.lapTime%60).toFixed(3);
+    
+    // Camera follow
+    const camOffset = DRIVE.camera === 0 ? new THREE.Vector3(0, 1.8, -4) :
+                      DRIVE.camera === 1 ? new THREE.Vector3(0, 0.5, -1.5) :
+                      new THREE.Vector3(-0.2, 1.5, 0.4);
+    camOffset.applyAxisAngle(new THREE.Vector3(0,1,0), carAngle);
+    camera.position.lerp(p.clone().add(camOffset), 0.1);
+    camera.lookAt(p.clone().add(new THREE.Vector3(0, 0.6, 2)));
+  }
+};
+
+// ============================================================
+// CONFIGURATOR LOGIC
+// ============================================================
+const colors = [
+  {c:'0xaa0033', name:'Cardinal'}, {c:'0x111111', name:'Obsidian'},
+  {c:'0x0044aa', name:'Azure'}, {c:'0x112211', name:'Phantom'},
+  {c:'0xcc3300', name:'Burnt Orange'}, {c:'0x888888', name:'Graphite'},
+  {c:'0x00f0ff', name:'Cyber Blue'}
+];
+const colContainer = document.getElementById('colors');
+colors.forEach((col, i) => {
+  const d = document.createElement('div');
+  d.className = 'swatch'; d.style.backgroundColor = col.c; d.dataset.c = col.c;
+  if(i===0) d.classList.add('selected');
+  d.onclick = () => {
+    document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected'));
+    d.classList.add('selected');
+    CAR.material.color.setHex(parseInt(col.c));
+  };
+  colContainer.appendChild(d);
+});
+
+document.getElementById('mat-select').onchange = (e) => {
+  const val = e.target.value;
+  body.material.clearcoat = val==='metallic' ? 1.0 : 0;
+  body.material.roughness = val==='metallic' ? 0.1 : 0.9;
+  body.material.metalness = val==='metallic' ? 0.6 : 0.1;
+};
+
+document.getElementById('rim-select').onchange = (e) => {
+  const m = e.target.value==='silver' ? chromeMat : (e.target.value==='black'? carbonMat : goldMat);
+  CAR.children.forEach(g => g.children.forEach(w => {
+    if(w.children[1]) w.children[1].material = m; // rim
+    if(w.children[2]) w.children[2].children.forEach(s=>s.material=m);
+  }));
+};
+
+document.getElementById('caliper-select').onchange = (e) => {
+  const c = e.target.value;
+  const hex = {red:0xff0000, blue:0x0044ff, gold:0xffaa00, white:0xffffff}[c];
+  CAR.children.forEach(g => g.children.forEach(w => {
+    if(w.children[4]) w.children[4].material.color.setHex(hex);
+  }));
+};
+
+document.getElementById('lights-btn').onclick = (e) => {
+  hl_L.light.intensity = hl_L.light.intensity ? 0 : 20;
+  e.target.innerText = hl_L.light.intensity ? 'OFF' : 'ON';
+};
+
+document.getElementById('doors-btn').onclick = (e) => {
+  const isOpen = doorGroup.scale.x < 0.9;
+  const target = isOpen ? 0.9 : 0.45;
+  // animate
+  let t = 0;
+  const anim = () => {
+    t += 0.02;
+    const s = isOpen ? 1-t*1.5 : t*1.5; // lerp fake
+    doorGroup.scale.setScalar(0.9 + (target-0.9)*(isOpen?1-t:t));
+    if(t<1) requestAnimationFrame(anim);
+  };
+  anim();
+  e.target.innerText = isOpen ? 'CLOSE' : 'OPEN';
+};
+
+document.getElementById('xray-btn').onclick = (e) => {
+  const on = !CAR.userData.xray;
+  CAR.userData.xray = on;
+  if(on) { rebuildExploded(); CAR.visible = false; }
+  else { CAR.visible = true; expl.visible = false; expl.parent.remove(expl); }
+  e.target.innerText = on ? 'ON' : 'OFF';
+};
+
+document.querySelectorAll('.cam-btn').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.cam-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    setCam(b.dataset.cam);
+  };
+});
+
+// ============================================================
+// DRIVING MODE UI
+// ============================================================
+function startDrive() {
+  STATE.mode = 'DRIVE';
+  document.getElementById('mode-tag').innerText = 'TEST DRIVE';
+  document.getElementById('mode-tag').style.color = '#0f0';
+  // Move camera to track view roughly
+  setCam('front34'); // initial view
+  DRIVE.started = true;
+  audio.startEngine();
+  document.getElementById('hud-left').classList.add('active');
+  document.getElementById('hud-right').classList.add('active');
+  document.getElementById('hud-bottom').style.display = 'flex';
+}
+
+function showShowroom() {
+  STATE.mode = 'SHOWROOM';
+  document.getElementById('mode-tag').innerText = 'SHOWROOM';
+  document.getElementById('mode-tag').style.color = 'var(--accent)';
+  DRIVE.started = false;
+  CAR.position.set(0,0,0); CAR.rotation.set(0,0,0);
+  document.getElementById('hud-left').classList.remove('active');
+  document.getElementById('hud-right').classList.remove('active');
+  document.getElementById('hud-bottom').style.display = 'none';
+  setCam('front34');
+  carVel = 0;
+}
+
+document.getElementById('wheel-l').onclick = () => {
+  doorL.rotation.z = doorL.rotation.z ? 0 : -Math.PI/2.2;
+  doorL.rotation.y = doorL.rotation.z ? 0.4 : -0.05;
+};
+document.getElementById('wheel-r').onclick = () => {
+  doorGroup.children[0].rotation.z = doorGroup.children[0].rotation.z ? 0 : Math.PI/2.2;
+  doorGroup.children[0].rotation.y = doorGroup.children[0].rotation.z ? -0.4 : -0.05;
+};
+
+// ============================================================
+// INPUT HANDLING
+// ============================================================
+window.addEventListener('keydown', e => {
+  STATE.keys[e.key.toLowerCase()] = true;
+  STATE.keys[e.key] = true;
+  if(e.code === 'Space') DRIVE.handbrake = true;
+  if(e.key.toLowerCase() === 'c') { DRIVE.camera = (DRIVE.camera+1)%3; }
+  if(e.key.toLowerCase() === 'r') { 
+    CAR.position.set(0,0.3,0); carVel=0; carAngle=0; DRIVE.gear=0; DRIVE.rpm=800;
+  }
+  // HUD keys
+  document.getElementById('k-'+e.key.toLowerCase()).classList.add('active');
+});
+window.addEventListener('keyup', e => {
+  STATE.keys[e.key.toLowerCase()] = false;
+  STATE.keys[e.key] = false;
+  if(e.code === 'Space') DRIVE.handbrake = false;
+  document.getElementById('k-'+e.key.toLowerCase()).classList.remove('active');
+});
+
+document.getElementById('toggle-ui').onclick = () => {
+  const on = UI.panel.classList.toggle('open');
+  const ui = document.getElementById('ui-layer');
+  ui.style.opacity = on ? '1' : '0';
+};
+
+// ============================================================
+// LOOP
+// ============================================================
+let time = 0;
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  time += dt;
+
+  if(STATE.mode === 'SHOWROOM') {
+    controls.update();
+    // Slow turntable
+    CAR.rotation.y = Math.sin(time*0.1)*0.4;
+  } else {
+    physics.update(dt);
+    manageSmokes(dt);
+  }
+  
+  composer.render();
+}
+
+// ============================================================
+// BOOTSTRAP
+// ============================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Simulate loading
+const loadMsgs = ["BUILDING GEOMETRY", "GENERATING ENVIRONMENT", "CALIBRATING ENGINE"];
+let step = 0;
+const interval = setInterval(() => {
+  step++;
+  const p = Math.min(step/40*100, 100);
+  UI.loadBar.style.width = p + '%';
+  if(step === 20) UI.loadMsg.innerText = loadMsgs[1];
+  if(step === 40) {
+    clearInterval(interval);
+    UI.loadBar.style.width = '100%';
+    setTimeout(() => {
+      document.getElementById('loader').style.opacity = 0;
+      setTimeout(() => {
+        document.getElementById('loader').style.display = 'none';
+        UI.panel.classList.add('open');
+        UI.hudLeft.classList.add('active');
+        UI.hudRight.classList.add('active');
+        document.getElementById('ui-layer').style.opacity = 1;
+      }, 500);
+    }, 200);
+  }
+}, 50);
+
+// Audio init on first interaction
+document.body.addEventListener('click', () => {
+  if(audio.ctx.state === 'suspended') audio.ctx.resume();
+}, {once:true});
+
+// Check WebGL
+if (!window.WebGLRenderingContext || !renderer.capabilities.webgl2) {
+  document.getElementById('error-screen').style.display = 'flex';
+  canvas.style.display = 'none';
+}
+
+// Audio singleton
+const audio = new AudioEngine();
+
+// Drive button
+const driveBtn = document.createElement('button');
+driveBtn.innerText = 'TEST DRIVE';
+driveBtn.className = 'action';
+UI.panel.appendChild(driveBtn);
+driveBtn.onclick = startDrive;
+
+const showroomBtn = document.createElement('button');
+showroomBtn.innerText = 'SHOWROOM';
+showroomBtn.className = 'action';
+showroomBtn.style.marginTop = '5px';
+UI.panel.appendChild(showroomBtn);
+showroomBtn.onclick = showShowroom;
+
+animate();
+
+</script>
+</body>
+</html>
