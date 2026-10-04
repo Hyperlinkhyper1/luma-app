@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MSC VIRTUOSA — Interactive Ocean Deck</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03080d;color:#fff;font-family:Arial,Helvetica,sans-serif}canvas{display:block}#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 8px #000}#brand{position:absolute;left:24px;top:20px;letter-spacing:4px;font-size:15px;font-weight:bold}#brand small{display:block;font-size:9px;letter-spacing:2px;color:#d7dde0;margin-top:7px}.weather{position:absolute;right:22px;top:18px;text-align:right;font-size:11px;line-height:1.7;letter-spacing:1px;background:linear-gradient(90deg,transparent,rgba(0,0,0,.3));padding:8px 12px;border-radius:4px}.weather b{color:#f3c85b}.crosshair{position:absolute;left:50%;top:50%;width:5px;height:5px;border:1px solid rgba(255,255,255,.65);border-radius:50%;transform:translate(-50%,-50%)}#prompt{position:absolute;left:50%;bottom:32px;transform:translateX(-50%);font-size:11px;letter-spacing:1.5px;background:rgba(0,10,18,.72);border:1px solid rgba(255,255,255,.25);padding:12px 18px;border-radius:3px;white-space:nowrap}#compass{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:260px;height:3px;background:linear-gradient(90deg,transparent,#fff 20%,#fff 80%,transparent);opacity:.45}#mode{position:absolute;left:20px;bottom:20px;pointer-events:auto;background:rgba(0,10,18,.78);border:1px solid rgba(255,255,255,.2);padding:10px 14px;font-size:10px;letter-spacing:1px}button{cursor:pointer;color:white;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.28);padding:8px 11px;margin:2px;font-size:10px;letter-spacing:1px}button:hover{background:#b51e35}#tip{position:absolute;right:20px;bottom:20px;max-width:235px;font-size:10px;line-height:1.6;background:rgba(0,10,18,.7);padding:11px 13px;border-left:2px solid #d51e38}#loading{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#02070d;letter-spacing:5px;font-size:16px}#loading div{margin-top:18px;width:210px;height:2px;background:#333;overflow:hidden}#loading i{display:block;height:100%;width:40%;background:#d31f3b;animation:load 1.2s infinite}@keyframes load{from{transform:translateX(-100%)}to{transform:translateX(350%)}}.hidden{display:none!important}#lockNote{position:absolute;left:50%;top:58%;transform:translateX(-50%);font-size:12px;letter-spacing:2px;background:rgba(0,0,0,.65);padding:15px 20px;border:1px solid #777}@media(max-width:600px){#brand{left:12px;top:12px;font-size:12px}#tip{display:none}.weather{right:8px;top:8px}#mode{left:8px;bottom:10px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="loading">MSC VIRTUOSA<div><i></i></div></div>
+<div id="hud">
+ <div id="brand">MSC VIRTUOSA<small>SHIP WALK · DECK 07 · OCEAN VIEW</small></div>
+ <div class="weather" id="weatherPanel"><b id="clock">12:00</b> · <span id="weatherText">FAIR SKIES</span><br><span id="posText">DECK 07 / PROMENADE</span></div>
+ <div class="crosshair"></div>
+ <div id="prompt">CLICK VIEW TO WALK · DRAG TO LOOK · WASD TO MOVE</div>
+ <div id="compass"></div>
+ <div id="mode">VIEW MODE
+  <div><button id="walkBtn">WALK DECK</button><button id="orbitBtn">ORBIT SHIP</button><button id="tourBtn">AUTO TOUR</button></div>
+ </div>
+ <div id="tip">This ship and every object around it is generated in real time. Walk the open promenade beside the orange lifeboats, or orbit the complete vessel.</div>
+ <div id="lockNote" class="hidden">CLICK TO CAPTURE MOUSE</div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x9eb2bd,0.0018);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.08,3000);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1;
+document.body.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,12,0); controls.enableDamping=true; controls.minDistance=35; controls.maxDistance=480;
+let walkMode=false, autoTour=false, yaw=0,pitch=0, clockTime=12.5, last=performance.now(), rainAmount=0;
+const keys={}, ship=new THREE.Group(); scene.add(ship);
+const mats={};
+function mat(color,rough=.6,metal=.05,emissive=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive:emissive||0x000000,emissiveIntensity:emissive?1.7:0});}
+mats.white=mat(0xf3f0e9,.42,.08); mats.shadow=mat(0xc7c9c8,.5,.12); mats.dark=mat(0x20272b,.35,.3);
+mats.red=mat(0x9d1832,.38,.12); mats.gold=mat(0xc5a66a,.28,.7); mats.glass=mat(0x102c3a,.13,.72);
+mats.orange=mat(0xe76328,.48,.08); mats.rubber=mat(0x111516,.8); mats.blue=mat(0x112e40,.2,.35);
+function box(w,h,d,m,x=0,y=0,z=0,parent=ship){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function cyl(r1,r2,h,m,x=0,y=0,z=0,parent=ship,seg=24){let o=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,seg),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function sphere(r,m,x,y,z,parent=ship,sx=1,sy=1,sz=1){let o=new THREE.Mesh(new THREE.SphereGeometry(r,24,16),m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;parent.add(o);return o}
+function line3(points,color=0xffffff,parent=ship,opacity=1){let g=new THREE.BufferGeometry().setFromPoints(points.map(p=>new THREE.Vector3(...p)));let m=new THREE.LineBasicMaterial({color,transparent:opacity<1,opacity});let l=new THREE.Line(g,m);parent.add(l);return l}
+function rail(x1,z1,x2,z2,y,spacing=3){for(let z=z1;z<=z2;z+=spacing) {cyl(.045,.045,1.05,mats.white,x1,y+.525,z);} let a=new THREE.Vector3(x1,y+1.05,z1),b=new THREE.Vector3(x2,y+1.05,z2);line3([a.toArray(),b.toArray()],0xf0f0e9,ship);line3([[x1,y+.55,z1],[x2,y+.55,z2]],0xf0f0e9,ship);}
+
+// Hull profile: stern high and rounded, bow long and tapered.
+const hullShape=new THREE.Shape();
+hullShape.moveTo(-65,0); hullShape.bezierCurveTo(-61,7,-51,10,-38,11); hullShape.lineTo(31,11); hullShape.bezierCurveTo(48,11,59,7,68,1); hullShape.bezierCurveTo(70,0,70,-7,65,-9); hullShape.lineTo(-61,-9); hullShape.bezierCurveTo(-66,-9,-68,-5,-65,0);
+const hullGeo=new THREE.ExtrudeGeometry(hullShape,{depth:18,bevelEnabled:true,bevelSize:1.2,bevelThickness:1.1,bevelSegments:3,steps:1}); hullGeo.rotateX(-Math.PI/2);
+let hull=new THREE.Mesh(hullGeo,mats.red); hull.position.y=1; hull.castShadow=true; ship.add(hull);
+const blackHull=hullShape.clone();
+box(130,3.2,18.7,mats.dark,0,-1,0);
+box(128,1.0,19.1,mats.gold,0,.2,0);
+for(let z=-62;z<64;z+=5){let bulge=1+Math.max(0,1-Math.abs(z+4)/70)*.08;let p=box(.9,1.1,2.2,mats.dark,z*1.0,-.8,9.3*bulge);p.rotation.y=.04;}
+
+// Main stepped superstructure, deliberately asymmetric and curving.
+function deckLevel(y,w,l,z=0,h=3.0){
+ box(w,h,l,mats.white,0,y+h/2,z);
+ box(w+.7,.28,l+.6,mats.shadow,0,y+h+.1,z);
+}
+deckLevel(7,43,94,0,3.3); deckLevel(10.3,48,101,1,3.2); deckLevel(13.5,54,106,2,3.25); deckLevel(16.75,59,105,3,3.2);
+deckLevel(19.95,61,92,4,3.2); deckLevel(23.15,55,73,6,3.1);
+box(32,8,32,mats.white,-4,29.4,-24);
+box(35,1.2,36,mats.shadow,-4,33.5,-24);
+box(26,4,25,mats.glass,-4,30.1,-24);
+box(27,1.0,26,mats.gold,-4,32.2,-24);
+box(20,5,16,mats.white,3,35.5,-21);
+box(21,1.1,17,mats.shadow,3,38.2,-21);
+box(17,2.2,13,mats.glass,3,36.1,-21);
+
+// Curved balcony bands.
+for(let y of [8,11.3,14.5,17.75,20.9]){
+ for(let side of [-1,1]){
+  for(let z=-47;z<=46;z+=3){
+   const shrink=1-Math.pow(Math.abs(z)/58,1.7)*.15;
+   box(1.7,1.9,2.5,mats.white,side*(30.5*shrink+2),y+1.0,z);
+   box(1.72,.18,2.52,mats.gold,side*(30.5*shrink+2),y+.3,z);
+  }
+ }
+}
+for(let z=-43;z<48;z+=2.4) box(38,1.0,1.8,mats.white,0,19.9,z);
+for(let side of [-1,1]) rail(side*32,-48,side*32,49,7,3.2);
+rail(28,-53,28,53,13.4,3);
+rail(32,-48,32,49,16.6,3);
+rail(29,-43,29,47,19.9,3);
+
+// Windows and portholes: deterministic pseudo-random.
+let seed=71;function rnd(){seed=(seed*16807)%2147483647;return(seed-1)/2147483646}
+for(let y of [8.3,11.6,14.8,18,21.1]) for(let side of [-1,1]) for(let z=-47;z<=47;z+=3.15){
+ let k=1-Math.pow(Math.abs(z)/52,1.8)*.12; let x=side*(29.9*k+2);
+ let w=box(.06,.62,1.5,mats.glass,x,y+1.35,z); if(side>0)w.rotation.y=0;
+}
+for(let side of [-1,1]) for(let z=-57;z<58;z+=3.1) {cyl(.24,.24,.12,mats.gold,side*17,-.1,z,ship,12).rotation.z=Math.PI/2;}
+
+// Bridge wings and glass-front bridge.
+box(44,4.1,10,mats.white,0,30.2,38);
+box(44.5,.35,10.6,mats.shadow,0,32.35,38);
+box(43,2.1,8,mats.glass,0,30.5,40.5);
+for(let x=-20;x<=20;x+=2.5) box(.12,2.15,.15,mats.gold,x,30.5,44.55);
+box(2,6,14,mats.white,0,33,-.5);
+cyl(3.3,3.3,3,mats.white,0,36,2,ship,32);
+cyl(3.1,3.1,1.2,mats.glass,0,37,2,ship,32);
+cyl(2.8,2.8,.2,mats.gold,0,38,2,ship,32);
+
+// Funnel, MSC-inspired but fully generated.
+let funnel=new THREE.Group(); funnel.position.set(0,38,-26); ship.add(funnel);
+let fshape=new THREE.Shape();fshape.moveTo(-8,-7);fshape.lineTo(8,-7);fshape.quadraticCurveTo(7,7,5,9);fshape.lineTo(-5,9);fshape.quadraticCurveTo(-7,6,-8,-7);
+let fg=new THREE.ExtrudeGeometry(fshape,{depth:10,bevelEnabled:true,bevelSize:.6,bevelThickness:.6,bevelSegments:3});fg.translate(0,0,-5);
+let fm=new THREE.Mesh(fg,mats.white);fm.rotation.y=Math.PI/2;funnel.add(fm);
+box(10.5,2,10.6,mats.red,0,5,0,funnel);
+box(10.8,.35,10.8,mats.gold,0,6.1,0,funnel);
+for(let x of [-2.7,0,2.7])cyl(.55,.55,4,mats.dark,x,10.3,0,funnel,16);
+box(1,10,1,mats.white,9,5,3,funnel);
+box(1,10,1,mats.white,-9,5,3,funnel);
+sphere(.3,mats.red,10,10,3,funnel);sphere(.3,mats.red,-10,10,3,funnel);
+for(let y of [41,44,47]){
+ for(let side of [-1,1])for(let z=-32;z<20;z+=2.2){
+  box(1.25,1.0,1.65,mats.white,side*(13.5-Math.max(0,-z-15)*.1),y,z);
+ }
+}
+
+// Lifeboats: Deck 7, along each side, orange enclosed capsules with davits.
+for(let side of [-1,1]) for(let z of [-32,-19,-6,7,20,33]){
+ let g=new THREE.Group();g.position.set(side*26.2,6.25,z+4.4);g.rotation.y=side<0?Math.PI:0;ship.add(g);
+ let lm=mat(0xe3652e,.35,.12); let boat=new THREE.Mesh(new THREE.CapsuleGeometry(2.0,6.3,8,16),lm);boat.rotation.z=Math.PI/2;boat.scale.set(1,1,.72);boat.castShadow=true;g.add(boat);
+ box(5.5,.25,3.0,mats.shadow,0,1.4,0,g);
+ for(let x of [-2.5,2.5])for(let zz of [-1,1]){let w=box(.12,1.0,1.1,mats.glass,x,1.0,zz,g);w.rotation.z=.25}
+ box(.6,1.8,1.8,mats.white,3.2,1.5,0,g);
+ // davits
+ for(let x of [-3.5,3.5]){
+  cyl(.18,.18,5.4,mats.shadow,x,3.0,0,g,12);
+  cyl(.18,.18,4,mats.shadow,x,5.5,-2,g,12).rotation.x=Math.PI/2;
+  line3([[x,5.5,-4],[x,1.4,-2.2]],0x777777,g);
+ }
+}
+// Actual Deck 7 promenade surface and safety rails.
+box(20,.18,106,mats.shadow,0,7.18,1);
+for(let side of [-1,1]){
+ box(.15,.025,105,mats.gold,side*9.4,7.29,1);
+ rail(side*9.7,-51,side*9.7,54,7.25,2.6);
+}
+for(let z=-49;z<53;z+=6){box(.12,.015,1.1,mats.white,0,7.3,z);}
+
+// Mast, radar, satellite domes, antennae.
+cyl(.12,.2,18,mats.white,0,43,12,ship,12);
+for(let y=47;y<52;y+=1.2)box(5,.12,.14,mats.white,0,y,12);
+for(let a of [0,Math.PI/2])box(7,.12,.14,mats.white,0,49.5,12).rotation.y=a;
+sphere(2.6,mats.white,-10,40.5,1,ship,1,.4,1);sphere(1.4,mats.white,10,39.2,-1,ship,1,.35,1);
+cyl(.12,.12,5,mats.white,12,41,8,ship,10);
+box(3,.12,.3,mats.white,12,43.3,8);
+
+// Name and geometric identity.
+function textLabel(text,x,y,z,scale,color=0x111111){
+ let c=document.createElement('canvas');c.width=1024;c.height=128;let ctx=c.getContext('2d');ctx.font='bold 72px Arial';ctx.textAlign='center';ctx.fillStyle='#'+color.toString(16).padStart(6,'0');ctx.fillText(text,512,88);
+ let t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;let m=new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false});let p=new THREE.Mesh(new THREE.PlaneGeometry(scale,scale/8),m);p.position.set(x,y,z);ship.add(p);return p;
+}
+textLabel('VIRTUOSA',0,14,53.4,14);
+textLabel('MSC',-18,4.2,9.7,8,0xffffff).rotation.y=-Math.PI/2;
+textLabel('MSC',18,4.2,-9.7,8,0xffffff).rotation.y=Math.PI/2;
+
+// Sea shader: layered directional waves with sun glints.
+const seaUniforms={uTime:{value:0},uDeep:{value:new THREE.Color(0x062b3a)},uShallow:{value:new THREE.Color(0x287383)},uSky:{value:new THREE.Color(0x9fc4d9)},uNight:{value:0},uSunDir:{value:new THREE.Vector3(.4,.7,-.3)}};
+const seaMat=new THREE.ShaderMaterial({uniforms:seaUniforms,side:THREE.DoubleSide,vertexShader:`uniform float uTime; varying vec3 vP; varying float vH; void main(){vec3 p=position; float h=sin(p.x*.035+uTime*.8)*1.15+sin(p.y*.052-uTime*.65)*.7+sin((p.x+p.y)*.018+uTime*.45)*1.2; p.z+=h;vH=h;vP=p;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,fragmentShader:`uniform float uTime,uNight;uniform vec3 uDeep,uShallow,uSky;varying vec3 vP;varying float vH;void main(){float f=pow(max(0.,sin(vP.x*.31+uTime*1.8)*sin(vP.y*.27-uTime*1.3)),12.);float foam=smoothstep(1.6,2.8,vH)*.08;vec3 c=mix(uDeep,uShallow,.42+vH*.13);c=mix(c,uSky,night*uNight);c+=f*(.13+.25*uNight);c+=foam;float d=length(vP);c=mix(c,uSky,1.-exp(-d*.00035));gl_FragColor=vec4(c,1.);}`});
+let seaGeo=new THREE.PlaneGeometry(1800,1800,180,180);seaGeo.rotateX(-Math.PI/2);let sea=new THREE.Mesh(seaGeo,seaMat);sea.position.y=-2.8;scene.add(sea);
+
+// Sky dome and celestial disc.
+const skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,uniforms:{top:{value:new THREE.Color(0x244f7b)},bottom:{value:new THREE.Color(0xe6d9c5)},night:{value:0}},vertexShader:'varying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',fragmentShader:'uniform vec3 top,bottom;uniform float night;varying vec3 v;void main(){float h=normalize(v).y;vec3 c=mix(bottom,top,pow(max(h,0.),.55));c=mix(c,vec3(.006,.018,.055),night);c+=vec3(.012,.018,.025)*sin(v.x*.08+v.y*.1)*sin(v.z*.07);gl_FragColor=vec4(c,1.);}'});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(900,32,20),skyMat));
+const sun=sphere(15,new THREE.MeshBasicMaterial({color:0xffe2a0}),-260,180,-500,scene,1,1,1);
+const moon=sphere(10,new THREE.MeshBasicMaterial({color:0xd7e7ef}),260,220,-550,scene,1,1,1);
+
+// Lighting.
+const hemi=new THREE.HemisphereLight(0xcce8ff,0x30454a,2.1);scene.add(hemi);
+const sunLight=new THREE.DirectionalLight(0xffd9a0,2.4);sunLight.position.set(-120,180,-100);sunLight.castShadow=true;sunLight.shadow.mapSize.set(2048,2048);sunLight.shadow.camera.left=-100;sunLight.shadow.camera.right=100;sunLight.shadow.camera.top=100;sunLight.shadow.camera.bottom=-100;sunLight.shadow.camera.far=450;sunLight.shadow.bias=-.0002;scene.add(sunLight);
+const fill=new THREE.DirectionalLight(0x8fc8ff,.55);fill.position.set(80,60,100);scene.add(fill);
+
+// Procedural distant islands and gulls.
+for(let i=0;i<9;i++){let a=i/9*Math.PI*2,dist=280+rnd()*170;let island=sphere(25+rnd()*35,mat(0x35544b,.9),Math.cos(a)*dist,-5,Math.sin(a)*dist,scene,2+rnd(),.25+rnd()*.2,1.5+rnd());}
+const gulls=[];for(let i=0;i<14;i++){let g=new THREE.Group();scene.add(g);let m=new THREE.MeshBasicMaterial({color:0xe4e9e8,side:THREE.DoubleSide});let l=new THREE.Mesh(new THREE.PlaneGeometry(2.2,.35),m);let r=l.clone();r.position.x=-1.1;l.position.x=1.1;g.add(l,r);g.userData={r,phase:rnd()*7,speed:.1+rnd()*.12};gulls.push(g);}
+
+// Rain/spray particles, initially invisible.
+const count=5000, pos=new Float32Array(count*3);for(let i=0;i<count;i++){pos[i*3]=(rnd()-.5)*180;pos[i*3+1]=rnd()*70;pos[i*3+2]=(rnd()-.5)*180;}
+const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xbdd7e2,size:.13,transparent:true,opacity:0,depthWrite:false}));scene.add(rain);
+
+// Interior deck lamps, active at night.
+const lampMat=mat(0x111820,.3,.5,0x000000), lampGlows=[];for(let side of [-1,1])for(let z of [-38,-20,0,20,38]){sphere(.32,lampMat,side*9.1,9,z);let light=new THREE.PointLight(0xffbc72,0,8,2);light.position.set(side*8,9,z);ship.add(light);lampGlows.push(light);}
+
+function setWalk(v){
+ walkMode=v; controls.enabled=!v; document.exitPointerLock?.();
+ prompt.textContent=v?'WASD / ARROWS TO WALK · MOUSE TO LOOK · ESC TO RELEASE':'CLICK VIEW TO WALK · DRAG TO LOOK · WASD TO MOVE';
+ if(v){yaw=0;pitch=-.1;camera.position.set(0,8.45,38);camera.rotation.order='YXZ';}
+ else{camera.position.set(150,95,165);controls.target.set(0,15,0);controls.update();}
+}
+walkBtn.onclick=()=>setWalk(true);orbitBtn.onclick=()=>setWalk(false);
+tourBtn.onclick=()=>{setWalk(false);autoTour=!autoTour;prompt.textContent=autoTour?'AUTOMATIC EXTERIOR TOUR · CLICK TO INTERACT':'CLICK VIEW TO WALK · DRAG TO LOOK';}
+renderer.domElement.addEventListener('click',()=>{if(walkMode){renderer.domElement.requestPointerLock?.();}else{setWalk(true);}});
+document.addEventListener('pointerlockchange',()=>{lockNote.classList.toggle('hidden',document.pointerLockElement!==renderer.domElement)});
+document.addEventListener('mousemove',e=>{if(walkMode&&document.pointerLockElement){yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=Math.max(-1.35,Math.min(1.35,pitch));camera.rotation.set(pitch,yaw,0)}});
+addEventListener('keydown',e=>{keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+addEventListener('wheel',e=>{if(!walkMode)return;clockTime+=e.deltaY*.00018;},{passive:true});
+
+camera.position.set(150,95,165);controls.update();
+let t=0;
+function animate(now){
+ requestAnimationFrame(animate);let dt=Math.min(.04,(now-last)/1000);last=now;t+=dt;seaUniforms.uTime.value=t;
+ if(!walkMode){
+  if(autoTour){let a=t*.055;camera.position.set(Math.cos(a)*175,78+Math.sin(a*.7)*18,Math.sin(a)*175);controls.target.set(0,18,0)}
+  controls.update();
+ } else {
+  camera.rotation.set(pitch,yaw,0);let f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),s=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  let move=new THREE.Vector3(-Math.sin(yaw)*f+Math.cos(yaw)*s,0,-Math.cos(yaw)*f-Math.sin(yaw)*s).multiplyScalar(dt*(keys.ShiftLeft?16:8));camera.position.add(move);camera.position.x=Math.max(-8.5,Math.min(8.5,camera.position.x));camera.position.z=Math.max(-48,Math.min(50,camera.position.z));camera.position.y=8.45;
+  posText.textContent=`DECK 07 / ${Math.abs(camera.position.z)<20?'AFT PROMENADE':camera.position.z>20?'FORE PROMENADE':'MIDSHIP PROMENADE'}`;
+ }
+ // Full day/night cycle, with user wheel offset.
+ clockTime+=dt*.018;let day=((clockTime%24)+24)%24;let solar=(day-6)/12*Math.PI;let daylight=THREE.MathUtils.clamp(Math.sin(Math.max(.01,solar)),0,1);let night=1-daylight*.96;seaUniforms.uNight.value=night;skyMat.uniforms.night.value=night;
+ sunLight.position.set(Math.cos(solar)*180,Math.max(10,Math.sin(solar)*180),-120);sunLight.intensity=.12+daylight*2.5;hemi.intensity=.25+daylight*1.9;sun.position.copy(sunLight.position).multiplyScalar(3);sun.visible=daylight>.02;moon.visible=daylight<.55;fill.intensity=.18+daylight*.42;
+ lampGlows.forEach(l=>l.intensity=night*2.6);lampMat.emissive.setHex(0xffa84d);lampMat.emissiveIntensity=night*2;
+ let weather=Math.sin(t*.07)*.5+.5;rainAmount=Math.max(0,(weather-.58)*2.5);rain.material.opacity=rainAmount*.55;rain.visible=rainAmount>.01;scene.fog.density=.0015+rainAmount*.004;weatherText.textContent=rainAmount>.18?'RAIN / OCEAN SPRAY':daylight>.45?'FAIR SKIES':'CLEAR NIGHT';
+ let h=Math.floor(day),m=Math.floor((day-h)*60);clock.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+ if(rain.visible){for(let i=0;i<count;i++){pos[i*3+1]-=dt*38;pos[i*3]+=dt*8;if(pos[i*3+1]<-2){pos[i*3+1]=65;pos[i*3]=(rnd()-.5)*180;pos[i*3+2]=(rnd()-.5)*180}}rainGeo.attributes.position.needsUpdate=true}
+ for(let g of gulls){let p=t*g.userData.speed+g.userData.phase;g.position.set(Math.cos(p)*90,35+Math.sin(p*3)*6,Math.sin(p)*75);g.rotation.y=-p;g.userData.r.rotation.z=Math.sin(t*5+p)*.45;g.userData.r.position.y=Math.sin(t*4+p)*.15}
+ renderer.render(scene,camera);
+}
+requestAnimationFrame(animate);
+setTimeout(()=>loading.classList.add('hidden'),700);
+</script>
+</body>
+</html>
