@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>A Timeline of the World — An Animated History</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050914;color:#f6f4e9;font-family:Georgia,"Times New Roman",serif}#app{position:relative;width:100%;height:100%;min-height:420px;background:#07101e}svg{display:block;width:100%;height:100%}.hud{position:absolute;z-index:3;pointer-events:none}.brand{left:clamp(18px,3vw,48px);top:clamp(16px,3vh,34px);letter-spacing:.18em;text-transform:uppercase;font:11px Arial,sans-serif;opacity:.76}.narrative{left:clamp(18px,5vw,76px);bottom:clamp(150px,22vh,240px);width:min(590px,57vw);text-shadow:0 2px 14px #000,0 0 4px #000}.chapterNo{font:11px Arial,sans-serif;letter-spacing:.24em;color:#d8ba73;margin-bottom:10px}.narrative h1{font-size:clamp(27px,4.2vw,58px);line-height:.98;margin:0 0 13px;font-weight:normal;letter-spacing:-.035em}.narrative p{font:clamp(14px,1.35vw,18px)/1.45 Arial,sans-serif;margin:0;max-width:570px;opacity:.9}.controls{position:absolute;z-index:5;left:0;right:0;bottom:0;height:clamp(122px,20vh,165px);padding:12px clamp(14px,3vw,42px) 14px;background:linear-gradient(transparent,rgba(3,8,18,.9) 32%,#050b16 68%);font-family:Arial,sans-serif}.timeTop{display:flex;align-items:center;justify-content:space-between;height:26px;color:#aebbd0;font-size:11px;letter-spacing:.06em}.readout{color:#f0d995;font-weight:bold;letter-spacing:.08em}.buttons{display:flex;gap:7px;align-items:center}.buttons button,.speed button{border:1px solid #42506a;background:#101c30;color:#e9e8de;border-radius:3px;padding:6px 10px;font:11px Arial,sans-serif;cursor:pointer}.buttons button:hover,.speed button.active{background:#d2ae62;color:#111a27;border-color:#e5c47e}.speed{display:flex;margin-left:4px}.speed button{border-radius:0;padding:6px 8px}.timeline{position:relative;height:59px;margin-top:6px;border-top:1px solid #526078;touch-action:none;cursor:crosshair;user-select:none}.bands{position:absolute;left:0;right:0;top:9px;height:17px;display:flex;overflow:hidden;border-radius:2px}.band{height:100%;display:flex;align-items:center;justify-content:center;min-width:20px;border-right:1px solid #07101e;overflow:hidden;white-space:nowrap;font-size:8px;letter-spacing:.08em;color:#07101e}.ticks{position:absolute;left:0;right:0;top:30px;height:25px}.tick{position:absolute;transform:translateX(-50%);padding:0;color:#aeb8ca}.tick:before{content:"";display:block;width:1px;height:7px;background:#b9c3d2;margin:0 auto 2px}.tick span{font-size:8px;white-space:nowrap}.tick:hover{color:#f2d17f;cursor:pointer}.playhead{position:absolute;top:-3px;height:49px;width:2px;background:#f4cf72;box-shadow:0 0 10px #f2bf50;transform:translateX(-1px);pointer-events:none}.playhead:before{content:"";position:absolute;left:-5px;top:-5px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #f4cf72}.scaleMarks{display:flex;justify-content:space-between;color:#728096;font-size:8px;margin-top:1px}.legend{position:absolute;right:clamp(18px,3vw,48px);top:clamp(16px,3vh,34px);font:10px/1.5 Arial,sans-serif;text-align:right;color:#c7d0dc;letter-spacing:.1em;opacity:.7}.scene{opacity:0;transition:opacity 1.35s ease,filter 1.35s ease;pointer-events:none}.scene.active{opacity:1}.skyShift{transition:3s}.hide{display:none}.sr{position:absolute;left:-9999px}@media(max-width:700px){.narrative{bottom:150px;width:72vw}.narrative h1{font-size:29px}.narrative p{font-size:13px}.legend{display:none}.tick span{display:none}.band{font-size:7px}.scaleMarks span:nth-child(even){display:none}}
+</style>
+</head>
+<body>
+<main id="app" aria-label="Animated history of Earth">
+<svg id="world" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-labelledby="artTitle artDesc">
+<title id="artTitle">A Timeline of the World</title>
+<desc id="artDesc">An illustrated journey from the formation of Earth to the digital age.</desc>
+<defs>
+ <radialGradient id="space" cx="50%" cy="43%" r="68%"><stop stop-color="#183153"/><stop offset=".55" stop-color="#081427"/><stop offset="1" stop-color="#02040c"/></radialGradient>
+ <radialGradient id="earth" cx="35%" cy="28%"><stop stop-color="#3c9fc4"/><stop offset=".58" stop-color="#126184"/><stop offset="1" stop-color="#052b51"/></radialGradient>
+ <radialGradient id="ocean" cx="36%" cy="28%"><stop stop-color="#5ac8d0"/><stop offset=".55" stop-color="#176b8c"/><stop offset="1" stop-color="#082d55"/></radialGradient>
+ <radialGradient id="magma" cx="35%" cy="28%"><stop stop-color="#fff19a"/><stop offset=".34" stop-color="#ee5b1e"/><stop offset=".7" stop-color="#7c1424"/><stop offset="1" stop-color="#220817"/></radialGradient>
+ <linearGradient id="molten" x2="1" y2="1"><stop stop-color="#ffd25a"/><stop offset=".4" stop-color="#e84318"/><stop offset="1" stop-color="#6b1028"/></linearGradient>
+ <linearGradient id="skyBlue" x2="0" y2="1"><stop stop-color="#081a36"/><stop offset=".55" stop-color="#4ba6ca"/><stop offset="1" stop-color="#c8e6df"/></linearGradient>
+ <linearGradient id="skyOxygen" x2="0" y2="1"><stop stop-color="#17234d"/><stop offset=".65" stop-color="#2c91bf"/><stop offset="1" stop-color="#a2d8d1"/></linearGradient>
+ <linearGradient id="skyIndustrial" x2="0" y2="1"><stop stop-color="#263044"/><stop offset="1" stop-color="#a66d58"/></linearGradient>
+ <linearGradient id="cityGlow" x2="0" y2="1"><stop stop-color="#62d4e7"/><stop offset="1" stop-color="#172d57"/></linearGradient>
+ <linearGradient id="ice" x2="0" y2="1"><stop stop-color="#f5ffff"/><stop offset="1" stop-color="#87bfd0"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+ <filter id="shadow"><feDropShadow dx="0" dy="9" stdDeviation="9" flood-opacity=".5"/></filter>
+ <clipPath id="globeClip"><circle cx="800" cy="450" r="330"/></clipPath>
+ <mask id="iceMask"><rect x="440" y="100" width="720" height="700" fill="white"/><g id="iceShards" fill="#000"><path d="M490 250l130-60 100 100-70 100-150-10z"/><path d="M930 420l160 20 30 170-150 70-90-100z"/><path d="M570 620l180-30 70 140-210 50z"/></g></mask>
+ <pattern id="windows" width="22" height="24" patternUnits="userSpaceOnUse"><rect x="5" y="5" width="5" height="8" rx="1" fill="#ffd36b" opacity=".75"/></pattern>
+ <g id="spark"><path d="M0-12L2-2 12 0 2 2 0 12-2 2-12 0-2-2Z" fill="#fff2b3"/></g>
+</defs>
+
+<rect width="1600" height="900" fill="url(#space)"/>
+<g id="stars" fill="#dcecff">
+ <circle cx="90" cy="110" r="1.5"/><circle cx="230" cy="280" r="1"/><circle cx="340" cy="90" r="2"/><circle cx="1400" cy="140" r="1.4"/><circle cx="1510" cy="380" r="1"/><circle cx="1230" cy="80" r="1.2"/><circle cx="80" cy="600" r="1"/><circle cx="1480" cy="720" r="1.7"/><circle cx="1210" cy="810" r="1"/><circle cx="420" cy="750" r="1.3"/>
+</g>
+<g id="deepEarth" class="scene active">
+ <rect class="skyBase" x="0" y="0" width="1600" height="900" fill="#170719"/>
+ <circle cx="800" cy="460" r="350" fill="#ed4c1a" opacity=".12" filter="url(#soft)"/>
+ <g class="scene">
+  <circle cx="800" cy="450" r="330" fill="url(#magma)" filter="url(#glow)"/>
+  <g clip-path="url(#globeClip)" fill="none" stroke="#ffb126" opacity=".6">
+   <path d="M500 250C650 330 610 440 760 480S1040 400 1080 300" stroke-width="8"/>
+   <path d="M470 440C620 410 650 570 810 570S1000 500 1130 550" stroke-width="5"/>
+   <path d="M560 700C680 590 790 690 870 600S1020 640 1090 690" stroke-width="7"/>
+   <path d="M670 140C620 300 780 310 720 470S790 680 850 770" stroke-width="4"/>
+  </g>
+  <g id="embers" fill="#ffbd32"><circle cx="530" cy="400" r="7"/><circle cx="1040" cy="280" r="5"/><circle cx="950" cy="680" r="8"/><circle cx="720" cy="230" r="4"/><circle cx="640" cy="620" r="6"/></g>
+  <path id="theia" d="M1200 130Q1030 100 920 240" fill="none" stroke="#ffdd8a" stroke-width="8" stroke-dasharray="8 14" filter="url(#glow)"/>
+  <circle id="impactor" cx="1200" cy="130" r="32" fill="#a85535" stroke="#f0b478" stroke-width="5"/>
+ </g>
+</g>
+
+<g id="hadean" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#29101a"/>
+ <circle cx="800" cy="450" r="330" fill="url(#magma)"/>
+ <g clip-path="url(#globeClip)">
+  <path d="M470 210Q700 100 900 230T1160 260L1120 410Q930 350 820 440T520 390Z" fill="#352331" opacity=".85"/>
+  <path d="M470 560Q650 470 760 560T1100 540L1140 700Q900 790 650 710Z" fill="#3a2630"/>
+  <path d="M480 320C690 420 850 280 1120 400" fill="none" stroke="#ff8a1b" stroke-width="5" opacity=".6"/>
+ </g>
+ <g fill="#b7e8ed" opacity=".65"><path d="M480 300Q800 500 1120 300L1120 780H480Z"/><circle cx="600" cy="570" r="38"/><circle cx="1010" cy="610" r="65"/></g>
+ <path d="M470 300Q800 500 1130 300" fill="none" stroke="#d8fbff" stroke-width="4" opacity=".7"/>
+</g>
+
+<g id="life" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyBlue)"/>
+ <circle cx="800" cy="430" r="305" fill="url(#ocean)"/>
+ <g clip-path="url(#globeClip)">
+  <path id="continents" d="M510 300Q570 205 680 250L730 330 650 390 600 480 500 430ZM930 250Q1080 180 1130 300L1060 390 940 350ZM770 570Q900 510 1060 600L1000 700 820 720Z" fill="#47724d" stroke="#9daf70" stroke-width="5"/>
+  <path d="M520 300Q660 190 800 290T1110 270" fill="none" stroke="#d3f1dc" stroke-width="7" opacity=".25"/>
+ </g>
+ <path d="M450 760Q800 690 1150 760V900H450Z" fill="#092c4b"/>
+ <g id="stromatolites" stroke="#d4a65d" stroke-width="8" fill="#4a5e3c">
+  <path d="M470 760v-100m0 20q-45-25-55 15m55 20q50-30 60 12M650 760v-120m0 25q-45-25-55 15m55 20q50-30 60 12M930 760v-110m0 25q-45-25-55 15m55 20q50-30 60 12M1110 760v-120m0 25q-45-25-55 15m55 20q50-30 60 12"/>
+ </g>
+ <g fill="#c6e6a5" opacity=".8"><circle cx="415" cy="700" r="4"/><circle cx="765" cy="690" r="3"/><circle cx="1010" cy="700" r="4"/><circle cx="875" cy="630" r="3"/></g>
+</g>
+
+<g id="oxygen" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyOxygen)"/>
+ <circle cx="800" cy="440" r="320" fill="url(#ocean)"/>
+ <g clip-path="url(#globeClip)">
+  <path d="M500 250Q650 180 780 280L700 390 570 430 480 350ZM850 190Q1080 170 1140 340L1020 420 890 340ZM720 530Q930 450 1090 590L1000 730 790 710Z" fill="#638c55" stroke="#a8bd78" stroke-width="6"/>
+  <g id="oxygenBubbles" fill="none" stroke="#d9ffff" stroke-width="3" opacity=".65"><circle cx="610" cy="210" r="13"/><circle cx="650" cy="180" r="8"/><circle cx="680" cy="220" r="17"/><circle cx="1020" cy="500" r="14"/><circle cx="1060" cy="530" r="9"/></g>
+ </g>
+ <path d="M0 800Q400 730 800 790T1600 760V900H0Z" fill="#0b4c6a"/>
+</g>
+
+<g id="snowball" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#92b9cf"/>
+ <circle cx="800" cy="450" r="350" fill="#b6d5df"/>
+ <circle cx="800" cy="450" r="330" fill="url(#ice)" mask="url(#iceMask)"/>
+ <g clip-path="url(#globeClip)" opacity=".35" stroke="#477b98" fill="none"><path d="M470 330L1120 620M520 210L1100 690M500 650L1090 250" stroke-width="6"/></g>
+ <g id="snow" fill="#fff"><circle cx="100" cy="100" r="5"/><circle cx="220" cy="200" r="3"/><circle cx="340" cy="80" r="6"/><circle cx="470" cy="160" r="4"/><circle cx="620" cy="90" r="3"/><circle cx="760" cy="170" r="5"/><circle cx="920" cy="80" r="4"/><circle cx="1080" cy="150" r="3"/><circle cx="1240" cy="100" r="6"/><circle cx="1410" cy="250" r="4"/></g>
+</g>
+
+<g id="cambrian" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyBlue)"/>
+ <circle cx="800" cy="420" r="290" fill="url(#ocean)"/>
+ <g clip-path="url(#globeClip)"><path d="M510 260Q650 180 790 270L710 380 560 410ZM920 500Q1080 430 1120 600L1000 700 850 650Z" fill="#63835a"/></g>
+ <path d="M350 730Q800 650 1250 730V900H350Z" fill="#064a6c"/>
+ <g id="trilobites" fill="#d89235" stroke="#ffe09a" stroke-width="4" filter="url(#shadow)">
+  <ellipse cx="600" cy="735" rx="90" ry="28"/><path d="M515 735h170M540 708v54m30-58v62m30-64v66m30-64v62m30-58v54m30-50v46"/>
+  <ellipse cx="990" cy="795" rx="125" ry="38"/><path d="M870 795h240M900 758v74m40-80v86m40-88v90m40-88v86m40-78v70m40-60v50"/>
+ </g>
+ <g fill="#a8ecff" opacity=".75"><circle cx="520" cy="600" r="7"/><circle cx="740" cy="570" r="4"/><circle cx="950" cy="640" r="6"/><circle cx="1160" cy="570" r="4"/></g>
+</g>
+
+<g id="landLife" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyBlue)"/>
+ <path d="M0 620Q250 450 510 610T980 570T1600 590V900H0Z" fill="#315e45"/>
+ <path d="M0 740Q400 620 790 750T1600 700V900H0Z" fill="#163d35"/>
+ <g fill="#38744b" stroke="#9abf62" stroke-width="4">
+  <path d="M200 740V420m0 100l-120-80m120 20L330 350M390 750V380m0 140l-100-90m100 30l125-100M1230 720V390m0 110l-120-100m120 30l140-110"/>
+ </g>
+ <g fill="#81a953" stroke="#4e823e" stroke-width="4">
+  <path d="M300 390q-60-80-125-15 50 50 125 15M340 370q10-100 100-70-10 65-100 70M1020 420q-70-85-135-10 60 55 135 10M1390 410q15-100 110-70-15 65-110 70"/>
+ </g>
+ <g fill="#d3a354" stroke="#49362c" stroke-width="3"><ellipse cx="690" cy="770" rx="95" ry="40"/><circle cx="765" cy="735" r="32"/><path d="M620 770l-70-30m150 25l70-35m-50 70l35 55m-20-60l-45 60m-80-45l-45 45m110-45l-5 55"/></g>
+ <g fill="#a7d7d1" opacity=".8"><ellipse cx="970" cy="300" rx="65" ry="18"/><ellipse cx="1000" cy="288" rx="50" ry="14"/><ellipse cx="1030" cy="300" rx="60" ry="17"/></g>
+</g>
+
+<g id="pangaea" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyBlue)"/>
+ <circle cx="800" cy="410" r="275" fill="url(#ocean)"/>
+ <g clip-path="url(#globeClip)">
+  <path id="pangaea" d="M525 360Q540 240 675 235L760 170 855 225 1000 245 1080 330 1010 410 880 390 825 475 700 440 625 500 520 440Z" fill="#66834b" stroke="#b3a56d" stroke-width="9"/>
+  <path d="M550 330Q700 390 820 290T1040 320" fill="none" stroke="#d2b477" stroke-width="7" opacity=".5"/>
+ </g>
+ <path d="M0 780Q800 650 1600 780V900H0Z" fill="#153c4a"/>
+ <g id="dinosaurs" transform="translate(0,10)" fill="#627648" stroke="#263a31" stroke-width="4">
+  <path d="M410 775q35-150 145-120l55 25 75 25-60 30 20 90H440Z"/><path d="M520 755L435 600 510 665 570 560 585 730M550 825l-10 85m80-85l30 85m-100-25l-55 25m110-20l65 20"/>
+  <path d="M930 820q40-125 130-95l45 20 60 18-50 28 10 70H930Z"/><path d="M1010 790l-65-100 65 45 40-85 30 120m-55 75l-10 70m65-70l25 70"/>
+ </g>
+ <g fill="#f5d66f" stroke="#293b35" stroke-width="3"><path d="M625 620l-50 70 58 15 40 115 45-10-25-110 55-25z"/><path d="M1180 700l-40 55 45 10 30 80 38-8-20-75 45-22z"/></g>
+</g>
+
+<g id="asteroid" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#38201d"/>
+ <circle cx="800" cy="500" r="430" fill="#4b2d25"/>
+ <g id="impactFlash" filter="url(#glow)"><circle cx="1060" cy="280" r="65" fill="#fff3a0"/><path d="M1060 190v180M970 280h180M995 215l130 130m0-130L995 345" stroke="#ffc64b" stroke-width="14"/></g>
+ <path d="M1200 170Q1100 205 1060 280" fill="none" stroke="#f3a34d" stroke-width="20" filter="url(#glow)"/>
+ <path d="M330 780Q800 650 1270 780V900H330Z" fill="#171a1c"/>
+ <g fill="#d0b49a" opacity=".7"><circle cx="500" cy="700" r="7"/><circle cx="620" cy="730" r="5"/><circle cx="780" cy="680" r="9"/><circle cx="920" cy="730" r="5"/><circle cx="1080" cy="680" r="7"/></g>
+</g>
+
+<g id="mammals" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#829db0"/>
+ <circle cx="1190" cy="180" r="85" fill="#f0d5a1" opacity=".8"/>
+ <path d="M0 640Q300 500 620 630T1200 600T1600 610V900H0Z" fill="#536b45"/>
+ <path d="M0 780Q500 650 950 780T1600 740V900H0Z" fill="#283e34"/>
+ <g fill="#9c6747" stroke="#392b25" stroke-width="4">
+  <path d="M350 780q25-125 115-105l70 25 75 20-70 35 10 85H350Z"/><path d="M410 710l-70-100 95 60 45-105 35 140m-25 80l-25 80m90-80l35 80"/>
+  <path d="M930 820q20-100 100-85l55 20 65 20-55 25 5 70H925Z"/><path d="M980 760l-55-80 75 45 35-85 25 110"/>
+ </g>
+ <g fill="#8c8067"><ellipse cx="850" cy="720" rx="75" ry="35"/><path d="M810 700l-55-80 65 35 40-70 20 110"/></g>
+</g>
+
+<g id="sapiens" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#b27c5d"/>
+ <circle cx="1190" cy="180" r="85" fill="#ffe0a0"/>
+ <path d="M0 640Q320 470 650 620T1280 590T1600 610V900H0Z" fill="#887047"/>
+ <path d="M0 790Q450 640 900 780T1600 740V900H0Z" fill="#403b2e"/>
+ <g fill="#2c2825" stroke="#171514" stroke-width="3">
+  <g transform="translate(600 650)"><circle cx="0" cy="-70" r="31"/><path d="M-22-42Q0-55 22-42L35 70H-35Z"/><path d="M-25-10l-55 105m105-105l60 100M-12 70l-25 110m55-110l35 110"/></g>
+  <g transform="translate(810 610) scale(1.15)"><circle cx="0" cy="-70" r="31"/><path d="M-22-42Q0-55 22-42L35 70H-35Z"/><path d="M-25-10l-55 105m105-105l60 100M-12 70l-25 110m55-110l35 110"/></g>
+  <g transform="translate(1010 650)"><circle cx="0" cy="-70" r="31"/><path d="M-22-42Q0-55 22-42L35 70H-35Z"/><path d="M-25-10l-55 105m105-105l60 100M-12 70l-25 110m55-110l35 110"/></g>
+ </g>
+ <g stroke="#d5b17b" stroke-width="5" opacity=".7"><path d="M300 730l300-70M1150 700l250-90M520 820l280-90"/></g>
+</g>
+
+<g id="farming" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyBlue)"/>
+ <circle cx="1250" cy="190" r="90" fill="#ffd76b" filter="url(#glow)"/>
+ <path d="M0 590Q400 450 800 580T1600 540V900H0Z" fill="#547a42"/>
+ <g id="fields"><path d="M0 700L500 580 500 900H0Z" fill="#b88a32"/><path d="M400 610L850 580 850 900H400Z" fill="#8d9a36"/><path d="M850 580L1300 610 1200 900H850Z" fill="#c39a38"/><path d="M1300 610L1600 650V900H1200Z" fill="#6b963d"/></g>
+ <g stroke="#315d35" stroke-width="8"><path d="M120 900V680m0 35l-50-35m50 5l45-45M300 900V650m0 40l-45-35m45 5l45-45M560 900V640m0 40l-50-35m50 5l50-45M980 900V660m0 40l-50-35m50 5l50-45M1380 900V680m0 40l-50-35m50 5l45-45"/></g>
+ <g fill="#422b22"><path d="M440 620l25-100 25 100zM1150 660l25-100 25 100z"/><rect x="458" y="615" width="14" height="55" fill="#60412b"/></g>
+</g>
+
+<g id="civilizations" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyBlue)"/>
+ <path d="M0 650Q400 560 800 650T1600 610V900H0Z" fill="#ad8040"/>
+ <path d="M0 700Q800 590 1600 700V900H0Z" fill="#6d5a36"/>
+ <g transform="translate(310 550)" fill="#d3a25a" stroke="#654525" stroke-width="5"><path d="M-190 100L0-160 190 100Z"/><path d="M-130 40h260v160h-260z"/><path d="M-75 80h50v120h-50zm100 0h50v120h-50z"/></g>
+ <g transform="translate(1100 700)" fill="#d8b265" stroke="#76502d" stroke-width="5"><path d="M-260 0L0-420 260 0Z"/><path d="M-190-40h380v190h-380z"/><path d="M-90 30h180v120h-180z"/><path d="M0-420v-90"/></g>
+ <path d="M0 820Q350 750 700 820T1400 810T1600 820" fill="none" stroke="#547b87" stroke-width="55"/>
+ <g fill="#4c3024"><path d="M520 680l25-90 25 90zM650 700l25-90 25 90zM780 700l25-90 25 90zM910 680l25-90 25 90z"/></g>
+</g>
+
+<g id="classical" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#628ea1"/>
+ <circle cx="1240" cy="180" r="80" fill="#f4d080"/>
+ <path d="M0 680Q800 550 1600 680V900H0Z" fill="#7a7a48"/>
+ <g fill="#e4d5b1" stroke="#78674c" stroke-width="5">
+  <path d="M250 740L420 440 590 740ZM250 740h340M285 630h270M320 530h200M350 465h140"/>
+  <path d="M650 700L820 470 990 700ZM650 700h340M685 610h270M720 535h200"/>
+ </g>
+ <g transform="translate(1190 720)" fill="#c9b98e" stroke="#6c5c45" stroke-width="5"><path d="M-220 0Q0-250 220 0Z"/><path d="M-180-30h360v180h-360z"/><path d="M-120 15h45v135h-45zm95 0h45v135h-45z"/><path d="M-260 150h520v45h-520z"/></g>
+ <g transform="translate(1450 740)" fill="none" stroke="#d8c7a4" stroke-width="16"><path d="M0 0V-330M-60-270H60M-100-210H100M-110-150H110M-130-90H130M-180-30H180"/></g>
+</g>
+
+<g id="medieval" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#374858"/>
+ <circle cx="1250" cy="170" r="75" fill="#d8d3bb"/>
+ <path d="M0 620Q380 510 800 610T1600 580V900H0Z" fill="#30483b"/>
+ <g fill="#56636a" stroke="#222d31" stroke-width="7">
+  <path d="M250 700V470l100-90 100 90v230zM290 480h120v220H290z"/><path d="M480 730V500l100-80 100 80v230zM520 510h120v220H520z"/><path d="M710 690V460l110-90 110 90v230zM755 475h130v215H755z"/>
+  <path d="M950 730V510l100-80 100 80v220zM995 520h110v210H995z"/><path d="M1180 700V470l110-90 110 90v230z"/>
+ </g>
+ <g fill="#202b31"><path d="M330 410h40v70h-40zM560 440h40v70h-40zM800 400h40v70h-40zM1025 450h40v70h-40zM1260 410h40v70h-40z"/></g>
+ <path d="M0 800Q800 720 1600 800" fill="none" stroke="#315b72" stroke-width="55"/>
+ <path d="M600 720Q800 560 1000 720" fill="none" stroke="#97764e" stroke-width="28"/>
+</g>
+
+<g id="printing" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#8b9a9c"/>
+ <path d="M0 700Q800 590 1600 700V900H0Z" fill="#355d65"/>
+ <g transform="translate(600 480)" filter="url(#shadow)"><rect x="-130" y="0" width="260" height="300" rx="8" fill="#563521"/><rect x="-95" y="35" width="190" height="220" fill="#d9c89b"/><path d="M-55 80h110M-55 115h110M-55 150h90M-55 185h110" stroke="#4d4536" stroke-width="8"/><path d="M-65-100V0H65V-100" fill="#86502e" stroke="#35251e" stroke-width="12"/></g>
+ <g transform="translate(1110 680)"><path d="M-320 0H320L240-110H-230Z" fill="#533a29"/><path d="M-180-110L-120-410 240-410 310-110Z" fill="#eee1bd" stroke="#594331" stroke-width="7"/><path d="M-85-390H215V-160H-85Z" fill="#b44c32"/><path d="M-55-365H185M-55-320H150M-55-275H185" stroke="#e3bc78" stroke-width="8"/><path d="M-120-110V-35H-50V-110M20-110V-35H95V-110"/></g>
+ <path d="M250 770Q800 690 1400 770" fill="none" stroke="#3d85a0" stroke-width="38"/>
+</g>
+
+<g id="industry" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="url(#skyIndustrial)"/>
+ <circle cx="1280" cy="190" r="100" fill="#c95c3b" opacity=".55" filter="url(#soft)"/>
+ <path d="M0 720Q800 650 1600 720V900H0Z" fill="#242c32"/>
+ <g fill="#3c4548" stroke="#171d22" stroke-width="7">
+  <path d="M260 760V510h240v250zM285 510V380h190v130zM340 380V245h80v135z"/>
+  <path d="M590 760V480h250v280zM620 480V330h190v150zM690 330V190h60v140z"/>
+  <path d="M940 760V540h230v220zM970 540V405h170v135zM1030 405V280h55v125z"/>
+  <path d="M1240 760V580h210v180z"/>
+ </g>
+ <g fill="#101820"><rect x="320" y="555" width="35" height="45"/><rect x="390" y="555" width="35" height="45"/><rect x="650" y="540" width="40" height="50"/><rect x="730" y="540" width="40" height="50"/><rect x="1010" y="585" width="35" height="45"/><rect x="1090" y="585" width="35" height="45"/></g>
+ <g fill="#6d777b"><rect x="490" y="700" width="70" height="60"/><rect x="845" y="700" width="70" height="60"/><rect x="1150" y="700" width="70" height="60"/></g>
+ <g fill="#b8c3c5"><path d="M250 650Q210 550 130 480q130 20 170 90Q350 470 470 430q-100 130-150 220z"/></g>
+ <g fill="#292f33"><path d="M100 320Q180 180 250 300 330 190 410 310 500 230 570 350L620 450Q320 480 40 410Z" opacity=".6"/></g>
+</g>
+
+<g id="twentieth" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#253d65"/>
+ <path d="M0 730Q800 660 1600 730V900H0Z" fill="#1d4355"/>
+ <g id="plane" transform="translate(700 280)"><path d="M-260 0L-35-25 70-110 110-105 55-20 290 15 290 40 50 30-10 125-50 120-25 30-245 25Z" fill="#e3e5df" stroke="#63727d" stroke-width="5"/></g>
+ <g id="rocket" transform="translate(1130 560)"><path d="M0-260Q65-190 45-65L0 0-45-65Q-65-190 0-260Z" fill="#f2eee3" stroke="#9faab1" stroke-width="5"/><path d="M-42-80L-100 5-40 20M42-80L100 5 40 20" fill="#bb4135"/><circle cx="0" cy="-145" r="20" fill="#5da1c0"/><path d="M-20 15Q0 110 20 15" fill="#ffad32" filter="url(#glow)"/></g>
+ <g fill="#d8d0bb"><path d="M180 700V500h130v200zM200 500l45-100 45 100z"/><path d="M1300 720V550h100v170zM1315 550l35-80 35 80z"/></g>
+ <g fill="#edcb73"><circle cx="390" cy="630" r="12"/><circle cx="460" cy="660" r="8"/><circle cx="900" cy="690" r="10"/><circle cx="1400" cy="650" r="9"/></g>
+</g>
+
+<g id="digital" class="scene">
+ <rect x="0" y="0" width="1600" height="900" fill="#071125"/>
+ <circle cx="800" cy="440" r="390" fill="#153964" opacity=".35" filter="url(#soft)"/>
+ <path d="M0 820Q800 700 1600 820V900H0Z" fill="#070b15"/>
+ <g fill="#162a49" stroke="#4a7897" stroke-width="4">
+  <path d="M180 820V470h180v350zM230 470V330h80v140z"/>
+  <path d="M410 820V390h220v430zM480 390V220h80v170z"/>
+  <path d="M690 820V510h190v310zM750 510V400h70v110z"/>
+  <path d="M930 820V280h260v540zM1010 280V120h90v160z"/>
+  <path d="M1240 820V450h210v370zM1300 450V350h80v100z"/>
+ </g>
+ <g fill="url(#windows)"><path d="M195 480h150v330H195zM425 400h190v410H425zM705 520h160v290H705zM945 290h230v520H945zM1255 460h180v350h-180z"/></g>
+ <g id="network" fill="none" stroke="#62e6e2" stroke-width="2" opacity=".75"><path d="M220 580L520 460 800 620 1060 360 1370 530M520 460L600 750M1060 360L1200 700M800 620L1060 360" stroke-dasharray="8 10"/><circle cx="220" cy="580" r="7" fill="#62e6e2"/><circle cx="520" cy="460" r="7" fill="#62e6e2"/><circle cx="800" cy="620" r="7" fill="#62e6e2"/><circle cx="1060" cy="360" r="7" fill="#62e6e2"/><circle cx="1370" cy="530" r="7" fill="#62e6e2"/></g>
+ <path d="M700 320h200l-25-55H725Z" fill="#e3edf0" opacity=".8"/><path d="M760 265V190M720 190h80" stroke="#e3edf0" stroke-width="10"/>
+ <g fill="#f2d37a"><circle cx="120" cy="120" r="3"/><circle cx="350" cy="180" r="2"/><circle cx="1400" cy="190" r="3"/><circle cx="1510" cy="350" r="2"/></g>
+</g>
+
+<g id="vignette" pointer-events="none"><rect x="0" y="0" width="1600" height="900" fill="none" stroke="#02050b" stroke-width="130" opacity=".28" filter="url(#shadow)"/></g>
+</svg>
+
+<div class="hud brand">A TIMELINE OF THE WORLD</div>
+<div class="hud legend">DEEP TIME → HUMAN HISTORY<br><span id="sceneLabel">A PLANET IS BORN</span></div>
+<section class="hud narrative" aria-live="polite">
+ <div class="chapterNo" id="chapterNo">CHAPTER 01 / 19</div>
+ <h1 id="title">Earth is born</h1>
+ <p id="caption">About 4.54 billion years ago, dust and rock gathered into the young Earth. A Mars-sized body, called Theia, later struck it; debris became the Moon.</p>
+</section>
+
+<div class="controls">
+ <div class="timeTop">
+  <div class="readout" id="readout">4.54 billion years ago</div>
+  <div class="buttons" aria-label="Playback controls">
+   <button id="play" aria-label="Pause">Ⅱ</button>
+   <button id="restart" aria-label="Restart">↺</button>
+   <div class="speed" aria-label="Playback speed">
+    <button data-speed=".5">0.5×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button>
+   </div>
+  </div>
+ </div>
+ <div class="timeline" id="timeline" role="slider" aria-label="History timeline" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+  <div class="bands">
+   <div class="band" style="flex:1;background:#9a4c37;width:10%">HADEAN</div>
+   <div class="band" style="flex:1;background:#6b8760;width:10%">ARCHEAN</div>
+   <div class="band" style="flex:1;background:#5595a1;width:12%">PROTEROZOIC</div>
+   <div class="band" style="flex:1;background:#82964a;width:15%">PALEOZOIC</div>
+   <div class="band" style="flex:1;background:#b57645;width:13%">MESOZOIC</div>
+   <div class="band" style="flex:1;background:#718a73;width:14%">CENOZOIC</div>
+   <div class="band" style="flex:2;background:#4f718a;width:20%">HUMAN HISTORY</div>
+  </div>
+  <div class="ticks" id="ticks"></div>
+  <div class="playhead" id="playhead"></div>
+  <div class="scaleMarks"><span>4.54 BYA</span><span>DEEP TIME · LOG / PIECEWISE</span><span>PRESENT</span></div>
+ </div>
+</div>
+<div id="announce" class="sr" aria-live="assertive"></div>
+</main>
+<script>
+(()=>{
+ const chapters=[
+ {at:0,date:'4.54 billion years ago',title:'Earth is born',text:'About 4.54 billion years ago, dust and rock gathered into the young Earth. A Mars-sized body, called Theia, later struck it; debris became the Moon.',label:'A PLANET IS BORN'},
+ {at:5.55,date:'4.5–4.0 billion years ago',title:'A world of fire and ice',text:'In the Hadean eon, the surface was mostly molten. As the crust cooled, water gathered into the first oceans.',label:'THE HADEAN'},
+ {at:11.1,date:'About 3.7–3.5 billion years ago',title:'The first life',text:'The earliest widely accepted evidence of life comes from microbial fossils and stromatolites, layered structures made by communities of microbes.',label:'LIFE BEGINS'},
+ {at:16.65,date:'About 2.4 billion years ago',title:'The sky changes colour',text:'During the Great Oxidation Event, oxygen accumulated in the atmosphere. Iron in the seas oxidised and rusted, and a new blue sky emerged.',label:'THE GREAT OXIDATION'},
+ {at:22.2,date:'About 720–635 million years ago',title:'Snowball Earth',text:'Severe global glaciations may have covered much of the planet in ice. The precise extent and duration of the ice remain debated.',label:'A FROZEN WORLD'},
+ {at:27.75,date:'About 538 million years ago',title:'The Cambrian explosion',text:'A rapid diversification of animals appears in the fossil record, including trilobites. Many modern animal body plans emerged.',label:'ANIMAL LIFE DIVERSIFIES'},
+ {at:33.3,date:'Roughly 470–375 million years ago',title:'Life moves onto land',text:'Plants began to colonise land in the Ordovician period. Land animals followed, and by the Devonian, complex forests covered parts of the continents.',label:'GREENING THE LAND'},
+ {at:38.85,date:'252–66 million years ago',title:'Pangaea and the dinosaurs',text:'Pangaea assembled during the late Paleozoic and broke apart in the Mesozoic. The age of dinosaurs is conventionally dated from 252 to 66 million years ago.',label:'AN AGE OF GIANTS'},
+ {at:44.4,date:'66 million years ago',title:'The asteroid impact',text:'A large asteroid struck Chicxulub, in present-day Mexico, at the end of the Cretaceous. Extinction followed, leaving a new ecological opening for mammals.',label:'AN EXTINCTION'},
+ {at:50,date:'After 66 million years ago',title:'The rise of mammals',text:'Mammals diversified after the non-avian dinosaurs disappeared. Early primates appeared later, in the Paleogene and Neogene periods.',label:'MAMMALS RISE'},
+ {at:55.55,date:'About 300,000 years ago',title:'Homo sapiens',text:'The earliest widely accepted fossils of Homo sapiens come from Morocco and are about 315,000 years old; “about 300,000 years” is a useful rounded date.',label:'A NEW HUMAN'},
+ {at:61.1,date:'About 10,000 BCE',title:'Farming begins',text:'Independent agriculture developed in several regions, including the Fertile Crescent, China, Mesoamerica and the Andes. Early farming supported permanent settlements.',label:'CULTIVATING EARTH'},
+ {at:66.65,date:'Early civilisations · Egypt c. 3100 BCE',title:'Cities and civilisations',text:'Mesopotamian cities and ancient Egypt developed among the world’s earliest civilisations. The Great Pyramid of Giza was completed about 2560 BCE.',label:'THE FIRST CITIES'},
+ {at:72.2,date:'c. 800 BCE–200 CE',title:'The classical world',text:'Greece, Rome and Han China flourished at different times. The Han dynasty lasted from 206 BCE to 220 CE, bridging the end of the classical Mediterranean with imperial China.',label:'THE CLASSICAL WORLD'},
+ {at:77.75,date:'c. 500–1500 CE',title:'The medieval world',text:'Routes of trade and scholarship connected regions from Europe and Africa to Asia. Societies changed through alliances, migrations, technologies and exchange.',label:'CONNECTED MIDDLE AGES'},
+ {at:83.3,date:'c. 1450 · 1492 CE',title:'Print and exploration',text:'Movable-type printing spread from China through Europe; Gutenberg’s Bible dates to about 1455. Columbus’s 1492 voyage opened a sustained, contested era of European expansion.',label:'A CONNECTING WORLD'},
+ {at:88.85,date:'From about 1760 CE',title:'The Industrial Revolution',text:'Mechanised production and steam power transformed work, cities and landscapes. Fossil fuels made industrialisation increasingly powerful and polluting.',label:'THE MACHINE AGE'},
+ {at:94.4,date:'1903 · 1914–18 · 1939–45 · 1969',title:'The twentieth century',text:'Powered flight began in 1903; two world wars reshaped politics; and humans first walked on the Moon in 1969. These dates mark a rapidly connected, global century.',label:'A GLOBAL CENTURY'},
+ {at:100,date:'Today',title:'The digital age',text:'Computers, satellites and the internet transformed communication and daily life. The planetary story continues, alongside questions about climate, biodiversity and human rights.',label:'THE NEXT CHAPTER'}
+ ];
+ const scenes=[...document.querySelectorAll('.scene')].slice(0,chapters.length);
+ const timeline=document.getElementById('timeline'),playhead=document.getElementById('playhead'),readout=document.getElementById('readout');
+ const play=document.getElementById('play'),restart=document.getElementById('restart');
+ let progress=0, speed=1, playing=true,last=performance.now(),active=-1,dragging=false;
+ const tickEls=[];
+ chapters.forEach((c,i)=>{const el=document.createElement('div');el.className='tick';el.style.left=c.at+'%';el.title=c.title+' — '+c.date;el.innerHTML='<span>'+(i+1)+'</span>';el.addEventListener('click',e=>{e.stopPropagation();seek(c.at);});timeline.appendChild(el);tickEls.push(el)});
+ function chapterAt(p){let n=0;for(let i=0;i<chapters.length;i++)if(p>=chapters[i].at)n=i;return n}
+ function setChapter(n){if(n===active)return;active=n;const c=chapters[n];scenes.forEach((s,i)=>s.classList.toggle('active',i===n));document.getElementById('chapterNo').textContent='CHAPTER '+String(n+1).padStart(2,'0')+' / 19';document.getElementById('title').textContent=c.title;document.getElementById('caption').textContent=c.text;document.getElementById('sceneLabel').textContent=c.label;document.getElementById('announce').textContent=c.title+'. '+c.date+'.'; }
+ function render(p){progress=Math.max(0,Math.min(100,p));playhead.style.left=progress+'%';readout.textContent=chapters[chapterAt(progress)].date;timeline.setAttribute('aria-valuenow',progress.toFixed(1));setChapter(chapterAt(progress));}
+ function seek(p){render(p);active=-1;setChapter(chapterAt(p));last=performance.now()}
+ function setPlaying(v){playing=v;play.textContent=v?'Ⅱ':'▶';play.setAttribute('aria-label',v?'Pause':'Play')}
+ function frame(now){let dt=(now-last)/1000;last=now;if(playing&&!dragging){let next=progress+dt*speed/180*100;if(next>=100){next=0;setChapter(0)}render(next)}requestAnimationFrame(frame)}
+ function pointerSeek(e){let r=timeline.getBoundingClientRect();seek((e.clientX-r.left)/r.width*100)}
+ timeline.addEventListener('pointerdown',e=>{dragging=true;timeline.setPointerCapture(e.pointerId);pointerSeek(e)});
+ timeline.addEventListener('pointermove',e=>{if(dragging)pointerSeek(e)});
+ timeline.addEventListener('pointerup',()=>dragging=false);timeline.addEventListener('pointercancel',()=>dragging=false);
+ play.addEventListener('click',()=>setPlaying(!playing));restart.addEventListener('click',()=>{seek(0);setPlaying(true)});
+ document.querySelectorAll('[data-speed]').forEach(b=>b.addEventListener('click',()=>{speed=Number(b.dataset.speed);document.querySelectorAll('[data-speed]').forEach(x=>x.classList.toggle('active',x===b))}));
+ window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();setPlaying(!playing)}if(e.key==='ArrowRight'){e.preventDefault();let n=Math.min(18,chapterAt(progress)+1);seek(chapters[n].at)}if(e.key==='ArrowLeft'){e.preventDefault();let n=Math.max(0,chapterAt(progress)-1);seek(chapters[n].at)}if(e.key==='Home'){seek(0)}});
+ document.addEventListener('visibilitychange',()=>{last=performance.now()});
+ // gentle autonomous vector motion, independent of chapter transitions
+ const embers=document.getElementById('embers'),snow=document.getElementById('snow'),stars=document.getElementById('stars');
+ let t=0;
+ setInterval(()=>{t+=.045;if(embers)embers.setAttribute('transform','translate(0 '+Math.sin(t)*12+'px)');if(snow)snow.setAttribute('transform','translate(0 18px)');if(stars)stars.setAttribute('opacity',String(.65+Math.sin(t*.4)*.2))},50);
+ seek(0);requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
