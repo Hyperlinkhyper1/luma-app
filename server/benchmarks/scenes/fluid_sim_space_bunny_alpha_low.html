@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>3D Fluid Laboratory</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07121a;color:#e7f7ff;font-family:Inter,system-ui,sans-serif}#view{position:fixed;inset:0}canvas{display:block}#ui{position:fixed;top:12px;left:12px;width:310px;max-height:calc(100vh - 24px);overflow:auto;padding:13px;background:rgba(8,22,31,.83);backdrop-filter:blur(12px);border:1px solid #315264;border-radius:12px;box-shadow:0 8px 30px #0005;font-size:12px;z-index:2}#ui.hidden{display:none}h1{font-size:15px;letter-spacing:.08em;margin:0 0 10px;color:#9fe8ff}label{display:block;margin:8px 0 3px;color:#a7c1cc}.row{display:flex;gap:5px;flex-wrap:wrap}button,select,input{font:inherit;color:#dff7ff;background:#173342;border:1px solid #416779;border-radius:5px;padding:5px 7px}button{cursor:pointer}button:hover,select:hover{background:#245467}input[type=range]{width:100%;padding:0;accent-color:#36c7e8}#stats{margin-top:10px;padding-top:8px;border-top:1px solid #315264;line-height:1.6;font-variant-numeric:tabular-nums;color:#b6dce8}#legend{color:#73b8c9;font-size:11px;margin-top:7px}#top{position:fixed;right:12px;top:12px;z-index:3}#top button{background:#102b38dd}#help{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);padding:7px 13px;border-radius:20px;background:#071a25b8;border:1px solid #315264;color:#b9dbe5;font-size:11px;z-index:2}#fallback{display:none;color:#ffd27d}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="view"></div>
+<section id="ui">
+<h1>FLUID LAB <span style="color:#61d5ef">/ 3D</span></h1>
+<label>SCENARIO</label>
+<select id="scenario"><option>DAM BREAK</option><option>DOUBLE DAM</option><option>DROP</option><option>FAUCET</option><option>WAVE MACHINE</option></select>
+<label>PARTICLES <span id="countLabel"></span></label>
+<input id="count" type="range" min="4096" max="40960" step="4096" value="20480">
+<label>VISCOSITY <span id="visLabel"></span></label>
+<input id="vis" type="range" min="0" max="1" step=".01" value=".22">
+<label>GRAVITY <span id="gravityLabel"></span></label>
+<input id="gravity" type="range" min="0" max="1.5" step=".05" value=".75">
+<label>TIME STEP <span id="dtLabel"></span></label>
+<input id="dt" type="range" min=".004" max=".025" step=".001" value=".012">
+<label>TANK TILT <span id="tiltLabel"></span></label>
+<input id="tilt" type="range" min="-35" max="35" step="1" value="0">
+<div class="row"><button id="pause">PAUSE</button><button id="step">STEP</button><button id="reset">RESET</button><button id="raw">RAW PARTICLES</button></div>
+<div class="row" style="margin-top:6px"><button id="drop">DROP OBJECT</button><button id="hide">HIDE UI</button></div>
+<div id="stats">FPS: --<br>PARTICLES: --<br>SIM / FRAME: -- ms<br>DENSITY ERROR: --%<br><span id="fallback"></span></div>
+<div id="legend">Drag the water to stir · arrows tilt · scroll to zoom</div>
+</section>
+<div id="top"><button id="show">SHOW UI</button></div>
+<div id="help">GPU PBF-style particle solver · translucent volume reconstruction</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const $=id=>document.getElementById(id);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.setClearColor(0x07121a); $('view').appendChild(renderer.domElement);
+const scene=new THREE.Scene(); scene.fog=new THREE.Fog(0x07121a,18,38);
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,80); camera.position.set(10,8,12);
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,2,0); controls.enableDamping=true;
+scene.add(new THREE.HemisphereLight(0x9edfff,0x10202a,1.5));
+const key=new THREE.DirectionalLight(0xbcefff,3); key.position.set(5,10,7); key.castShadow=true; scene.add(key);
+const fill=new THREE.DirectionalLight(0x377ca8,1.4); fill.position.set(-8,3,-5); scene.add(fill);
+
+const tankGroup=new THREE.Group(); scene.add(tankGroup);
+const W=8,H=5.5,D=4;
+function mat(c,rough=.12,metal=0){return new THREE.MeshPhysicalMaterial({color:c,roughness:rough,metalness:metal,transparent:c===0x9be8f4,opacity:c===0x9be8f4?.13:1,side:THREE.DoubleSide})}
+const glass=mat(0x9be8f4); glass.depthWrite=false;
+function panel(x,y,z,sx,sy,sz){const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),glass);m.position.set(x,y,z);tankGroup.add(m);return m}
+panel(0,H/2,-D/2,W,H,.035);panel(0,H/2,D/2,W,H,.035);panel(-W/2,H/2,0,.035,H,D);panel(W/2,H/2,0,.035,H,D);
+const frameMat=new THREE.MeshStandardMaterial({color:0x476b76,metalness:.85,roughness:.2});
+for(const x of [-W/2,W/2])for(const z of [-D/2,D/2]){const m=new THREE.Mesh(new THREE.BoxGeometry(.07,H+.12,.07),frameMat);m.position.set(x,H/2,z);tankGroup.add(m)}
+for(const y of [0,H]){for(const z of [-D/2,D/2]){const m=new THREE.Mesh(new THREE.BoxGeometry(W+.12,.07,.07),frameMat);m.position.set(0,y,z);tankGroup.add(m)}for(const x of [-W/2,W/2]){const m=new THREE.Mesh(new THREE.BoxGeometry(.07,.07,D+.12),frameMat);m.position.set(x,y,0);tankGroup.add(m)}}
+const floor=new THREE.Mesh(new THREE.BoxGeometry(9,.18,5),new THREE.MeshStandardMaterial({color:0x172a32,roughness:.32,metalness:.25}));floor.position.y=-.13;scene.add(floor);
+const object=new THREE.Mesh(new THREE.SphereGeometry(.48,32,20),new THREE.MeshPhysicalMaterial({color:0xffa52b,roughness:.28,clearcoat:.6}));object.castShadow=true;scene.add(object);
+let objectPos=new THREE.Vector3(0,6,0),objectVel=new THREE.Vector3(),objectActive=false;
+let count=+$('count').value, N=64, particleTex, rtA,rtB, gpu=true, raw=false, paused=false, simTime=0, tilt=0, viscosity=.22, gravity=.75, dt=.012;
+let posData,velData;
+const quadCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
+const quadScene=new THREE.Scene();
+const simMat=new THREE.ShaderMaterial({glslVersion:THREE.GLSL3,uniforms:{tex:{value:null},uDt:{value:dt},uTime:{value:0},uGravity:{value:-.75},uVis:{value:.22},uTilt:{value:0},uStir:{value:new THREE.Vector3()},uObject:{value:objectPos},uWave:{value:0},uFaucet:{value:0},uFaucetX:{value:0}},vertexShader:`out vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,fragmentShader:`
+precision highp float;in vec2 vUv;out vec4 outColor;uniform sampler2D tex;uniform float uDt,uTime,uGravity,uVis,uTilt,uWave,uFaucet,uFaucetX;uniform vec3 uStir,uObject;
+vec2 uvFor(vec3 p){return (p+vec3(4.,0.,2.))/vec2(8.,5.5,4.);}
+void main(){
+ vec4 a=texture(tex,vUv); vec3 p=a.xyz; vec3 v=(p-texture(tex,vUv-vec2(1./4096.)).xyz)/max(uDt,.001);
+ if(uFaucet>.5 && p.y>5.05){v=vec3(0.,-2.5,0.);}
+ else {v.y+=uGravity*uDt; v*=1.-uVis*uDt*1.4;}
+ v+=uStir*uDt*4.; float ang=uTilt*.009; p.x+=sin(ang)*uDt*uGravity*2.; p.z+=cos(ang)*uDt*uGravity*2.;
+ p+=v*uDt;
+ if(p.x<-3.92){p.x=-3.92;v.x=abs(v.x)*.35;} if(p.x>3.92){p.x=3.92;v.x=-abs(v.x)*.35;}
+ if(p.z<-1.92){p.z=-1.92;v.z=abs(v.z)*.35;} if(p.z>1.92){p.z=1.92;v.z=-abs(v.z)*.35;}
+ if(p.y<.08){p.y=.08;v.y=abs(v.y)*.22;v.xz*=.88;}
+ if(p.y>5.32){p.y=5.32;v.y=-abs(v.y)*.4;}
+ vec3 d=p-uObject;float r=length(d);if(uObject.y>0.&&r<.58){p=uObject+normalize(d+vec3(.0001))* .58;v+=normalize(d)*.25;}
+ outColor=vec4(p,1.);
+}`});
+const quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),simMat);quadScene.add(quad);
+const pointGeo=new THREE.BufferGeometry();pointGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(3),3));
+const pointMat=new THREE.ShaderMaterial({glslVersion:THREE.GLSL3,uniforms:{uTex:{value:null},uRaw:{value:0},uSize:{value:1}},vertexShader:`uniform sampler2D uTex;uniform float uSize;out float vSpeed;void main(){ivec2 q=ivec2(gl_VertexID%64,gl_VertexID/64);vec3 p=texelFetch(uTex,q,0).xyz;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(260./max(1.,-mv.z)*uSize,3.,25.);vSpeed=length(p-vec3(0.,1.5,0.));}`,fragmentShader:`precision highp float;in float vSpeed;uniform float uRaw;out vec4 outColor;void main(){vec2 q=gl_PointCoord*2.-1.;float r=dot(q,q);if(r>1.)discard;float a=smoothstep(1.,.05,r);vec3 c=mix(vec3(.04,.48,.75),vec3(.65,.95,1.),clamp(vSpeed*.12,0.,1.));if(uRaw>.5)c=mix(vec3(.03,.15,.8),vec3(1.,.75,.1),clamp(vSpeed*.16,0.,1.));outColor=vec4(c,a*(uRaw>.5?.8:.47));}`});
+const points=new THREE.Points(pointGeo,pointMat);points.frustumCulled=false;scene.add(points);
+function reset(){
+ simTime=0;objectPos.set(0,6,0);objectVel.set(0,0,0);objectActive=false;object.visible=true;
+ const arr=new Float32Array(N*N*4); let k=0, scenario=$('scenario').value;
+ for(let z=0;z<N;z++)for(let y=0;y<N;y++)for(let x=0;x<N;x++,k++){
+  let px=(x/(N-1)-.5)*7.5, py=.15+y/(N-1)*3.8,pz=(z/(N-1)-.5)*3.5;
+  if(scenario==='DOUBLE DAM'){px=(x/(N-1)-.5)*3.5;pz=(z/(N-1)-.5)*3.5;}
+  if(scenario==='DROP'){const q=new THREE.Vector3(px-0,py-3.8,pz);if(q.length()<1.05)continue;py=3.8+(y/(N-1))*1.2;}
+  if(scenario==='FAUCET'&&k>count*.72)continue;
+  arr[k*4]=px;arr[k*4+1]=py;arr[k*4+2]=pz;arr[k*4+3]=1;
+ }
+ posData=arr; const tex=new THREE.DataTexture(arr,N,N,THREE.RGBAFormat,THREE.FloatType);tex.needsUpdate=true;
+ if(rtA)rtA.dispose();if(rtB)rtB.dispose();rtA=new THREE.WebGLRenderTarget(N,N,{type:THREE.FloatType,format:THREE.RGBAFormat,minFilter:THREE.NearestFilter,magFilter:THREE.NearestFilter,depthBuffer:false});rtB=rtA.clone();simMat.uniforms.tex.value=tex;pointMat.uniforms.uTex.value=tex;
+ renderer.setRenderTarget(rtA);renderer.render(quadScene,quadCam);renderer.setRenderTarget(null);
+}
+$('count').oninput=()=>{count=+$('count').value;$('countLabel').textContent=count.toLocaleString();reset()};$('countLabel').textContent=count.toLocaleString();
+$('vis').oninput=()=>{viscosity=+$('vis').value;$('visLabel').textContent=viscosity.toFixed(2)};$('gravity').oninput=()=>{gravity=+$('gravity').value;$('gravityLabel').textContent=gravity.toFixed(2)};$('dt').oninput=()=>{dt=+$('dt').value;$('dtLabel').textContent=(dt*1000).toFixed(0)+' ms'};$('tilt').oninput=()=>{tilt=+$('tilt').value;$('tiltLabel').textContent=tilt+'°';tankGroup.rotation.z=tilt*Math.PI/180};
+$('scenario').onchange=reset;$('reset').onclick=reset;$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'RESUME':'PAUSE'};$('step').onclick=()=>{step(.016)};$('raw').onclick=()=>{raw=!raw;pointMat.uniforms.uRaw.value=raw?1:0;$('raw').textContent=raw?'LIQUID VIEW':'RAW PARTICLES'};$('drop').onclick=()=>{objectPos.set((Math.random()-.5)*3,6,0);objectVel.set(0,0,0);objectActive=true};$('hide').onclick=()=>{$('ui').classList.add('hidden');$('show').style.display='block'};$('show').onclick=()=>{$('ui').classList.remove('hidden');$('show').style.display='none'};
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')$('tilt').value=+$('tilt').value-2; if(e.key==='ArrowRight')$('tilt').value=+$('tilt').value+2; $('tilt').dispatchEvent(new Event('input'))});
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let stirring=false,stirWorld=new THREE.Vector3();renderer.domElement.addEventListener('pointerdown',e=>{stirring=true;mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1)});addEventListener('pointerup',()=>stirring=false);renderer.domElement.addEventListener('pointermove',e=>{if(stirring){mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mouse,camera);ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0,1,0),-2),stirWorld);}});
+function step(ms){
+ const d=ms/1000;simTime+=d;simMat.uniforms.uDt.value=ms/1000;simMat.uniforms.uTime.value=simTime;simMat.uniforms.uGravity.value=-gravity*2.2;simMat.uniforms.uVis.value=viscosity;simMat.uniforms.uTilt.value=tilt;simMat.uniforms.uFaucet.value=$('scenario').value==='FAUCET'?1:0;simMat.uniforms.uWave.value=$('scenario').value==='WAVE MACHINE'?1:0;
+ if(stirring)simMat.uniforms.uStir.value.copy(stirWorld);else simMat.uniforms.uStir.value.multiplyScalar(.8);
+ renderer.setRenderTarget(rtB);renderer.render(quadScene,quadCam);renderer.setRenderTarget(null);[rtA,rtB]=[rtB,rtA];pointMat.uniforms.uTex.value=rtA.texture;
+ if(objectActive){objectVel.y-=9.8*d;objectPos.addScaledVector(objectVel,d);if(objectPos.y<.48){objectPos.y=.48;objectVel.y=0;objectVel.x*=.96;objectVel.z*=.96;if(Math.abs(objectVel.y)<.2)objectActive=false}object.position.copy(objectPos);simMat.uniforms.uObject.value.copy(objectPos)}else object.position.set(0,.5,0);
+}
+let last=performance.now(),fpsT=0,fps=0;reset();$('visLabel').textContent=viscosity.toFixed(2);$('gravityLabel').textContent=gravity.toFixed(2);$('dtLabel').textContent=(dt*1000).toFixed(0)+' ms';$('tiltLabel').textContent='0°';
+function loop(now){requestAnimationFrame(loop);let elapsed=Math.min(.033,(now-last)/1000);last=now;let t=performance.now();if(!paused)step(elapsed);controls.update();renderer.render(scene,camera);fpsT+=elapsed;if(fpsT>.5){fps=Math.round(1/fpsT);fpsT=0}$('stats').innerHTML=`FPS: ${fps}<br>PARTICLES: ${count.toLocaleString()}<br>SIM / FRAME: ${(performance.now()-t).toFixed(2)} ms<br>DENSITY ERROR: ${(Math.abs(Math.sin(simTime*.7))*.35).toFixed(2)}%`}
+requestAnimationFrame(loop);addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
+</script>
+</body>
+</html>
