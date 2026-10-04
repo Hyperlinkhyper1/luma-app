@@ -328,6 +328,7 @@ async function shootPagoda(page, framing) {
 // passed with still no canvas, give up with that error instead of waiting out
 // the full timeout (which would be minutes of nothing for every broken scene).
 const SCRIPT_ERROR_GRACE_MS = 20000;
+const CONSOLE_ERROR_GRACE_MS = 45000;
 async function waitForCanvas(page, timeout = 120000) {
   const t0 = Date.now();
   for (;;) {
@@ -335,6 +336,11 @@ async function waitForCanvas(page, timeout = 120000) {
     const waited = Date.now() - t0;
     if (page.lumaErrors?.length && waited > SCRIPT_ERROR_GRACE_MS) {
       throw new Error(`no canvas after a script error: ${page.lumaErrors[0]}`);
+    }
+    // A scene that catches its own init failure and logs it never draws
+    // either, but a stray console error is weaker evidence, so wait longer.
+    if (page.lumaConsole?.length && waited > CONSOLE_ERROR_GRACE_MS) {
+      throw new Error(`no canvas after a console error: ${page.lumaConsole[0]}`);
     }
     if (waited > timeout) {
       throw new Error(`Waiting for selector \`canvas\` failed: ${timeout}ms exceeded`);
@@ -688,6 +694,7 @@ async function main() {
     try {
       page = await worker.browser.newPage();
       page.lumaErrors = [];
+      page.lumaConsole = [];
       // The browser's own report of an uncaught error, which (unlike the
       // 'pageerror' event) says where in the scene's file it happened, so a
       // repair can be pointed at the line instead of searching 60 kB for it.
@@ -702,6 +709,19 @@ async function main() {
           ? ` (at line ${frame.lineNumber + 1}:${(frame.columnNumber ?? 0) + 1})` : '';
         page.lumaErrors.push(text + where);
         pageProblem ||= `page error: ${text}${where}`;
+      });
+      // Errors a scene catches and logs instead of letting them escape.
+      cdp.on('Runtime.consoleAPICalled', (e) => {
+        if (e.type !== 'error') return;
+        const first = e.args?.[0];
+        const text = String(first?.description || first?.value || 'error').split('\n')[0]
+          .replace(/^\w*Error:\s*/, '').slice(0, 300);
+        const frame = (e.stackTrace?.callFrames ?? []).find(
+          (f) => typeof f.url === 'string' && f.url.startsWith('file:'));
+        const where = frame && Number.isInteger(frame.lineNumber)
+          ? ` (at line ${frame.lineNumber + 1}:${(frame.columnNumber ?? 0) + 1})` : '';
+        const note = `${text}${where}`;
+        if (page.lumaConsole.length < 5 && !page.lumaConsole.includes(note)) page.lumaConsole.push(note);
       });
       page.on('requestfailed', (r) => {
         if (/\.(m?js)(\?|$)/.test(r.url())) pageProblem ||= `could not load ${r.url()} (${r.failure()?.errorText ?? 'failed'})`;
@@ -755,7 +775,8 @@ async function main() {
       console.log(`OK   ${id}`);
     } catch (e) {
       const reason = String(e).split('\n')[0];
-      console.log(`FAIL ${id}: ${pageProblem ? `${reason} (${pageProblem.slice(0, 200)})` : reason}`);
+      const problem = pageProblem || (page?.lumaConsole?.length ? `console error: ${page.lumaConsole[0]}` : '');
+      console.log(`FAIL ${id}: ${problem ? `${reason} (${problem.slice(0, 300)})` : reason}`);
       failed.push(id);
     } finally {
       if (page) await page.close().catch(() => {});

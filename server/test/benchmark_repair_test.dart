@@ -90,9 +90,84 @@ void main() {
             })),
         throwsFormatException);
   });
+  test('a missing import map for three is a known fix, and only that', () {
+    const error =
+        'Failed to resolve module specifier "three". Relative references must start with either "/", "./", or "../".';
+    const page =
+        '<html><head><title>x</title></head><body><script type="module">\n'
+        "import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js';\n"
+        "import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/controls/OrbitControls.js';\n"
+        '</script></body></html>';
+    final fix = knownRepair(page, error)!;
+    expect(fix.what, contains('import map'));
+    expect(
+        fix.source,
+        contains('<script type="importmap">{"imports":{"three":'
+            '"https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js",'
+            '"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.152.0/examples/jsm/"}}</script>'));
+    expect(fix.source.indexOf('importmap'),
+        lessThan(fix.source.indexOf('type="module"')));
+    expect(
+        fix.source.replaceFirst(
+            RegExp(r'<script type="importmap">.*?</script>\n'), ''),
+        page);
+    expect(knownRepair(fix.source, error), isNull);
+    expect(knownRepair(page, 'ReferenceError: x is not defined'), isNull);
+    expect(
+        knownRepair('<script type="module">import "three"</script>', error)!
+            .source,
+        contains('unpkg.com/three@0.160.0'));
+    expect(knownRepair('plain text, no head or module script', error), isNull);
+  });
+
+  test('a block of lines can be rewritten, and the page cannot be replaced',
+      () {
+    final lines = [for (var n = 1; n <= 10; n++) 'line $n of the page'];
+    String edit(Object edits, {String eol = '\n'}) =>
+        applyBenchmarkRepair(lines.join(eol), jsonEncode({'edits': edits}));
+    expect(
+        edit([
+          {'startLine': 3, 'endLine': 4, 'after': 'new three\nnew four\nextra'}
+        ]),
+        [...lines.take(2), 'new three', 'new four', 'extra', ...lines.skip(4)]
+            .join('\n'));
+    expect(
+        edit([
+          {'startLine': 2, 'endLine': 2, 'after': 'two!'}
+        ], eol: '\r\n'),
+        [lines[0], 'two!', ...lines.skip(2)].join('\r\n'));
+    expect(
+        edit([
+          {'startLine': 10, 'endLine': 10, 'after': 'last'},
+          {'before': 'line 1 of', 'after': 'first of'},
+        ]),
+        ['first of the page', ...lines.sublist(1, 9), 'last'].join('\n'));
+    for (final bad in [
+      [
+        {'startLine': 9, 'endLine': 11, 'after': 'x'}
+      ],
+      [
+        {'startLine': 0, 'endLine': 1, 'after': 'x'}
+      ],
+      [
+        {'startLine': 5, 'endLine': 4, 'after': 'x'}
+      ],
+      [
+        {'startLine': 1, 'endLine': 10, 'after': 'all new'}
+      ],
+      [
+        {'startLine': 3, 'endLine': 5, 'after': 'x'},
+        {'before': 'line 4 of the page', 'after': 'y'},
+      ],
+    ]) {
+      expect(() => edit(bad), throwsFormatException, reason: '$bad');
+    }
+  });
+
   test('an edit that differs only in whitespace still lands, once', () {
-    const source =
-        '<script>\r\n  function go() {\r\n    broken();\r\n  }\r\n</script>';
+    final pad = '<!-- ${'x' * 400} -->\r\n';
+    final source =
+        '$pad<script>\r\n  function go() {\r\n    broken();\r\n  }\r\n</script>';
     String fixed(String before) => applyBenchmarkRepair(
         source,
         jsonEncode({
@@ -102,7 +177,7 @@ void main() {
         }));
     expect(fixed('broken();'), contains('fixed();'));
     expect(fixed('function go() {\n    broken();\n  }'),
-        '<script>\r\n  fixed();\r\n</script>');
+        '$pad<script>\r\n  fixed();\r\n</script>');
     expect(() => fixed('function stop() {\n broken();'), throwsFormatException);
     expect(
         () => applyBenchmarkRepair(
@@ -298,6 +373,8 @@ void main() {
     late int calls;
     late bool failCall;
     late String finish;
+    late List<String> replies;
+    late double callCost;
     late Map<String, dynamic> sent;
     Completer<void>? hold;
 
@@ -346,6 +423,21 @@ void main() {
           isFalse);
     }
 
+    Future<void> saveModulePage() async {
+      await scenes.saveUpload(
+          kind: 'pagoda',
+          id: 'pagoda_demo',
+          model: 'Original model',
+          vendor: 'openai',
+          description: 'Original description',
+          bytes: utf8.encode(
+              '<html><head></head><body><canvas></canvas><script type="module">'
+              "import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js';"
+              '</script></body></html>'));
+      renderer.recordFailure('pagoda_demo',
+          'Failed to resolve module specifier "three". Relative references must start with either "/", "./", or "../".');
+    }
+
     setUp(() async {
       dir = await Directory.systemTemp.createTemp('luma_repair_test');
       accounts = RepairAccounts();
@@ -366,6 +458,8 @@ void main() {
       calls = 0;
       failCall = false;
       finish = 'stop';
+      replies = [];
+      callCost = .001;
       hold = null;
       api = Api(
           accounts,
@@ -412,11 +506,14 @@ void main() {
                   'usage': {
                     'prompt_tokens': 120,
                     'completion_tokens': 80,
-                    'cost': .001
+                    'cost': callCost
                   },
                   'choices': [
                     {
-                      'delta': {'content': reply},
+                      'delta': {
+                        'content':
+                            replies.isNotEmpty ? replies.removeAt(0) : reply
+                      },
                       'finish_reason': finish
                     }
                   ]
@@ -513,6 +610,113 @@ void main() {
           utf8.decode(utf8.encode(original)).split('\n')[0].trimRight());
       expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
     });
+    test('a missing import map is added without asking the model', () async {
+      await save();
+      await saveModulePage();
+      final started =
+          await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      expect(started['httpStatus'], 202, reason: '$started');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'done', reason: job.detail);
+      expect(job.detail, contains('automatically'));
+      expect(calls, 0);
+      expect(usage.usageCalls('owner'), isEmpty);
+      final live = utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes);
+      expect(
+          live,
+          contains(
+              '"three":"https://cdn.jsdelivr.net/npm/three@0.152.0/build/three.module.js"'));
+      expect(renderer.rendered, ['pagoda_demo']);
+    });
+    test('when the known fix is not enough the model carries on from there',
+        () async {
+      await save();
+      await saveModulePage();
+      renderer.validationError = 'initThree.js is not a function';
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      expect(calls, 3);
+      final user =
+          jsonDecode((sent['messages'] as List).last['content'] as String)
+              as Map;
+      expect(
+          (user['previousAttempts'] as List).first, contains('Automatic fix'));
+      expect(user['html'], contains('importmap'));
+    });
+    test('a fix that trades one error for another gets another attempt',
+        () async {
+      await save();
+      String edit(String before, String after) => jsonEncode({
+            'edits': [
+              {'before': before, 'after': after}
+            ]
+          });
+      replies = [edit('broken()', 'oops()'), edit('oops()', 'fixed()')];
+      renderer.syntax = (bytes) => utf8.decode(bytes).contains('oops()')
+          ? (
+              line: 1,
+              column: 30,
+              message: "Identifier 'x' has already been declared"
+            )
+          : null;
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'done', reason: job.detail);
+      expect(job.detail, contains('attempt 2'));
+      expect(calls, 2);
+      final user =
+          jsonDecode((sent['messages'] as List).last['content'] as String)
+              as Map;
+      expect(user['renderError'], startsWith('Syntax error at line 1:30'));
+      expect(user['originalError'], 'ReferenceError: broken is not defined');
+      expect(user['previousAttempts'], hasLength(1));
+      expect(user['html'], contains('oops()'));
+      expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
+          contains('fixed()'));
+      final backups =
+          await Directory('${dir.path}/benchmark_repairs/pagoda_demo')
+              .list()
+              .toList();
+      expect(await File(backups.single.path).readAsString(), original);
+      expect(usage.usageCalls('owner'), hasLength(2));
+    });
+    test('a reply that cannot be applied is retried with the real error shown',
+        () async {
+      await save();
+      replies = [
+        jsonEncode({
+          'edits': [
+            {'before': 'not in the page', 'after': 'x'}
+          ]
+        }),
+      ];
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
+      expect(calls, 2);
+      final user =
+          jsonDecode((sent['messages'] as List).last['content'] as String)
+              as Map;
+      expect(user['renderError'], 'ReferenceError: broken is not defined');
+      expect((user['previousAttempts'] as List).single,
+          contains('could not be applied'));
+    });
+    test('the cost limit covers all attempts together', () async {
+      await save();
+      callCost = .2;
+      renderer.validationError = 'Still cannot render';
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(calls, 2);
+      expect(job.detail, contains('repair limit'));
+      expect(job.costUsd, closeTo(.4, 1e-9));
+      expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
+          original);
+    });
     test('a repair that still does not parse fails without opening a browser',
         () async {
       await save();
@@ -523,8 +727,9 @@ void main() {
       await finished();
       final job = api.benchmarkRepairJobs['pagoda_demo']!;
       expect(job.state, 'failed');
-      expect(job.detail, contains('still has a syntax error at line 4:9'));
+      expect(job.detail, contains('Gave up after 3 attempts'));
       expect(renderer.validations, 0);
+      expect(calls, 3);
       expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
           original);
       expect(renderer.rendered, isEmpty);
@@ -584,7 +789,8 @@ void main() {
       expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
           original);
       expect(renderer.rendered, isEmpty);
-      expect(usage.usageCalls('owner'), hasLength(1));
+      expect(calls, 3);
+      expect(usage.usageCalls('owner'), hasLength(3));
     });
     test('provider failure is not retried and reported usage is retained',
         () async {
@@ -729,14 +935,15 @@ void main() {
         expect(usage.usageCalls('owner'), hasLength(5));
       });
 
-      test('a scene that still fails is not retried, and the run ends',
+      test(
+          'a scene that never renders gets three attempts, then the run moves on',
           () async {
         await save();
         await failScenes(3);
         renderer.validationError = 'Still cannot render';
         await request('POST', '/admin/benchmark-banners/repair-all');
         await allDone();
-        expect(calls, 4);
+        expect(calls, 12);
         expect(api.benchmarkRepairJobs.values.map((j) => j.state).toSet(),
             {'failed'});
         expect(renderer.rendered, isEmpty);

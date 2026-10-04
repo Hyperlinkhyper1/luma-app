@@ -13511,11 +13511,11 @@ window.lumaAskReason = function (form, message) {
     <form id="bnRepairForm">
       <div class="bn-dlg-body" style="padding-top:16px">
         <h3 class="bn-dlg-sec">Repair model</h3>
-        <p class="muted">Repairs run only when you click <strong>Repair once</strong> on a failed scene. The model may only fix its render error. Saving settings does not run it.</p>
+        <p class="muted">Repairs run only when you click <strong>Repair</strong> on a failed scene (or Repair all). The model fixes what stops the scene rendering, rewriting broken sections where needed, and tries up to three times, each time shown what is still wrong. The cost limit below covers all attempts for one scene. Saving settings does not run anything.</p>
         <label class="bn-field">Server API key<select id="bnRepairKey" class="bn-input" required></select></label>
         <label class="bn-field">Model<input id="bnRepairModel" class="bn-input" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
         <label class="bn-field">Reasoning effort<select id="bnRepairEffort" class="bn-input"><option value="">Default (low)</option><option value="none">Off</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
-        <label class="bn-field">Maximum estimated cost per repair (USD)<input id="bnRepairLimit" class="bn-input" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
+        <label class="bn-field">Maximum cost per scene, all attempts together (USD)<input id="bnRepairLimit" class="bn-input" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
         <p class="muted">Price guard is always on: unknown prices and price increases block a call. Saving accepts the selected model’s current token prices. Output is capped to fit the estimate. Usage is recorded in the AI Usage plugin for aydenjue@outlook.com.</p>
         <div id="bnRepairNote" role="status" class="muted"></div>
       </div>
@@ -13803,8 +13803,8 @@ window.lumaAskReason = function (form, message) {
     const n = Number(repairAllBtn.dataset.count) || 0;
     const cap = n * Number(model.maxCostUsd);
     if (!confirm('Repair ' + n + ' failed scene' + (n === 1 ? '' : 's') + ' with ' + model.model + '?\n\n'
-      + 'Three at a time, one model call each. Each call is capped at $' + model.maxCostUsd
-      + ', so this costs at most $' + cap.toFixed(2) + '. A scene that still fails is not retried.')) return;
+      + 'Three at a time, up to three attempts each. Each scene is capped at $' + model.maxCostUsd
+      + ', so this costs at most $' + cap.toFixed(2) + '. Each scene gets up to three attempts, each shown what the last left wrong.')) return;
     repairAllBtn.disabled = true;
     const { ok, body } = await json('/admin/benchmark-banners/repair-all', { method: 'POST' });
     if (!ok) {
@@ -13875,7 +13875,7 @@ window.lumaAskReason = function (form, message) {
       const repair = repairs.find((r) => r.id === i.id);
       const repairControl = i.state === 'failed' && !i.id.startsWith('cathedral_')
         ? '<button type="button" class="btn btn-ghost btn-sm" data-repair-scene="' + esc(i.id) + '"'
-          + (running || repairing ? ' disabled' : '') + '>Repair once</button>' : '';
+          + (running || repairing ? ' disabled' : '') + '>Repair</button>' : '';
       const repairDetail = repair ? '<div style="margin-top:6px">' + esc(repair.detail)
         + (repair.costUsd != null ? ' · $' + Number(repair.costUsd).toFixed(4) : '') + '</div>' : '';
       const img = i.state === 'ok'

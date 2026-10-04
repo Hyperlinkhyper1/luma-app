@@ -102,7 +102,7 @@ extension BenchmarkRepairApi on Api {
     }
   }
 
-  /// Everything a repair needs before its one model call: the chosen model,
+  /// Everything a repair needs before its first model call: the chosen model,
   /// the usage account, the test's entry and source, and a job to report on.
   /// Throws [_RepairRefusal] when this scene cannot be repaired.
   Future<_RepairPlan> _planRepair(String id, String? diagnostic) async {
@@ -193,8 +193,8 @@ extension BenchmarkRepairApi on Api {
   }
 
   /// Repairs every scene that failed in the last render,
-  /// [BenchmarkRepairAll.workers] at a time, each with the one model call a
-  /// single repair gets.
+  /// [BenchmarkRepairAll.workers] at a time, each with the attempts (and the
+  /// per-scene cost limit) a single repair gets.
   Future<Response> _adminRepairAll(Request request) async {
     if (!_sameOrigin(request))
       return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
@@ -306,75 +306,155 @@ extension BenchmarkRepairApi on Api {
         throw StateError(
             'Price guard: the model price increased. Review and save settings to accept the current price.');
       }
-      final source = utf8.decode(scene.bytes);
-      final messages = [
-        {'role': 'system', 'content': benchmarkRepairInstructions},
-        {
-          'role': 'user',
-          'content': jsonEncode({
-            'renderError': diagnostic,
-            if (errorLineOf(diagnostic) case final line?) ...{
-              'errorLine': line,
-              'errorLines': errorLinesOf(source, line),
-            },
-            'html': source,
-          })
-        },
-      ];
-      final maxTokens =
-          repairOutputLimit(jsonEncode(messages), accepted, limit);
-      final body = <String, dynamic>{
-        'model': route.model,
-        'messages': messages,
-        'max_tokens': maxTokens,
-        'stream': true,
-        'stream_options': {'include_usage': true},
-        ..._repairReasoning(route),
-        if (route.upstream == AiUpstream.openrouter)
-          'provider': {
-            'max_price': {
-              'prompt': accepted.input,
-              'completion': accepted.output
-            },
-          },
-      };
-      job.detail = 'Repairing the render error (one model call)…';
-      final acc = ChatStreamAccumulator();
-      try {
-        await _callRepairModel(route, body, acc);
-      } finally {
-        job.costUsd = acc.usage.costUsd;
-        if (acc.usage.totalTokens > 0 || acc.usage.costUsd != null) {
-          await aiUsage.recordCall(ownerId,
-              feature: 'Benchmark render repair',
-              upstream: route.upstream.label,
-              model: route.model,
-              usage: acc.usage,
-              includeInUsage: true);
+      final original = utf8.decode(scene.bytes);
+
+      // Each attempt edits what the last one left, and is told what is still
+      // wrong with it, so a fix that trades one error for another (a
+      // duplicate declaration, a typo in new code) gets another go at it.
+      // The cost limit covers the whole scene, not each call.
+      var base = original;
+      var error = diagnostic;
+      final tried = <String>[];
+      var spent = 0.0;
+      var modelAttempts = 0;
+      String? automatic;
+      List<int>? fixed;
+
+      // Some errors have one known cure; try it before paying for a model.
+      if (knownRepair(base, error) case final known?) {
+        final bytes = utf8.encode(known.source);
+        job.detail = '${known.what}; checking it in the banner renderer…';
+        final problem = await previewRenders.findSyntaxError(bytes) != null
+            ? 'it has a syntax error'
+            : await previewRenders.validateRepair(job.id, bytes);
+        if (problem == null) {
+          fixed = bytes;
+          automatic = known.what;
+        } else {
+          base = known.source;
+          error = problem;
+          tried.add('Automatic fix (${known.what}) was applied and the page '
+              'now fails with: $problem');
         }
       }
-      if (acc.usage.costUsd != null && acc.usage.costUsd! > limit) {
-        throw StateError(
-            'Price guard: the provider reported a cost above the repair limit. Usage was recorded; the live test was kept.');
+      for (var attempt = 1;
+          attempt <= kRepairMaxAttempts && fixed == null;
+          attempt++) {
+        final messages = [
+          {'role': 'system', 'content': benchmarkRepairInstructions},
+          {
+            'role': 'user',
+            'content': jsonEncode({
+              'renderError': error,
+              if (attempt > 1) 'originalError': diagnostic,
+              if (tried.isNotEmpty) 'previousAttempts': tried,
+              if (errorLineOf(error) case final line?) ...{
+                'errorLine': line,
+                'errorLines': errorLinesOf(base, line, radius: 25),
+              },
+              'html': base,
+            })
+          },
+        ];
+        modelAttempts = attempt;
+        final remaining = limit - spent;
+        late final int maxTokens;
+        try {
+          if (remaining <= 0) throw ArgumentError('Spent.');
+          maxTokens =
+              repairOutputLimit(jsonEncode(messages), accepted, remaining);
+        } on ArgumentError {
+          if (attempt == 1) rethrow;
+          throw StateError('Gave up after ${attempt - 1} '
+              'attempt${attempt == 2 ? '' : 's'}: the \$${limit.toStringAsFixed(2)} '
+              'cost limit is used up. Last problem: ${tried.last} '
+              'The live test was kept.');
+        }
+        final body = <String, dynamic>{
+          'model': route.model,
+          'messages': messages,
+          'max_tokens': maxTokens,
+          'stream': true,
+          'stream_options': {'include_usage': true},
+          ..._repairReasoning(route),
+          if (route.upstream == AiUpstream.openrouter)
+            'provider': {
+              'max_price': {
+                'prompt': accepted.input,
+                'completion': accepted.output
+              },
+            },
+        };
+        job.detail = attempt == 1
+            ? 'Repairing the render error…'
+            : 'Attempt $attempt of $kRepairMaxAttempts: fixing what the last '
+                'attempt left…';
+        final acc = ChatStreamAccumulator();
+        try {
+          await _callRepairModel(route, body, acc);
+        } finally {
+          spent += acc.usage.costUsd ?? 0;
+          job.costUsd = spent;
+          if (acc.usage.totalTokens > 0 || acc.usage.costUsd != null) {
+            await aiUsage.recordCall(ownerId,
+                feature: 'Benchmark render repair',
+                upstream: route.upstream.label,
+                model: route.model,
+                usage: acc.usage,
+                includeInUsage: true);
+          }
+        }
+        if (spent > limit) {
+          throw StateError(
+              'Price guard: the provider reported a cost above the repair limit. Usage was recorded; the live test was kept.');
+        }
+        if (acc.error != null ||
+            acc.finishReason == 'length' ||
+            !acc.done ||
+            acc.content.trim().isEmpty) {
+          throw StateError(_incompleteReason(acc, maxTokens));
+        }
+
+        String? problem;
+        String? candidate;
+        try {
+          candidate = applyBenchmarkRepair(base, acc.content);
+        } on FormatException catch (e) {
+          problem = 'Your reply could not be applied: ${e.message}';
+        }
+        if (candidate != null) {
+          final bytes = utf8.encode(candidate);
+          if (await previewRenders.findSyntaxError(bytes) case final broken?) {
+            problem = 'Syntax error at line ${broken.line}:${broken.column}: '
+                '${broken.message}.';
+            base = candidate;
+            error = problem;
+          } else {
+            job.detail = attempt == 1
+                ? 'Checking the repaired test in the banner renderer…'
+                : 'Attempt $attempt of $kRepairMaxAttempts: checking it in '
+                    'the banner renderer…';
+            final renderError =
+                await previewRenders.validateRepair(job.id, bytes);
+            if (renderError == null) {
+              fixed = bytes;
+            } else {
+              problem = 'It did not render: $renderError';
+              base = candidate;
+              error = renderError;
+            }
+          }
+        }
+        if (fixed == null) {
+          tried.add('Attempt $attempt: $problem');
+          if (attempt == kRepairMaxAttempts) {
+            throw StateError('Gave up after $kRepairMaxAttempts attempts. '
+                'Last problem: $problem The live test was kept.');
+          }
+        }
       }
-      if (acc.error != null ||
-          acc.finishReason == 'length' ||
-          !acc.done ||
-          acc.content.trim().isEmpty) {
-        throw StateError(_incompleteReason(acc, maxTokens));
-      }
-      final repaired = applyBenchmarkRepair(source, acc.content);
-      final bytes = utf8.encode(repaired);
-      if (await previewRenders.findSyntaxError(bytes) case final broken?) {
-        throw StateError('The repair still has a syntax error at line '
-            '${broken.line}:${broken.column}: ${broken.message}. It was not '
-            'rendered. The live test was kept.');
-      }
-      job.detail = 'Checking the repaired test in the banner renderer…';
-      final renderError = await previewRenders.validateRepair(job.id, bytes);
-      if (renderError != null)
-        throw StateError(
-            'Repair did not render: $renderError. The live test was kept.');
+
+      final bytes = fixed!;
       final latest = await aiBenchmarks.readScene(job.id);
       if (latest?.etag != scene.etag) {
         throw StateError(
@@ -395,7 +475,9 @@ extension BenchmarkRepairApi on Api {
           kind: entry['kind'] as String, id: job.id, bytes: bytes);
       job.finish(
           'done',
-          'Minimal repair saved; original backed up. Banner: ${published['render'] ?? 'queued'}.'
+          'Repaired${automatic == null ? '' : ' automatically ($automatic)'}'
+              '${modelAttempts == 0 ? '' : ' on attempt $modelAttempts'}; '
+              'original backed up. Banner: ${published['render'] ?? 'queued'}.'
               '${published['github'] == 'failed' ? ' GitHub: ${published['githubError']}' : ''}');
     } catch (e) {
       job.finish(
