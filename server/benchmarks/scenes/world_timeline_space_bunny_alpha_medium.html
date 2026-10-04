@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A Timeline of the World</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050914;font-family:Arial,Helvetica,sans-serif}svg{display:block;width:100%;height:100%}.muted{fill:#9bb0c7}.tiny{font-size:13px;letter-spacing:1px}.small{font-size:15px}.label{font-size:16px;font-weight:bold;letter-spacing:2px}.body{font-size:19px}.title{font-size:38px;font-weight:bold}.date{font-size:20px;fill:#ffd27a}.white{fill:#f3f7ff}.pointer{cursor:pointer}.control{cursor:pointer}.control:hover .button{fill:#263c5d}.control:hover .buttonText{fill:#fff}
+</style>
+</head>
+<body>
+<svg id="world" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" aria-label="An animated timeline of the world">
+<defs>
+<radialGradient id="space" cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="#152b52"/><stop offset=".55" stop-color="#080f27"/><stop offset="1" stop-color="#02040d"/></radialGradient>
+<radialGradient id="sun" cx="45%" cy="45%" r="60%"><stop offset="0" stop-color="#fff6a1"/><stop offset=".3" stop-color="#ffad32"/><stop offset="1" stop-color="#c22b18" stop-opacity="0"/></radialGradient>
+<radialGradient id="ocean" cx="35%" cy="25%" r="75%"><stop offset="0" stop-color="#43b7e6"/><stop offset=".45" stop-color="#1266b0"/><stop offset="1" stop-color="#061b50"/></radialGradient>
+<linearGradient id="lava" x2="1" y2="1"><stop stop-color="#ffeb58"/><stop offset=".28" stop-color="#f05a18"/><stop offset=".65" stop-color="#86162e"/><stop offset="1" stop-color="#260c29"/></linearGradient>
+<linearGradient id="sky" x2="0" y2="1"><stop stop-color="#07132f"/><stop offset=".6" stop-color="#193f67"/><stop offset="1" stop-color="#d8783b"/></linearGradient>
+<linearGradient id="ice" x2="0" y2="1"><stop stop-color="#d8f4ff" stop-opacity=".95"/><stop offset="1" stop-color="#5ca8d1" stop-opacity=".35"/></linearGradient>
+<linearGradient id="forest" x2="0" y2="1"><stop stop-color="#56c5a2"/><stop offset="1" stop-color="#0a3a4b"/></linearGradient>
+<linearGradient id="city" x2="0" y2="1"><stop stop-color="#8dd8ff"/><stop offset="1" stop-color="#3b5bb5"/></linearGradient>
+<filter id="glow"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="18"/></filter>
+<filter id="smallGlow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+<clipPath id="globeClip"><circle cx="980" cy="405" r="205"/></clipPath>
+<pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#80b9d4" stroke-opacity=".08"/></pattern>
+<marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="#ffd27a"/></marker>
+</defs>
+
+<rect width="1600" height="900" fill="url(#space)"/>
+<g id="stars" fill="#d8ecff">
+<circle cx="120" cy="120" r="1.5"/><circle cx="230" cy="230" r="1"/><circle cx="350" cy="100" r="1.3"/><circle cx="480" cy="170" r="1"/><circle cx="620" cy="80" r="1.5"/><circle cx="730" cy="200" r="1"/><circle cx="850" cy="90" r="1.2"/><circle cx="1110" cy="130" r="1.2"/><circle cx="1230" cy="100" r="1.5"/><circle cx="1360" cy="180" r="1"/><circle cx="1500" cy="90" r="1.3"/><circle cx="90" cy="360" r="1"/><circle cx="500" cy="330" r="1.4"/><circle cx="1360" cy="330" r="1.2"/><circle cx="1500" cy="430" r="1"/><circle cx="180" cy="520" r="1.2"/><circle cx="420" cy="600" r="1"/><circle cx="1450" cy="620" r="1.4"/>
+</g>
+<circle cx="150" cy="170" r="110" fill="url(#sun)" opacity=".55" filter="url(#soft)"/>
+<g id="solar"><circle cx="150" cy="170" r="54" fill="#ffb32b" opacity=".9"/><circle cx="150" cy="170" r="70" fill="none" stroke="#ffd36b" stroke-width="2" opacity=".3"/></g>
+
+<g id="camera">
+<path id="horizon" d="M0 660 Q350 570 650 650 T1200 620 T1600 650 V900 H0Z" fill="#071323" opacity=".7"/>
+<g id="earth" transform="translate(0,0)">
+<circle cx="980" cy="405" r="235" fill="none" stroke="#6ed8ff" stroke-opacity=".28" stroke-width="12" filter="url(#glow)"/>
+<circle cx="980" cy="405" r="205" fill="url(#ocean)"/>
+<g clip-path="url(#globeClip)">
+<path id="land" d="M810 275 C850 245 895 265 920 295 C947 328 900 350 878 375 C850 400 805 390 790 360 C775 330 785 295 810 275Z M1000 240 C1045 220 1100 245 1115 280 C1135 320 1100 345 1070 350 C1035 355 1015 325 1000 300Z M1040 430 C1090 410 1140 430 1160 470 C1180 515 1130 555 1080 555 C1035 555 1010 515 1020 475Z M840 480 C875 455 925 480 920 520 C915 555 880 580 845 560 C815 540 812 505 840 480Z" fill="#4c9b6b" stroke="#7bc88b" stroke-width="2"/>
+<path id="landGlow" d="M810 275 C850 245 895 265 920 295 C947 328 900 350 878 375 C850 400 805 390 790 360 C775 330 785 295 810 275Z" fill="none" stroke="#a4e4a4" stroke-width="7" opacity=".22" filter="url(#glow)"/>
+<rect x="770" y="190" width="430" height="430" fill="url(#grid)" opacity=".5"/>
+<ellipse id="iceCap" cx="980" cy="405" rx="210" ry="55" fill="url(#ice)" opacity="0"/>
+</g>
+<circle cx="980" cy="405" r="205" fill="none" stroke="#b8edff" stroke-opacity=".35" stroke-width="3"/>
+<path d="M820 255A205 205 0 0 1 1120 240" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="7"/>
+</g>
+
+<!-- formation -->
+<g class="chapterArt" data-art="0" opacity="0">
+<path d="M870 620Q980 490 1090 620" fill="none" stroke="#ff7928" stroke-width="12" filter="url(#glow)"/>
+<path d="M860 635Q980 505 1100 635" fill="none" stroke="#ffd54d" stroke-width="4"/>
+<g fill="#ff9a32" filter="url(#smallGlow)"><circle cx="855" cy="565" r="5"/><circle cx="900" cy="535" r="3"/><circle cx="1035" cy="550" r="4"/><circle cx="1100" cy="590" r="3"/><circle cx="930" cy="620" r="2"/></g>
+</g>
+<!-- hades -->
+<g class="chapterArt" data-art="1" opacity="0">
+<path d="M760 550Q850 470 920 555T1090 535T1210 560" fill="none" stroke="#ff9a30" stroke-width="9" opacity=".9"/>
+<path d="M760 575Q850 495 920 580T1090 560T1210 585" fill="none" stroke="#f34b27" stroke-width="25" opacity=".6" filter="url(#glow)"/>
+<g fill="#65b7db" opacity=".85"><ellipse cx="815" cy="600" rx="45" ry="8"/><ellipse cx="1010" cy="610" rx="60" ry="9"/><ellipse cx="1140" cy="590" rx="35" ry="7"/></g>
+</g>
+<!-- life -->
+<g class="chapterArt" data-art="2" opacity="0">
+<g fill="#56b6a8" stroke="#a2e3ca" stroke-width="2"><path d="M820 610Q830 560 840 610Z"/><path d="M845 612Q855 548 867 612Z"/><path d="M875 615Q885 565 897 615Z"/><path d="M1040 615Q1050 555 1062 615Z"/><path d="M1068 612Q1080 548 1092 612Z"/></g>
+<g fill="#f0d47a"><circle cx="833" cy="603" r="4"/><circle cx="858" cy="598" r="3"/><circle cx="1053" cy="602" r="4"/></g>
+</g>
+<!-- oxygen -->
+<g class="chapterArt" data-art="3" opacity="0">
+<path d="M755 290Q820 230 875 275T1000 265T1205 300" fill="none" stroke="#9de5e5" stroke-width="20" opacity=".2" filter="url(#soft)"/>
+<g fill="#b9f4f1" filter="url(#smallGlow)"><circle cx="810" cy="245" r="5"/><circle cx="850" cy="220" r="3"/><circle cx="900" cy="250" r="4"/><circle cx="1080" cy="230" r="4"/><circle cx="1130" cy="255" r="3"/><circle cx="1170" cy="220" r="4"/></g>
+<path d="M790 630Q840 600 890 628T990 620T1170 635" fill="none" stroke="#4ac4bb" stroke-width="7" opacity=".8"/>
+</g>
+<!-- snowball -->
+<g class="chapterArt" data-art="4" opacity="0">
+<g fill="none" stroke="#e7fbff" stroke-width="3" opacity=".8"><path d="M810 260l-12 28 20-7 13 27 6-30 22 10"/><path d="M1040 215l-15 30 23-8 14 28 5-31 24 9"/><path d="M1140 430l-20 28 25-6 15 30 6-32 27 8"/></g>
+<g fill="#e7fbff"><circle cx="805" cy="310" r="4"/><circle cx="850" cy="250" r="3"/><circle cx="930" cy="210" r="3"/><circle cx="1080" cy="300" r="4"/><circle cx="1160" cy="360" r="3"/></g>
+</g>
+<!-- cambrian -->
+<g class="chapterArt" data-art="5" opacity="0">
+<g fill="#e7a35d" stroke="#ffd08a" stroke-width="2"><path d="M820 585Q850 545 880 585L860 610H840Z"/><path d="M1050 600Q1080 555 1115 600L1090 625H1070Z"/><path d="M920 625Q945 585 970 625L950 642H930Z"/></g>
+<g fill="none" stroke="#f4c47c" stroke-width="2"><path d="M850 590l-30-25M860 590l30-25M1080 600l-35-28M1090 600l35-28M945 625l-25-22"/></g>
+</g>
+<!-- land plants -->
+<g class="chapterArt" data-art="6" opacity="0">
+<path d="M755 630Q850 590 950 620T1210 620" fill="none" stroke="#6aaf62" stroke-width="12"/>
+<g fill="#56c987" stroke="#b1ed9b" stroke-width="2"><path d="M830 620q-15-70 0-120q18 50 0 120Z"/><path d="M875 622q-12-88 3-140q18 65-3 140Z"/><path d="M1035 622q-18-70 0-125q18 60 0 125Z"/><path d="M1080 620q-12-62 4-110q16 54-4 110Z"/></g>
+<g fill="#e3a55f"><ellipse cx="940" cy="625" rx="25" ry="10"/><ellipse cx="1120" cy="628" rx="22" ry="8"/></g>
+</g>
+<!-- pangaea dinosaurs -->
+<g class="chapterArt" data-art="7" opacity="0">
+<path d="M760 625Q900 555 1040 620Q1140 555 1230 625" fill="#5c9960" stroke="#8bd27c" stroke-width="3"/>
+<path d="M955 615q-5-75 45-78q32 2 28 42q-4 28-36 31l-4 50" fill="#c77b4c" stroke="#f1b26d" stroke-width="3"/>
+<path d="M990 548l-35-33 38 12M1010 552l42-32-32 42" fill="none" stroke="#f1b26d" stroke-width="5"/>
+<circle cx="1018" cy="548" r="4" fill="#fff0bd"/>
+<g fill="#80c879"><path d="M800 625q-20-55 0-100q20 48 0 100Z"/><path d="M1160 625q-20-55 0-100q20 48 0 100Z"/></g>
+</g>
+<!-- impact -->
+<g class="chapterArt" data-art="8" opacity="0">
+<circle cx="1160" cy="160" r="15" fill="#ffcc55" filter="url(#glow)"/>
+<path d="M1160 180L1070 340" stroke="#ffb12b" stroke-width="5" stroke-dasharray="12 10" marker-end="url(#arrow)"/>
+<circle cx="980" cy="405" r="220" fill="none" stroke="#ff9c39" stroke-width="8" opacity=".8" filter="url(#glow)"/>
+<g fill="#ffcf63"><circle cx="850" cy="400" r="4"/><circle cx="880" cy="480" r="3"/><circle cx="1080" cy="330" r="3"/><circle cx="1120" cy="470" r="5"/></g>
+</g>
+<!-- mammals -->
+<g class="chapterArt" data-art="9" opacity="0">
+<path d="M800 620Q950 565 1170 620" fill="none" stroke="#7bb36c" stroke-width="12"/>
+<g fill="#c88d62" stroke="#f1c18b" stroke-width="2"><ellipse cx="930" cy="595" rx="48" ry="25"/><circle cx="980" cy="570" r="24"/><path d="M960 555l-18-25 27 13M990 552l20-24 3 31"/><path d="M910 616l-8 28M940 618l-3 28"/></g>
+<path d="M1000 575q28 8 42 0" fill="none" stroke="#482b29" stroke-width="3"/>
+</g>
+<!-- sapiens -->
+<g class="chapterArt" data-art="10" opacity="0">
+<g fill="#e3b18b" stroke="#f6d4ad" stroke-width="2"><circle cx="960" cy="535" r="18"/><path d="M948 553q12 17 25 0l12 66h-49Z"/><path d="M950 570l-35 35M990 570l35 35" fill="none" stroke="#e3b18b" stroke-width="9" stroke-linecap="round"/></g>
+<g fill="none" stroke="#c9e9f2" stroke-width="2" opacity=".8"><path d="M910 505q-25-25 0-50q25 25 0 50M1008 505q25-25 0-50q-25 25 0 50"/></g>
+</g>
+<!-- farming -->
+<g class="chapterArt" data-art="11" opacity="0">
+<path d="M760 625H1200M760 650H1200M850 600v70M940 600v70M1030 600v70M1120 600v70" stroke="#b18c4e" stroke-width="3" opacity=".7"/>
+<g fill="#e1b34e"><path d="M825 625v-45l-18 28 18-8 18 8-18-28Z"/><path d="M915 625v-52l-18 30 18-8 18 8-18-30Z"/><path d="M1005 625v-45l-18 28 18-8 18 8-18-28Z"/><path d="M1095 625v-52l-18 30 18-8 18 8-18-30Z"/></g>
+</g>
+<!-- civilizations -->
+<g class="chapterArt" data-art="12" opacity="0">
+<g fill="#d3b06a" stroke="#f3d899" stroke-width="2"><path d="M820 625l35-170 35 170Z"/><path d="M900 625l42-145 42 145Z"/><path d="M1040 625l32-120 32 120Z"/></g>
+<g fill="none" stroke="#ead396" stroke-width="4"><path d="M845 455l-18 0M945 480l-20 0M1080 505l-17 0"/></g>
+<path d="M770 625H1200" stroke="#c79b5d" stroke-width="10"/>
+</g>
+<!-- classical -->
+<g class="chapterArt" data-art="13" opacity="0">
+<g fill="#d8d1b0" stroke="#fff0be" stroke-width="2"><path d="M810 625h310v-15H810ZM850 610v-115h20v115M930 610v-115h20v115M1010 610v-115h20v115"/><path d="M830 495h280l-140-85Z"/></g>
+<g fill="none" stroke="#e8bd6c" stroke-width="5"><path d="M800 625q40-75 80 0t80 0t80 0t80 0"/></g>
+</g>
+<!-- medieval -->
+<g class="chapterArt" data-art="14" opacity="0">
+<g fill="#c1b58a" stroke="#e5d3a2" stroke-width="2"><path d="M850 625v-140h100v140Z"/><path d="M1040 625v-105h80v105Z"/><path d="M850 485l50-45 50 45M1040 520l40-35 40 35"/></g>
+<g fill="#ffd66d"><rect x="870" y="525" width="18" height="28"/><rect x="910" y="525" width="18" height="28"/><rect x="1060" y="555" width="16" height="24"/></g>
+<path d="M785 625H1160" stroke="#6c8d68" stroke-width="10"/>
+</g>
+<!-- press ships -->
+<g class="chapterArt" data-art="15" opacity="0">
+<g transform="translate(820 520)"><rect x="0" y="30" width="95" height="65" fill="#8c5a43" stroke="#d2a16d" stroke-width="3"/><path d="M10 30V0h75v30" fill="none" stroke="#e3b776" stroke-width="8"/><circle cx="48" cy="66" r="25" fill="#e4c078"/><path d="M48 42v48M25 66h46" stroke="#6c432f" stroke-width="3"/></g>
+<path d="M1000 620l90-45 90 45-20 25h-140Z" fill="#bb6b42" stroke="#ffd08a" stroke-width="3"/><path d="M1085 575v-120l85 120Z" fill="#d8e4df" stroke="#fff" stroke-width="2"/><path d="M1085 455v120" stroke="#6b4d3b" stroke-width="4"/>
+</g>
+<!-- industrial -->
+<g class="chapterArt" data-art="16" opacity="0">
+<g fill="#8799a3" stroke="#c2d4d2" stroke-width="2"><rect x="820" y="550" width="90" height="75"/><rect x="915" y="510" width="80" height="115"/><rect x="1000" y="570" width="115" height="55"/></g>
+<g fill="#d6e2dc"><rect x="840" y="565" width="12" height="15"/><rect x="865" y="565" width="12" height="15"/><rect x="935" y="530" width="12" height="15"/><rect x="960" y="530" width="12" height="15"/><rect x="1020" y="585" width="14" height="14"/></g>
+<path d="M845 550v-75h35v75M955 510v-105h32v105" fill="none" stroke="#aeb9b4" stroke-width="10"/>
+<g fill="#c5c9c4" opacity=".6" filter="url(#soft)"><circle cx="863" cy="430" r="35"/><circle cx="972" cy="370" r="45"/><circle cx="1100" cy="420" r="30"/></g>
+</g>
+<!-- 20th -->
+<g class="chapterArt" data-art="17" opacity="0">
+<path d="M760 640Q900 600 1030 630T1210 625" fill="none" stroke="#9bb7c4" stroke-width="3"/>
+<g fill="#d9edf0" stroke="#fff" stroke-width="2"><path d="M820 615l115-22 38 16-115 22Z"/><path d="M875 610l-10-35 48 33M925 608l30-25 8 29"/><path d="M965 632l-5 25M990 630l-3 24"/></g>
+<g fill="#d9edf0" stroke="#fff" stroke-width="2"><path d="M1010 600l100-55 30 45-100 28Z"/><path d="M1050 575l-5-28 40 26M1110 545l28-25 2 27"/></g>
+<path d="M1100 625l25-55 25 55" fill="none" stroke="#ffcf69" stroke-width="4"/>
+<circle cx="1125" cy="565" r="5" fill="#fff" filter="url(#smallGlow)"/>
+</g>
+<!-- digital -->
+<g class="chapterArt" data-art="18" opacity="0">
+<g fill="#6ce8ff" stroke="#b8f7ff" stroke-width="2"><rect x="820" y="540" width="110" height="85" rx="5"/><rect x="945" y="505" width="125" height="120" rx="5"/><rect x="1085" y="555" width="95" height="70" rx="5"/></g>
+<g fill="#164e91"><path d="M835 560h80v10h-80ZM835 585h55v8h-55ZM960 530h90v10h-90ZM960 560h65v8h-65ZM1100 575h60v9h-60Z"/></g>
+<g fill="#ffe083"><circle cx="850" cy="610" r="4"/><circle cx="875" cy="610" r="4"/><circle cx="990" cy="610" r="4"/><circle cx="1015" cy="610" r="4"/><circle cx="1120" cy="610" r="4"/><circle cx="1145" cy="610" r="4"/></g>
+<g stroke="#65e7ff" stroke-width="2" fill="none" opacity=".7"><path d="M780 470h80l30-35h80l30 35h80l30-35h80l30 35h80"/><path d="M800 500h60l30-25h80l30 25h60l30-25h80l30 25h60"/></g>
+</g>
+
+<g id="foreground"><path d="M0 710Q220 660 420 700T850 690T1250 700T1600 675V900H0Z" fill="#040914" opacity=".8"/><path d="M0 745Q300 700 620 740T1250 730T1600 720" fill="none" stroke="#23415a" stroke-width="2" opacity=".7"/></g>
+
+<g id="narration">
+<rect x="64" y="60" width="535" height="190" rx="8" fill="#050b1a" fill-opacity=".68" stroke="#87b4d1" stroke-opacity=".25"/>
+<text id="chapterNumber" x="92" y="94" class="label" fill="#ffd27a">01 / 19</text>
+<text id="chapterTitle" x="92" y="140" class="title white">EARTH FORMS</text>
+<text id="chapterDate" x="92" y="176" class="date">ABOUT 4.54 BILLION YEARS AGO</text>
+<text id="chapterCaption" x="92" y="211" class="body muted">A cloud of material gathers and the young Earth is born.</text>
+<text id="chapterCaption2" x="92" y="238" class="body muted">A Mars-sized body, called Theia, strikes the proto-Earth.</text>
+</g>
+
+<g id="timeline">
+<rect x="48" y="758" width="1504" height="112" rx="12" fill="#07101f" fill-opacity=".92" stroke="#7695af" stroke-opacity=".4"/>
+<text x="78" y="786" class="label" fill="#d9e7f2">A TIMELINE OF THE WORLD</text>
+<text x="1450" y="786" class="small muted" text-anchor="end">DEEP TIME · COMPRESSED FOR LEGIBILITY</text>
+<g id="bands">
+<rect x="78" y="802" width="180" height="22" fill="#692b32"/><rect x="258" y="802" width="150" height="22" fill="#75502d"/><rect x="408" y="802" width="190" height="22" fill="#356b62"/><rect x="598" y="802" width="210" height="22" fill="#397c5c"/><rect x="808" y="802" width="220" height="22" fill="#9b7133"/><rect x="1028" y="802" width="220" height="22" fill="#3d6a75"/><rect x="1248" y="802" width="274" height="22" fill="#5c3b76"/>
+<text x="86" y="818" class="tiny white">HADEAN</text><text x="266" y="818" class="tiny white">ARCHEAN</text><text x="416" y="818" class="tiny white">PROTEROZOIC</text><text x="606" y="818" class="tiny white">PALEOZOIC</text><text x="816" y="818" class="tiny white">MESOZOIC</text><text x="1036" y="818" class="tiny white">CENOZOIC</text><text x="1256" y="818" class="tiny white">HUMAN HISTORY</text>
+</g>
+<g id="ticks" stroke="#f4d08a" stroke-width="2"></g>
+<path id="timeTrack" d="M78 837H1522" stroke="#30465f" stroke-width="4"/>
+<circle id="playhead" cx="78" cy="837" r="9" fill="#ffe08a" stroke="#fff4c4" stroke-width="3" filter="url(#smallGlow)"/>
+<text id="scaleLabel" x="78" y="855" class="tiny muted">SCALE: PIECEWISE · EACH ERA IS EXPANDED</text>
+<g id="controls" class="pointer">
+<rect class="button" x="1310" y="758" width="72" height="28" rx="5" fill="#152b46" stroke="#7590aa"/><text id="playIcon" class="buttonText white" x="1346" y="778" text-anchor="middle" font-size="18">Ⅱ</text>
+<rect class="button" x="1390" y="758" width="58" height="28" rx="5" fill="#152b46" stroke="#7590aa"/><text class="buttonText white" x="1419" y="778" text-anchor="middle" font-size="14">1×</text>
+<rect class="button" x="1456" y="758" width="72" height="28" rx="5" fill="#152b46" stroke="#7590aa"/><text class="buttonText white" x="1492" y="778" text-anchor="middle" font-size="14">↺</text>
+</g>
+</g>
+</svg>
+<script>
+(function(){
+const N=19, duration=180000, totalTicks=1504, x0=78;
+const data=[
+["EARTH FORMS","ABOUT 4.54 BILLION YEARS AGO","A cloud of material gathers and the young Earth is born.","A Mars-sized body, called Theia, strikes the proto-Earth."],
+["THE HADEAN","ABOUT 4.6–4.0 BILLION YEARS AGO","The surface is molten, then a crust forms as the planet cools.","Steam condenses and the first oceans gather in deep basins."],
+["FIRST LIFE","ABOUT 3.7–3.5 BILLION YEARS AGO","Simple microbial communities flourish in the young oceans.","Stromatolites layered by cyanobacteria become some of Earth's oldest fossils."],
+["GREAT OXIDATION EVENT","ABOUT 2.4 BILLION YEARS AGO","Oxygen-producing microbes alter the air and seas.","The sky and oceans change colour; an oxygen revolution begins."],
+["SNOWBALL EARTH","ABOUT 720–635 MILLION YEARS AGO","Ice may spread far across the planet during a severe global glaciation.","Life survives in refuges beneath the ice."],
+["CAMERIAN EXPLOSION","ABOUT 538 MILLION YEARS AGO","Many animal body plans appear in a relatively short geological interval.","Trilobites become emblematic inhabitants of ancient seas."],
+["LIFE MOVES ONTO LAND","ROUGHLY 470–375 MILLION YEARS AGO","Plants establish on land, followed by fungi and animals.","Fern forests, insects and early vertebrates reshape the continents."],
+["PANGAEA AND DINOSAURS","252–66 MILLION YEARS AGO","Continents join into Pangaea, then drift apart over millions of years.","Dinosaurs dominate much of the Mesozoic world."],
+["THE ASTEROID IMPACT","66 MILLION YEARS AGO","A large asteroid strikes the Yucatán region.","The impact and aftermath end the age of non-avian dinosaurs."],
+["THE RISE OF MAMMALS","ABOUT 66–35 MILLION YEARS AGO","After the extinction, mammals diversify and occupy many niches.","Birds and flowering plants also flourish."],
+["HOMO SAPIENS","ABOUT 300,000 YEARS AGO","Anatomically modern humans appear in Africa.","Our species later spreads across nearly every continent."],
+["FARMING BEGINS","ABOUT 10,000 BCE","People begin planting crops and herding animals.","Settlements grow, and food surplus supports new societies."],
+["EARLY CIVILISATIONS","MESOPOTAMIA · EGYPT · ABOUT 2560 BCE","Cities, writing and monumental building emerge in several regions.","The Great Pyramid of Giza is built as a tomb for Pharaoh Khufu."],
+["THE CLASSICAL WORLD","GREECE · ROME · HAN CHINA","Cities and empires connect the ancient Mediterranean and Asia.","Philosophy, law, engineering and trade flourish across cultures."],
+["THE MEDIEVAL WORLD","ABOUT 500–1400 CE","Trade routes, kingdoms and knowledge centres endure and change.","Cathedrals, universities and cities become prominent landmarks."],
+["PRESS AND EXPLORATION","ABOUT 1450 · 1492","Movable-type printing transforms the circulation of ideas.","European voyages connect the Atlantic, Africa, Asia and the Americas."],
+["INDUSTRIAL REVOLUTION","FROM ABOUT 1760","Coal, steam and factories transform work and landscapes.","Cities expand rapidly as transport and production accelerate."],
+["THE 20TH CENTURY","1903–1969 CE","Powered flight opens an age of aviation.","Two world wars, the Moon landing and nuclear technology mark the century."],
+["THE DIGITAL AGE","LATE 20TH CENTURY–TODAY","Computers and networks reshape communication and culture.","A connected world now carries ideas, images and information at planetary scale."]
+];
+const tickPositions=[80,145,215,285,355,425,500,575,660,735,810,885,960,1035,1110,1185,1260,1360,1470];
+const tick=document.getElementById('ticks');
+for(let i=0;i<N;i++){let x=x0+tickPositions[i];let l=document.createElementNS('http://www.w3.org/2000/svg','line');l.setAttribute('x1',x);l.setAttribute('x2',x);l.setAttribute('y1','797');l.setAttribute('y2','829');l.setAttribute('opacity',i===0?'1':'.65');tick.appendChild(l)}
+let elapsed=0, playing=true, speed=1, last=performance.now();
+const art=[...document.querySelectorAll('.chapterArt')], title=document.getElementById('chapterTitle'), date=document.getElementById('chapterDate'), cap=document.getElementById('chapterCaption'), cap2=document.getElementById('chapterCaption2'), num=document.getElementById('chapterNumber'), playhead=document.getElementById('playhead'), playIcon=document.getElementById('playIcon'), speedText=document.querySelector('#controls text:nth-of-type(2)');
+function smooth(a,b,x){let t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t)}
+function lerpPath(a,b,t){return a.map((v,i)=>v+(b[i]-v)*t).join(' ')}
+const early=[810,275,850,245,895,265,920,295,947,328,900,350,878,375,850,400,805,390,790,360,775,330,785,295,810,275,1000,240,1045,220,1100,245,1115,280,1135,320,1100,345,1070,350,1035,355,1015,325,1000,300,1000,240,1040,430,1090,410,1140,430,1160,470,1180,515,1130,555,1080,555,1035,555,1010,515,1020,475,1040,430,840,480,875,455,925,480,920,520,915,555,880,580,845,560,815,540,812,505,840,480];
+const pangaea=[790,315,840,275,910,280,950,320,980,350,1040,330,1090,290,1140,310,1180,355,1160,410,1110,420,1070,450,1030,440,1000,475,965,450,925,470,890,440,850,460,820,420,790,390,790,315,1000,250,1050,230,1120,250,1170,300,1190,350,1150,390,1100,380,1060,350,1020,310,1000,250,1010,455,1070,430,1130,450,1160,500,1130,545,1070,550,1020,520,1010,480,1010,455,820,480,870,450,920,475,940,520,910,560,860,550,825,520,820,480];
+const modern=[810,275,850,245,895,265,920,295,947,328,900,350,878,375,850,400,805,390,790,360,775,330,785,295,810,275,1000,240,1045,220,1100,245,1115,280,1135,320,1100,345,1070,350,1035,355,1015,325,1000,300,1000,240,1040,430,1090,410,1140,430,1160,470,1180,515,1130,555,1080,555,1035,555,1010,515,1020,475,1040,430,840,480,875,455,925,480,920,520,915,555,880,580,845,560,815,540,812,505,840,480];
+function setProgress(ms){
+ let p=Math.max(0,Math.min(.999999,ms/duration)), idx=Math.min(N-1,Math.floor(p*N));
+ for(let i=0;i<N;i++){let center=(i+.5)/N;let o=1-smooth(.18,.48,Math.abs(p-center));art[i].setAttribute('opacity',o.toFixed(3));}
+ title.textContent=data[idx][0];date.textContent=data[idx][1];cap.textContent=data[idx][2];cap2.textContent=data[idx][3];num.textContent=String(idx+1).padStart(2,'0')+' / 19';
+ playhead.setAttribute('cx',(x0+p*totalTicks).toFixed(1));
+ let landTarget=p<.62?early:(p<.76?modern:p>.83?modern:early); // continuous continental drift
+ if(p>.64&&p<.78){let t=smooth(.64,.78,p);document.getElementById('land').setAttribute('d','M '+lerpPath(pangaea,modern,t));}else document.getElementById('land').setAttribute('d','M '+modern.join(' '));
+ let snowball=(p>.39&&p<.48)?smooth(.39,.43,p)*(1-smooth(.45,.5,p))*.78:0;
+ document.getElementById('iceCap').setAttribute('opacity',snowball.toFixed(3));
+ document.getElementById('earth').setAttribute('transform','translate('+(Math.sin(p*18)*5).toFixed(1)+','+(Math.cos(p*12)*3).toFixed(1)+')');
+}
+function toggle(){playing=!playing;playIcon.textContent=playing?'Ⅱ':'▶'}
+function restart(){elapsed=0;setProgress(0);if(!playing){playing=true;playIcon.textContent='Ⅱ'}}
+document.getElementById('playIcon').parentElement.addEventListener('click',toggle);
+document.getElementById('controls').children[1].addEventListener('click',()=>{speed=speed===1?.5:speed===.5?2:1;speedText.textContent=speed+'×'});
+document.getElementById('controls').children[2].addEventListener('click',restart);
+document.getElementById('timeTrack').addEventListener('click',e=>{let r=document.getElementById('timeTrack').getBoundingClientRect();let p=(e.clientX-r.left)/r.width;elapsed=p*duration;setProgress(elapsed)});
+document.getElementById('playhead').addEventListener('pointerdown',e=>{e.stopPropagation();let svg=document.getElementById('world');function move(ev){let r=document.getElementById('timeTrack').getBoundingClientRect();elapsed=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width))*duration;setProgress(elapsed)}move(e);window.addEventListener('pointermove',move);window.addEventListener('pointerup',()=>window.removeEventListener('pointermove',move),{once:true})});
+for(let i=0;i<N;i++){let l=tick.children[i];l.addEventListener('click',()=>{elapsed=(i+.5)/N*duration;setProgress(elapsed)})}
+window.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();toggle()}if(e.key==='ArrowRight'){elapsed=Math.min(duration-1,elapsed+duration/N);setProgress(elapsed)}if(e.key==='ArrowLeft'){elapsed=Math.max(0,elapsed-duration/N);setProgress(elapsed)}});
+function frame(now){let dt=now-last;last=now;if(playing){elapsed+=dt*speed;if(elapsed>=duration){elapsed%=duration;setProgress(elapsed)}}setProgress(elapsed);requestAnimationFrame(frame)}
+setProgress(0);requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
