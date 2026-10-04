@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,24 +32,33 @@ const execFileAsync = promisify(execFile);
 // shot_control.mjs). Engine and PC scenes keep their own camera.
 //
 // Needs node + a headless Chromium. Chromium is found via --chromium-bin,
-// $CHROMIUM_BIN, or well-known install paths. One scene at a time, one small
-// tab. WebGL runs on the GPU when Chromium can reach one (d3d11 on Windows,
-// EGL or Vulkan over /dev/dri on Linux — the Docker service maps it in) and
-// falls back to SwiftShader on the CPU otherwise; --gpu off forces software.
+// $CHROMIUM_BIN, or well-known install paths. --jobs N (default 2, or
+// $LUMA_PREVIEW_JOBS) renders that many scenes side by side, each worker in
+// a browser of its own so one crashing scene takes down only itself. WebGL
+// runs on the GPU when Chromium can reach one (d3d11 on Windows, EGL or
+// Vulkan over /dev/dri on Linux — the Docker service maps it in) and falls
+// back to SwiftShader on the CPU otherwise; --gpu off forces software.
 //
 // Prints one `START <id>` and one `OK   <id>` / `FAIL <id>: <reason>` line
-// per scene, `STEP <id> <0–1> <what>` lines while one renders, and one
-// `RENDERER <backend>` line; the server follows progress by those lines.
+// per scene, `STEP <id> <0–1> <what>` and `NOTE <id> <text>` lines while one
+// renders, and one `RENDERER <backend>` line; the server follows progress by
+// those lines.
 
 const W = 1120;
 const H = 700;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // The scene being rendered, so the shooting helpers can report how far in
-// they are without threading the id through every call.
-let currentId = null;
+// they are without threading the id through every call. Scenes can render
+// side by side, so it follows the async context rather than a global.
+const sceneContext = new AsyncLocalStorage();
 const step = (fraction, what) => {
-  if (currentId) console.log(`STEP ${currentId} ${Math.min(1, Math.max(0, fraction)).toFixed(2)} ${what}`);
+  const id = sceneContext.getStore();
+  if (id) console.log(`STEP ${id} ${Math.min(1, Math.max(0, fraction)).toFixed(2)} ${what}`);
+};
+const note = (text) => {
+  const id = sceneContext.getStore();
+  console.log(id ? `NOTE ${id} ${text}` : `  ${text}`);
 };
 
 function arg(name, fallback = null) {
@@ -286,18 +296,18 @@ async function shootPagoda(page, framing) {
   if (framing) {
     // The operator's own shot: no fitting, no refit, just daylight.
     const used = await applyFraming(page, framing);
-    console.log(`  framing: ${used.camera}`);
-    console.log(`  ${await findDaylight(page)}`);
+    note(`framing: ${used.camera}`);
+    note(await findDaylight(page));
   } else {
     const framed = await page.evaluate(() => window.__lumaShot.frame());
-    console.log(`  framing: ${framed.ok ? `${framed.camera}, distance ${framed.distance}, box ${framed.box}` : framed.reason}`);
-    console.log(`  ${await findDaylight(page)}`);
+    note(`framing: ${framed.ok ? `${framed.camera}, distance ${framed.distance}, box ${framed.box}` : framed.reason}`);
+    note(await findDaylight(page));
     // Refit on the finished scene (same side, same angle) — some gardens
     // only fade in or finish building by now — and let a few real frames
     // draw it.
     const refit = await page.evaluate(() => window.__lumaShot.frame());
     if (!framed.ok) {
-      console.log(`  reframing: ${refit.ok ? `${refit.camera}, distance ${refit.distance}, box ${refit.box}` : refit.reason}`);
+      note(`reframing: ${refit.ok ? `${refit.camera}, distance ${refit.distance}, box ${refit.box}` : refit.reason}`);
     }
   }
   step(0.9, 'final frames');
@@ -631,92 +641,106 @@ async function main() {
   }
   const launch = () => launchWith(chosen);
   const failed = [];
-  try {
-    for (const id of ids) {
-      console.log(`START ${id}`);
-      currentId = id;
-      const file = sceneFile(id);
-      if (!file) {
-        console.log(`FAIL ${id}: no scene file`);
-        failed.push(id);
-        continue;
-      }
-      const kind = kindOf(id);
-      // A scene that crashes the browser takes only itself down.
-      if (!browser.connected) {
-        await browser.close().catch(() => {});
-        browser = await launch();
-      }
-      let page = null;
-      // The first thing the scene itself complained about, so a timeout
-      // says why (a CDN import that never loaded, a WebGL error) instead of
-      // just what was waited for.
-      let pageProblem = '';
-      try {
-        page = await browser.newPage();
-        page.on('pageerror', (e) => { pageProblem ||= `page error: ${String(e.message || e).split('\n')[0]}`; });
-        page.on('requestfailed', (r) => {
-          if (/\.(m?js)(\?|$)/.test(r.url())) pageProblem ||= `could not load ${r.url()} (${r.failure()?.errorText ?? 'failed'})`;
-        });
-        await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
-        step(0.02, 'loading the scene');
-        const framing = framingOf(id);
-        // Engine and PC scenes keep their own clock; with a saved framing
-        // they get just the camera hook.
-        if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
-        else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
-        if (kind === 'cathedral') {
-          const glb = repairGlb(await fs.promises.readFile(file));
-          validateGlb(glb, id);
-          await page.setContent(cathedralViewerHtml(glb.toString('base64')),
-            { waitUntil: 'domcontentloaded', timeout: 120000 });
-          const modelLoad = await page.waitForFunction(
-            `(() => {
-              const m = document.querySelector('#model');
-              if (window.__lumaModelViewerScriptError) return { error: window.__lumaModelViewerScriptError };
-              if (window.__lumaGlbError) return { error: 'GLB load failed: ' + window.__lumaGlbError };
-              return m && m.loaded ? { loaded: true } : false;
-            })()`,
-            { timeout: 120000, polling: 250 },
-          );
-          const loadResult = await modelLoad.jsonValue();
-          if (loadResult.error) throw new Error(loadResult.error);
-          await sleep(4000);
-        } else {
-          const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');
-          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
-        }
-        if (kind === 'pagoda') await shootPagoda(page, framing);
-        else if (kind !== 'cathedral') {
-          if (kind === 'engine') await shootEngine(page);
-          else if (kind === 'server_rack') await shootServerRack(page);
-          else if (kind === 'keyboard') await shootKeyboard(page);
-          else if (kind === 'cruise_ship') await shootCruiseShip(page);
-          else await shootPc(page);
-          if (framing) console.log(`  framing: ${(await applyFraming(page, framing)).camera}`);
-        }
-        step(0.97, 'capturing');
-        const png = await page.screenshot({ type: 'png' });
-        const { spread } = lumaStats(png);
-        if (spread < 0.02) throw new Error('blank frame (solid colour), keeping the old banner');
-        // Write beside the target and rename, so the server never serves a
-        // half-written banner.
-        const target = path.join(outDir, `${id}.png`);
-        await fs.promises.writeFile(`${target}.tmp`, png);
-        await fs.promises.rename(`${target}.tmp`, target);
-        console.log(`OK   ${id}`);
-      } catch (e) {
-        const reason = String(e).split('\n')[0];
-        console.log(`FAIL ${id}: ${pageProblem ? `${reason} (${pageProblem.slice(0, 200)})` : reason}`);
-        failed.push(id);
-      } finally {
-        currentId = null;
-        if (page) await page.close().catch(() => {});
-        await sleep(1000);
-      }
+  const jobs = Math.max(1, Math.min(ids.length,
+    Number.parseInt(arg('jobs', process.env.LUMA_PREVIEW_JOBS ?? '2'), 10) || 1));
+  const browsers = [browser];
+
+  const renderScene = async (id, worker) => {
+    console.log(`START ${id}`);
+    const file = sceneFile(id);
+    if (!file) {
+      console.log(`FAIL ${id}: no scene file`);
+      failed.push(id);
+      return;
     }
+    const kind = kindOf(id);
+    // A scene that crashes the browser takes only itself down.
+    if (!worker.browser.connected) {
+      await worker.browser.close().catch(() => {});
+      worker.browser = await launch();
+      browsers[worker.index] = worker.browser;
+    }
+    let page = null;
+    // The first thing the scene itself complained about, so a timeout
+    // says why (a CDN import that never loaded, a WebGL error) instead of
+    // just what was waited for.
+    let pageProblem = '';
+    try {
+      page = await worker.browser.newPage();
+      page.on('pageerror', (e) => { pageProblem ||= `page error: ${String(e.message || e).split('\n')[0]}`; });
+      page.on('requestfailed', (r) => {
+        if (/\.(m?js)(\?|$)/.test(r.url())) pageProblem ||= `could not load ${r.url()} (${r.failure()?.errorText ?? 'failed'})`;
+      });
+      await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
+      step(0.02, 'loading the scene');
+      const framing = framingOf(id);
+      // Engine and PC scenes keep their own clock; with a saved framing
+      // they get just the camera hook.
+      if (kind === 'pagoda') await page.evaluateOnNewDocument(installShotControl);
+      else if (framing) await page.evaluateOnNewDocument(installShotControl, { clock: false });
+      if (kind === 'cathedral') {
+        const glb = repairGlb(await fs.promises.readFile(file));
+        validateGlb(glb, id);
+        await page.setContent(cathedralViewerHtml(glb.toString('base64')),
+          { waitUntil: 'domcontentloaded', timeout: 120000 });
+        const modelLoad = await page.waitForFunction(
+          `(() => {
+            const m = document.querySelector('#model');
+            if (window.__lumaModelViewerScriptError) return { error: window.__lumaModelViewerScriptError };
+            if (window.__lumaGlbError) return { error: 'GLB load failed: ' + window.__lumaGlbError };
+            return m && m.loaded ? { loaded: true } : false;
+          })()`,
+          { timeout: 120000, polling: 250 },
+        );
+        const loadResult = await modelLoad.jsonValue();
+        if (loadResult.error) throw new Error(loadResult.error);
+        await sleep(4000);
+      } else {
+        const url = (process.platform === 'win32' ? 'file:///' : 'file://') + path.resolve(file).replace(/\\/g, '/');
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+      }
+      if (kind === 'pagoda') await shootPagoda(page, framing);
+      else if (kind !== 'cathedral') {
+        if (kind === 'engine') await shootEngine(page);
+        else if (kind === 'server_rack') await shootServerRack(page);
+        else if (kind === 'keyboard') await shootKeyboard(page);
+        else if (kind === 'cruise_ship') await shootCruiseShip(page);
+        else await shootPc(page);
+        if (framing) note(`framing: ${(await applyFraming(page, framing)).camera}`);
+      }
+      step(0.97, 'capturing');
+      const png = await page.screenshot({ type: 'png' });
+      const { spread } = lumaStats(png);
+      if (spread < 0.02) throw new Error('blank frame (solid colour), keeping the old banner');
+      // Write beside the target and rename, so the server never serves a
+      // half-written banner.
+      const target = path.join(outDir, `${id}.png`);
+      await fs.promises.writeFile(`${target}.tmp`, png);
+      await fs.promises.rename(`${target}.tmp`, target);
+      console.log(`OK   ${id}`);
+    } catch (e) {
+      const reason = String(e).split('\n')[0];
+      console.log(`FAIL ${id}: ${pageProblem ? `${reason} (${pageProblem.slice(0, 200)})` : reason}`);
+      failed.push(id);
+    } finally {
+      if (page) await page.close().catch(() => {});
+      await sleep(1000);
+    }
+  };
+
+  const queue = [...ids];
+  const runWorker = async (index) => {
+    const worker = { index, browser: index === 0 ? browser : await launch() };
+    browsers[index] = worker.browser;
+    for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+      await sceneContext.run(id, () => renderScene(id, worker));
+    }
+  };
+  if (jobs > 1) console.log(`rendering ${jobs} scenes at a time`);
+  try {
+    await Promise.all(Array.from({ length: jobs }, (_, i) => runWorker(i)));
   } finally {
-    await browser.close().catch(() => {});
+    await Promise.all(browsers.map((b) => b.close().catch(() => {})));
   }
   console.log(`done: ${ids.length - failed.length} ok, ${failed.length} failed`);
   if (failed.length > 0) console.log('failed: ' + failed.join(', '));

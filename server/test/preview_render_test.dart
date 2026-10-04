@@ -159,6 +159,41 @@ void main() {
           ['pagoda_has', 'pagoda_lacks', 'engine_lacks']);
     });
 
+    test('renders two at a time unless told otherwise, and remembers a change',
+        () async {
+      final s = service();
+      expect(s.workers, 2);
+      await s.start(PreviewRenderMode.all);
+      expect(launches.last[launches.last.indexOf('--jobs') + 1], '2');
+      await s.setWorkers(4);
+      await expectLater(s.setWorkers(0), throwsArgumentError);
+      await expectLater(
+          s.setWorkers(kMaxPreviewWorkers + 1), throwsArgumentError);
+      expect(service().workers, 4);
+      await process.exit(0);
+      await settle();
+      await s.start(PreviewRenderMode.all);
+      expect(launches.last[launches.last.indexOf('--jobs') + 1], '4');
+    });
+
+    test('keeps notes with their scene when two render side by side', () async {
+      final s = service();
+      await s.start(PreviewRenderMode.missing);
+      process.line('START pagoda_lacks');
+      process.line('START engine_lacks');
+      process.line('NOTE pagoda_lacks framing: perspective, fov 24');
+      process.line('STEP engine_lacks 0.40 letting it draw');
+      process.line('NOTE pagoda_lacks daylight at luma 0.80');
+      await settle();
+      final pagoda = s.status.items.first;
+      final engine = s.status.items.last;
+      expect(pagoda.detail,
+          'framing: perspective, fov 24 · daylight at luma 0.80');
+      expect(engine.detail, isEmpty);
+      expect(engine.stage, 'letting it draw');
+      await process.exit(0);
+    });
+
     test('follows the renderer scene by scene', () async {
       final s = service();
       await s.start(PreviewRenderMode.missing);
@@ -319,12 +354,16 @@ void main() {
     late Handler handler;
 
     Future<Map<String, dynamic>> call(String method, String path,
-        {String key = 'test-admin-key', Object? body}) async {
+        {String key = 'test-admin-key',
+        Object? body,
+        bool fromDashboard = false}) async {
       final response = await handler(Request(
         method,
         Uri.parse('http://localhost$path'),
         headers: {
           'x-admin-key': key,
+          if (fromDashboard) 'origin': 'http://localhost',
+          if (fromDashboard) 'host': 'localhost',
           if (body != null) 'content-type': 'application/json',
         },
         body: body == null ? null : jsonEncode(body),
@@ -534,6 +573,31 @@ void main() {
       expect(html, contains('installShotControl({ interactive: true });'));
       expect(html, contains(r'<\/script>'));
       expect(html, contains('<title>x</title>'));
+    });
+
+    test('the worker count is read and saved from the dashboard', () async {
+      final before = await call('GET', '/admin/benchmark-banners/settings');
+      expect(before['workers'], 2);
+      expect(before['max'], kMaxPreviewWorkers);
+      final saved = await call('PUT', '/admin/benchmark-banners/settings',
+          body: {'workers': 3}, fromDashboard: true);
+      expect(saved['httpStatus'], 200);
+      expect(
+          (await call('GET', '/admin/benchmark-banners/settings'))['workers'],
+          3);
+      for (final bad in [0, kMaxPreviewWorkers + 1, 1.5, 'two']) {
+        final result = await call('PUT', '/admin/benchmark-banners/settings',
+            body: {'workers': bad}, fromDashboard: true);
+        expect(result['httpStatus'], 400, reason: '$bad');
+      }
+      {
+        final foreign = await call('PUT', '/admin/benchmark-banners/settings',
+            body: {'workers': 5});
+        expect(foreign['httpStatus'], 403);
+      }
+      expect(
+          (await call('GET', '/admin/benchmark-banners/settings'))['workers'],
+          3);
     });
 
     test('needs the admin key', () async {

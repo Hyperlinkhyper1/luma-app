@@ -51,6 +51,21 @@ the app still works the company out from the model name.
 
 ## Adding a scene by hand
 
+The **AI benchmark banners** card's top-right cog configures an on-demand
+render repair model on a server API key. Saving settings accepts its current
+token prices and sets a maximum estimated cost per attempt (default $0.25).
+Unknown prices, price increases and an input too expensive for that limit
+block calls; OpenRouter also receives the accepted token-price caps.
+
+After a render fails, **Repair once** makes one model call with only that
+HTML and its recorded render error. It requests minimal exact edits, checks
+the candidate in an isolated renderer directory, and saves only a passing
+candidate. The original is backed up under `<dataDir>/benchmark_repairs/`;
+the existing model label and roster metadata are preserved. Reported usage,
+including failed repairs, enters the AI Usage feed of `aydenjue@outlook.com`.
+Binary GLB files are unsupported. Rendering, uploads, startup and saving
+settings never schedule an AI repair; there are no automatic retries.
+
 1. Drop the scene in as `scenes/<test>_<model>.html` (`pagoda_…` or
    `engine_…`), fully self-contained (inline JS/CSS — the app loads it from
    disk with no network beside it).

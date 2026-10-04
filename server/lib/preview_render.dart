@@ -3,6 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'ai_benchmark_store.dart';
+import 'util.dart';
+
+/// How many scenes may render side by side, and how many do by default.
+const kMinPreviewWorkers = 1;
+const kMaxPreviewWorkers = 6;
+const kDefaultPreviewWorkers = 2;
 
 /// Which banners a render job covers.
 enum PreviewRenderMode {
@@ -154,7 +160,103 @@ class PreviewRenderService {
 
   final PreviewRenderStatus status = PreviewRenderStatus();
   Process? _process;
+  int? _workers;
+
+  File get _settingsFile => File('$dataDir${Platform.pathSeparator}'
+      'preview_render.json');
+
+  static bool validWorkers(int n) =>
+      n >= kMinPreviewWorkers && n <= kMaxPreviewWorkers;
+
+  /// Scenes rendered side by side. The dashboard's cog sets it; each worker is
+  /// a Chromium of its own, so the right number depends on the GPU.
+  int get workers {
+    final cached = _workers;
+    if (cached != null) return cached;
+    var n = kDefaultPreviewWorkers;
+    try {
+      final file = _settingsFile;
+      if (file.existsSync()) {
+        final raw = jsonDecode(file.readAsStringSync());
+        final saved = raw is Map ? raw['workers'] : null;
+        if (saved is int && validWorkers(saved)) n = saved;
+      }
+    } catch (_) {
+      // Unreadable settings: use the default.
+    }
+    return _workers = n;
+  }
+
+  /// Applies from the next job; one already running keeps its workers.
+  Future<void> setWorkers(int n) async {
+    if (!validWorkers(n)) {
+      throw ArgumentError(
+          'Workers must be $kMinPreviewWorkers–$kMaxPreviewWorkers.');
+    }
+    await atomicWriteString(_settingsFile.path, jsonEncode({'workers': n}));
+    _workers = n;
+  }
+
   bool _loggedUnavailable = false;
+
+  /// Checks an on-demand repair in an isolated override directory. It cannot
+  /// replace a live scene or its banner until the candidate renders.
+  Future<String?> validateRepair(String id, List<int> bytes) async {
+    final parent = await Directory('$dataDir/benchmark_repair_checks')
+        .create(recursive: true);
+    final scratch = await parent.createTemp('candidate_');
+    PreviewRenderService? candidate;
+    try {
+      final live = await _store();
+      final entry =
+          (await live.editableEntries()).firstWhere((e) => e['id'] == id);
+      final staged =
+          await AiBenchmarkStore.open(scratch.path, seedDir: seedDir);
+      await staged.saveUpload(
+          kind: entry['kind'] as String,
+          id: id,
+          model: entry['model'] as String,
+          vendor: entry['vendor'] as String? ?? '',
+          description: entry['description'] as String? ?? '',
+          bytes: bytes);
+      final framing = await live.readFraming(id);
+      if (framing != null) {
+        await staged.writeFraming(id, framing);
+      }
+      candidate = PreviewRenderService(
+        dataDir: scratch.path,
+        seedDir: seedDir,
+        toolScript: toolScript,
+        nodeBin: nodeBin,
+        chromiumBin: chromiumBin,
+        environment: _environment,
+        runProcess: _runProcess,
+        startProcess: _startProcess,
+        fileExists: _fileExists,
+        enabled: false,
+      );
+      final problem =
+          await candidate.start(PreviewRenderMode.selected, only: [id]);
+      if (problem != null) return problem;
+      final deadline = DateTime.now().add(const Duration(minutes: 10));
+      while (candidate.status.running) {
+        if (DateTime.now().isAfter(deadline)) {
+          candidate.stop();
+          return 'Candidate render timed out; the live test was kept.';
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+      final items = candidate.status.items;
+      if (items.length != 1 || items.single.state != 'ok') {
+        return candidate.status.error ??
+            (items.isEmpty ? 'Candidate did not render.' : items.single.detail);
+      }
+      return null;
+    } finally {
+      candidate?.stop();
+      if (await scratch.exists()) await scratch.delete(recursive: true);
+    }
+  }
 
   /// Whether [kick] may render unprompted. The dashboard buttons work
   /// either way.
@@ -254,6 +356,7 @@ class PreviewRenderService {
         '--ids',
         ids.join(','),
       ];
+      args.addAll(['--jobs', '$workers']);
       if (chromiumBin ?? _environment['LUMA_CHROMIUM_BIN'] case final bin?) {
         args.addAll(['--chromium-bin', bin]);
       }
@@ -315,9 +418,15 @@ class PreviewRenderService {
     return null;
   }
 
+  void _addNote(PreviewRenderItem? item, String note) {
+    if (item == null) return;
+    item.detail = item.detail.isEmpty ? note : '${item.detail} · $note';
+  }
+
   /// Follows the renderer's progress lines (`START id`, `OK   id`,
-  /// `FAIL id: reason`, `STEP id fraction what`, `RENDERER backend`, and
-  /// indented notes about the scene in between).
+  /// `FAIL id: reason`, `STEP id fraction what`, `NOTE id text`,
+  /// `RENDERER backend`, and indented notes about the scene in between, the
+  /// older form that assumes one scene at a time).
   Future<void> _follow(Process process) async {
     PreviewRenderItem? current;
     String lastError = '';
@@ -333,6 +442,7 @@ class PreviewRenderService {
       final fail = RegExp(r'^FAIL (\S+?): (.*)$').firstMatch(line);
       final step = RegExp(r'^STEP (\S+) ([\d.]+) ?(.*)$').firstMatch(line);
       final renderer = RegExp(r'^RENDERER (.+)$').firstMatch(line);
+      final noted = RegExp(r'^NOTE (\S+) (.+)$').firstMatch(line);
       // Steps arrive several times a second; they'd crowd out the log.
       if (step == null) status.addLog(line);
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -360,10 +470,10 @@ class PreviewRenderService {
           ..stage = step.group(3)!;
       } else if (renderer != null) {
         status.renderer = renderer.group(1)!.trim();
+      } else if (noted != null) {
+        _addNote(_item(noted.group(1)!), noted.group(2)!);
       } else if (line.startsWith('  ') && current != null) {
-        final note = line.trim();
-        current!.detail =
-            current!.detail.isEmpty ? note : '${current!.detail} · $note';
+        _addNote(current, line.trim());
       }
     }).asFuture<void>();
     final err = process.stderr

@@ -767,10 +767,6 @@ String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'autocomplete="off">'
     '<label class="bg-inline"><span>Reasoning</span>'
     '<select id="bgEffort" class="bn-input"></select></label>'
-    '<label class="bg-inline bg-batch" title="OpenRouter\'s batch variants '
-    'cost half as much but run asynchronously and can take up to 24 hours.">'
-    '<input id="bgBatch" type="checkbox"><span>Batch</span>'
-    '<span class="bg-batch-note">½ price · up to 24 h</span></label>'
     '</div>'
     '<div id="bgModels" class="bg-models" role="listbox" '
     'aria-labelledby="bgStep2"></div>'
@@ -846,11 +842,7 @@ const _bgCss = r'''
 .bg-model-tools .bn-input[type=search]{flex:1 1 240px}
 .bg-inline{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;color:#9b94b3}
 .bg-inline .bn-input{min-width:150px;flex:none}
-.bg-batch{cursor:pointer;padding:6px 10px;border-radius:9px;border:1px solid #241e36;background:#12101e;user-select:none}
-.bg-batch:has(input:checked){border-color:#8a7ee0;background:#1a1530;color:#ece8f7}
-.bg-batch:has(input:disabled){opacity:.5;cursor:not-allowed}
-.bg-batch input{margin:0;accent-color:#8a7ee0}
-.bg-batch-note{font-size:11.5px;color:#8d86a8}
+.bg-tag{flex:none;font-size:10.5px;font-weight:650;letter-spacing:.02em;padding:1px 7px;border-radius:99px;background:#241d3d;color:#b9b0f5;border:1px solid #352c55}
 .bg-models{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));grid-auto-rows:max-content;gap:8px;max-height:260px;overflow:auto;padding:2px}
 .bg-models .bg-opt{min-height:0;padding:10px 12px}
 .bg-model-id{font:11px ui-monospace,Consolas,monospace;color:#a9a0c3;overflow-wrap:anywhere}
@@ -900,7 +892,6 @@ const _bgScript = r'''
   const prompt = $('bgPrompt'), promptNote = $('bgPromptNote');
   const nameBox = $('bgName'), vendor = $('bgVendor'), maxTokens = $('bgMaxTokens');
   const status = $('bgStatus'), start = $('bgStart'), runsBox = $('bgRuns');
-  const batchBox = $('bgBatch');
   const BATCH = ':batch';
   const pickerData = $('aiPickerData');
   const allModels = pickerData ? JSON.parse(pickerData.textContent) : [];
@@ -962,13 +953,11 @@ const _bgScript = r'''
   }
 
   function modelsFor(upstream) { return allModels.filter((m) => m.upstream === upstream); }
+  // OpenRouter's `:batch` variants are models of their own that run
+  // through its Batch API: half price, finished within 24 hours.
   function isBatch(id) { return key === 'openrouter' && id.endsWith(BATCH); }
-  // Only OpenRouter has batch variants; elsewhere the toggle is off and locked.
-  function syncBatchBox() {
-    const can = key === 'openrouter' && modelsFor(key).some((m) => m.id.endsWith(BATCH));
-    batchBox.disabled = !can && !isBatch(modelId.value.trim());
-    if (key !== 'openrouter') batchBox.checked = false;
-    start.textContent = batchBox.checked ? 'Submit batch' : 'Start run';
+  function syncStart() {
+    start.textContent = isBatch(modelId.value.trim()) ? 'Submit batch' : 'Start run';
   }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
   function renderKeys() {
@@ -987,14 +976,13 @@ const _bgScript = r'''
   }
   function renderModels() {
     const q = search.value.trim().toLowerCase();
-    const list = modelsFor(key).filter((m) => isBatch(m.id) === batchBox.checked)
-      .filter((m) => !q || (m.id + ' ' + (m.name || '')).toLowerCase().includes(q))
+    const list = modelsFor(key)
+      .filter((m) => !q || (m.id + ' ' + (m.name || '') + (isBatch(m.id) ? ' batch' : '')).toLowerCase().includes(q))
       .sort((a, b) => (b.intelligence || 0) - (a.intelligence || 0) || (a.name || a.id).localeCompare(b.name || b.id));
-    $('bgModelCount').textContent = key ? list.length + (batchBox.checked ? ' batch models' : '') + ' on ' + labelOf(key) : '';
+    $('bgModelCount').textContent = key ? list.length + ' on ' + labelOf(key) : '';
     if (!key) { modelsBox.innerHTML = '<div class="bg-empty">Pick a key first.</div>'; return; }
     if (!list.length) {
       modelsBox.innerHTML = '<div class="bg-empty">' + (q ? 'No model matches “' + esc(q) + '”. Type its ID below instead.'
-        : batchBox.checked ? 'No batch models listed for this key. Refresh model data on the Maintenance tab, or type an ID ending in :batch below.'
         : 'No models listed for this key. Refresh model data on the Maintenance tab, or type an ID below.') + '</div>';
       return;
     }
@@ -1003,9 +991,13 @@ const _bgScript = r'''
       if (m.intelligence != null) stats.push('<span>Intel <b>' + Math.round(m.intelligence) + '</b></span>');
       if (m.maxOutput) stats.push('<span>Out <b>' + kfmt(m.maxOutput) + '</b></span>');
       if (price(m.output)) stats.push('<span><b>' + price(m.input) + '</b> / <b>' + price(m.output) + '</b> per M</span>');
+      const batch = isBatch(m.id);
+      if (batch) stats.push('<span>Up to <b>24 h</b></span>');
+      const title = batch ? (m.name || m.id).replace(/\s*\(batch\)$/i, '') : (m.name || m.id);
       return '<button type="button" role="option" class="bg-opt" data-id="' + esc(m.id) + '" aria-selected="'
-        + (model && model.id === m.id ? 'true' : 'false') + '">'
-        + '<span class="bg-opt-title">' + esc(m.name || m.id) + '</span>'
+        + (model && model.id === m.id ? 'true' : 'false') + '"'
+        + (batch ? ' title="Batch variant: half price, runs asynchronously and can take up to 24 hours."' : '') + '>'
+        + '<span class="bg-opt-title">' + esc(title) + (batch ? '<span class="bg-tag">Batch</span>' : '') + '</span>'
         + '<span class="bg-model-id">' + esc(m.id) + '</span>'
         + (stats.length ? '<span class="bg-model-stats">' + stats.join('') + '</span>' : '') + '</button>';
     }).join('');
@@ -1018,20 +1010,6 @@ const _bgScript = r'''
     model = null;
     modelId.value = '';
     search.value = '';
-    syncBatchBox();
-    renderModels();
-    autofill();
-  }
-  // Flipping Batch keeps the same model where it has the other variant.
-  function toggleBatch() {
-    const id = modelId.value.trim();
-    if (id) {
-      const other = batchBox.checked ? (id.endsWith(BATCH) ? id : id + BATCH)
-        : (id.endsWith(BATCH) ? id.slice(0, -BATCH.length) : id);
-      if (modelsFor(key).some((m) => m.id === other)) pickModel(other);
-      else { model = null; modelId.value = ''; }
-    }
-    syncBatchBox();
     renderModels();
     autofill();
   }
@@ -1076,6 +1054,7 @@ const _bgScript = r'''
     preview();
   }
   function preview() {
+    syncStart();
     const n = nameBox.value.trim();
     $('bgPreviewName').textContent = n || '—';
     $('bgPreviewVendor').textContent = vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
@@ -1096,14 +1075,8 @@ const _bgScript = r'''
   });
   search.addEventListener('input', renderModels);
   effort.addEventListener('change', autofill);
-  batchBox.addEventListener('change', toggleBatch);
   modelId.addEventListener('input', () => {
     const id = modelId.value.trim();
-    if (key === 'openrouter' && isBatch(id) !== batchBox.checked) {
-      batchBox.checked = isBatch(id);
-      syncBatchBox();
-      renderModels();
-    }
     model = modelsFor(key).find((m) => m.id === id) || null;
     modelsBox.querySelectorAll('[role=option]').forEach((b) =>
       b.setAttribute('aria-selected', model && b.dataset.id === id ? 'true' : 'false'));
@@ -1134,7 +1107,7 @@ const _bgScript = r'''
       const usable = s.keys.filter((k) => k.configured);
       if (!usable.some((k) => k.upstream === key)) key = '';
       if (!key && usable.length) pickKey(usable[0].upstream);
-      else { syncBatchBox(); renderModels(); }
+      else renderModels();
       if (!usable.length) {
         status.textContent = 'The server has no AI keys set. Add one to its environment first.';
         start.disabled = true;

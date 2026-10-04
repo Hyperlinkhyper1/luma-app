@@ -23,6 +23,7 @@ import 'ai_usage_store.dart';
 import 'benchmark_generate.dart';
 import 'benchmark_github.dart';
 import 'benchmark_prompts.dart';
+import 'benchmark_repair.dart';
 import 'chat_store.dart';
 import 'classroom.dart';
 import 'cs2_offline_store.dart';
@@ -42,6 +43,7 @@ import 'util.dart';
 import 'web_search.dart';
 
 part 'api_benchmark_generate.dart';
+part 'api_benchmark_repair.dart';
 part 'api_classroom.dart';
 part 'api_school_tests.dart';
 
@@ -342,6 +344,8 @@ class Api {
       {OAuthClient? oauthClient,
       this.cs2OfflineStore,
       PreviewRenderService? previewRenders,
+      this.benchmarkRepairPrice,
+      this.benchmarkRepairCall,
       BenchmarkGithubPublisher? benchmarkGithub})
       : _oauthClient = oauthClient ?? OAuthClient(),
         benchmarkGithub = benchmarkGithub ?? BenchmarkGithubPublisher(),
@@ -417,6 +421,15 @@ class Api {
   /// Renders benchmark banners for the dashboard's Control panel. Tests
   /// substitute one with a fake renderer process.
   final PreviewRenderService previewRenders;
+
+  late final BenchmarkRepairSettings benchmarkRepairSettings =
+      BenchmarkRepairSettings(config.dataDir);
+  final Map<String, BenchmarkRepairJob> benchmarkRepairJobs = {};
+  bool benchmarkRepairStarting = false;
+  final Future<AiPrice?> Function(AiModeRoute)? benchmarkRepairPrice;
+  final Future<void> Function(
+          AiModeRoute, Map<String, dynamic>, ChatStreamAccumulator)?
+      benchmarkRepairCall;
 
   /// Commits scenes uploaded from the dashboard to the repo. Tests substitute
   /// one with a fake transport.
@@ -692,8 +705,18 @@ class Api {
       ..post('/admin/classroom/country/reset',
           _requireAdmin(_adminClassroomCountryReset))
       ..post('/admin/ai-image', _requireAdmin(_adminAiImageSave))
-      ..post('/admin/benchmark-banners/render',
-          _requireAdmin(_adminBannersRender))
+      ..post(
+          '/admin/benchmark-banners/render', _requireAdmin(_adminBannersRender))
+      ..get('/admin/benchmark-banners/settings',
+          _requireAdmin(_adminBannerSettings))
+      ..put('/admin/benchmark-banners/settings',
+          _requireAdmin(_adminBannerSettingsSave))
+      ..get('/admin/benchmark-banners/repair/settings',
+          _requireAdmin(_adminRepairSettings))
+      ..put('/admin/benchmark-banners/repair/settings',
+          _requireAdmin(_adminRepairSettingsSave))
+      ..post('/admin/benchmark-banners/repair/<id>',
+          _requireAdmin(_adminRepairStart))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
       ..get('/admin/benchmark-banners/status',
           _requireAdmin(_adminBannersStatus))
@@ -2492,6 +2515,7 @@ class Api {
         'weeklyPct': pct(weeklyUsed, budget.weekly),
       };
     }
+
     final modes = {
       for (final mode in kAiModeNames.keys)
         if (mode != 'smartest' || user.planId == 'nova') mode: modeUsage(mode),
@@ -4786,6 +4810,11 @@ class Api {
   /// two per scene), so this only launches the job; the dashboard follows
   /// it via [_adminBannersStatus].
   Future<Response> _adminBannersRender(Request request) async {
+    if (benchmarkRepairStarting ||
+        benchmarkRepairJobs.values.any((j) => j.state == 'running')) {
+      return errorResponse(
+          409, 'repair_running', 'Wait for the requested repair to finish.');
+    }
     final mode = switch (request.url.queryParameters['mode']) {
       'all' => PreviewRenderMode.all,
       'selected' => PreviewRenderMode.selected,
@@ -4830,6 +4859,29 @@ class Api {
     return jsonResponse(200, {'started': false, 'message': problem});
   }
 
+  Response _adminBannerSettings(Request request) => jsonResponse(200, {
+        'workers': previewRenders.workers,
+        'min': kMinPreviewWorkers,
+        'max': kMaxPreviewWorkers,
+      });
+
+  Future<Response> _adminBannerSettingsSave(Request request) async {
+    if (!_sameOrigin(request)) {
+      return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
+    }
+    final body = await Api._readJson(request);
+    final workers = body['workers'];
+    if (workers is! int || !PreviewRenderService.validWorkers(workers)) {
+      return errorResponse(400, 'bad_workers',
+          'Workers must be a whole number from $kMinPreviewWorkers to $kMaxPreviewWorkers.');
+    }
+    await previewRenders.setWorkers(workers);
+    return jsonResponse(200, {
+      'workers': workers,
+      'running': previewRenders.status.running,
+    });
+  }
+
   Response _adminBannersStop(Request request) =>
       jsonResponse(200, {'stopped': previewRenders.stop()});
 
@@ -4837,6 +4889,7 @@ class Api {
     final coverage = await previewRenders.coverage();
     return jsonResponse(200, {
       ...previewRenders.status.toJson(),
+      'repairs': [for (final job in benchmarkRepairJobs.values) job.toJson()],
       'sceneCount': coverage.scenes,
       'missingCount': coverage.missing,
     });
@@ -10687,7 +10740,7 @@ syncToolbar();
         '${_bgDialogHtml()}'
         '</div>'
         '<div class="card">'
-        '${_cardHead('image', 'AI benchmark banners')}'
+        '${_cardHead('image', 'AI benchmark banners', extra: '<button id="bannersRepairSettingsBtn" type="button" class="btn btn-ghost btn-sm" aria-label="Render repair settings" title="Render repair settings">${_ico('cog')}</button>')}'
         '<div class="maint-desc" tabindex="0">Renders the model-card banners of the AI '
         'Usage plugin\'s Tests tab, one scene at a time in a headless '
         'browser. Pagoda banners are shot in daylight, framed as the whole '
@@ -10720,6 +10773,7 @@ syncToolbar();
         '<tbody id="bannersRows"></tbody></table>'
         '</div>'
         '$_bnDialogsHtml'
+        '$_bnRepairDialogHtml'
         '</div>'
         '</div>'
         '${_sectionLabel('School test')}'
@@ -11645,6 +11699,9 @@ syncToolbar();
   /// Stroke icons (24-unit, Lucide-style) for card headers. One visual
   /// language: 1.8 stroke, round caps, drawn in `currentColor`.
   static const _icoPaths = <String, String>{
+    'cog':
+        'M9 2h6l.5 3L18 6.5l2.8-1L23 9.5l-2.5 2V14l2.5 2-2.2 4-2.8-1-2.5 1.5L15 23H9l-.5-2.5L6 19l-2.8 1L1 16l2.5-2v-2.5L1 9.5l2.2-4 2.8 1L8.5 5z'
+            'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
     'sparkles': 'M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z'
         'M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
     'scan': 'M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 '
@@ -13409,6 +13466,27 @@ window.lumaAskReason = function (form, message) {
   /// re-render just those; each tile's "Frame" opens the framing editor,
   /// which loads the scene into a sandboxed iframe at banner size and
   /// talks to the shot control inside it over postMessage.
+  static const _bnRepairDialogHtml = r'''
+<dialog id="bnRepairSettings" class="bn-dlg" style="max-width:540px">
+  <form id="bnRepairForm">
+    <div class="bn-dlg-head"><h2>Render repair settings</h2><button type="button" id="bnRepairClose" class="btn btn-ghost btn-sm" aria-label="Close">×</button></div>
+    <div style="padding:0 22px 20px;display:grid;gap:14px">
+      <label>Render workers<input id="bnWorkers" class="bn-input" style="width:100%" type="number" min="1" max="6" step="1" value="2" required></label>
+      <p class="muted">Scenes rendered side by side, each in a browser of its own. More is faster only while the GPU has room; if banners come out dark or blank, lower it. Applies to the next render and saves on its own.</p>
+      <div id="bnWorkersNote" role="status" class="muted"></div>
+      <hr style="border:0;border-top:1px solid var(--line,#8884);margin:0">
+      <p class="muted">Repairs run only when you click <strong>Repair once</strong> on a failed scene. The model may only fix its render error. Saving settings does not run it.</p>
+      <label>Server API key<select id="bnRepairKey" class="bn-input" style="width:100%" required></select></label>
+      <label>Model<input id="bnRepairModel" class="bn-input" style="width:100%" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
+      <label>Maximum estimated cost per repair (USD)<input id="bnRepairLimit" class="bn-input" style="width:100%" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
+      <p class="muted">Price guard is always on: unknown prices and price increases block a call. Saving accepts the selected model’s current token prices. Output is capped to fit the estimate. Usage is recorded in the AI Usage plugin for aydenjue@outlook.com.</p>
+      <div id="bnRepairNote" role="status" class="muted"></div>
+    </div>
+    <div class="bn-dlg-foot"><button id="bnRepairSave" type="submit" class="btn btn-primary">Save settings &amp; accept current price</button></div>
+  </form>
+</dialog>
+''';
+
   static const _adminBannersScript = r'''
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -13456,6 +13534,92 @@ window.lumaAskReason = function (form, message) {
   let timer = null;
   let ticker = null;
   let last = null;
+  let repairSettings = null;
+  const repairDialog = $('bnRepairSettings');
+  wireClose(repairDialog);
+  const repairNote = $('bnRepairNote');
+  function repairModels() {
+    const ids = repairSettings && repairSettings.models[$('bnRepairKey').value] || [];
+    $('bnRepairModels').innerHTML = ids.map((id) => '<option value="' + esc(id) + '"></option>').join('');
+  }
+  $('bannersRepairSettingsBtn').addEventListener('click', async () => {
+    repairDialog.showModal();
+    loadWorkers();
+    repairNote.textContent = 'Loading server models…';
+    $('bnRepairSave').disabled = true;
+    try {
+      const result = await json('/admin/benchmark-banners/repair/settings');
+      if (!result.ok) throw new Error(result.body.message || 'Could not load settings.');
+      repairSettings = result.body;
+      $('bnRepairKey').innerHTML = repairSettings.keys.map((k) => '<option value="' + esc(k.upstream) + '">' + esc(k.label) + '</option>').join('');
+      if (repairSettings.route) $('bnRepairKey').value = repairSettings.route.upstream;
+      $('bnRepairModel').value = repairSettings.route ? repairSettings.route.model : '';
+      $('bnRepairLimit').value = repairSettings.maxCostUsd;
+      repairModels();
+      const price = repairSettings.acceptedPrice;
+      repairNote.textContent = !repairSettings.keys.length ? 'No server API keys are configured.'
+        : price ? 'Accepted USD / million tokens: input ' + price.input + ' · output ' + price.output : 'Choose a model; saving checks and accepts its current price.';
+      $('bnRepairSave').disabled = !repairSettings.keys.length;
+    } catch (e) { repairNote.textContent = e.message; }
+  });
+  const workersInput = $('bnWorkers');
+  const workersNote = $('bnWorkersNote');
+  async function loadWorkers() {
+    try {
+      const result = await json('/admin/benchmark-banners/settings');
+      if (!result.ok) throw new Error();
+      workersInput.min = result.body.min;
+      workersInput.max = result.body.max;
+      workersInput.value = result.body.workers;
+      workersNote.textContent = '';
+    } catch (e) { workersNote.textContent = 'Could not load the worker count.'; }
+  }
+  workersInput.addEventListener('change', async () => {
+    const n = Number(workersInput.value);
+    if (!Number.isInteger(n) || n < Number(workersInput.min) || n > Number(workersInput.max)) {
+      workersNote.textContent = 'Use a whole number from ' + workersInput.min + ' to ' + workersInput.max + '.';
+      return;
+    }
+    workersNote.textContent = 'Saving…';
+    try {
+      const result = await json('/admin/benchmark-banners/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workers: n }),
+      });
+      if (!result.ok) throw new Error(result.body.message || 'Could not save.');
+      workersNote.textContent = 'Saved: ' + n + (n === 1 ? ' worker' : ' workers')
+        + (result.body.running ? ' — takes effect on the next render.' : '.');
+    } catch (e) { workersNote.textContent = e.message; }
+  });
+  $('bnRepairClose').addEventListener('click', () => repairDialog.close());
+  $('bnRepairKey').addEventListener('change', () => { $('bnRepairModel').value = ''; repairModels(); });
+  $('bnRepairForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    $('bnRepairSave').disabled = true;
+    repairNote.textContent = 'Checking current pricing…';
+    try {
+      const result = await json('/admin/benchmark-banners/repair/settings', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ route: { upstream: $('bnRepairKey').value, model: $('bnRepairModel').value.trim() }, maxCostUsd: Number($('bnRepairLimit').value) }),
+      });
+      if (!result.ok) throw new Error(result.body.message || 'Could not save settings.');
+      const price = result.body.acceptedPrice;
+      repairNote.textContent = 'Saved. Price guard accepted USD / million tokens: input ' + price.input + ' · output ' + price.output + '. No repair was started.';
+    } catch (e) { repairNote.textContent = e.message; }
+    finally { $('bnRepairSave').disabled = false; }
+  });
+  rows.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-repair-scene]');
+    if (!button) return;
+    button.disabled = true;
+    summary.textContent = 'Starting one repair…';
+    try {
+      const result = await json('/admin/benchmark-banners/repair/' + encodeURIComponent(button.dataset.repairScene), { method: 'POST' });
+      if (!result.ok) throw new Error(result.body.message || 'Could not start repair.');
+      watchUntil = Date.now() + 15000;
+      load();
+    } catch (e) { summary.textContent = e.message; button.disabled = false; }
+  });
 
   // ---- Progress bar --------------------------------------------------------
 
@@ -13515,9 +13679,11 @@ window.lumaAskReason = function (form, message) {
   function render(data) {
     last = data;
     const running = !!data.running;
+    const repairs = data.repairs || [];
+    const repairing = repairs.some((r) => r.state === 'running');
     const items = data.items || [];
-    missingBtn.disabled = running || data.missingCount === 0;
-    allBtn.disabled = running || data.sceneCount === 0;
+    missingBtn.disabled = running || repairing || data.missingCount === 0;
+    allBtn.disabled = running || repairing || data.sceneCount === 0;
     missingBtn.textContent = 'Render missing banners'
       + (data.missingCount > 0 ? ' (' + data.missingCount + ')' : '');
     stopBtn.style.display = running ? '' : 'none';
@@ -13556,6 +13722,12 @@ window.lumaAskReason = function (form, message) {
         ? esc(i.stage) + (i.detail ? ' · ' + esc(i.detail) : '')
         : esc(i.detail || '—');
       const stamp = i.finishedAtMs || data.finishedAtMs || 0;
+      const repair = repairs.find((r) => r.id === i.id);
+      const repairControl = i.state === 'failed' && !i.id.startsWith('cathedral_')
+        ? '<button type="button" class="btn btn-ghost btn-sm" data-repair-scene="' + esc(i.id) + '"'
+          + (running || repairing ? ' disabled' : '') + '>Repair once</button>' : '';
+      const repairDetail = repair ? '<div style="margin-top:6px">' + esc(repair.detail)
+        + (repair.costUsd != null ? ' · $' + Number(repair.costUsd).toFixed(4) : '') + '</div>' : '';
       const img = i.state === 'ok'
         ? '<a href="/admin/benchmark-banners/image/' + encodeURIComponent(i.id)
           + '?v=' + stamp + '" target="_blank" rel="noopener">'
@@ -13566,10 +13738,10 @@ window.lumaAskReason = function (form, message) {
       return '<tr><td>' + esc(i.id) + '</td>'
         + '<td><span class="badge ' + b[0] + '">' + label + '</span></td>'
         + '<td>' + img + '</td>'
-        + '<td class="muted" style="font-size:12px">' + note + '</td></tr>';
+        + '<td class="muted" style="font-size:12px">' + note + repairDetail + repairControl + '</td></tr>';
     }).join('');
     catalog.onStatus(data);
-    return running || (data.queued || []).length > 0;
+    return running || repairing || (data.queued || []).length > 0;
   }
 
   // One poll at a time; while a job runs (or might, after a failed read)
@@ -13598,14 +13770,14 @@ window.lumaAskReason = function (form, message) {
         failures++;
         if (failures >= 3) summary.textContent = 'Could not read the banner status — retrying…';
         clearTimeout(timer);
-        if (!last || last.running || (last.queued || []).length || Date.now() < watchUntil) {
+        if (!last || last.running || (last.repairs || []).some((r) => r.state === 'running') || (last.queued || []).length || Date.now() < watchUntil) {
           timer = setTimeout(load, Math.min(15000, 2000 * failures));
         }
       });
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden && last && (last.running || (last.queued || []).length)) load();
+    if (!document.hidden && last && (last.running || (last.repairs || []).some((r) => r.state === 'running') || (last.queued || []).length)) load();
   });
 
   function start(mode, ids) {
