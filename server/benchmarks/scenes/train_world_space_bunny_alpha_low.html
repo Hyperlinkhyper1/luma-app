@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Train World — Live Interlocking</title>
+<style>
+:root{--panel:rgba(9,17,25,.88);--line:#40515e;--text:#e8f2f6;--muted:#9cb0bb;--green:#54f28b;--yellow:#ffd452;--red:#ff4d55;--blue:#53c8ff}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#081019;color:var(--text);font:12px system-ui,-apple-system,Segoe UI,sans-serif}
+#view{position:fixed;inset:0}canvas{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:9px;box-shadow:0 8px 25px #0007;backdrop-filter:blur(7px)}
+#ui{position:fixed;inset:0;pointer-events:none}.interactive{pointer-events:auto}
+#brand{position:absolute;left:14px;top:14px;padding:11px 14px;width:285px}
+h1{font-size:15px;margin:0 0 3px;letter-spacing:.4px}.sub{color:var(--muted);font-size:11px}
+#trains{position:absolute;left:14px;top:94px;width:285px;display:grid;gap:7px}
+.train{padding:9px 10px;position:relative;overflow:hidden}.train:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.trainhead{display:flex;justify-content:space-between;gap:8px;font-weight:700}.state{color:var(--muted);font-weight:500;margin:4px 0}.speed{font-variant-numeric:tabular-nums;color:#fff}.meta{display:flex;justify-content:space-between;color:#b9cbd4}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:#555}
+#diagram{position:absolute;right:14px;top:14px;width:390px;padding:8px}.diagramhead{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 5px;font-weight:700}.legend{display:flex;gap:9px;color:var(--muted);font-size:10px;font-weight:400}.legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px}
+#svg{width:100%;height:210px;display:block}.block{stroke:#53636d;stroke-width:7;fill:none;stroke-linecap:round}.block.occupied{stroke:#ff9b38}.route{stroke:#39d9ff;stroke-width:4;fill:none;stroke-linecap:round}.switchline{stroke:#fff;stroke-width:2}.sig{cursor:pointer}.sig circle{stroke:#071017;stroke-width:2}.trainmark{font-size:9px;font-weight:800;fill:#fff;paint-order:stroke;stroke:#071017;stroke-width:3px}
+#controls{position:absolute;right:14px;bottom:14px;width:390px;padding:10px}.row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}.row:last-child{margin:0}
+button,select{background:#172631;color:#e8f2f6;border:1px solid #455966;border-radius:5px;padding:6px 9px;cursor:pointer}button:hover,button.active{background:#285062;border-color:#63b4d4}button:disabled{opacity:.4;cursor:default}
+label{color:#b9cbd4}.spacer{flex:1}input[type=range]{accent-color:#55bfe8;width:125px}
+#how{position:absolute;left:14px;bottom:14px;width:285px;padding:10px 12px;max-height:35vh;overflow:auto;color:#b9cbd4;line-height:1.42}#how b{color:#fff}#how p{margin:7px 0 0}#how .close{float:right;padding:1px 6px}
+#toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);padding:8px 14px;opacity:0;transition:.2s;pointer-events:none}#toast.show{opacity:1}
+#loading{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#0b1721;color:#dcebf1}.loader{text-align:center}.rail{width:180px;height:8px;border-top:3px solid #7993a2;border-bottom:3px solid #7993a2;margin:18px auto;position:relative;overflow:hidden}.rail:after{content:"";position:absolute;width:55px;height:4px;background:#5dd5ff;top:-1px;animation:run 1s linear infinite}@keyframes run{from{left:-60px}to{left:180px}}
+#error{display:none;position:fixed;inset:0;z-index:40;background:#101820;place-items:center;text-align:center;padding:30px;font-size:18px}
+@media(max-width:850px){#brand,#trains{width:225px}#diagram,#controls{width:300px}#how{width:225px}#svg{height:180px}.sub{font-size:9px}}
+@media(max-width:650px){#diagram{top:auto;bottom:75px;right:8px;width:260px}#controls{right:8px;bottom:8px;width:260px}#brand{left:8px;top:8px;width:190px}#trains{left:8px;top:78px;width:190px}#how{display:none}.legend{display:none}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div id="ui">
+  <div id="brand" class="panel interactive"><h1>VALLEY JUNCTION RAILWAY</h1><div class="sub">Live miniature layout · 8 block sections · 4 pointworks</div></div>
+  <div id="trains" class="interactive"></div>
+  <div id="diagram" class="panel interactive">
+    <div class="diagramhead">LIVE SIGNAL BOX <div class="legend"><span><i style="background:#54f28b"></i>clear</span><span><i style="background:#ff9b38"></i>occupied</span><span><i style="background:#39d9ff"></i>route</span></div></div>
+    <svg id="svg" viewBox="0 0 390 210"></svg>
+  </div>
+  <div id="controls" class="panel interactive">
+    <div class="row">
+      <button id="pause">Pause</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button><button data-speed="4">4×</button>
+      <span class="spacer"></span><label>Light <input id="day" type="range" min="0" max="1" step=".01" value=".24"></label>
+    </div>
+    <div class="row">
+      <button data-view="overview">Overview</button><button data-view="station">Stations</button><button data-view="bridge">Bridge</button><button data-view="crossing">Crossing</button>
+      <button id="follow" data-view="">Unfollow</button>
+    </div>
+    <div class="row">
+      <button id="blocks">Track occupancy</button><button id="routes">Reserved routes</button><button id="hide">Hide panels</button>
+    </div>
+  </div>
+  <div id="how" class="panel interactive">
+    <button class="close">×</button><b>How the signalling works</b>
+    <p>Each coloured railway section is an electronic block. It accepts only one train. A signal is <b style="color:#54f28b">green</b> for two or more clear sections, <b style="color:#ffd452">yellow</b> for one clear section, and <b style="color:#ff4d55">red</b> when the next section is occupied, held by an operator, or its point route is unavailable.</p>
+    <p>Points move before their route locks. Conflicting point paths are exclusive. Trains brake to the red board and may proceed only after the interlocking proves their route clear.</p>
+    <p>The passing loop at North Vale is single track in both directions. Its direction lock admits one train at a time; another waits in the loop. Click any signal to place a manual hold.</p>
+  </div>
+  <div id="toast" class="panel"></div>
+</div>
+<div id="loading"><div class="loader"><b>Building the Valley Junction layout</b><div class="rail"></div><small>Setting rails, points, signals and scenery…</small></div></div>
+<div id="error"></div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+try{
+const $=s=>document.querySelector(s), TAU=Math.PI*2;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9bcbe0);
+scene.fog=new THREE.FogExp2(0xa6ccd7,.004);
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});}catch(e){throw e}
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+$('#view').appendChild(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(43,innerWidth/innerHeight,.1,500);camera.position.set(65,52,66);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,2,0);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.47;controls.minDistance=8;controls.maxDistance=130;
+const hemi=new THREE.HemisphereLight(0xddefff,0x4a3a29,2);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0d0,3);sun.position.set(-35,65,25);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-70,right:70,top:70,bottom:-70,near:1,far:160});scene.add(sun);
+const mats={};
+function mat(c,rough=.75,metal=0){return new THREE.MeshStandardMaterial({color:c,roughness:rough,metalness:metal})}
+const groundMat=mat(0x6f9d58), wood=mat(0x72482c), ballast=mat(0x77736b), rail=mat(0x777d80,.3,.8), sleeper=mat(0x49372c), grass=mat(0x709c50), stone=mat(0x87908b), water=new THREE.MeshStandardMaterial({color:0x3b8da8,roughness:.2,metalness:.15});
+const box=(w,h,d,m,x=0,y=0,z=0,parent=scene)=>{let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o};
+const cyl=(r,h,m,x=0,y=0,z=0,parent=scene,seg=12)=>{let o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;parent.add(o);return o};
+const sphere=(r,m,x,y,z,sx=1,sy=1,sz=1,p=scene)=>{let o=new THREE.Mesh(new THREE.SphereGeometry(r,16,10),m);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=o.receiveShadow=true;p.add(o);return o};
+const base=box(142,4,105,wood,0,-3,0);box(137,1,100,groundMat,0,-.7,0);
+const dummy=new THREE.Object3D();scene.userData.dummy=dummy;
+// network points in X/Z, clockwise
+const P=[
+ [-48,7],[-30,-25],[-8,-28],[13,-18],[34,5],[27,30],[1,36],[-28,30],[-49,12]
+];
+const A=[P[0].clone().add(new THREE.Vector3(0,0,-9)),P[2].clone().add(new THREE.Vector3(0,0,-9))];
+// Curves generated as quadratic Bezier through midpoint tangents.
+function curve(a,b,bend=0){let m=a.clone().lerp(b,.5), d=b.clone().sub(a).normalize(), side=new THREE.Vector3(-d.y,0,d.x);m.addScaledVector(side,bend);return new THREE.QuadraticBezierCurve3(a,m,b)}
+const main=[
+ curve(P[0],P[1],-2),curve(P[1],P[2],0),curve(P[2],P[3],4),curve(P[3],P[4],0),
+ curve(P[4],P[5],-4),curve(P[5],P[6],0),curve(P[6],P[7],3),curve(P[7],P[0],-3)
+];
+const siding=[curve(P[1],A[0],0),curve(A[0],A[1],0),curve(A[1],P[2],0)];
+const names=['Westford','North loop','Tunnel approach','Tunnel single line','River bridge','East approach','Oak Halt','Valley curve'];
+const blockData=main.map((c,i)=>({id:'B'+(i+1),name:names[i],curve:c,length:c.getLength(),kind:i===3?'single':i===2||i===4?'tunnel/bridge':'main',switchIn:i===2||i===3?'S3':i===0||i===1?'S1':i>=5&&i<=7?'S4':null,switchOut:null,occupied:null,reserved:null,signal:'normal'}));
+siding.forEach((c,i)=>blockData.push({id:'L'+(i+1),name:'North Vale passing loop '+String.fromCharCode(65+i),curve:c,length:c.getLength(),kind:'loop',occupied:null,reserved:null,signal:'normal',switchIn:i===0?'S2':null,switchOut:i===2?'S3':null}));
+// four animated point levers (two positions; four lever units)
+const switches={S1:{a:blockData[0],b:siding[0],pos:'a',anim:0,set:null},S2:{a:null,b:null,pos:'a',anim:0,set:null},S3:{a:siding[2],b:blockData[2],pos:'a',anim:0,set:null},S4:{a:null,b:null,pos:'a',anim:0,set:null}};
+const allCurves=[...main,...siding];let totalMain=blockData.slice(0,8).reduce((a,b)=>a+b.length,0);
+function pointAt(curve,t,lat=0){let p=curve.getPoint(t),tan=curve.getTangent(t).normalize();p.add(new THREE.Vector3(-tan.z,0,tan.x).multiplyScalar(lat));p.y=.48;return p}
+function buildTrack(cd,index){
+ const n=Math.ceil(cd.length/.48), railPts=[],ties=[];
+ for(let i=0;i<=n;i++){let t=i/n;railPts.push(pointAt(cd.curve,t));if(i%2===0){let q=pointAt(cd.curve,t);q.rotation.y=-Math.atan2(cd.curve.getTangent(t).z,cd.curve.getTangent(t).x);ties.push(q)}}
+ // ballast ribbon
+ const pos=[],idx=[];for(let i=0;i<=n;i++){let p=pointAt(cd.curve,i/n);let d=cd.curve.getTangent(i/n),s=new THREE.Vector3(-d.z,0,d.x);pos.push(p.x+s.x*.82,p.y-.08,p.z+s.z*.82,p.x-s.x*.82,p.y-.08,p.z-s.z*.82);if(i<n){let k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();let m=new THREE.Mesh(g,ballast);m.receiveShadow=true;scene.add(m);
+ for(const side of [-.39,.39]){
+  const arr=[];for(let i=0;i<=n;i++){let p=pointAt(cd.curve,i/n,side);p.y+=.08;arr.push(p)}
+  const lm=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arr),Math.max(20,n),.045,5,false),rail);lm.castShadow=true;scene.add(lm);
+  const wear=new THREE.Mesh(lm.geometry,new THREE.MeshStandardMaterial({color:0xb4b6b3,roughness:.22,metalness:.9}));wear.position.y=.002;scene.add(wear);
+ }
+ const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(.95,.10,.18),sleeper,ties.length);
+ ties.forEach((p,i)=>{dummy.position.copy(p);dummy.rotation.copy(p.rotation);dummy.scale.set(1,1,1);dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix)});inst.receiveShadow=true;scene.add(inst);
+ cd.mesh=m;
+}
+blockData.forEach(buildTrack);
+cdColor(blockData[0],0x55bfe8);
+function cdColor(b,c){if(b.mesh)b.mesh.material.color.setHex(c)}
+// river and arched bridge
+const riverCurve=new THREE.CatmullRomCurve3([new THREE.Vector3(70,-.4,-20),new THREE.Vector3(48,-.4,-7),new THREE.Vector3(40,-.4,3),new THREE.Vector3(43,-.4,15),new THREE.Vector3(67,-.4,24)]);
+const riverMesh=new THREE.Mesh(new THREE.TubeGeometry(riverCurve,80,4.4,8,false),water);riverMesh.scale.y=.15;scene.add(riverMesh);
+for(let z=-2;z<=12;z+=2)box(.25,1.2,1.2,stone,35,1,z);
+for(let i=0;i<5;i++)box(9,.22,.22,stone,35,2.4,-2+i*3.5);
+// hills around tunnel, leaving open bore
+sphere(14,grass,5,0,-20,1.5,.8,1);sphere(13,grass,23,0,-20,1.4,.8,1);
+const portal=new THREE.Mesh(new THREE.TorusGeometry(3.5,1.1,8,24,Math.PI),stone);portal.rotation.z=0;portal.position.set(5,2.4,-27.7);scene.add(portal);portal.scale.y=1.35;box(9,1.4,1.2,stone,5,1,-27.5);box(1,4,1.2,stone,1.5,2,-27.5);box(1,4,1.2,stone,8.5,2,-27.5);
+const bore=new THREE.Mesh(new THREE.CylinderGeometry(3.2,3.2,9,24,1,true,0,Math.PI),new THREE.MeshStandardMaterial({color:0x242b27,side:THREE.BackSide}));bore.rotation.x=Math.PI/2;bore.rotation.z=Math.PI;bore.position.set(5,1.4,-23);scene.add(bore);
+// station platforms, canopies, signs
+function station(x,z,rot,name){let g=new THREE.Group();g.position.set(x,.3,z);g.rotation.y=rot;scene.add(g);box(20,.65,3.2,stone,0,.2,3.1,g);box(21,.22,3.5,mat(0xb8aaa0),0,.56,3.1,g);
+ for(let i=-8;i<=8;i+=4){cyl(.09,2.3,mat(0x30414a),i,1.7,1.5,g);box(5,.12,2.5,mat(0x42616d),i,2.9,2.1,g)}
+ box(4,.25,.25,mat(0x204657),-5,2.2,2,g);return g}
+station(-44,12,-1.72,'Westford');station(1,29,0,'Oak Halt');
+// village
+const roofM=mat(0x8e3f32),wallM=mat(0xd8c5a0),windowM=mat(0x87c8e5,.25,.1),roadM=mat(0x4c4b48);
+function house(x,z,s=1){let g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(s);scene.add(g);let w=box(4,3,3.5,wallM,0,1.5,0,g);let r=new THREE.Mesh(new THREE.ConeGeometry(3.25,2,4),roofM);r.rotation.y=Math.PI/4;r.position.y=4;r.castShadow=true;g.add(r);box(.55,1.6,.6,stone,1.3,4.4,-.6,g);for(let xx of [-1.1,1.1]){let wn=box(.7,1,.04,windowM,xx,1.7,1.77,g);wn.userData.window=true}return g}
+let windows=[];[[-24,2],[-17,8],[-12,-1],[-19,-6],[15,27],[24,24],[31,19]].forEach(([x,z],i)=>{let h=house(x,z,.8+(i%3)*.15);windows.push(...h.children.filter(c=>c.userData.window))});
+// church
+box(4,6,5,wallM,-18,3,-5);let churchRoof=new THREE.Mesh(new THREE.ConeGeometry(3.4,4,4),mat(0x43535e));churchRoof.rotation.y=Math.PI/4;churchRoof.position.set(-18,8,-5);scene.add(churchRoof);cyl(1,5,wallM,-18,9,-6);const spire=new THREE.Mesh(new THREE.ConeGeometry(1.4,4,8),mat(0x43535e));spire.position.set(-18,13.5,-6);scene.add(spire);cyl(.06,1.5,roofM,-18,15,-6).rotation.z=0;
+// road and level crossing
+box(4,.04,88,roadM,40,.02,0);for(let z=-40;z<42;z+=7)box(.12,.02,3,mat(0xdad3a4),40,.06,z);
+const barrierPivot=new THREE.Group();barrierPivot.position.set(37.5,0,8);scene.add(barrierPivot);const barrier=box(.18,.18,6.5,mat(0xe8e6dc),0,.9,3.25,barrierPivot);for(let i=0;i<7;i++){let s=box(.2,.21,.55,mat(0xb73535),0,.9,i*.9+.45,barrierPivot)}
+const lampRed=sphere(.16,new THREE.MeshStandardMaterial({color:0xff2525,emissive:0xff0000,emissiveIntensity:1}),37.5,1.9,7.6);
+const crossing={active:false,barrier,lamp:lampRed,blink:0};
+// road cars
+const cars=[];for(let i=0;i<5;i++){let g=new THREE.Group();let color=[0xc54a3b,0x426c9b,0xd5c5a5,0x668755,0x333a42][i];box(1.15,.55,2.3,mat(color),0,.45,0,g);box(.95,.55,1.1,mat(0x8fc3d5,.25,.1),0,.95,-.2,g);for(let x of [-.55,.55])for(let z of [-.75,.75]){let w=cyl(.23,.18,mat(0x202427),x,.25,z,g);w.rotation.z=Math.PI/2}scene.add(g);cars.push({g,dir:i%2?1:-1,z:-36+i*18,speed:4+i*.3})}
+// trees / fence
+const trunk=mat(0x65462d),leaf=mat(0x356b3b);
+function tree(x,z,s=1){cyl(.22*s,2*s,trunk,x,s,z);sphere(1.4*s,leaf,x,2.4*s,z,1,1.2,1)}
+for(let i=0;i<75;i++){let a=i*2.399,x=Math.cos(a)*(38+(i%9)),z=Math.sin(a)*(29+(i%7));if(x>32&&x<48)continue;if(Math.abs(z-33)<4&&x<8)continue;tree(x,z,.65+(i%5)*.12)}
+for(let i=0;i<20;i++){box(.12,1,.12,mat(0x8c7655),-30+i*1.6,.5,37);box(3,.1,.08,mat(0x8c7655),-28.2+i*1.6,.85,37)}
+// signals
+const signalMeshes=[],signalRoots=[];
+function makeSignal(cd,index,kind='normal'){
+ let root=new THREE.Group(),p=cd.curve.getPoint(.06),t=cd.curve.getTangent(.06);root.position.copy(p);root.position.y=.45;root.rotation.y=-Math.atan2(t.z,t.x);scene.add(root);cyl(.065,2.25,mat(0x303b40),0,1.12,0,root);box(.42,.95,.22,mat(0x252d31),0,2.3,0,root);
+ let lamps=[];for(let i=0;i<3;i++){let m=new THREE.MeshStandardMaterial({color:0x202020,emissive:0x000000});let o=sphere(.105,m,0,2.62-i*.31,.15,1,1,.6,root);lamps.push(o)}
+ // face towards approaching side
+ root.rotation.y+=Math.PI;let hit=new THREE.Mesh(new THREE.SphereGeometry(.7,8,6),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=2.3;hit.userData.signalIndex=index;root.add(hit);
+ let txt=document.createElementNS('http://www.w3.org/2000/svg','text');txt.setAttribute('x',index<8?P[index][0]+42:P[index][0]+42);txt.setAttribute('y',P[index][1]-42);txt.setAttribute('fill','#b7c7ce');txt.setAttribute('font-size','8');txt.textContent=cd.id;$('#svg').appendChild(txt);
+ signalMeshes.push({lamps,hit,cd});cd.signalIndex=index;
+}
+blockData.forEach(makeSignal);
+const signalLamps={green:0,new THREE.MeshStandardMaterial({color:0x4bff82,emissive:0x24ff62,emissiveIntensity:2}),yellow:new THREE.MeshStandardMaterial({color:0xffd452,emissive:0xffaa00,emissiveIntensity:2}),red:new THREE.MeshStandardMaterial({color:0xff3848,emissive:0xff0011,emissiveIntensity:2}),off:new THREE.MeshStandardMaterial({color:0x1c2528,roughness:.5})};
+// train construction
+const trainColors=[0x8f3429,0x167f9e,0xd6a126];
+function makeWheels(parent,positions,r=.28){let arr=[];for(let z of positions){let w=cyl(r,.12,mat(0x202326),0,r,z,parent);w.rotation.z=Math.PI/2;arr.push(w)}return arr}
+function steamTrain(color){let cars=[],g=new THREE.Group();scene.add(g);cyl(.38,1.65,mat(color),0,1.2,0,g);cyl(.45,.3,rail,0,2.1,0,g);cyl(.13,1,rail,0,2.65,0,g);sphere(.3,rail,0,3.2,0,1,1,1,g);let wheels=makeWheels(g,[-.55,.55],.31);let rod=new THREE.Group();rod.position.set(.42,.34,.2);g.add(rod);box(.12,.1,1.3,mat(0xd1c8b3),0,0,0,rod);cars.push({g,type:'steam',wheels,rod});let tender=new THREE.Group();scene.add(tender);box(.85,.55,1.7,mat(color),0,.65,0,tender);for(let x of [-.43,.43])makeWheels(tender,[-.5,.5],.22);cars.push({g:tender,wheels:[]});for(let i=0;i<2;i++){let c=new THREE.Group();scene.add(c);box(.9,.65,2.15,mat(color),0,.72,0,c);box(.92,.38,1.8,mat(0xd4c7aa),0,1.22,0,c);for(let x of [-.46,.46])for(let z of [-.7,.7])cyl(.1,.06,windowM,x,1.24,z,c).rotation.z=Math.PI/2;cars.push({g:c,wheels:[]})}return {cars,length:9.3,offsets:[0,1.9,3.25,5.15]}}
+function modern(){let cars=[];for(let i=0;i<3;i++){let g=new THREE.Group();scene.add(g);let shape=new THREE.Shape();shape.moveTo(-.65,0);shape.quadraticCurveTo(-.72,.45,-.5,.6);shape.lineTo(.5,.6);shape.quadraticCurveTo(.75,.45,.68,0);shape.lineTo(-.65,0);let body=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:2.7,bevelEnabled:true,bevelSize:.08,bevelThickness:.08,bevelSegments:2}),mat(i%2?0xe4e9e8:0x168ca8));body.rotation.x=-Math.PI/2;body.position.set(0,.45,1.35);g.add(body);for(let z of [-.85,.85]){box(.025,.38,1.7,windowM,-.49,.8,z,g);box(.025,.38,1.7,windowM,.49,.8,z,g)}for(let z of [-.85,.85])cyl(.1,.5,rail,-.28,1.15,z,g);let roof=box(.3,.05,.8,rail,0,1.1,0,g);let pan=box(.55,.06,.9,rail,0,1.35,0,g);pan.rotation.z=.55;cars.push({g,type:'modern',wheels:[],doors:[]})}return{cars,length:9.5,offsets:[0,3.1,6.2]}}
+function freight(){let cars=[],colors=[0x253c4a,0x6e4b34,0x8d302b];let l=new THREE.Group();scene.add(l);box(.9,.65,2.5,mat(0xd3a526),0,.8,0,l);box(.95,.75,1.1,mat(0x324d61),0,1.4,.6,l);cars.push({g:l,wheels:makeWheels(l,[-.8,.8],.27)});
+ let types=[];for(let i=0;i<4;i++){let g=new THREE.Group();scene.add(g);box(.85,.25,2.1,rail,0,.38,0,g);if(i===0){let tank=cyl(.45,1.8,mat(0xb8b9b2),0,.85,0,g);tank.rotation.x=Math.PI/2;box(.2,.3,1.8,rail,0,1.4,0,g)}else if(i===1){box(.9,1,2,mat(0x744d3a),0,.95,0,g)}else if(i===2){for(let z of [-.55,.55])box(.9,.75,1,mat([0x6c8f9b,0x9b4f3d][i%2]),0,1,z,g)}else{let hopper=new THREE.Mesh(new THREE.CylinderGeometry(.48,.27,1.3,4,1,true),mat(0x555c5d));hopper.rotation.x=Math.PI/2;hopper.position.y=.95;g.add(hopper);box(.85,.25,2,rail,0,.4,0,g)}cars.push({g,wheels:makeWheels(g,[-.72,.72],.23)});types.push(i)}return{cars,length:13.1,offsets:[0,2.35,4.7,7.05,9.4]}}
+const trains=[
+ {id:'A',name:'Crimson Belle',color:'#ef644d',model:steamTrain(0x8f3429),dist:totalMain*.10,speed:0,target:8.5,max:8.5,useLoop:false,lap:0,state:'Departing Westford',dwell:0},
+ {id:'B',name:'Metro 03',color:'#53d4ff',model:modern(),dist:totalMain*.43,speed:0,target:9,max:9,useLoop:true,lap:0,state:'Running',dwell:0},
+ {id:'C',name:'Ore Line 9',color:'#ffd166',model:freight(),dist:totalMain*.76,speed:0,target:7,max:7,useLoop:false,lap:1,state:'Running',dwell:0}
+];
+let cycleEdges=[0,1,2,3,4,5,6,7];let cycleLength=totalMain;
+function makeCycle(t){if(t.useLoop){let next=[0,8,9,10,2,3,4,5,6,7];cycleEdges=next;cycleLength=next.reduce((s,i)=>s+blockData[i].length,0)}else{cycleEdges=[0,1,2,3,4,5,6,7];cycleLength=totalMain}}
+trains.forEach(makeCycle);
+function segmentFor(t,d){d=((d%cycleLength)+cycleLength)%cycleLength;let i=0;while(d>blockData[cycleEdges[i]].length&&i<cycleEdges.length-1){d-=blockData[cycleEdges[i]].length;i++}return{bi:cycleEdges[i],local:d,edge:cycleDataIndex(cycleEdges[i])}}
+function cycleDataIndex(i){return blockData[i]}
+function routeOffset(){return trains.findIndex(t=>t.dwell>0)}
+function setPoints(t,bi){let sw=switches.S3;if(bi===8||bi===10){sw.set='b';sw.want='b'}if(bi===2||bi===3){sw.set='a';sw.want='a'}if(bi===0||bi===1){sw.set='a';sw.want='a'}}
+function requestNext(t){
+ let {bi,local,edge}=segmentFor(t,t.dist),nseg=segmentFor(t,t.dist+edge.length+.01),n=nseg.edge;
+ if(blockData[n].occupied||blockData[n].manual||blockData[n].reserved&&blockData[n].reserved!==t.id)return false;
+ // Exclusive turnouts and direction lock; the entire passing loop is one section group.
+ if((n===8||n===9||n===10)&&blockData[8].reserved&&blockData[8].reserved!==t.id)return false;
+ blockData[n].reserved=t.id;blockData[n].routeAt=simTime;t.wantSwitch=n;return true;
+}
+function nextAspect(t){let cur=segmentFor(t,t.dist), n=segmentFor(t,t.dist+cur.edge.length+.02).edge, n2=segmentFor(t,t.dist+cur.edge.length+blockData[n].length+.03).edge;
+ if(blockData[n].manual||blockData[n].occupied||!blockData[n].reserved)return 'red';if(blockData[n2].occupied||blockData[n2].manual||!blockData[n2].reserved)return 'yellow';return 'green'}
+function releaseBehind(t){let c=segmentFor(t,t.dist-2.2).edge;blockData.forEach((b,i)=>{if(b.reserved===t.id&&b!==blockData[c]&&i!==segmentFor(t,t.dist+8).edge)b.reserved=null})}
+function pointAlong(t,dist){let s=segmentFor(t,dist),b=blockData[s.bi],c=b.curve;return c.getPointAt(Math.min(.99999,s.local/b.length))}
+// initial disjoint occupancy
+function refreshOccupancy(){blockData.forEach(b=>b.occupied=null);for(let t of trains){let n=Math.ceil(t.model.length/.42);for(let j=0;j<n;j++){let b=segmentFor(t,t.dist-j*.42).edge;if(!b.occupied)b.occupied=t.id}}}
+refreshOccupancy();blockData.forEach(b=>{if(!b.reserved)b.reserved='pending'});
+// UI cards
+let cards={};trains.forEach(t=>{let el=document.createElement('div');el.className='train panel';el.style.setProperty('--c',t.color);el.innerHTML=`<div class="trainhead"><span>${t.id} · ${t.name}</span><span class="speed">0.0 km/h</span></div><div class="state">Running</div><div class="meta"><span class="blk"></span><span class="next"></span></div>`;$('#trains').appendChild(el);cards[t.id]=el;el.onclick=()=>follow=t;el.style.cursor='pointer'});
+// SVG diagram
+const svgNS='http://www.w3.org/2000/svg';let svgBlocks=[],svgSig=[];
+function svgPath(c){let pts=c.getPoints(45).map(p=>`${p.x+195},${p.z+65}`).join(' ');return pts}
+blockData.forEach((b,i)=>{let p=document.createElementNS(svgNS,'polyline');p.setAttribute('points',svgPath(b.curve));p.setAttribute('class','block');p.onclick=()=>hold(i);$('#svg').appendChild(p);svgBlocks.push(p);
+ let q=b.curve.getPoint(.10),sig=document.createElementNS(svgNS,'circle');sig.setAttribute('cx',q.x+195);sig.setAttribute('cy',q.z+65);sig.setAttribute('r','4');sig.setAttribute('class','sig');sig.onclick=()=>hold(i);$('#svg').appendChild(sig);svgSig.push(sig)});
+let marks=[];trains.forEach(t=>{let m=document.createElementNS(svgNS,'text');m.setAttribute('class','trainmark');m.setAttribute('text-anchor','middle');m.textContent=t.id;$('#svg').appendChild(m);marks.push(m)});
+let manual=new Set(),showBlocks=false,showRoutes=true,timeScale=1,paused=false,follow=null,simTime=0,cameraTween=null;
+function hold(i){let b=blockData[i];if(b.manual)b.manual=false;else b.manual=true;toast(b.id+(b.manual?' held at danger — signal RED':' manual hold released'));}
+function toast(s){$('#toast').textContent=s;$('#toast').classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>$('#toast').classList.remove('show'),2200)}
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();renderer.domElement.addEventListener('click',e=>{if(e.clientX<innerWidth-innerWidth*.25){mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mouse,camera);let hit=ray.intersectObjects(signalMeshes.map(s=>s.hit));if(hit.length)hold(hit[0].object.userData.signalIndex)}});
+function preset(v){follow=null;$('#follow').classList.remove('active');let target=new THREE.Vector3(),pos;if(v==='station'){pos=new THREE.Vector3(-18,25,43);target.set(-40,1,12)}else if(v==='bridge'){pos=new THREE.Vector3(49,20,27);target.set(35,1,5)}else if(v==='crossing'){pos=new THREE.Vector3(49,13,29);target.set(40,1,8)}else{pos=new THREE.Vector3(65,52,66);target.set(0,2,0)}cameraTween={pos,target};}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{if(b.dataset.view)preset(b.dataset.view);else{follow=null;cameraTween=null;$('#follow').classList.remove('active')}});
+$('#pause').onclick=()=>{paused=!paused;$('#pause').textContent=paused?'Resume':'Pause'};document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{timeScale=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>x.classList.remove('active'));b.classList.add('active')});
+$('#blocks').onclick=()=>{showBlocks=!showBlocks;$('#blocks').classList.toggle('active',showBlocks)};$('#routes').onclick=()=>{showRoutes=!showRoutes;$('#routes').classList.toggle('active',showRoutes)};
+let hidden=false;$('#hide').onclick=()=>{hidden=!hidden;['#brand','#trains','#diagram','#controls','#how'].forEach(q=>$(q).style.display=hidden?'none':'')};$('#how .close').onclick=()=>$('#how').style.display='none';
+// smoke/steam particles
+const smoke=[];for(let i=0;i<38;i++){let m=new THREE.MeshBasicMaterial({color:i%2?0xf0f0e7:0xb7b7b2,transparent:true,opacity:0});let o=new THREE.Sprite(m);scene.add(o);smoke.push({o,age:99,life:3})}
+// update train simulation
+function updateSimulation(dt){
+ simTime+=dt;
+ // complete point animation
+ Object.entries(switches).forEach(([k,s])=>{if(s.want!==null){s.pos=s.want;s.want=null}});
+ trains.forEach(t=>{
+  if(t.dwell>0){t.dwell-=dt;t.speed=0;t.state='Dwelling at station';return}
+  refreshOccupancy();
+  let seg=segmentFor(t,t.dist),gap=seg.edge.length-seg.local,asp=nextAspect(t),stopAt=t.dist+gap-.05;
+  let allowed=requestNext(t);
+  // A green signal is a caution through points; braking curve is based on actual red board.
+  if(!allowed||asp==='red'){
+   const safe=Math.max(0,(stopAt-t.dist-.9));
+   t.target=Math.min(t.max,Math.sqrt(Math.max(0,2*.95*safe)));
+   t.state=!allowed?'Waiting for reserved route':(asp==='red'?'Braking for red signal':'Braking for signal');
+  }else{t.target=asp==='yellow'?t.max*.62:t.max;t.state=asp==='yellow'?'Running under caution':'Running'}
+  if(t.speed<t.target)t.speed+=dt*.8;else t.speed-=dt*1.35;t.speed=Math.max(0,Math.min(t.speed,t.target));
+  if(gap<.45&&(!allowed||asp==='red'))t.speed=0;
+  t.dist+=t.speed*dt;
+  // Station boundary holds, after a train has entirely cleared the preceding section.
+  const arrived=segmentFor(t,t.dist-.001);
+  if(arrived.local>=arrived.edge.length-.035&&(arrived.bi===0||arrived.bi===6)&&t.speed<.15){
+   t.dist=Math.ceil(t.dist);t.speed=0;t.dwell=t.id==='A'?6:8;t.state='Station stop · doors open';t.lap++;makeCycle(t);
+  } else if(Math.floor(t.dist)!==Math.floor(t.dist-dt))releaseBehind(t);
+  refreshOccupancy();
+ });
+}
+function aspectFor(b){
+ let i=blockData.indexOf(b),n=blockData[(i+1)%blockData.length],n2=blockData[(i+2)%blockData.length];
+ if(b.manual||b.occupied||(!b.reserved&&b.reserved!=='pending'))return'RED';if(n.occupied||n.manual||!n.reserved)return'YELLOW';if(n2.occupied||n2.manual||!n2.reserved)return'YELLOW';return'GREEN'}
+function updateSignals(){
+ blockData.forEach((b,i)=>{let a=aspectFor(b),idx=a==='GREEN'?0:a==='YELLOW'?1:2;signalMeshes[i].lamps.forEach((l,j)=>l.material=j===idx?signalLamps[a.toLowerCase()]:signalLamps.off);let col=a==='GREEN'?'#54f28b':a==='YELLOW'?'#ffd452':'#ff4d55';svgSig[i].setAttribute('fill',col);
+ let p=showBlocks?(b.occupied?'#ff9b38':b.reserved&&b.reserved!=='pending'?'#328aa6':'#52636d'):'#52636d';svgBlocks[i].setAttribute('stroke',p);if(b.mesh){if(showBlocks)b.mesh.material.color.setHex(b.occupied?0xb56832:b.reserved&&b.reserved!=='pending'?0x4d94a8:0x77736b);else b.mesh.material.color.setHex(0x77736b)}b.mesh.visible=showRoutes||!b.reserved||b.reserved==='pending'||b.reserved!==t?.id})
+}
+let puffs=0;function updateModels(dt){
+ trains.forEach(t=>{let seg=segmentFor(t,t.dist);let asp=nextAspect(t);
+  t.model.cars.forEach((c,j)=>{let d=t.dist-t.model.offsets[j],s=segmentFor(t,d),p=pointAlong(t,d),tan=s.edge.curve.getTangentAt(Math.min(.999,s.local/s.edge.length));c.g.position.copy(p);c.g.rotation.y=-Math.atan2(tan.z,tan.x);c.g.position.y+=.08;
+   c.wheels.forEach(w=>w.rotation.x-=t.speed*dt/.28);
+   if(c.rod)c.rod.rotation.x=-t.dist*1.5;
+  });
+  let q=pointAlong(t,t.dist),tx=segmentFor(t,t.dist).edge.curve.getTangentAt(segmentFor(t,t.dist).local/segmentFor(t,t.dist).edge.length);crossing.active=crossing.active||Math.hypot(q.x-40,q.z-8)<13&&q.x>0;
+  let card=cards[t.id];card.querySelector('.speed').textContent=(t.speed*3.6).toFixed(1)+' km/h';card.querySelector('.state').textContent=t.state;card.querySelector('.blk').innerHTML='<i class="dot" style="background:'+t.color+'"></i>'+seg.edge.id+' · '+seg.edge.name;card.querySelector('.next').innerHTML=`<span class="dot" style="background:${asp==='GREEN'?'#54f28b':asp==='YELLOW'?'#ffd452':'#ff4d55'}"></span>${seg.edge.id}→ ${asp}`;
+  let m=marks[trains.indexOf(t)],sp=pointAlong(t,t.dist);m.setAttribute('x',sp.x+195);m.setAttribute('y',sp.z+65);m.setAttribute('fill',t.color);
+ });
+}
+function updateWorld(dt){
+ // road crossing and cars
+ const near=crossing.active;crossing.active=false;
+ cars.forEach(c=>{let z=c.z+c.dir*c.speed*dt;if(near&&Math.abs(z-8)<9)c.z=c.dir<0?8-8.5:8+8.5;else if(z>42)c.z=-42;else if(z< -42)c.z=42;c.g.position.set(40,.05,z);c.g.rotation.y=c.dir>0?Math.PI/2:-Math.PI/2});
+ barrier.rotation.x+=( (near?0:Math.PI*.48)-barrier.rotation.x)*Math.min(1,dt*4);crossing.lamp.material.emissiveIntensity=near?(Math.sin(simTime*9)>0?4:.1):0;
+ // puff emission for steam
+ let steam=trains[0],emit=Math.random()<Math.min(1,steam.speed*.08);
+ if(emit){let puffsUse=smoke.find(s=>s.age>=s.life);if(puffsUse){let q=pointAlong(steam,steam.dist-1.6);puffsUse.o.position.copy(q).y+=2.2;puffsUse.age=0;puffsUse.life=2+Math.random()*1.5;puffsUse.o.scale.setScalar(.35)}}
+ smoke.forEach(s=>{s.age+=dt;let k=s.age/s.life;s.o.position.y+=dt*(1.2+s.age*.25);s.o.position.x+=dt*.3;s.o.scale.setScalar(.3+k*1.2);s.o.material.opacity=k<1?Math.sin(Math.PI*k)*.55:0});
+ updateModels(dt);
+}
+const hemiBase=2,day=$.querySelector('#day');function updateLight(){let v=+day.value;let dayc=new THREE.Color().lerpColors(new THREE.Color(0x071327),new THREE.Color(0x9bcbe0),v);scene.background.copy(dayc);scene.fog.color.copy(dayc);hemi.intensity=.45+v*1.65;sun.intensity=.15+v*2.85;let night=1-v;windows.forEach(w=>{w.material=night>.3?new THREE.MeshStandardMaterial({color:0xffd76b,emissive:0xffa72e,emissiveIntensity:1.4}):windowM})}
+day.oninput=updateLight;updateLight();
+function animate(){requestAnimationFrame(animate);let dt=Math.min(.05,clock.getDelta());if(!paused){let simdt=dt*timeScale;updateSimulation(simdt);updateWorld(simdt);updateSignals()}
+ if(cameraTween){camera.position.lerp(cameraTween.pos,.07);controls.target.lerp(cameraTween.target,.07);if(camera.position.distanceTo(cameraTween.pos)<.1)cameraTween=null}
+ if(follow){let p=pointAlong(follow,follow.dist),t=segmentFor(follow,follow.dist).edge.curve.getTangentAt(segmentFor(follow,follow.dist).local/segmentFor(follow,follow.dist).edge.length);let desired=p.clone().add(new THREE.Vector3(t.x*13,8,t.z*13));camera.position.lerp(desired,.045);controls.target.lerp(p,.08)}
+ controls.update();renderer.render(scene,camera)}
+const clock=new THREE.Clock();animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
+$('#routes').classList.add('active');
+setTimeout(()=>{$('#loading').style.display='none';toast('Welcome to Valley Junction — the railway is live')},350);
+}catch(err){
+ console.error(err);$('#loading').style.display='none';const e=$('#error');e.style.display='grid';e.textContent='WebGL could not start on this device. Please enable hardware acceleration or open this page in a WebGL-capable browser. ('+err.message+')';
+}
+</script>
+</body>
+</html>
