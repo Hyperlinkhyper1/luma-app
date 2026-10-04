@@ -13406,7 +13406,8 @@ window.lumaAskReason = function (form, message) {
 .bn-icon-btn .bn-ico{width:18px;height:18px}
 .bn-icon-btn--sm{width:34px;height:34px}
 .bn-dialog{color-scheme:dark}
-.bn-dialog>form{display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+.bn-dlg-scroll{min-height:0;overflow-y:auto}
+.bn-dlg-sec{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9b94b3}
 .bn-dlg-body{padding:2px 22px 20px;display:grid;gap:14px}
 .bn-dlg-body .muted{margin:0;font-size:12.5px;line-height:1.5;color:#9b94b3}
 .bn-field{display:grid;gap:6px;font-size:13px;font-weight:600;color:#cdc7e2}
@@ -13476,22 +13477,29 @@ window.lumaAskReason = function (form, message) {
   /// talks to the shot control inside it over postMessage.
   static const _bnRepairDialogHtml = r'''
 <dialog id="bnRepairSettings" class="bn-dialog" style="width:min(540px,calc(100vw - 32px))" aria-labelledby="bnRepairTitle">
-  <form id="bnRepairForm">
-    <div class="bn-dlg-head"><div><h2 id="bnRepairTitle">Banner render settings</h2><div class="bn-dlg-sub">Speed, and the model that repairs failed scenes</div></div><button type="button" id="bnRepairClose" class="bn-icon-btn" aria-label="Close"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
-    <div class="bn-dlg-body">
+  <div class="bn-dlg-head"><div><h2 id="bnRepairTitle">Banner render settings</h2><div class="bn-dlg-sub">Two separate settings, each with its own Save</div></div><button type="button" id="bnRepairClose" class="bn-icon-btn" aria-label="Close"><svg class="bn-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="bn-dlg-scroll">
+    <form id="bnWorkersForm" class="bn-dlg-body">
+      <h3 class="bn-dlg-sec">Speed</h3>
       <label class="bn-field">Render workers<input id="bnWorkers" class="bn-input" type="number" min="1" max="6" step="1" value="2" required></label>
-      <p class="muted">Scenes rendered side by side, each in a browser of its own. More is faster only while the GPU has room; if banners come out dark or blank, lower it. Saves on its own and applies to the next render.</p>
+      <p class="muted">Scenes rendered side by side, each in a browser of its own. More is faster only while the GPU has room; if banners come out dark or blank, lower it. Applies to the next render.</p>
+      <div><button id="bnWorkersSave" type="submit" class="btn btn-primary">Save workers</button></div>
       <div id="bnWorkersNote" role="status" class="muted"></div>
-      <hr class="bn-rule">
-      <p class="muted">Repairs run only when you click <strong>Repair once</strong> on a failed scene. The model may only fix its render error. Saving settings does not run it.</p>
-      <label class="bn-field">Server API key<select id="bnRepairKey" class="bn-input" required></select></label>
-      <label class="bn-field">Model<input id="bnRepairModel" class="bn-input" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
-      <label class="bn-field">Maximum estimated cost per repair (USD)<input id="bnRepairLimit" class="bn-input" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
-      <p class="muted">Price guard is always on: unknown prices and price increases block a call. Saving accepts the selected model’s current token prices. Output is capped to fit the estimate. Usage is recorded in the AI Usage plugin for aydenjue@outlook.com.</p>
-      <div id="bnRepairNote" role="status" class="muted"></div>
-    </div>
-    <div class="bn-dlg-foot"><button id="bnRepairSave" type="submit" class="btn btn-primary">Save settings &amp; accept current price</button></div>
-  </form>
+    </form>
+    <hr class="bn-rule" style="margin:4px 22px 0">
+    <form id="bnRepairForm">
+      <div class="bn-dlg-body" style="padding-top:16px">
+        <h3 class="bn-dlg-sec">Repair model</h3>
+        <p class="muted">Repairs run only when you click <strong>Repair once</strong> on a failed scene. The model may only fix its render error. Saving settings does not run it.</p>
+        <label class="bn-field">Server API key<select id="bnRepairKey" class="bn-input" required></select></label>
+        <label class="bn-field">Model<input id="bnRepairModel" class="bn-input" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
+        <label class="bn-field">Maximum estimated cost per repair (USD)<input id="bnRepairLimit" class="bn-input" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
+        <p class="muted">Price guard is always on: unknown prices and price increases block a call. Saving accepts the selected model’s current token prices. Output is capped to fit the estimate. Usage is recorded in the AI Usage plugin for aydenjue@outlook.com.</p>
+        <div id="bnRepairNote" role="status" class="muted"></div>
+      </div>
+      <div class="bn-dlg-foot"><button id="bnRepairSave" type="submit" class="btn btn-primary">Save repair settings &amp; accept current price</button></div>
+    </form>
+  </div>
 </dialog>
 ''';
 
@@ -13582,12 +13590,14 @@ window.lumaAskReason = function (form, message) {
       workersNote.textContent = '';
     } catch (e) { workersNote.textContent = 'Could not load the worker count.'; }
   }
-  workersInput.addEventListener('change', async () => {
+  $('bnWorkersForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
     const n = Number(workersInput.value);
     if (!Number.isInteger(n) || n < Number(workersInput.min) || n > Number(workersInput.max)) {
       workersNote.textContent = 'Use a whole number from ' + workersInput.min + ' to ' + workersInput.max + '.';
       return;
     }
+    $('bnWorkersSave').disabled = true;
     workersNote.textContent = 'Saving…';
     try {
       const result = await json('/admin/benchmark-banners/settings', {
@@ -13598,6 +13608,7 @@ window.lumaAskReason = function (form, message) {
       workersNote.textContent = 'Saved: ' + n + (n === 1 ? ' worker' : ' workers')
         + (result.body.running ? ' — takes effect on the next render.' : '.');
     } catch (e) { workersNote.textContent = e.message; }
+    finally { $('bnWorkersSave').disabled = false; }
   });
   $('bnRepairClose').addEventListener('click', () => repairDialog.close());
   $('bnRepairKey').addEventListener('change', () => { $('bnRepairModel').value = ''; repairModels(); });
