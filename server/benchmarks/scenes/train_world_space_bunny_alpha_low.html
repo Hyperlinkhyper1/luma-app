@@ -169,7 +169,7 @@ function makeSignal(cd,index,kind='normal'){
  signalMeshes.push({lamps,hit,cd});cd.signalIndex=index;
 }
 blockData.forEach(makeSignal);
-const signalLamps={green:0,new THREE.MeshStandardMaterial({color:0x4bff82,emissive:0x24ff62,emissiveIntensity:2}),yellow:new THREE.MeshStandardMaterial({color:0xffd452,emissive:0xffaa00,emissiveIntensity:2}),red:new THREE.MeshStandardMaterial({color:0xff3848,emissive:0xff0011,emissiveIntensity:2}),off:new THREE.MeshStandardMaterial({color:0x1c2528,roughness:.5})};
+const signalLamps={green:new THREE.MeshStandardMaterial({color:0x4bff82,emissive:0x24ff62,emissiveIntensity:2}),yellow:new THREE.MeshStandardMaterial({color:0xffd452,emissive:0xffaa00,emissiveIntensity:2}),red:new THREE.MeshStandardMaterial({color:0xff3848,emissive:0xff0011,emissiveIntensity:2}),off:new THREE.MeshStandardMaterial({color:0x1c2528,roughness:.5})};
 // train construction
 const trainColors=[0x8f3429,0x167f9e,0xd6a126];
 function makeWheels(parent,positions,r=.28){let arr=[];for(let z of positions){let w=cyl(r,.12,mat(0x202326),0,r,z,parent);w.rotation.z=Math.PI/2;arr.push(w)}return arr}
