@@ -293,6 +293,23 @@ extension BenchmarkGenerateApi on Api {
         rawMax is num ? rawMax.toInt().clamp(1000, 256000) : _defaultMaxTokens;
     // Batches only sit and wait at OpenRouter, so they get their own cap.
     final batch = isBenchmarkBatchModel(upstream, model);
+    // An already-submitted batch to wait on instead of paying for a new one,
+    // e.g. one this server lost track of.
+    final existingBatch = str('batchId');
+    if (existingBatch.isNotEmpty) {
+      if (!batch) {
+        return errorResponse(400, 'bad_request',
+            'A batch id only goes with an OpenRouter :batch model.');
+      }
+      if (!RegExp(r'^[A-Za-z0-9_-]{1,160}$').hasMatch(existingBatch)) {
+        return errorResponse(400, 'bad_request', 'That isn\'t a batch id.');
+      }
+      if (_benchmarkGenJobs
+          .any((j) => j.batchId == existingBatch && j.status == 'running')) {
+        return errorResponse(
+            409, 'busy', 'A run is already waiting on that batch.');
+      }
+    }
     final running = _benchmarkGenJobs
         .where((j) => j.status == 'running' && j.batch == batch)
         .length;
@@ -321,9 +338,11 @@ extension BenchmarkGenerateApi on Api {
       prompt: prompt,
       maxTokens: maxTokens,
       startedAtMs: DateTime.now().millisecondsSinceEpoch,
+      batchId: existingBatch.isEmpty ? null : existingBatch,
     );
     _benchmarkGenJobs.add(job);
     await _pruneBenchmarkGenJobs();
+    if (job.batchId != null) await _saveBenchmarkBatches();
     unawaited(_runBenchmarkGen(job));
     return jsonResponse(200, job.toJson());
   }
@@ -835,6 +854,12 @@ String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     '<input id="bgModelId" class="bn-input" maxlength="200" '
     'spellcheck="false" autocomplete="off" placeholder="vendor/model-name">'
     '</label>'
+    '<label id="bgBatchIdField" class="bm-field" style="margin-top:10px" '
+    'hidden><span>Existing batch id <span class="muted">(optional: wait on '
+    'a batch that was already submitted instead of paying for a new one)'
+    '</span></span>'
+    '<input id="bgBatchId" class="bn-input" maxlength="160" '
+    'spellcheck="false" autocomplete="off" placeholder="batch-…"></label>'
     '</section>'
     '<section class="bg-step" aria-labelledby="bgStep3">'
     '<div class="bg-step-head"><span class="bg-num" aria-hidden="true">3</span>'
@@ -1017,7 +1042,9 @@ const _bgScript = r'''
   // through its Batch API: half price, finished within 24 hours.
   function isBatch(id) { return key === 'openrouter' && id.endsWith(BATCH); }
   function syncStart() {
-    start.textContent = isBatch(modelId.value.trim()) ? 'Submit batch' : 'Start run';
+    const batch = isBatch(modelId.value.trim());
+    $('bgBatchIdField').hidden = !batch;
+    start.textContent = !batch ? 'Start run' : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
     start.disabled = manualNote || !!(state && !state.keys.some((k) => k.configured));
   }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
@@ -1141,6 +1168,7 @@ const _bgScript = r'''
   });
   search.addEventListener('input', renderModels);
   effort.addEventListener('change', autofill);
+  $('bgBatchId').addEventListener('input', syncStart);
   modelId.addEventListener('input', () => {
     const id = modelId.value.trim();
     model = modelsFor(key).find((m) => m.id === id) || null;
@@ -1200,11 +1228,13 @@ const _bgScript = r'''
       upstream: key, model: id, effort: effort.value, kind: kind,
       name: nameBox.value.trim(), vendor: vendor.value,
       maxTokens: Number(maxTokens.value) || undefined,
+      batchId: isBatch(id) ? $('bgBatchId').value.trim() : '',
       prompt: t && prompt.value === t.prompt ? '' : prompt.value,
     }).then((j) => {
       start.disabled = false;
       if (!j.id) { status.textContent = j.message || 'Could not start the run.'; return; }
       nameEdited = vendorEdited = maxEdited = false;
+      $('bgBatchId').value = '';
       dlg.close();
       poll();
     }).catch(() => { start.disabled = false; status.textContent = 'Could not start the run (network error).'; });
