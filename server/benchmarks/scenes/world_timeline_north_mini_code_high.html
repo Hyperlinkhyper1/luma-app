@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SVG ANIMATION BENCHMARK — A TIMELINE OF THE WORLD</title>
+<style>
+  html,body{margin:0;height:100%;width:100%;overflow:hidden;background:#000;color:#fff;font-family:sans-serif;}
+  #container{position:relative;width:100%;height:100%;}
+  svg{width:100%;height:100%;display:block;}
+  .chapter{opacity:0;transition:opacity 1s ease;pointer-events:none;}
+  .chapter.active{opacity:1;pointer-events:visiblePainted;}
+  #overlay text{dominant-baseline:middle;text-anchor:middle;user-select:none;pointer-events:none;}
+  #chapterTitle{font-size:2.5vw;font-weight:bold;fill:#fff;text-shadow:0 0 6px #000;}
+  #chapterDate{font-size:1.8vw;fill:#e0e0e0;text-shadow:0 0 4px #000;}
+  #chapterCaption{font-size:1.4vw;fill:#ccc;text-shadow:0 0 3px #000;max-width:80%;}
+  .controls{position:absolute;top:10px;right:10px;display:flex;gap:5px;z-index:10;}
+  .controls button{padding:6px 12px;background:#333;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:14px;}
+  .controls button:hover{background:#555;}
+  #timeline{position:absolute;left:0;right:0;height:60px;bottom:0;background:#111;display:flex;align-items:center;padding:0 10px;box-sizing:border-box;z-index:10;}
+  #timeline-track{position:relative;flex:1;height:30px;background:linear-gradient(to right,#8b0000,#ffcc00);border-radius:4px;}
+  .chapter-tick{position:absolute;width:2px;height:100%;background:#fff;cursor:pointer;z-index:2;transition:left 0.1s;}
+  .playhead{position:absolute;top:0;width:2px;height:100%;background:#0f0;z-index:3;pointer-events:none;}
+  .date-readout{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:14px;white-space:nowrap;pointer-events:none;z-index:5;color:#fff;text-shadow:0 0 4px #000;}
+</style>
+</head>
+<body>
+<div id="container">
+  <svg viewBox="0 0 2000 1000" id="worldSVG">
+    <defs>
+      <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2b0000"/>
+        <stop offset="100%" stop-color="#4a0000"/>
+      </linearGradient>
+      <linearGradient id="magmaGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#ff4400"/>
+        <stop offset="100%" stop-color="#bb0000"/>
+      </linearGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge>
+          <feMergeNode in="blur"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+    </defs>
+
+    <!-- Scene group that will be transformed -->
+    <g id="scene">
+      <!-- Chapter 1 – Formation of the Earth -->
+      <g id="ch1" class="chapter" data-chapter="1">
+        <rect x="0" y="0" width="2000" height="1000" fill="url(#skyGrad)"/>
+        <circle cx="1000" cy="500" r="300" fill="url(#magmaGrad)" filter="url(#glow)"/>
+        <circle cx="1000" cy="500" r="150" fill="#ffdd00" opacity="0.9" filter="url(#glow)"/>
+        <circle cx="800" cy="300" r="10" fill="#ffaa00" opacity="0.6"/>
+        <circle cx="1200" cy="400" r="8" fill="#ff8800" opacity="0.5"/>
+        <circle cx="1100" cy="600" r="12" fill="#ff6600" opacity="0.7"/>
+      </g>
+
+      <!-- Chapter 2 – The Hadean -->
+      <g id="ch2" class="chapter" data-chapter="2">
+        <rect x="0" y="0" width="2000" height="1000" fill="#1a0000"/>
+        <path d="M0 500 Q1000 600 2000 500 L2000 1000 L0 1000 Z" fill="#2d0000"/>
+        <ellipse cx="500" cy="500" rx="250" ry="120" fill="#3b0000" opacity="0.6"/>
+        <ellipse cx="1500" cy="500" rx="200" ry="100" fill="#2b0000" opacity="0.5"/>
+      </g>
+
+      <!-- Chapter 3 – First Life (stromatolites) -->
+      <g id="ch3" class="chapter" data-chapter="3">
+        <rect x="0" y="0" width="2000" height="1000" fill="#003300"/>
+        <path d="M0 800 Q1000 750 2000 800 L2000 1000 L0 1000 Z" fill="#004d00"/>
+        <circle cx="400" cy="700" r="30" fill="#2ecc71" opacity="0.8"/>
+        <circle cx="800" cy="680" r="20" fill="#27ae60" opacity="0.7"/>
+        <circle cx="1200" cy="690" r="25" fill="#2ecc71" opacity="0.8"/>
+        <circle cx="1600" cy="710" r="22" fill="#27ae60" opacity="0.7"/>
+        <path d="M300 730 Q400 720 500 730 Q600 740 700 730 Q800 720 900 730" stroke="#2ecc71" stroke-width="3" fill="none"/>
+        <path d="M1100 730 Q1200 720 1300 730 Q1400 740 1500 730 Q1600 720 1700 730" stroke="#2ecc71" stroke-width="3" fill="none"/>
+      </g>
+
+      <!-- Chapter 4 – Great Oxidation -->
+      <g id="ch4" class="chapter" data-chapter="4">
+        <rect x="0" y="0" width="2000" height="1000" fill="#005f99"/>
+        <circle cx="300" cy="300" r="40" fill="#a3e635" opacity="0.9"/>
+        <circle cx="1700" cy="250" r="30" fill="#a3e635" opacity="0.8"/>
+        <path d="M1000 500 Q1000 300 1200 400 Q1400 500 1000 700 Q600 500 800 400" fill="#4facfe" opacity="0.5"/>
+      </g>
+
+      <!-- Chapter 5 – Snowball Earth -->
+      <g id="ch5" class="chapter" data-chapter="5">
+        <rect x="0" y="0" width="2000" height="1000" fill="#e0f7fa"/>
+        <ellipse cx="1000" cy="500" rx="800" ry="350" fill="#b2ebf2" opacity="0.6"/>
+        <circle cx="300" cy="300" r="20" fill="#fff" opacity="0.9"/>
+        <circle cx="1700" cy="350" r="15" fill="#fff" opacity="0.8"/>
+        <path d="M500 600 Q800 550 500 400 Q200 250 500 600" stroke="#b2ebf2" stroke-width="5" fill="none" opacity="0.4"/>
+      </g>
+
+      <!-- Chapter 6 – Cambrian Explosion -->
+      <g id="ch6" class="chapter" data-chapter="6">
+        <rect x="0" y="0" width="2000" height="1000" fill="#002b5c"/>
+        <circle cx="200" cy="700" r="25" fill="#ffce00" opacity="0.9"/>
+        <circle cx="400" cy="750" r="20" fill="#ffce00" opacity="0.8"/>
+        <circle cx="600" cy="730" r="18" fill="#ffce00" opacity="0.7"/>
+        <path d="M200 700 Q300 730 400 700 Q500 670 600 700 Q700 730 800 700" stroke="#ffce00" stroke-width="3" fill="none"/>
+        <path d="M900 720 Q950 740 1000 720 Q1050 700 1100 720 Q1150 740 1200 720" stroke="#ffce00" stroke-width="3" fill="none"/>
+      </g>
+
+      <!-- Chapter 7 – Life on Land -->
+      <g id="ch7" class="chapter" data-chapter="7">
+        <rect x="0" y="0" width="2000" height="1000" fill="#2e7d32"/>
+        <path d="M0 800 Q500 750 1000 800 Q1500 850 2000 800 L2000 1000 L0 1000 Z" fill="#388e3c"/>
+        <path d="M400 720 Q500 600 600 720 Q700 840 800 720" stroke="#c5e1a5" stroke-width="4" fill="none"/>
+        <path d="M1200 720 Q1300 600 1400 720 Q1500 840 1600 720" stroke="#c5e1a5" stroke-width="4" fill="none"/>
+        <rect x="900" y="650" width="200" height="80" fill="#8bc34a" opacity="0.8"/>
+        <rect x="950" y="630" width="30" height="30" fill="#558b2f"/>
+      </g>
+
+      <!-- Chapter 8 – Pangaea & Dinosaurs -->
+      <g id="ch8" class="chapter" data-chapter="8">
+        <rect x="0" y="0" width="2000" height="1000" fill="#c2b280"/>
+        <path d="M0 900 Q500 800 1000 900 Q1500 1000 2000 900 L2000 1000 L0 1000 Z" fill="#a99b6f"/>
+        <polygon points="900,600 950,800 850,800" fill="#7e7e7e"/>
+        <polygon points="1100,600 1150,800 1050,800" fill="#7e7e7e"/>
+        <polygon points="1300,620 1340,820 1260,820" fill="#7e7e7e"/>
+        <polygon points="1500,640 1540,840 1460,840" fill="#7e7e7e"/>
+      </g>
+
+      <!-- Chapter 9 – Asteroid Impact -->
+      <g id="ch9" class="chapter" data-chapter="9">
+        <rect x="0" y="0" width="2000" height="1000" fill="#4a4a4a"/>
+        <circle cx="1000" cy="500" r="350" fill="#2e2e2e"/>
+        <circle cx="1000" cy="500" r="250" fill="none" stroke="#555" stroke-width="10" opacity="0.5"/>
+        <path d="M1000 150 Q900 250 1000 350 Q1100 250 1000 150" fill="#ffcc00" opacity="0.9"/>
+        <path d="M1000 350 Q950 400 1000 450 Q1050 400 1000 350" fill="#ff9900" opacity="0.8"/>
+        <path d="M1000 450 Q1050 480 1100 450 Q1050 420 1000 450" fill="#ff6600" opacity="0.7"/>
+      </g>
+
+      <!-- Chapter 10 – Rise of Mammals -->
+      <g id="ch10" class="chapter" data-chapter="10">
+        <rect x="0" y="0" width="2000" height="1000" fill="#8d6e63"/>
+        <ellipse cx="400" cy="700" rx="60" ry="30" fill="#6d4c41"/>
+        <ellipse cx="550" cy="680" rx="50" ry="25" fill="#6d4c41"/>
+        <ellipse cx="800" cy="710" rx="70" ry="35" fill="#6d4c41"/>
+        <ellipse cx="1000" cy="700" rx="80" ry="40" fill="#6d4c41"/>
+        <ellipse cx="1300" cy="700" rx="65" ry="30" fill="#6d4c41"/>
+        <rect x="950" y="560" width="100" height="40" fill="#37474f"/>
+      </g>
+
+      <!-- Chapter 11 – Homo sapiens -->
+      <g id="ch11" class="chapter" data-chapter="11">
+        <rect x="0" y="0" width="2000" height="1000" fill="#5d4037"/>
+        <path d="M1000 600 Q950 500 900 600 Q850 700 900 800 Q950 700 1000 800 Q1050 700 1100 800 Q1150 700 1200 600 Q1150 500 1100 600" fill="#8d6e63"/>
+        <circle cx="990" cy="560" r="10" fill="#000"/>
+        <circle cx="1110" cy="560" r="10" fill="#000"/>
+        <path d="M1000 620 Q1000 680 1000 720" stroke="#000" stroke-width="2"/>
+      </g>
+
+      <!-- Chapter 12 – Farming Begins -->
+      <g id="ch12" class="chapter" data-chapter="12">
+        <rect x="0" y="0" width="2000" height="1000" fill="#c0ca33"/>
+        <rect x="200" y="600" width="300" height="200" fill="#9e9d24" opacity="0.9"/>
+        <rect x="600" y="650" width="250" height="150" fill="#9e9d24" opacity="0.9"/>
+        <rect x="1150" y="620" width="350" height="180" fill="#9e9d24" opacity="0.9"/>
+        <circle cx="250" cy="700" r="15" fill="#8bc34a"/>
+        <circle cx="650" cy="750" r="12" fill="#8bc34a"/>
+        <circle cx="1200" cy="720" r="18" fill="#8bc34a"/>
+      </g>
+
+      <!-- Chapter 13 – Early Civilisations -->
+      <g id="ch13" class="chapter" data-chapter="13">
+        <rect x="0" y="0" width="2000" height="1000" fill="#e67e22"/>
+        <polygon points="500,600 550,400 700,600" fill="#d35400"/>
+        <polygon points="1300,600 1240,400 1100,600" fill="#d35400"/>
+        <rect x="980" y="300" width="40" height="200" fill="#e67e22"/>
+        <rect x="970" y="300" width="60" height="20" fill="#b35400"/>
+      </g>
+
+      <!-- Chapter 14 – Classical World -->
+      <g id="ch14" class="chapter" data-chapter="14">
+        <rect x="0" y="0" width="2000" height="1000" fill="#3498db"/>
+        <rect x="300" y="500" width="120" height="300" fill="#2c3e50" opacity="0.9"/>
+        <rect x="560" y="600" width="120" height="200" fill="#2c3e50" opacity="0.9"/>
+        <rect x="820" y="550" width="120" height="250" fill="#2c3e50" opacity="0.9"/>
+        <path d="M340 500 L360 800 M380 500 L400 800 M420 500 L440 800" stroke="#fff" stroke-width="4"/>
+      </g>
+
+      <!-- Chapter 15 – Medieval World -->
+      <g id="ch15" class="chapter" data-chapter="15">
+        <rect x="0" y="0" width="2000" height="1000" fill="#7f8c8d"/>
+        <rect x="300" y="500" width="150" height="300" fill="#2c3e50"/>
+        <rect x="500" y="600" width="80" height="200" fill="#2c3e50"/>
+        <rect x="800" y="550" width="140" width="140" height="250" fill="#2c3e50"/>
+        <rect x="1100" y="620" width="100" height="150" fill="#2c3e50"/>
+        <path d="M450 600 L470 800 M490 600 L510 800" stroke="#fff" stroke-width="3"/>
+      </g>
+
+      <!-- Chapter 16 – Printing Press & Exploration -->
+      <g id="ch16" class="chapter" data-chapter="16">
+        <rect x="0" y="0" width="2000" height="1000" fill="#16a085"/>
+        <rect x="300" y="500" width="100" height="150" fill="#e67e22"/>
+        <rect x="440" y="550" width="30" height="80" fill="#e67e22"/>
+        <rect x="500" y="600" width="80" height="40" fill="#e67e22"/>
+        <polygon points="700,600 730,400 760,600" fill="#2980b9"/>
+        <polygon points="730,400 760,200 790,400" fill="#2980b9"/>
+      </g>
+
+      <!-- Chapter 17 – Industrial Revolution -->
+      <g id="ch17" class="chapter" data-chapter="17">
+        <rect x="0" y="0" width="2000" height="1000" fill="#34495e"/>
+        <rect x="300" y="500" width="80" height="200" fill="#7f8c8d"/>
+        <rect x="450" y="550" width="60" height="120" fill="#95a5a6"/>
+        <rect x="650" y="600" width="70" height="150" fill="#7f8c8d"/>
+        <circle cx="700" cy="450" r="10" fill="#f39c12" opacity="0.9"/>
+        <circle cx="800" cy="440" r="8" fill="#f39c12" opacity="0.8"/>
+        <circle cx="900" cy="430" r="6" fill="#f39c12" opacity="0.7"/>
+      </g>
+
+      <!-- Chapter 18 – 20th Century -->
+      <g id="ch18" class="chapter" data-chapter="18">
+        <rect x="0" y="0" width="2000" height="1000" fill="#bdc3c7"/>
+        <rect x="300" y="500" width="120" height="80" fill="#2c3e50"/>
+        <rect x="300" y="580" width="30" height="120" fill="#2c3e50"/>
+        <rect x="440" y="580" width="30" height="120" fill="#2c3e50"/>
+        <polygon points="500,500 560,380 620,500" fill="#e74c3c"/>
+        <polygon points="620,500 680,380 740,500" fill="#e74c3c"/>
+        <polygon points="740,500 800,380 860,500" fill="#e74c3c"/>
+        <polygon points="860,500 920,380 980,500" fill="#e74c3c"/>
+        <polygon points="980,500 1040,380 1100,500" fill="#e74c3c"/>
+        <ellipse cx="1000" cy="400" rx="150" ry="60" fill="#e67e22" opacity="0.8"/>
+      </g>
+
+      <!-- Chapter 19 – Digital Age -->
+      <g id="ch19" class="chapter" data-chapter="19">
+        <rect x="0" y="0" width="2000" height="1000" fill="#2c3e50"/>
+        <rect x="300" y="500" width="200" height="120" fill="#ecf0f1"/>
+        <rect x="520" y="560" width="30" height="30" fill="#34495e"/>
+        <rect x="560" y="560" width="30" height="30" fill="#34495e"/>
+        <rect x="600" y="560" width="30" height="30" fill="#34495e"/>
+        <rect x="540" y="540" width="90" height="20" fill="#95a5a6"/>
+        <rect x="340" y="600" width="120" height="80" fill="#27ae60"/>
+        <ellipse cx="800" cy="600" rx="100" ry="50" fill="#8e44ad" opacity="0.9"/>
+        <circle cx="800" cy="600" r="30" fill="#fff"/>
+        <path d="M800 570 Q800 620 800 670" stroke="#8e44ad" stroke-width="4"/>
+      </g>
+
+      <!-- Overlay text (titles & captions) -->
+      <g id="overlay">
+        <text id="chapterTitle" y="80" text-anchor="middle">Title</text>
+        <text id="chapterDate" y="120" text-anchor="middle">Date</text>
+        <text id="chapterCaption" y="160" text-anchor="middle" width="80%" length-adjust="exact">Caption</text>
+      </g>
+    </g>
+  </svg>
+
+  <div class="controls">
+    <button id="btnPlayPause">Play</button>
+    <button id="btnSpeed" title="Speed">1x</button>
+    <button id="btnRestart">Restart</button>
+  </div>
+
+  <div id="timeline">
+    <div id="timeline-track"></div>
+    <div id="playhead"></div>
+    <div id="dateReadout"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // Chapter definitions (id, title, date, caption, start/end seconds)
+  const chapters = [
+    {id:1, title:"Formation of the Earth", date:"≈4.54 billion years ago", caption:"A molten Earth is born after the Moon‑forming impact.", start:0,  end:3},
+    {id:2, title:"The Hadean", date:"≈4.0–3.8 billion years ago", caption:"The surface cools, the first oceans appear.", start:3,  end:7},
+    {id:3, title:"First Life", date:"≈3.7–3.5 billion years ago", caption:"Microbial mats and stromatolites blanket the shallow seas.", start:7,  end:12},
+    {id:4, title:"Great Oxidation", date:"≈2.4 billion years ago", caption:"Oxygen rises, sky and sea turn from orange haze to blue.", start:12, end:18},
+    {id:5, title:"Snowball Earth", date:"≈720–635 million years ago", caption:"The planet freezes in a global ice sheet.", start:18, end:24},
+    {id:6, title:"Cambrian Explosion", date:"≈538 million years ago", caption:"A burst of animal diversity appears in the seas.", start:24, end:30},
+    {id:7, title:"Life on Land", date:"≈470–375 million years ago", caption:"Plants colonise the land, followed by early animals.", start:30, end:38},
+    {id:8, title:"Pangaea & Dinosaurs", date:"≈252–66 million years ago", caption:"The supercontinent Pangaea forms, dinosaurs dominate.", start:38, end:58},
+    {id:8.5, title:"Asteroid Impact", date:"≈66 million years ago", caption:"A massive impact heralds the end of the dinosaurs.", start:58, end:63},
+    {id:10, title:"Rise of Mammals", date:"≈66 million years ago onward", caption:"Mammals diversify after the Cretaceous extinction.", start:63, end:80},
+    {id:11, title:"Homo sapiens", date:"≈300 000 years ago", caption:"Modern humans appear in Africa.", start:80, end:90},
+    {id:12, title:"Farming Begins", date:"≈10 000 BCE", caption:"Agricultural settlements arise, transforming societies.", start:90, end:100},
+    {id:13, title:"Early Civilisations", date:"≈2560 BCE (Great Pyramid)", caption:"Mesopotamia and Egypt build monumental architecture.", start:100, end:110},
+    {id:14, title:"Classical World", date:"≈500 BCE – 500 CE", caption:"Greece, Rome and Han China shape early civilisation.", start:110, end:130},
+    {id:15, title:"Medieval World", date:"≈500–1450 CE", caption:"Feudal societies flourish across Eurasia.", start:130, end:160},
+    {id:16, title:"Printing Press & Exploration", date:"≈1450 & 1492", caption:"Printing spreads ideas, Age of Discovery opens new continents.", start:160, end:170},
+    {id:17, title:"Industrial Revolution", date:"≈1760 onward", caption:"Factories and steam power launch the modern economy.", start:170, end:190},
+    {id:18, title:"20th Century", date:"≈1903–1969", caption:"Airplanes, world wars, and the Moon landing reshape the globe.", start:190, end:210},
+    {id:19, title:"Digital Age", date:"≈1969–today", caption:"Computers, the internet, and smart devices connect humanity.", start:210, end:240}
+  ];
+
+  // Total duration (seconds)
+  const totalDuration = 240;
+  // Current time (seconds) and playback state
+  let currentTime = 0;
+  let speed = 1;
+  let playing = true;
+  let lastTimestamp = null;
+  let scrubbing = false;
+  let activeChapterIndex = -1;
+
+  // DOM references
+  const scene = document.getElementById('scene');
+  const chapterTitleEl = document.getElementById('chapterTitle');
+  const chapterDateEl = document.getElementById('chapterDate');
+  const chapterCaptionEl = document.getElementById('chapterCaption');
+  const playhead = document.getElementById('playhead');
+  const dateReadout = document.getElementById('dateReadout');
+  const track = document.getElementById('timeline-track');
+
+  // Controls
+  const btnPlayPause = document.getElementById('btnPlayPause');
+  const btnRestart = document.getElementById('btnRestart');
+  const btnSpeed = document.getElementById('btnSpeed');
+
+  // Helper to get chapter for a given time
+  function getChapterAt(time) {
+    for (let i = 0; i < chapters.length; i++) {
+      const c = chapters[i];
+      if (time >= c.start && time < c.end) return i;
+    }
+    // If exactly at totalDuration, return last chapter
+    if (Math.abs(time - totalDuration) < 0.01) return chapters.length - 1;
+    return 0;
+  }
+
+  // Update scene based on currentTime
+  function updateScene() {
+    const idx = getChapterAt(currentTime);
+    if (idx !== activeChapterIndex) {
+      // Deactivate previous
+      if (activeChapterIndex !== -1) {
+        const prev = document.getElementById(`ch${chapters[activeChapterIndex].id}`);
+        prev.classList.remove('active');
+      }
+      // Activate new
+      const ch = chapters[idx];
+      const cur = document.getElementById(`ch${ch.id}`);
+      if (cur) cur.classList.add('active');
+      // Update overlay text
+      chapterTitleEl.textContent = ch.title;
+      chapterDateEl.textContent = ch.date;
+      chapterCaptionEl.textContent = ch.caption;
+      activeChapterIndex = idx;
+    }
+
+    // Update playhead position
+    const posPercent = (currentTime / totalDuration) * 100;
+    playhead.style.left = posPercent + '%';
+
+    // Update date readout (positioned above playhead)
+    dateReadout.textContent = chapters[idx].date;
+    dateReadout.style.left = posPercent + '%';
+  }
+
+  // Animation loop
+  function animate(ts) {
+    if (!lastTimestamp) lastTimestamp = ts;
+    if (playing) {
+      const delta = (ts - lastTimestamp) / 1000 * speed;
+      currentTime = (currentTime + delta) % totalDuration;
+    }
+    lastTimestamp = ts;
+    updateScene();
+    requestAnimationFrame(animate);
+  }
+
+  // Scrubbing logic
+  function startScrub(clientX) {
+    scrubbing = true;
+    const rect = track.getBoundingClientRect();
+    const offsetX = clientX - rect.left;
+    const newPos = Math.max(0, Math.min(1, offsetX / rect.width));
+    currentTime = newPos * totalDuration;
+    updateScene();
+  }
+
+  function moveScrub(clientX) {
+    if (!scrubbing) return;
+    const rect = track.getBoundingClientRect();
+    const offsetX = clientX - rect.left;
+    const newPos = Math.max(0, Math.min(1, offsetX / rect.width));
+    currentTime = newPos * totalDuration;
+    updateScene();
+  }
+
+  function endScrub() {
+    scrubbing = false;
+  }
+
+  // Build timeline ticks
+  chapters.forEach((ch, i) => {
+    const tick = document.createElement('div');
+    tick.className = 'chapter-tick';
+    tick.style.left = (ch.start / totalDuration) * 100 + '%';
+    tick.title = ch.title;
+    tick.onclick = () => {
+      currentTime = ch.start;
+      updateScene();
+    };
+    track.appendChild(tick);
+  });
+
+  // Timeline mouse events
+  track.addEventListener('mousedown', e => {
+    startScrub(e.clientX);
+  });
+  document.addEventListener('mousemove', e => {
+    if (scrubbing) moveScrub(e.clientX);
+  });
+  document.addEventListener('mouseup', endScrub);
+
+  // Keyboard controls
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      playing = !playing;
+      btnPlayPause.textContent = playing ? 'Pause' : 'Play';
+    } else if (e.code === 'ArrowLeft') {
+      // Jump to previous chapter start
+      let idx = getChapterAt(currentTime);
+      if (idx > 0) {
+        currentTime = chapters[idx-1].start;
+        updateScene();
+      }
+    } else if (e.code === 'ArrowRight') {
+      let idx = getChapterAt(currentTime);
+      if (idx < chapters.length - 1) {
+        currentTime = chapters[idx+1].start;
+        updateScene();
+      }
+    }
+  });
+
+  // Controls
+  btnPlayPause.addEventListener('click', () => {
+    playing = !playing;
+    btnPlayPause.textContent = playing ? 'Pause' : 'Play';
+  });
+
+  btnRestart.addEventListener('click', () => {
+    currentTime = 0;
+    updateScene();
+  });
+
+  let speedOptions = [0.5, 1, 2];
+  btnSpeed.addEventListener('click', () => {
+    const idx = speedOptions.indexOf(speed);
+    speed = speedOptions[(idx + 1) % speedOptions.length];
+    btnSpeed.textContent = speed + 'x';
+  });
+
+  // Initial
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
