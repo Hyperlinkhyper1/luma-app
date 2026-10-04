@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#080c13">
+  <title>FORM 65 — Mechanical Keyboard Showcase</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080c13;
+      --panel: rgba(15, 21, 31, 0.72);
+      --line: rgba(255, 255, 255, 0.11);
+      --text: #f4f6f8;
+      --muted: #8e99aa;
+      --cyan: #62e6dc;
+      --violet: #a991ff;
+      --amber: #ffb45c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 73% 36%, rgba(54, 111, 125, 0.17), transparent 31%),
+        radial-gradient(circle at 24% 68%, rgba(94, 70, 139, 0.12), transparent 35%),
+        linear-gradient(145deg, #090d14 0%, #070a10 62%, #0b1018 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.3;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent);
+    }
+
+    #app,
+    #stage {
+      position: fixed;
+      inset: 0;
+    }
+
+    #stage {
+      touch-action: none;
+      cursor: grab;
+    }
+
+    #stage.dragging {
+      cursor: grabbing;
+    }
+
+    #stage.key-hover:not(.dragging) {
+      cursor: pointer;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 5;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 28px;
+      pointer-events: none;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(98, 230, 220, 0.38);
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, rgba(98, 230, 220, 0.13), rgba(169, 145, 255, 0.08));
+      box-shadow: inset 0 1px rgba(255,255,255,.08), 0 12px 30px rgba(0,0,0,.22);
+    }
+
+    .brand-mark svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    .brand-name {
+      font-size: 13px;
+      font-weight: 760;
+      letter-spacing: 0.2em;
+    }
+
+    .brand-sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .live-pill {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(10, 15, 23, 0.54);
+      backdrop-filter: blur(14px);
+      color: #bac4d0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(98, 230, 220, 0.09), 0 0 14px rgba(98, 230, 220, 0.7);
+    }
+
+    .hero-copy {
+      position: fixed;
+      z-index: 3;
+      left: 28px;
+      top: 50%;
+      width: min(310px, 25vw);
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 23px;
+      height: 1px;
+      background: currentColor;
+    }
+
+    h1 {
+      margin: 18px 0 13px;
+      font-size: clamp(34px, 4.2vw, 66px);
+      line-height: 0.94;
+      letter-spacing: -0.055em;
+      font-weight: 680;
+    }
+
+    h1 span {
+      display: block;
+      color: transparent;
+      -webkit-text-stroke: 1px rgba(244, 246, 248, 0.48);
+    }
+
+    .hero-copy p {
+      max-width: 270px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .specs {
+      display: flex;
+      gap: 24px;
+      margin-top: 27px;
+    }
+
+    .spec {
+      display: grid;
+      gap: 5px;
+    }
+
+    .spec strong {
+      font-size: 12px;
+      font-weight: 690;
+      letter-spacing: 0.03em;
+    }
+
+    .spec span {
+      color: #687487;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .assembly-panel {
+      position: fixed;
+      z-index: 4;
+      top: 50%;
+      right: 28px;
+      width: 210px;
+      transform: translateY(-50%);
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(155deg, rgba(19, 26, 38, 0.78), rgba(10, 14, 22, 0.56));
+      box-shadow: 0 24px 70px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.04);
+      backdrop-filter: blur(20px);
+      pointer-events: none;
+    }
+
+    .assembly-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      color: #a7b1c0;
+      font-size: 9px;
+      font-weight: 750;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .assembly-head strong {
+      color: var(--text);
+      font-size: 10px;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 5px;
+    }
+
+    .step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      align-items: center;
+      min-height: 34px;
+      border-radius: 9px;
+      color: #5f6a7a;
+      transition: color .3s ease, background .3s ease;
+    }
+
+    .step::before {
+      content: "";
+      position: absolute;
+      left: 10px;
+      top: 27px;
+      width: 1px;
+      height: 12px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .step:last-child::before {
+      display: none;
+    }
+
+    .step-index {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 50%;
+      font-size: 8px;
+      font-weight: 700;
+    }
+
+    .step-label {
+      padding-left: 7px;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .step.active {
+      color: var(--text);
+      background: rgba(255,255,255,.045);
+    }
+
+    .step.active .step-index {
+      color: #071012;
+      border-color: var(--cyan);
+      background: var(--cyan);
+      box-shadow: 0 0 18px rgba(98, 230, 220, 0.22);
+    }
+
+    .step.done {
+      color: #9ba7b7;
+    }
+
+    .step.done .step-index {
+      color: var(--cyan);
+      border-color: rgba(98, 230, 220, .3);
+    }
+
+    .progress-track {
+      height: 2px;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: rgba(255,255,255,.07);
+    }
+
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--violet), var(--cyan));
+      box-shadow: 0 0 12px rgba(98, 230, 220, .5);
+    }
+
+    .bottom-bar {
+      position: fixed;
+      z-index: 6;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding: 22px 28px 25px;
+      pointer-events: none;
+    }
+
+    .status-copy {
+      min-width: 210px;
+      pointer-events: none;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 7px;
+      color: #aeb8c5;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .status-line .mini-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--amber);
+      box-shadow: 0 0 10px rgba(255,180,92,.6);
+    }
+
+    .interaction-hint {
+      color: #626e7f;
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .controls-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .sound-hint {
+      margin-right: 4px;
+      color: #6d7989;
+      font-size: 10px;
+      transition: opacity .3s ease, transform .3s ease;
+    }
+
+    .sound-hint.hidden {
+      opacity: 0;
+      transform: translateY(5px);
+      pointer-events: none;
+    }
+
+    .control {
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(16, 22, 32, .72);
+      box-shadow: inset 0 1px rgba(255,255,255,.045), 0 12px 30px rgba(0,0,0,.2);
+      backdrop-filter: blur(15px);
+      color: #c5ced9;
+      font: inherit;
+      font-size: 10px;
+      font-weight: 720;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color .2s ease, color .2s ease, background .2s ease, transform .2s ease;
+    }
+
+    .control:hover {
+      color: #fff;
+      border-color: rgba(98,230,220,.3);
+      background: rgba(24, 34, 46, .82);
+    }
+
+    .control:active {
+      transform: translateY(1px) scale(.98);
+    }
+
+    .control.primary {
+      color: #081113;
+      border-color: rgba(98,230,220,.65);
+      background: var(--cyan);
+      box-shadow: 0 12px 32px rgba(98,230,220,.16), inset 0 1px rgba(255,255,255,.35);
+    }
+
+    .control.primary:hover {
+      color: #071011;
+      background: #83eee6;
+    }
+
+    .control svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .control.muted {
+      color: #697586;
+    }
+
+    @media (max-width: 900px) {
+      .hero-copy {
+        top: 104px;
+        left: 20px;
+        width: 260px;
+        transform: none;
+      }
+
+      h1 {
+        font-size: 39px;
+      }
+
+      .hero-copy p,
+      .specs {
+        display: none;
+      }
+
+      .assembly-panel {
+        top: auto;
+        right: 18px;
+        bottom: 94px;
+        width: 180px;
+        transform: none;
+      }
+
+      .topbar {
+        padding: 18px 20px;
+      }
+
+      .bottom-bar {
+        padding: 18px 20px;
+      }
+    }
+
+    @media (max-width: 620px) {
+      .hero-copy {
+        top: 82px;
+      }
+
+      .hero-copy h1 {
+        margin-top: 12px;
+        font-size: 32px;
+      }
+
+      .live-pill,
+      .assembly-panel,
+      .status-copy,
+      .sound-hint {
+        display: none;
+      }
+
+      .bottom-bar {
+        justify-content: center;
+        padding: 16px;
+      }
+
+      .brand-sub {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="app">
+    <div id="stage" aria-label="Interactive 3D mechanical keyboard"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#62e6dc" stroke-width="1.5">
+            <path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/>
+            <path d="m4 7.5 8 4.5 8-4.5M12 12v9M8 5.3l8 4.5v4.4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">FORM / 65</div>
+          <div class="brand-sub">Precision input objects</div>
+        </div>
+      </div>
+      <div class="live-pill"><span class="live-dot"></span> Interactive build</div>
+    </header>
+
+    <section class="hero-copy">
+      <div class="eyebrow">Series 01 · Mineral</div>
+      <h1>Engineered.<span>Assembled.</span></h1>
+      <p>A tactile 65% keyboard, separated into six considered layers and rebuilt live in three-dimensional space.</p>
+      <div class="specs">
+        <div class="spec"><strong>Gasket mount</strong><span>Construction</span></div>
+        <div class="spec"><strong>Linear</strong><span>Switch feel</span></div>
+        <div class="spec"><strong>Hot swap</strong><span>PCB layout</span></div>
+      </div>
+    </section>
+
+    <aside class="assembly-panel" aria-label="Assembly progress">
+      <div class="assembly-head"><span>Assembly</span><strong id="statusPercent">0%</strong></div>
+      <div class="step-list">
+        <div class="step active" data-step="pcb"><span class="step-index">01</span><span class="step-label">PCB core</span></div>
+        <div class="step" data-step="foam"><span class="step-index">02</span><span class="step-label">Poron foam</span></div>
+        <div class="step" data-step="plate"><span class="step-index">03</span><span class="step-label">Aluminum plate</span></div>
+        <div class="step" data-step="switches"><span class="step-index">04</span><span class="step-label">Switches</span></div>
+        <div class="step" data-step="keycaps"><span class="step-index">05</span><span class="step-label">Keycaps</span></div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </aside>
+
+    <footer class="bottom-bar">
+      <div class="status-copy">
+        <div class="status-line"><span class="mini-dot" id="statusDot"></span><span id="statusText" aria-live="polite">Positioning PCB core</span></div>
+        <div class="interaction-hint">Drag to orbit · Click a key or type to press</div>
+      </div>
+      <div class="controls-wrap">
+        <span class="sound-hint" id="soundHint">Click or type to enable sound</span>
+        <button class="control" id="soundButton" type="button" aria-pressed="false" aria-label="Unmute keyboard sounds">
+          <svg id="soundIcon" viewBox="0 0 24 24"><path d="M11 5 6.5 8.5H3v7h3.5L11 19z"/><path d="M15 9.2a4 4 0 0 1 0 5.6M17.8 6.4a8 8 0 0 1 0 11.2"/></svg>
+          <span id="soundLabel">Sound on</span>
+        </button>
+        <button class="control primary" id="replayButton" type="button">
+          <svg viewBox="0 0 24 24"><path d="M4.8 8.2A8 8 0 1 1 4 13"/><path d="M4.8 3.8v4.4h4.4"/></svg>
+          <span>Replay build</span>
+        </button>
+      </div>
+    </footer>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+    const stage = document.getElementById('stage');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x080c13, 0.022);
+
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    stage.appendChild(renderer.domElement);
+
+    const clock = new THREE.Clock();
+    const hemisphere = new THREE.HemisphereLight(0xbfe8ff, 0x10131c, 1.65);
+    scene.add(hemisphere);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 4.1);
+    keyLight.position.set(-4, 10, 7);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.set(2048, 2048);
+    keyLight.shadow.camera.left = -9;
+    keyLight.shadow.camera.right = 9;
+    keyLight.shadow.camera.top = 8;
+    keyLight.shadow.camera.bottom = -8;
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 30;
+    keyLight.shadow.bias = -0.00035;
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight(0x58d9ef, 2.3);
+    rimLight.position.set(8, 5, -7);
+    scene.add(rimLight);
+
+    const warmLight = new THREE.PointLight(0xffaa66, 15, 14, 2);
+    warmLight.position.set(-5, 4, 4);
+    scene.add(warmLight);
+
+    const violetLight = new THREE.PointLight(0x846dff, 13, 13, 2);
+    violetLight.position.set(5, 3, -4);
+    scene.add(violetLight);
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(50, 50),
+      new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.34 })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.3;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    const grid = new THREE.GridHelper(30, 30, 0x34505a, 0x1a2831);
+    grid.position.y = -0.285;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.16;
+    scene.add(grid);
+
+    const materials = {
+      case: new THREE.MeshStandardMaterial({ color: 0x17212c, metalness: 0.72, roughness: 0.26 }),
+      caseEdge: new THREE.MeshStandardMaterial({ color: 0x263544, metalness: 0.82, roughness: 0.2 }),
+      inner: new THREE.MeshStandardMaterial({ color: 0x090d12, metalness: 0.28, roughness: 0.58 }),
+      pcb: new THREE.MeshStandardMaterial({ color: 0x126a66, metalness: 0.32, roughness: 0.42 }),
+      trace: new THREE.MeshStandardMaterial({ color: 0x9ce6ba, metalness: 0.45, roughness: 0.35, emissive: 0x164b3b, emissiveIntensity: 0.25 }),
+      chip: new THREE.MeshStandardMaterial({ color: 0x11151a, metalness: 0.25, roughness: 0.48 }),
+      foam: new THREE.MeshStandardMaterial({ color: 0x725ea4, metalness: 0.02, roughness: 0.82 }),
+      plate: new THREE.MeshStandardMaterial({ color: 0xaab7bf, metalness: 0.88, roughness: 0.27 }),
+      switchLower: new THREE.MeshStandardMaterial({ color: 0xd9e4e2, metalness: 0.02, roughness: 0.46, transparent: true, opacity: 0.78 }),
+      switchUpper: new THREE.MeshStandardMaterial({ color: 0xf1a75f, metalness: 0.02, roughness: 0.48 }),
+      stem: new THREE.MeshStandardMaterial({ color: 0xe8f0e8, metalness: 0.05, roughness: 0.36 }),
+      cyan: new THREE.MeshBasicMaterial({ color: 0x62e6dc }),
+      dark: new THREE.MeshStandardMaterial({ color: 0x283442, metalness: 0.05, roughness: 0.52, emissive: 0x101820, emissiveIntensity: 0.15 }),
+      light: new THREE.MeshStandardMaterial({ color: 0xd9d4c7, metalness: 0.02, roughness: 0.5, emissive: 0x171713, emissiveIntensity: 0.1 }),
+      accent: new THREE.MeshStandardMaterial({ color: 0xd56c55, metalness: 0.04, roughness: 0.48, emissive: 0x2b0d08, emissiveIntensity: 0.12 })
+    };
+
+    function mesh(geometry, material, parent, position, cast = true, receive = true) {
+      const object = new THREE.Mesh(geometry, material);
+      if (position) object.position.copy(position);
+      object.castShadow = cast;
+      object.receiveShadow = receive;
+      parent.add(object);
+      return object;
+    }
+
+    function roundedBox(w, h, d, radius, material, parent, position) {
+      return mesh(new RoundedBoxGeometry(w, h, d, 3, radius), material, parent, position);
+    }
+
+    function makeTextTexture(text, color = '#202a31', align = 'center') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 96;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = color;
+      ctx.textAlign = align;
+      ctx.textBaseline = 'middle';
+      ctx.font = `${text.length > 4 ? 500 : 650} ${text.length > 5 ? 30 : text.length > 2 ? 36 : 43}px Inter, Arial, sans-serif`;
+      ctx.fillText(text, align === 'left' ? 12 : 128, 51);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return texture;
+    }
+
+    function textPlane(text, width, height, color, parent, position, align = 'center') {
+      const material = new THREE.MeshBasicMaterial({
+        map: makeTextTexture(text, color, align),
+        transparent: true,
+        depthWrite: false,
+        toneMapped: false
+      });
+      const plane = mesh(new THREE.PlaneGeometry(width, height), material, parent, position, false, false);
+      plane.rotation.x = -Math.PI / 2;
+      plane.renderOrder = 3;
+      return plane;
+    }
+
+    const keyboard = new THREE.Group();
+    scene.add(keyboard);
+
+    const caseGroup = new THREE.Group();
+    keyboard.add(caseGroup);
+
+    roundedBox(11.8, 0.48, 4.55, 0.24, materials.case, caseGroup, new THREE.Vector3(0, -0.02, 0));
+    roundedBox(11.2, 0.11, 4.02, 0.16, materials.inner, caseGroup, new THREE.Vector3(0, 0.25, 0));
+    roundedBox(11.5, 0.33, 0.16, 0.07, materials.caseEdge, caseGroup, new THREE.Vector3(0, 0.34, 2.18));
+    roundedBox(11.5, 0.33, 0.16, 0.07, materials.caseEdge, caseGroup, new THREE.Vector3(0, 0.34, -2.18));
+    roundedBox(0.16, 0.33, 4.2, 0.07, materials.caseEdge, caseGroup, new THREE.Vector3(-5.76, 0.34, 0));
+    roundedBox(0.16, 0.33, 4.2, 0.07, materials.caseEdge, caseGroup, new THREE.Vector3(5.76, 0.34, 0));
+
+    const frontAccent = roundedBox(10.3, 0.035, 0.035, 0.012, materials.cyan, caseGroup, new THREE.Vector3(0, 0.32, 2.272), false, false);
+    frontAccent.material = materials.cyan;
+
+    const leftGlow = roundedBox(0.04, 0.03, 3.25, 0.012, materials.cyan, caseGroup, new THREE.Vector3(-5.66, 0.32, 0), false, false);
+    const rightGlow = roundedBox(0.04, 0.03, 3.25, 0.012, materials.cyan, caseGroup, new THREE.Vector3(5.66, 0.32, 0), false, false);
+    leftGlow.material = rightGlow.material = materials.cyan;
+
+    const underglowMaterial = new THREE.MeshBasicMaterial({ color: 0x45d8d2, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false });
+    const underglow = mesh(new THREE.PlaneGeometry(11.45, 4.1), underglowMaterial, caseGroup, new THREE.Vector3(0, -0.255, 0), false, false);
+    underglow.rotation.x = -Math.PI / 2;
+
+    for (const x of [-4.7, 4.7]) {
+      for (const z of [-1.45, 1.45]) {
+        const foot = mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.12, 24), materials.inner, caseGroup, new THREE.Vector3(x, -0.3, z));
+        foot.castShadow = false;
+      }
+    }
+
+    textPlane('F O R M  /  6 5', 1.35, 0.32, '#82929e', caseGroup, new THREE.Vector3(0, 0.513, 2.03));
+
+    const knobGroup = new THREE.Group();
+    knobGroup.position.set(5.28, 0.78, -1.45);
+    caseGroup.add(knobGroup);
+    mesh(new THREE.CylinderGeometry(0.36, 0.39, 0.34, 48), materials.plate, knobGroup, new THREE.Vector3());
+    mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.025, 48), materials.dark, knobGroup, new THREE.Vector3(0, 0.18, 0));
+    const indicator = roundedBox(0.035, 0.018, 0.18, 0.008, materials.cyan, knobGroup, new THREE.Vector3(0, 0.2, -0.1), false, false);
+    for (let i = 0; i < 24; i++) {
+      const angle = i / 24 * Math.PI * 2;
+      const ridge = roundedBox(0.045, 0.22, 0.07, 0.012, materials.plate, knobGroup, new THREE.Vector3(Math.cos(angle) * 0.37, -0.01, Math.sin(angle) * 0.37));
+      ridge.rotation.y = -angle;
+    }
+
+    const pcbGroup = new THREE.Group();
+    keyboard.add(pcbGroup);
+    roundedBox(10.85, 0.12, 3.78, 0.12, materials.pcb, pcbGroup, new THREE.Vector3());
+    roundedBox(1.35, 0.1, 0.55, 0.05, materials.chip, pcbGroup, new THREE.Vector3(-2.9, 0.105, -0.2));
+    roundedBox(0.72, 0.09, 0.42, 0.04, materials.chip, pcbGroup, new THREE.Vector3(2.75, 0.1, 0.75));
+    roundedBox(0.48, 0.08, 0.48, 0.035, materials.chip, pcbGroup, new THREE.Vector3(3.6, 0.095, -0.8));
+
+    for (let i = 0; i < 17; i++) {
+      const x = -4.8 + i * 0.58;
+      const trace = roundedBox(0.025, 0.018, 1.15 + (i % 3) * 0.32, 0.008, materials.trace, pcbGroup, new THREE.Vector3(x, 0.073, (i % 2 ? 0.45 : -0.35)));
+      trace.rotation.y = (i % 2 ? 1 : -1) * 0.12;
+    }
+    for (let i = 0; i < 6; i++) {
+      mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 20), materials.plate, pcbGroup, new THREE.Vector3(-4.5 + i * 1.8, 0.08, 1.45));
+    }
+    textPlane('FORM MCU / HOTSWAP', 2.1, 0.35, '#bfe2cf', pcbGroup, new THREE.Vector3(0.6, 0.079, 1.48));
+
+    const foamGroup = new THREE.Group();
+    keyboard.add(foamGroup);
+    roundedBox(10.68, 0.12, 3.64, 0.14, materials.foam, foamGroup, new THREE.Vector3());
+    for (let i = -4; i <= 4; i++) {
+      roundedBox(0.07, 0.015, 3.05, 0.015, new THREE.MeshStandardMaterial({ color: 0x9a86cc, roughness: 0.9 }), foamGroup, new THREE.Vector3(i * 1.1, 0.068, 0), false, false);
+    }
+
+    const plateGroup = new THREE.Group();
+    keyboard.add(plateGroup);
+    roundedBox(10.8, 0.085, 0.12, 0.035, materials.plate, plateGroup, new THREE.Vector3(0, 0, -1.78));
+    roundedBox(10.8, 0.085, 0.12, 0.035, materials.plate, plateGroup, new THREE.Vector3(0, 0, 1.78));
+    roundedBox(0.12, 0.085, 3.45, 0.035, materials.plate, plateGroup, new THREE.Vector3(-5.34, 0, 0));
+    roundedBox(0.12, 0.085, 3.45, 0.035, materials.plate, plateGroup, new THREE.Vector3(5.34, 0, 0));
+    for (const z of [-1.23, -0.61, 0.01, 0.63, 1.25]) {
+      roundedBox(10.5, 0.065, 0.12, 0.025, materials.plate, plateGroup, new THREE.Vector3(0, 0, z));
+    }
+    for (let i = -5; i <= 5; i++) {
+      roundedBox(0.065, 0.06, 3.42, 0.02, materials.plate, plateGroup, new THREE.Vector3(i * 0.92, -0.002, 0));
+    }
+
+    const keys = [];
+    const keyByCode = new Map();
+    const pickMeshes = [];
+    const switchGroups = [];
+    const capGroups = [];
+    const unit = 0.62;
+    const gap = 0.055;
+    const rowZ = [-1.48, -0.86, -0.24, 0.38, 1.0];
+
+    function makeKey(label, code, row, offset, widthUnits = 1, colorType = 'normal') {
+      const width = widthUnits * unit + (widthUnits - 1) * gap;
+      const x = -5.02 + offset * (unit + gap) + width / 2;
+      const z = rowZ[row];
+
+      const switchGroup = new THREE.Group();
+      switchGroup.position.set(x, 1.12, z);
+      keyboard.add(switchGroup);
+      roundedBox(0.42, 0.13, 0.42, 0.045, materials.switchLower, switchGroup, new THREE.Vector3(0, -0.08, 0));
+      roundedBox(0.31, 0.17, 0.31, 0.045, materials.switchUpper, switchGroup, new THREE.Vector3(0, 0.055, 0));
+      roundedBox(0.19, 0.075, 0.065, 0.018, materials.stem, switchGroup, new THREE.Vector3(0, 0.17, 0));
+      roundedBox(0.065, 0.075, 0.19, 0.018, materials.stem, switchGroup, new THREE.Vector3(0, 0.17, 0));
+      switchGroup.userData.basePosition = switchGroup.position.clone();
+      switchGroups.push(switchGroup);
+
+      const capGroup = new THREE.Group();
+      capGroup.position.set(x, 1.47, z);
+      keyboard.add(capGroup);
+
+      const baseMaterial = (colorType === 'dark' ? materials.dark : colorType === 'accent' ? materials.accent : materials.light).clone();
+      const cap = roundedBox(width - 0.055, 0.33, 0.56, 0.07, baseMaterial, capGroup, new THREE.Vector3(0, 0, 0));
+      const top = roundedBox(width - 0.14, 0.075, 0.47, 0.055, baseMaterial, capGroup, new THREE.Vector3(0, 0.19, -0.012));
+      top.castShadow = true;
+
+      const labelColor = colorType === 'dark' || colorType === 'accent' ? '#f0eee6' : '#26313a';
+      const labelWidth = Math.min(width * 0.7, 0.62);
+      const isLeftLabel = ['Tab', 'Caps', 'Shift', 'Ctrl', 'Cmd', 'Alt', 'Fn'].some(v => label.startsWith(v));
+      textPlane(label, labelWidth, 0.25, labelColor, capGroup, new THREE.Vector3(isLeftLabel ? -width * 0.19 : 0, 0.234, -0.015), isLeftLabel ? 'left' : 'center');
+
+      const key = {
+        label,
+        code,
+        group: capGroup,
+        cap,
+        top,
+        baseY: 1.47,
+        pressStart: -1,
+        material: baseMaterial
+      };
+      cap.userData.key = key;
+      top.userData.key = key;
+      cap.userData.pickable = true;
+      top.userData.pickable = true;
+      pickMeshes.push(cap, top);
+      capGroup.userData.basePosition = capGroup.position.clone();
+      capGroups.push(capGroup);
+      keys.push(key);
+      if (!keyByCode.has(code)) keyByCode.set(code, key);
+      return key;
+    }
+
+    const row0 = [
+      ['Esc','Escape'],['1','Digit1'],['2','Digit2'],['3','Digit3'],['4','Digit4'],['5','Digit5'],['6','Digit6'],
+      ['7','Digit7'],['8','Digit8'],['9','Digit9'],['0','Digit0'],['—','Minus'],['+','Equal'],['Bksp','Backspace',2,'dark']
+    ];
+    let offset = 0;
+    for (const [label, code, width, type] of row0) {
+      makeKey(label, code, 0, offset, width || 1, type || (code === 'Escape' ? 'accent' : 'normal'));
+      offset += width || 1;
+    }
+
+    const row1 = [
+      ['Tab','Tab',1.5,'dark'],['Q','KeyQ'],['W','KeyW'],['E','KeyE'],['R','KeyR'],['T','KeyT'],['Y','KeyY'],
+      ['U','KeyU'],['I','KeyI'],['O','KeyO'],['P','KeyP'],['[','BracketLeft'],[']','BracketRight'],['\\','Backslash',1.5]
+    ];
+    offset = 0;
+    for (const [label, code, width, type] of row1) {
+      makeKey(label, code, 1, offset, width || 1, type || 'normal');
+      offset += width || 1;
+    }
+
+    const row2 = [
+      ['Caps','CapsLock',1.75,'dark'],['A','KeyA'],['S','KeyS'],['D','KeyD'],['F','KeyF'],['G','KeyG'],['H','KeyH'],
+      ['J','KeyJ'],['K','KeyK'],['L','KeyL'],[';','Semicolon'],["'",'Quote'],['Enter','Enter',2.25,'accent']
+    ];
+    offset = 0;
+    for (const [label, code, width, type] of row2) {
+      makeKey(label, code, 2, offset, width || 1, type || 'normal');
+      offset += width || 1;
+    }
+
+    const row3 = [
+      ['Shift','ShiftLeft',2.25,'dark'],['Z','KeyZ'],['X','KeyX'],['C','KeyC'],['V','KeyV'],['B','KeyB'],['N','KeyN'],
+      ['M','KeyM'],[',','Comma'],['.','Period'],['/','Slash'],['Shift','ShiftRight',1.75,'dark'],['↑','ArrowUp']
+    ];
+    offset = 0;
+    for (const [label, code, width, type] of row3) {
+      makeKey(label, code, 3, offset, width || 1, type || 'normal');
+      offset += width || 1;
+    }
+
+    const row4 = [
+      ['Ctrl','ControlLeft',1.25,'dark'],['Cmd','MetaLeft',1.25,'dark'],['Alt','AltLeft',1.25,'dark'],
+      ['', 'Space',6.25,'normal'],['Alt','AltRight',1.25,'dark'],['Fn','Fn',1.25,'dark'],
+      ['←','ArrowLeft'],['↓','ArrowDown'],['→','ArrowRight']
+    ];
+    offset = 0;
+    for (const [label, code, width, type] of row4) {
+      makeKey(label, code, 4, offset, width || 1, type || 'normal');
+      offset += width || 1;
+    }
+
+    const animationLayers = [
+      { name: 'pcb', object: pcbGroup, base: new THREE.Vector3(0, 0.4, 0), from: new THREE.Vector3(-4.5, -4.2, 2.2), rotation: new THREE.Euler(0.2, -0.42, 0.1) },
+      { name: 'foam', object: foamGroup, base: new THREE.Vector3(0, 0.62, 0), from: new THREE.Vector3(3.8, 5.2, -1.8), rotation: new THREE.Euler(-0.18, 0.4, -0.08) },
+      { name: 'plate', object: plateGroup, base: new THREE.Vector3(0, 0.82, 0), from: new THREE.Vector3(-3.6, 6.4, 1.5), rotation: new THREE.Euler(0.16, -0.35, 0.08) }
+    ];
+
+    let animations = [];
+    let assembling = true;
+    let assemblyTime = 0;
+    let totalAssemblyDuration = 0;
+    let currentStep = 'pcb';
+    let assemblyBaseRadius = 14.5;
+    let targetYaw = -0.43;
+    let targetPitch = 0.72;
+    let currentYaw = targetYaw;
+    let currentPitch = targetPitch;
+    let currentRadius = assemblyBaseRadius + 2.2;
+    let dragging = false;
+    let pointerMoved = false;
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+    let hoveredKey = null;
+    let activePressCount = 0;
+
+    const stepElements = [...document.querySelectorAll('.step')];
+    const statusText = document.getElementById('statusText');
+    const statusDot = document.getElementById('statusDot');
+    const statusPercent = document.getElementById('statusPercent');
+    const progressFill = document.getElementById('progressFill');
+
+    const statusMessages = {
+      pcb: 'Positioning PCB core',
+      foam: 'Layering acoustic foam',
+      plate: 'Aligning aluminum plate',
+      switches: 'Installing linear switches',
+      keycaps: 'Seating sculpted keycaps',
+      done: 'Assembly complete · ready to type'
+    };
+
+    function easeOutQuint(t) {
+      return 1 - Math.pow(1 - t, 5);
+    }
+
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function setStep(step) {
+      if (currentStep === step) return;
+      currentStep = step;
+      const order = ['pcb', 'foam', 'plate', 'switches', 'keycaps'];
+      const activeIndex = order.indexOf(step);
+      stepElements.forEach((element) => {
+        const index = order.indexOf(element.dataset.step);
+        element.classList.toggle('active', index === activeIndex);
+        element.classList.toggle('done', activeIndex === -1 || index < activeIndex);
+      });
+      statusText.textContent = statusMessages[step];
+      statusDot.style.background = step === 'done' ? 'var(--cyan)' : 'var(--amber)';
+      statusDot.style.boxShadow = step === 'done' ? '0 0 10px rgba(98,230,220,.7)' : '0 0 10px rgba(255,180,92,.6)';
+    }
+
+    function buildTimeline() {
+      animations = [];
+      if (reducedMotion) {
+        assemblyLayers.forEach(layer => {
+          layer.object.position.copy(layer.base);
+          layer.object.rotation.set(0, 0, 0);
+          layer.object.scale.setScalar(1);
+        });
+        switchGroups.forEach(group => {
+          group.position.copy(group.userData.basePosition);
+          group.rotation.set(0, 0, 0);
+          group.scale.setScalar(1);
+        });
+        capGroups.forEach(group => {
+          group.position.copy(group.userData.basePosition);
+          group.rotation.set(0, 0, 0);
+          group.scale.setScalar(1);
+        });
+        totalAssemblyDuration = 0.001;
+        setStep('done');
+        statusPercent.textContent = '100%';
+        progressFill.style.width = '100%';
+        assembling = false;
+        return;
+      }
+
+      assembling = true;
+      assemblyTime = 0;
+      activePressCount = 0;
+      setStep('pcb');
+
+      animationLayers.forEach((layer, i) => {
+        animations.push({
+          start: i * 1.55,
+          duration: 1.45,
+          object: layer.object,
+          from: layer.from,
+          to: layer.base,
+          fromRotation: layer.rotation,
+          toRotation: new THREE.Euler(0, 0, 0),
+          fromScale: 0.64,
+          toScale: 1
+        });
+        layer.object.position.copy(layer.from);
+        layer.object.rotation.copy(layer.rotation);
+        layer.object.scale.setScalar(0.64);
+      });
+
+      const switchesStart = 4.6;
+      switchGroups.forEach((group, i) => {
+        const base = group.userData.basePosition;
+        const start = switchesStart + i * 0.027;
+        const from = new THREE.Vector3(base.x + 2.8, 4.1 + (i % 3) * 0.32, base.z + 1.8);
+        animations.push({
+          start,
+          duration: 0.54,
+          object: group,
+          from,
+          to: base,
+          fromRotation: new THREE.Euler(-0.6, 0.65, 0.28),
+          toRotation: new THREE.Euler(0, 0, 0),
+          fromScale: 0.38,
+          toScale: 1
+        });
+        group.position.copy(from);
+        group.rotation.set(-0.6, 0.65, 0.28);
+        group.scale.setScalar(0.38);
+      });
+
+      const capsStart = switchesStart + switchGroups.length * 0.027 + 0.48;
+      capGroups.forEach((group, i) => {
+        const base = group.userData.basePosition;
+        const row = Math.floor(i / 15);
+        const start = capsStart + i * 0.034;
+        const from = new THREE.Vector3(base.x - 2.35, 5.5 + row * 0.18, base.z - 1.75);
+        animations.push({
+          start,
+          duration: 0.66,
+          object: group,
+          from,
+          to: base,
+          fromRotation: new THREE.Euler(0.5, -0.48, 0.16),
+          toRotation: new THREE.Euler(0, 0, 0),
+          fromScale: 0.68,
+          toScale: 1
+        });
+        group.position.copy(from);
+        group.rotation.set(0.5, -0.48, 0.16);
+        group.scale.setScalar(0.68);
+      });
+
+      totalAssemblyDuration = Math.max(...animations.map(a => a.start + a.duration));
+    }
+
+    function updateAssembly(delta) {
+      if (!assembling) return;
+      assemblyTime += delta;
+
+      for (const animation of animations) {
+        const raw = THREE.MathUtils.clamp((assemblyTime - animation.start) / animation.duration, 0, 1);
+        const eased = raw < 0.5 ? easeInOutCubic(raw) : easeOutQuint(raw);
+        animation.object.position.lerpVectors(animation.from, animation.to, eased);
+        animation.object.rotation.set(
+          THREE.MathUtils.lerp(animation.fromRotation.x, animation.toRotation.x, eased),
+          THREE.MathUtils.lerp(animation.fromRotation.y, animation.toRotation.y, eased),
+          THREE.MathUtils.lerp(animation.fromRotation.z, animation.toRotation.z, eased)
+        );
+        const scale = THREE.MathUtils.lerp(animation.fromScale, animation.toScale, eased);
+        animation.object.scale.setScalar(scale);
+      }
+
+      if (assemblyTime < 1.6) setStep('pcb');
+      else if (assemblyTime < 3.15) setStep('foam');
+      else if (assemblyTime < switchesStart) setStep('plate');
+      else if (assemblyTime < capsStart) setStep('switches');
+      else setStep('keycaps');
+
+      const progress = THREE.MathUtils.clamp(assemblyTime / totalAssemblyDuration, 0, 1);
+      const percent = Math.round(progress * 100);
+      statusPercent.textContent = `${percent}%`;
+      progressFill.style.width = `${percent}%`;
+
+      if (assemblyTime >= totalAssemblyDuration) {
+        assembling = false;
+        setStep('done');
+        statusPercent.textContent = '100%';
+        progressFill.style.width = '100%';
+        animations.forEach(a => {
+          a.object.position.copy(a.to);
+          a.object.rotation.set(0, 0, 0);
+          a.object.scale.setScalar(1);
+        });
+      }
+    }
+
+    let audioContext = null;
+    let masterGain = null;
+    let noiseBuffer = null;
+    let muted = false;
+    let audioReady = false;
+    const soundButton = document.getElementById('soundButton');
+    const soundLabel = document.getElementById('soundLabel');
+    const soundHint = document.getElementById('soundHint');
+
+    function unlockAudio() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        audioContext = new AudioContextClass();
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = muted ? 0 : 0.72;
+        masterGain.connect(audioContext.destination);
+        noiseBuffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * 0.12), audioContext.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+      }
+      if (audioContext.state === 'suspended') audioContext.resume();
+      audioReady = true;
+      soundHint.classList.add('hidden');
+    }
+
+    function tone(frequency, duration, volume, type, delay = 0, destinationFrequency = null) {
+      if (!audioContext || muted) return;
+      const now = audioContext.currentTime + delay;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      const filter = audioContext.createBiquadFilter();
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(frequency, now);
+      if (destinationFrequency) oscillator.frequency.exponentialRampToValueAtTime(destinationFrequency, now + duration);
+      filter.type = 'lowpass';
+      filter.frequency.value = 4200;
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(volume, now + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      oscillator.connect(filter).connect(gain).connect(masterGain);
+      oscillator.start(now);
+      oscillator.stop(now + duration + 0.03);
+    }
+
+    function noise(volume, duration, frequency) {
+      if (!audioContext || !noiseBuffer || muted) return;
+      const now = audioContext.currentTime;
+      const source = audioContext.createBufferSource();
+      const filter = audioContext.createBiquadFilter();
+      const gain = audioContext.createGain();
+      source.buffer = noiseBuffer;
+      filter.type = 'bandpass';
+      filter.frequency.value = frequency;
+      filter.Q.value = 0.8;
+      gain.gain.setValueAtTime(volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      source.connect(filter).connect(gain).connect(masterGain);
+      source.start(now);
+    }
+
+    function playKeySound(code, label) {
+      if (!audioReady || !audioContext || muted) return;
+      if (code === 'Space') {
+        tone(112, 0.31, 0.09, 'sine', 0, 72);
+        tone(56, 0.37, 0.055, 'sine', 0.01, 43);
+        noise(0.024, 0.08, 850);
+        return;
+      }
+      if (code === 'Enter' || code === 'NumpadEnter') {
+        tone(178, 0.17, 0.07, 'sawtooth', 0, 132);
+        tone(356, 0.11, 0.035, 'triangle', 0.008, 270);
+        noise(0.03, 0.055, 1600);
+        return;
+      }
+      if (code === 'Backspace') {
+        tone(138, 0.12, 0.05, 'square', 0, 92);
+        noise(0.075, 0.09, 2100);
+        return;
+      }
+      if (code.startsWith('Shift') || code.startsWith('Control') || code.startsWith('Alt') || code.startsWith('Meta') || code === 'CapsLock' || code === 'Tab') {
+        const base = code.startsWith('Shift') ? 248 : code.startsWith('Control') ? 196 : code === 'Tab' ? 280 : 224;
+        tone(base, 0.115, 0.052, 'square', 0, base * 0.82);
+        noise(0.025, 0.045, 1200);
+        return;
+      }
+      if (code.startsWith('Arrow') || code === 'Escape' || code === 'Fn') {
+        tone(320, 0.085, 0.045, 'triangle', 0, 260);
+        noise(0.02, 0.035, 1800);
+        return;
+      }
+      const charCode = (label || code).toUpperCase().charCodeAt(0) || 65;
+      const frequency = 170 + ((charCode - 65) * 7) % 185;
+      tone(frequency, 0.16, 0.047, 'triangle', 0, frequency * 0.78);
+      tone(frequency * 2.03, 0.075, 0.014, 'sine', 0.003, frequency * 1.6);
+      noise(0.018, 0.025, 2600);
+    }
+
+    function pressKey(key) {
+      if (!key || key.pressStart > 0) return;
+      key.pressStart = performance.now();
+      activePressCount++;
+      key.material.emissive.setHex(key.material.color.getHex());
+      key.material.emissiveIntensity = 0.34;
+      playKeySound(key.code, key.label);
+    }
+
+    function setHoveredKey(key) {
+      if (hoveredKey === key) return;
+      if (hoveredKey && hoveredKey.pressStart < 0) hoveredKey.material.emissiveIntensity = 0.1;
+      hoveredKey = key;
+      if (hoveredKey && hoveredKey.pressStart < 0) hoveredKey.material.emissiveIntensity = 0.2;
+      stage.classList.toggle('key-hover', Boolean(hoveredKey));
+    }
+
+    function updateKeyPresses(now) {
+      keys.forEach(key => {
+        if (key.pressStart < 0) return;
+        const elapsed = now - key.pressStart;
+        const duration = 145;
+        if (elapsed < duration) {
+          const phase = elapsed / duration;
+          key.group.position.y = key.baseY - Math.sin(phase * Math.PI) * 0.135;
+          key.material.emissiveIntensity = 0.3 + Math.sin(phase * Math.PI) * 0.35;
+        } else {
+          key.pressStart = -1;
+          activePressCount = Math.max(0, activePressCount - 1);
+          key.group.position.y = key.baseY;
+          key.material.emissiveIntensity = hoveredKey === key ? 0.2 : 0.1;
+        }
+      });
+    }
+
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+
+    window.addEventListener('keydown', event => {
+      if (event.metaKey || event.ctrlKey && event.code !== 'ControlLeft' && event.code !== 'ControlRight') return;
+      const key = keyByCode.get(event.code);
+      if (!key) return;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Backspace'].includes(event.code)) event.preventDefault();
+      if (!event.repeat) pressKey(key);
+    });
+
+    window.addEventListener('keyup', event => {
+      const key = keyByCode.get(event.code);
+      if (key && key.pressStart > 0) {
+        const elapsed = performance.now() - key.pressStart;
+        if (elapsed < 145) {
+          const remaining = 145 - elapsed;
+          setTimeout(() => {
+            if (key.pressStart > 0) key.pressStart = performance.now() - 146;
+          }, remaining);
+        }
+      }
+    });
+
+    soundButton.addEventListener('click', () => {
+      unlockAudio();
+      muted = !muted;
+      if (masterGain) masterGain.gain.setTargetAtTime(muted ? 0 : 0.72, audioContext.currentTime, 0.015);
+      soundButton.classList.toggle('muted', muted);
+      soundButton.setAttribute('aria-pressed', String(muted));
+      soundButton.setAttribute('aria-label', muted ? 'Unmute keyboard sounds' : 'Mute keyboard sounds');
+      soundLabel.textContent = muted ? 'Sound off' : 'Sound on';
+      document.getElementById('soundIcon').innerHTML = muted
+        ? '<path d="M11 5 6.5 8.5H3v7h3.5L11 19z"/><path d="m16 10 5 5M21 10l-5 5"/>'
+        : '<path d="M11 5 6.5 8.5H3v7h3.5L11 19z"/><path d="M15 9.2a4 4 0 0 1 0 5.6M17.8 6.4a8 8 0 0 1 0 11.2"/>';
+    });
+
+    document.getElementById('replayButton').addEventListener('click', () => {
+      unlockAudio();
+      hoveredKey = null;
+      stage.classList.remove('key-hover');
+      buildTimeline();
+    });
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    function raycastKey(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const intersections = raycaster.intersectObjects(pickMeshes, false);
+      return intersections.length ? intersections[0].object.userData.key : null;
+    }
+
+    renderer.domElement.addEventListener('pointerdown', event => {
+      dragging = true;
+      pointerMoved = false;
+      lastPointerX = event.clientX;
+      lastPointerY = event.clientY;
+      stage.classList.add('dragging');
+      renderer.domElement.setPointerCapture(event.pointerId);
+    });
+
+    renderer.domElement.addEventListener('pointermove', event => {
+      if (dragging) {
+        const dx = event.clientX - lastPointerX;
+        const dy = event.clientY - lastPointerY;
+        if (Math.abs(dx) + Math.abs(dy) > 2) pointerMoved = true;
+        if (pointerMoved) {
+          targetYaw -= dx * 0.005;
+          targetPitch = THREE.MathUtils.clamp(targetPitch + dy * 0.004, 0.38, 1.12);
+        }
+        lastPointerX = event.clientX;
+        lastPointerY = event.clientY;
+      } else if (!assembling) {
+        setHoveredKey(raycastKey(event));
+      }
+    });
+
+    renderer.domElement.addEventListener('pointerup', event => {
+      if (dragging && !pointerMoved && !assembling) pressKey(raycastKey(event));
+      dragging = false;
+      stage.classList.remove('dragging');
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
+    });
+
+    renderer.domElement.addEventListener('pointercancel', () => {
+      dragging = false;
+      stage.classList.remove('dragging');
+    });
+
+    renderer.domElement.addEventListener('pointerleave', () => {
+      if (!dragging) setHoveredKey(null);
+    });
+
+    function resize() {
+      const width = innerWidth;
+      const height = innerHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(width, height);
+      assemblyBaseRadius = width / height < 0.8 ? 24 : width / height < 1.25 ? 17.2 : 14.5;
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    buildTimeline();
+
+    function animateCamera(delta) {
+      const introProgress = assembling ? THREE.MathUtils.clamp(assemblyTime / totalAssemblyDuration, 0, 1) : 1;
+      const introLift = assembling ? (1 - easeOutQuint(introProgress)) * 2.2 : 0;
+      const desiredRadius = assemblyBaseRadius + introLift;
+      currentYaw = THREE.MathUtils.lerp(currentYaw, targetYaw, 1 - Math.pow(0.001, delta));
+      currentPitch = THREE.MathUtils.lerp(currentPitch, targetPitch, 1 - Math.pow(0.001, delta));
+      currentRadius = THREE.MathUtils.lerp(currentRadius, desiredRadius, 1 - Math.pow(0.002, delta));
+      const horizontal = Math.cos(currentPitch) * currentRadius;
+      camera.position.set(
+        Math.sin(currentYaw) * horizontal,
+        Math.sin(currentPitch) * currentRadius,
+        Math.cos(currentYaw) * horizontal
+      );
+      camera.lookAt(0, 0.72, 0);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.05);
+      const now = performance.now();
+      updateAssembly(delta);
+      updateKeyPresses(now);
+      animateCamera(delta);
+      if (!assembling && !dragging && hoveredKey) setHoveredKey(raycastKey({
+        clientX: lastPointerX,
+        clientY: lastPointerY
+      }));
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
