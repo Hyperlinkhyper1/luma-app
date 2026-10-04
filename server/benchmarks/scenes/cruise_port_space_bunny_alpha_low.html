@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lisbon — Cruise Port</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#071822;font-family:Arial,sans-serif;color:#fff}canvas{display:block}#ui{position:fixed;inset:14px auto auto 14px;width:310px;padding:12px;background:rgba(5,18,27,.86);backdrop-filter:blur(10px);border:1px solid #ffffff25;border-radius:12px;z-index:5;box-shadow:0 8px 35px #0006}#ui.min{display:none}h1{font-size:16px;margin:0 0 9px;letter-spacing:2px}.row{display:flex;gap:5px;flex-wrap:wrap;margin:7px 0}.row button,.row select{flex:1;min-width:58px;border:1px solid #ffffff35;background:#12303ed9;color:white;border-radius:6px;padding:7px 6px;font-size:10px;cursor:pointer}.row button:hover,.row select:hover{background:#e8b957;color:#14232b}label{font-size:10px;display:block;margin-top:9px}input{width:100%;accent-color:#e8b957}small{font-size:10px;color:#bad0d8}#status{position:fixed;right:15px;bottom:14px;padding:8px 12px;background:#071822b8;border-radius:8px;font-size:11px;z-index:4}#loading{position:fixed;inset:0;display:grid;place-items:center;background:#0b1c25;z-index:20;font-size:18px;letter-spacing:3px}#hide{position:fixed;left:14px;top:14px;z-index:7;display:none;padding:8px 12px;background:#071822cc;color:white;border:1px solid #fff5;border-radius:7px}#hint{font-size:9px;color:#9eb5bd;margin-top:8px}@media(max-width:600px){#ui{width:270px;transform:scale(.9);transform-origin:top left}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="loading">LISBOA · BUILDING THE PORT…</div>
+<div id="ui">
+<h1>LISBOA · CRUISE PORT</h1>
+<div class="row">
+<button data-cam="miradouro">MIRADOURO</button><button data-cam="waterfront">WATERFRONT</button><button data-cam="aerial">AERIAL</button>
+<button data-cam="river">FROM THE RIVER</button><button data-cam="deck">SHIP'S DECK</button>
+</div>
+<div class="row"><button id="walk">WALK MODE</button><button id="weather">CLEAR</button><button id="mute">SOUND OFF</button></div>
+<label>TIME OF DAY <span id="clock">18:30</span></label>
+<input id="time" type="range" min="0" max="24" step=".01" value="18.5">
+<div class="row"><button id="play">PAUSE TIME</button><button id="depart">DEPARTURE</button></div>
+<div class="row"><button id="return">RETURN TO BERTH</button><button id="hideUI">HIDE UI</button></div>
+<small>Orig. 294 m cruise ship · Jardim do Tabaco</small><div id="hint">Drag: orbit · wheel: zoom · walk: WASD + drag to look</div>
+</div>
+<button id="hide">SHOW UI</button><div id="status">MOORED · PASSENGER OPERATIONS</div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {Water} from 'three/addons/objects/Water.js';
+const $=id=>document.getElementById(id), scene=new THREE.Scene();
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'})}catch(e){$('loading').textContent='WEBGL IS NOT AVAILABLE IN THIS EMBEDDED BROWSER.';throw e}
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;document.body.appendChild(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,5000), controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;
+const hemi=new THREE.HemisphereLight(0xaed8ee,0x756050,2);scene.add(hemi);const sun=new THREE.DirectionalLight(0xffd7a0,3);sun.position.set(-250,300,200);scene.add(sun);
+const mat=(c,rough=.75,metal=0)=>new THREE.MeshStandardMaterial({color:c,roughness:rough,metalness:metal});
+const M={white:mat(0xf3eee3,.5),navy:mat(0x101b2b,.45),red:mat(0x9f2024,.6),teal:mat(0x197c8d,.35,.2),gold:mat(0xc99b42,.5,.2),glass:mat(0x6dbbd0,.18,.5),dark:mat(0x15252b),roof:mat(0xad5035),concrete:mat(0xbbb3a5),yellow:mat(0xe4ad27),black:mat(0x181c20),water:mat(0x17616a,.2,.5)};
+function mesh(g,m,x=0,y=0,z=0,parent=scene){let o=new THREE.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o}function box(w,h,d,m,x=0,y=0,z=0,parent=scene){return mesh(new THREE.BoxGeometry(w,h,d),m,x,y,z,parent)}function cyl(r1,r2,h,m,x,y,z,parent=scene,n=12){return mesh(new THREE.CylinderGeometry(r1,r2,h,n),m,x,y,z,parent)}
+function textSprite(txt,color='#fff',scale=20){let c=document.createElement('canvas');c.width=512;c.height=128;let q=c.getContext('2d');q.font='bold 54px Arial';q.textAlign='center';q.fillStyle=color;q.fillText(txt,256,78);let t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;let s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthWrite:false}));s.scale.set(scale,scale/4,1);return s}
+// water normal procedural
+const nc=document.createElement('canvas');nc.width=nc.height=128;let nx=nc.getContext('2d'), im=nx.createImageData(128,128);for(let i=0;i<128*128;i++){let v=128+Math.random()*35;im.data[i*4]=im.data[i*4+1]=im.data[i*4+2]=v;im.data[i*4+3]=255}nx.putImageData(im,0,0);const nt=new THREE.CanvasTexture(nc);nt.wrapS=nt.wrapT=THREE.RepeatWrapping;nt.repeat.set(80,80);
+const water=new Water(new THREE.PlaneGeometry(4500,4500),{textureWidth:512,textureHeight:512,waterNormals:nt,sunDirection:sun.position.clone().normalize(),sunColor:0xffe2b0,waterColor:0x17616a,distortionScale:2.5,fog:true});water.rotation.x=-Math.PI/2;scene.add(water);
+// terrain / quay
+box(900,8,110,M.concrete,0,-1,160);box(950,3,18,M.concrete,0,2,112);
+const hill=mesh(new THREE.SphereGeometry(360,36,18,0,Math.PI*2,0,Math.PI/2),mat(0x938a73),0,-245,360);hill.scale.y=.72;
+// landmark groups
+function house(x,y,z,w=12,h=16,d=10,c){let g=new THREE.Group();g.position.set(x,y,z);scene.add(g);box(w,h,d,mat(c),0,h/2,0,g);let roof=mesh(new THREE.ConeGeometry(Math.max(w,d)*.72,4,4),M.roof,0,h+2,0,g);roof.rotation.y=Math.PI/4;box(1,3,1,M.white,w*.18,h+3,2,g);if(Math.random()>.4)box(w*.65,.15,.1,M.glass,0,h*.65,d/2+.06,g);return g}
+let cols=[0xf0d6b8,0xd88972,0xc9d6c2,0xe7e0c9,0x9eb8bf,0xf1b85b,0xdf9a8b];for(let row=0;row<5;row++)for(let i=0;i<17;i++){let z=190+i*14+Math.sin(i*.7)*12,y=9+row*10+Math.sin(i*.55+row)*4;house(-160+i*19,y,z,12+Math.random()*5,11+Math.random()*6,9+Math.random()*5,cols[(i+row)%cols.length])}
+// castle
+let castle=new THREE.Group();castle.position.set(-75,64,300);scene.add(castle);box(95,16,52,M.concrete,0,8,0,castle);for(let x of[-42,-20,2,24,43])cyl(7,8,20,M.concrete,x,17,20,castle,10);for(let z of[-20,0,20])box(80,14,4,M.concrete,0,20,z,castle);
+// dome + cathedral
+let dome=new THREE.Group();dome.position.set(95,17,180);scene.add(dome);box(28,18,25,M.white,0,9,0,dome);cyl(8,9,8,M.white,0,22,0,dome,24);let dm=mesh(new THREE.SphereGeometry(9,24,12,0,Math.PI*2,0,Math.PI/2),M.white,0,25,0,dome);cyl(1,1,6,M.gold,0,36,0,dome);for(let x of[-9,9]){box(5,29,6,M.white,x,14,-5,dome);cyl(3,3,2,M.gold,x,30,-5,dome)}
+// commerce
+let pc=new THREE.Group();pc.position.set(-410,2,45);scene.add(pc);for(let i=0;i<11;i++){box(25,24,18,M.yellow,-125+i*25,12,0,pc);box(17,12,.4,M.concrete,-125+i*25,7,9.3,pc);for(let j=0;j<4;j++)cyl(.7,.7,12,M.concrete,-131+i*25+j*5,6,10,pc)}box(12,30,8,M.yellow,0,15,0,pc);
+// bridge
+let bridge=new THREE.Group();bridge.position.set(-900,0,420);bridge.rotation.y=.18;scene.add(bridge);for(let side of[-1,1]){for(let x of[-115,115]){cyl(5,9,190,M.red,x,95,side*28,bridge,8);box(7,4,52,M.red,x,183,side*28,bridge)}box(4,5,56,M.red,x,128,side*28,bridge)}box(420,4,14,M.red,0,70,0,bridge);for(let x=-180;x<181;x+=12){cyl(.3,.3,24,M.red,x,82,0,bridge,5)} // Cristo Rei
+let cr=new THREE.Group();cr.position.set(-1020,0,690);scene.add(cr);box(38,60,38,mat(0xb6aa8d),0,30,0,cr);cyl(8,11,42,mat(0xb6aa8d),0,80,0,cr);box(14,24,5,M.white,0,111,0,cr);box(22,5,5,M.white,0,113,0,cr);
+// ship custom hull
+const ship=new THREE.Group();scene.add(ship);const shape=new THREE.Shape();shape.moveTo(-145,-19);shape.bezierCurveTo(-120,22,85,22,150,10);shape.lineTo(122,-19);shape.closePath();const hull=mesh(new THREE.ExtrudeGeometry(shape,{depth:300,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:3,bevelThickness:2}),M.navy);hull.rotation.y=Math.PI/2;hull.rotation.z=0;hull.position.set(0,11,0);ship.add(hull);const bow=cyl(12,18,34,M.navy,143,5,0,ship,8);bow.rotation.z=Math.PI/2;const bulb=mesh(new THREE.SphereGeometry(10,16,10),M.navy,151,-7,0,ship);bulb.scale.set(1.7,.8,1);
+let lower=box(287,4,38,M.red,0,1,0,ship), stripe=box(292,2,38.5,M.gold,0,4,0,ship);
+for(let deck=0;deck<17;deck++){let w=286-deck*.65;box(w,2.2,37-deck*.3,deck===4?M.teal:M.white,0,7+deck*3.1,0,ship);for(let s of[-1,1]){box(w-10,1.3,1.1,M.glass,0,8.1+deck*3.1,s*(18-deck*.15),ship);for(let x=-125;x<=125;x+=6.5)box(.18,2.2,.12,M.glass,x,9+deck*3.1,s*(18.1-deck*.15),ship)}}for(let s of[-1,1])for(let x of[-95,-60,-25,10,45,80]){box(17,2,1,M.glass,x,55,s*18,ship)}
+// superstructure and bridge
+box(215,13,28,M.white,0,58,0,ship);box(42,9,34,M.white,22,68,0,ship);box(45,2,36,M.glass,22,72,0,ship);box(14,3,9,M.glass,46,68,0,ship);box(14,3,9,M.glass,-2,68,0,ship);cyl(3,4,18,M.white,-35,84,0,ship,10);box(18,3,4,M.glass,-35,94,0,ship);cyl(5,6,18,M.teal,-105,76,0,ship,12);box(17,2,3,M.black,-105,86,0,ship);
+// pool
+box(30,1,11,M.glass,72,66,0,ship);box(26,.2,8,mat(0x30bfd0,.15),72,66.7,0,ship);let track=new THREE.Mesh(new THREE.TorusGeometry(66,1.1,6,80,Math.PI*1.7),M.red);track.rotation.x=Math.PI/2;track.position.set(0,64,0);ship.add(track);for(let i=0;i<18;i++){let l=box(3,1,1.2,M.white,80+(i%3)*4,68,-7+Math.floor(i/3)*2,ship)}
+// lifeboats
+for(let s of[-1,1])for(let x of[-75,-48,-21,6,33,60]){let lb=mesh(new THREE.CapsuleGeometry(2.4,8,4,8),M.orange||mat(0xe86b25),x,38,s*22,ship);lb.rotation.z=Math.PI/2;box(1,4,3,M.white,x+6,40,s*23,ship)}
+// names
+for(let s of[-1,1]){let n=textSprite('AURORA LISBOA','#e8c66b',34);n.position.set(s<0?-132:132,27,0);n.rotation.y=s<0?-Math.PI/2:Math.PI/2;ship.add(n)}
+// gangways and ropes
+let departureParts=[];for(let s of[-1,1]){let g=box(3,1,23,M.gold,s*117,8,27);g.rotation.x=.05;departureParts.push(g);for(let z of[12,39])cyl(.25,.25,1,M.gold,s*117,7,z)};ship.position.z=-35; // alongside north quay
+// terminal
+let terminal=new THREE.Group();terminal.position.set(0,0,112);scene.add(terminal);box(250,12,22,M.concrete,0,6,0,terminal);box(260,2,26,M.gold,0,13,0,terminal);for(let x of[-110,-55,0,55,110])cyl(.5,.5,10,M.glass,x,19,0,terminal);box(190,4,2,M.glass,0,20,-9,terminal);
+// vehicles/people
+const peopleGeo=new THREE.CapsuleGeometry(.28,1,2,4), peopleMat=mat(0xffffff);const people=new THREE.InstancedMesh(peopleGeo,peopleMat,100);scene.add(people);let dummy=new THREE.Object3D(),pi=0,personData=[];for(let i=0;i<100;i++){personData.push({x:-180+Math.random()*360,z:72+Math.random()*18,phase:Math.random()*9});dummy.position.set(personData[i].x,1,personData[i].z);dummy.updateMatrix();people.setMatrixAt(i,dummy.matrix)}
+function vehicle(x,z,c,type='car'){let g=new THREE.Group();g.position.set(x,0,z);scene.add(g);let m=mat(c);box(type==='coach'?12:4.8,2.4,2.4,m,0,1.5,0,g);box(type==='coach'?9:2.5,1.6,2.3,M.glass,0,3,0,g);for(let xx of[-1.5,1.5])for(let zz of[-1.2,1.2])cyl(.45,.45,.4,M.black,xx,.5,zz,g,8).rotation.x=Math.PI/2;return g}for(let i=0;i<12;i++)vehicle(-220+i*38,90,[0xf1c832,0xdd3e35,0xeeeeee,0x1b6ca8][i%4],i%5===0?'coach':'car');
+// trucks
+for(let i=0;i<4;i++){let g=new THREE.Group();g.position.set(-130+i*75,0,72);scene.add(g);box(9,3,2.5,M.white,0,2,0,g);box(3,3,2.5,i%2?M.yellow:M.red,6,2,0,g);box(2,2,.1,M.glass,6.5,2.6,1.3,g)}
+// tram + winding road
+let tram=new THREE.Group();tram.position.set(-125,12,160);scene.add(tram);box(12,5,3,M.yellow,0,3,0,tram);for(let x of[-4,0,4])box(3,2,.1,M.glass,x,4,1.6,tram);cyl(.6,.6,.5,M.black,-4,.5,1.7,tram).rotation.x=Math.PI/2;cyl(.6,.6,.5,M.black,4,.5,1.7,tram).rotation.x=Math.PI/2;
+// boats
+function boat(x,z,c,scale=1){let g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(scale);scene.add(g);let h=mesh(new THREE.SphereGeometry(1,10,6),mat(c,.35),0,.3,0,g);h.scale.set(4,1.2,1.5);box(3,1.5,2,M.white,.5,1.2,0,g);cyl(.3,.3,4,M.white,.5,3,0,g);return g}let tug=boat(190,0,0x172b38,1.5),pilot=boat(130,25,0xe4b532,.6),ferry1=boat(-450,650,0xf4eee0,1.4),ferry2=boat(250,700,0x1d7180,1.2),sail1=boat(100,500,0xffffff,.45);
+mesh(new THREE.PlaneGeometry(4,7),M.white,0,4,0,sail1).rotation.y=.5;mesh(new THREE.PlaneGeometry(4,7),M.white,0,4,0,sail1).rotation.y=-.5;
+// seagulls
+let birds=[];for(let i=0;i<14;i++){let b=mesh(new THREE.ConeGeometry(.25,1.8,3),M.white,0,30,0);b.rotation.z=Math.PI/2;birds.push({o:b,a:Math.random()*6,r:20+Math.random()*60,y:45+Math.random()*40})}
+// lighting windows
+let lamps=[];for(let i=0;i<65;i++){let p=new THREE.PointLight(i%2?0xffbb55:0x66d9ff,0,70,2);p.position.set(-250+(i%13)*40,8+Math.floor(i/13)*5,160+(i%4)*20);scene.add(p);lamps.push(p)}
+// camera presets
+let presets={miradouro:[[-175,105,345],[0,45,-50]],waterfront:[[155,9,95],[0,35,-30]],aerial:[[420,390,480],[0,15,70]],river:[[260,18,620],[0,38,40]],deck:[[75,72,-30],[0,35,180]]};
+function cam(k){let a=presets[k];camera.position.set(...a[0]);controls.target.set(...a[1]);controls.update()}
+document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>cam(b.dataset.cam));cam('miradouro');
+let time=18.5,playing=true,weather=0,sound=false,walking=false,departing=false,returnMode=false,shipStart=-35,shipPos=0;
+$('time').oninput=e=>{time=+e.target.value;playing=false;$('play').textContent='PLAY TIME'};
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'PAUSE TIME':'PLAY TIME'};$('weather').onclick=e=>{weather=1-weather;e.target.textContent=weather?'LIGHT RAIN':'CLEAR'};$('hideUI').onclick=()=>{$('ui').classList.add('min');$('hide').style.display='block'};$('hide').onclick=()=>{$('ui').classList.remove('min');$('hide').style.display='none'};
+let audio;$('mute').onclick=()=>{sound=!sound;$('mute').textContent=sound?'SOUND ON':'SOUND OFF';if(sound){audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume()}};function horn(){if(!sound)return;let a=audio,o=a.createOscillator(),g=a.createGain();o.type='sawtooth';o.frequency.setValueAtTime(92,a.currentTime);o.frequency.linearRampToValueAtTime(68,a.currentTime+2);g.gain.setValueAtTime(.001,a.currentTime);g.gain.linearRampToValueAtTime(.13,a.currentTime+.1);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+2.5);o.connect(g).connect(a.destination);o.start();o.stop(a.currentTime+2.6)}
+$('depart').onclick=()=>{departing=true;returnMode=false;horn();$('status').textContent='DEPARTURE · LINES RELEASED · TUG ASSISTING';};$('return').onclick=()=>{returnMode=true;$('status').textContent='APPROACHING BERTH'};
+// walk
+let key={};addEventListener('keydown',e=>key[e.code]=true);addEventListener('keyup',e=>key[e.code]=false);let drag=false,lastX=0,lastY=0,yaw=0,pitch=0;$('walk').onclick=()=>{walking=!walking;controls.enabled=!walking;$('walk').textContent=walking?'EXIT WALK':'WALK MODE';if(walking){camera.position.set(0,4,90);yaw=0;pitch=0}};renderer.domElement.addEventListener('pointerdown',e=>{if(walking){drag=true;lastX=e.clientX;lastY=e.clientY}});addEventListener('pointerup',()=>drag=false);addEventListener('pointermove',e=>{if(walking&&drag){yaw-=(e.clientX-lastX)*.003;pitch-=(e.clientY-lastY)*.003;lastX=e.clientX;lastY=e.clientY;camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0)}});
+let rain;for(let i=0;i<500;i++){let p=new THREE.BufferAttribute(new Float32Array([Math.random()*600,Math.random()*180,Math.random()*600-200]),3);rain??=new THREE.Points(new THREE.BufferGeometry(),new THREE.PointsMaterial({color:0xbad9e5,size:.35,transparent:true,opacity:.4}));rain.geometry.setAttribute('position',p)}rain.visible=false;scene.add(rain);
+const clock=new THREE.Clock();let frame=0;
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;if(playing)time=(time+dt*.03)%24;$('time').value=time;$('clock').textContent=`${String(Math.floor(time)).padStart(2,'0')}:${String(Math.floor(time%1*60)).padStart(2,'0')}`;
+let day=Math.max(0,Math.sin((time-6)/12*Math.PI)),night=1-day;sun.intensity=.15+day*3;sun.color.setHSL(.09+day*.025,.7, .55);hemi.intensity=.45+day*1.8;scene.background=new THREE.Color().setHSL(.57,.35+night*.2,.12+day*.35);scene.fog=new THREE.FogExp2(scene.background,weather?.002:.00065);lamps.forEach(l=>l.intensity=night*18);M.window??=mat(0x345363,.25,.4);rain.visible=!!weather;if(weather)rain.position.y-=dt*45;
+ship.position.x=shipPos;ship.rotation.y=departing||returnMode?ship.rotation.y:0;if(departing){shipPos-=dt*1.7;ship.rotation.y+=dt*.0012;if(shipPos<-1300){departing=false;returnMode=true;$('status').textContent='TURNING TOWARDS LISBON';}}if(returnMode){shipPos+=dt*1.5;ship.rotation.y-=dt*.0012;if(shipPos>=-35){shipPos=-35;ship.rotation.y=0;returnMode=false;departing=false;$('status').textContent='MOORED · PASSENGER OPERATIONS'}}
+tug.position.x=175+Math.sin(t*.1)*4;tug.position.z=-10-ferry1.position.z*.03;ferry1.position.x=-450+Math.sin(t*.02)*50;ferry1.position.z=650+Math.cos(t*.02)*30;ferry2.position.x=300+t*1.2;ferry2.position.z=690+Math.sin(t*.03)*20;if(ferry2.position.x>650)ferry2.position.x=-500;sail1.position.x=100+Math.sin(t*.04)*30;birds.forEach((b,i)=>{b.o.position.set(Math.cos(t*.12+b.a)*b.r, b.y+Math.sin(t+b.a)*4, -40+Math.sin(t*.12+b.a)*b.r);b.o.rotation.y=-t*.12-b.a});
+if(frame++%2===0){pi=0;personData.forEach(p=>{p.x+=dt*.7;if(p.x>180)p.x=-180;dummy.position.set(p.x,1,p.z);dummy.rotation.y=Math.PI/2;dummy.updateMatrix();people.setMatrixAt(pi++,dummy.matrix)});people.instanceMatrix.needsUpdate=true}
+if(walking){camera.rotation.set(pitch,yaw,0,'YXZ');let f=new THREE.Vector3(0,0,-1).applyEuler(camera.rotation),r=new THREE.Vector3(1,0,0).applyEuler(camera.rotation);if(key.KeyW)camera.position.addScaledVector(f,dt*10);if(key.KeyS)camera.position.addScaledVector(f,-dt*10);if(key.KeyD)camera.position.addScaledVector(r,dt*10);if(key.KeyA)camera.position.addScaledVector(r,-dt*10);camera.position.x=THREE.MathUtils.clamp(camera.position.x,-260,260);camera.position.z=THREE.MathUtils.clamp(camera.position.z,68,210);camera.position.y=4}else controls.update();
+water.material.uniforms.time.value+=dt*.45;water.material.uniforms.sunDirection.value.copy(sun.position).normalize();renderer.render(scene,camera)}animate();$('loading').style.display='none';
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});
+</script>
+</body>
+</html>
