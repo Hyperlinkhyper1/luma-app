@@ -1,0 +1,3115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SERVER ARCHITECTURE LAB - 3D Datacenter Engineering Simulator</title>
+  <!-- Three.js and OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --panel-bg: rgba(13, 17, 23, 0.92);
+      --panel-border: rgba(48, 54, 61, 0.8);
+      --accent-blue: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+    }
+
+    #webgl-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* UI Overlay Layer */
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Top Bar */
+    header.top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: linear-gradient(180deg, rgba(10, 13, 20, 0.95) 0%, rgba(10, 13, 20, 0.75) 100%);
+      border-bottom: 1px solid var(--panel-border);
+      backdrop-filter: blur(8px);
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 12px rgba(2, 132, 199, 0.4);
+    }
+
+    .logo-badge svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 2;
+    }
+
+    .title-group h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .title-group .sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.5px;
+    }
+
+    .telemetry-badges {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .badge {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(71, 85, 105, 0.4);
+      padding: 4px 10px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+
+    .badge-dot.pulse {
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Main Center Workspace (Sidebars & Canvas) */
+    .workspace-body {
+      display: flex;
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* Left Sidebar: Rack Elevation & Quick Select */
+    .left-sidebar {
+      width: 320px;
+      max-width: 320px;
+      background: var(--panel-bg);
+      border-right: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      pointer-events: auto;
+      z-index: 20;
+      transition: transform 0.3s ease;
+      box-shadow: 4px 0 20px rgba(0,0,0,0.4);
+    }
+
+    .sidebar-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-header h2 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .rack-elevation-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(51, 65, 85, 0.8);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(71, 85, 105, 1);
+    }
+
+    .rack-unit-item {
+      display: flex;
+      align-items: center;
+      padding: 7px 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .rack-unit-item:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: var(--accent-blue);
+      transform: translateX(2px);
+    }
+
+    .rack-unit-item.selected {
+      background: rgba(14, 116, 144, 0.25);
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+    }
+
+    .rack-unit-item.empty {
+      opacity: 0.45;
+      border-style: dashed;
+      cursor: default;
+    }
+    .rack-unit-item.empty:hover {
+      transform: none;
+      border-color: rgba(51, 65, 85, 0.4);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .ru-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      width: 48px;
+      color: var(--text-muted);
+      border-right: 1px solid rgba(71, 85, 105, 0.4);
+      margin-right: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ru-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+
+    .ru-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ru-meta {
+      font-size: 9px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .type-pill {
+      font-size: 8.5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .pill-gpu { background: rgba(168, 85, 247, 0.25); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.5); }
+    .pill-vm { background: rgba(59, 130, 246, 0.25); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.5); }
+    .pill-compute { background: rgba(34, 197, 94, 0.25); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.5); }
+    .pill-storage { background: rgba(245, 158, 11, 0.25); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.5); }
+    .pill-db { background: rgba(236, 72, 153, 0.25); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.5); }
+    .pill-net { background: rgba(20, 184, 166, 0.25); color: #2dd4bf; border: 1px solid rgba(20, 184, 166, 0.5); }
+    .pill-blank { background: rgba(71, 85, 105, 0.2); color: #94a3b8; }
+
+    .rack-summary-box {
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border-top: 1px solid var(--panel-border);
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+    .summary-row strong {
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+
+    /* Right Sidebar: Selected Server / Component Inspector */
+    .right-sidebar {
+      width: 360px;
+      max-width: 360px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--panel-border);
+      backdrop-filter: blur(12px);
+      display: flex;
+      flex-direction: column;
+      pointer-events: auto;
+      z-index: 20;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 14px;
+      border-bottom: 1px solid var(--panel-border);
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .server-hero {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .server-hero h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .server-hero .hero-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+
+    .spec-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .spec-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    .spec-label {
+      font-size: 9px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      margin-bottom: 2px;
+    }
+
+    .spec-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f8fafc;
+      font-family: var(--font-mono);
+    }
+
+    .arch-rationale {
+      font-size: 11px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      background: rgba(30, 41, 59, 0.4);
+      border-left: 3px solid var(--accent-blue);
+      padding: 8px 10px;
+      border-radius: 0 4px 4px 0;
+      margin-top: 8px;
+    }
+
+    /* Live Telemetry Gauges */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .gauge-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(51, 65, 85, 0.4);
+      padding: 8px;
+      border-radius: 4px;
+    }
+
+    .gauge-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .gauge-val {
+      font-size: 14px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: #38bdf8;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(51, 65, 85, 0.5);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+      transition: width 0.4s ease, background 0.4s ease;
+    }
+
+    /* Failure Simulation Panel */
+    .failure-controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-fail {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(71, 85, 105, 0.5);
+      color: var(--text-main);
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+
+    .btn-fail:hover {
+      background: rgba(51, 65, 85, 0.8);
+      border-color: var(--accent-red);
+      color: #fff;
+    }
+
+    .btn-fail.active {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--accent-red);
+      color: #fca5a5;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+    }
+
+    .failure-banner {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 4px;
+      font-size: 11px;
+      color: #fca5a5;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      animation: alertPulse 2s infinite;
+    }
+
+    @keyframes alertPulse {
+      0% { border-color: rgba(239, 68, 68, 0.3); }
+      50% { border-color: rgba(239, 68, 68, 0.8); }
+      100% { border-color: rgba(239, 68, 68, 0.3); }
+    }
+
+    /* Component CAD Inspector card */
+    .component-inspector-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+
+    .comp-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 4px;
+    }
+
+    .comp-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.3);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    .comp-detail-row span:last-child {
+      color: #f1f5f9;
+      font-weight: 600;
+    }
+
+    /* Hover Tooltip in 3D scene */
+    #hover-tooltip {
+      position: absolute;
+      padding: 6px 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-blue);
+      border-radius: 4px;
+      color: #fff;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      pointer-events: none;
+      z-index: 100;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      display: none;
+      transform: translate(-50%, -120%);
+      white-space: nowrap;
+    }
+
+    /* Bottom Control Bar */
+    footer.bottom-toolbar {
+      padding: 12px 20px;
+      background: linear-gradient(0deg, rgba(10, 13, 20, 0.96) 0%, rgba(10, 13, 20, 0.85) 100%);
+      border-top: 1px solid var(--panel-border);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: auto;
+      z-index: 25;
+      overflow-x: auto;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid rgba(51, 65, 85, 0.4);
+    }
+
+    .btn-tool {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .btn-tool:hover {
+      background: rgba(51, 65, 85, 0.6);
+      color: #fff;
+    }
+
+    .btn-tool.active {
+      background: rgba(2, 132, 199, 0.3);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #075985);
+      box-shadow: 0 0 14px rgba(2, 132, 199, 0.5);
+    }
+
+    /* Modal dialogs */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 50;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      width: 760px;
+      max-width: 90vw;
+      background: #0f172a;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      box-shadow: 0 10px 35px rgba(0,0,0,0.7);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-head {
+      padding: 14px 20px;
+      background: #1e293b;
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-head h3 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .modal-body {
+      padding: 20px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    /* Comparison Table */
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+
+    .compare-table th, .compare-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+    }
+
+    .compare-table th {
+      background: rgba(30, 41, 59, 0.5);
+      color: var(--accent-blue);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric-bar {
+      height: 6px;
+      background: rgba(51, 65, 85, 0.6);
+      border-radius: 3px;
+      overflow: hidden;
+      display: flex;
+    }
+    .metric-fill {
+      height: 100%;
+      background: var(--accent-blue);
+      border-radius: 3px;
+    }
+
+    /* On-canvas Slice Navigation Header */
+    .slice-nav-overlay {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      display: none;
+      align-items: center;
+      gap: 16px;
+      backdrop-filter: blur(8px);
+      z-index: 15;
+      pointer-events: auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    }
+
+    .slice-nav-btn {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(71, 85, 105, 0.4);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      transition: all 0.2s;
+    }
+    .slice-nav-btn:hover {
+      background: var(--accent-blue);
+      color: #000;
+    }
+
+    .slice-counter {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+    }
+
+    /* Camera Preset Bar */
+    .camera-presets-bar {
+      position: absolute;
+      left: 330px;
+      top: 65px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 15;
+      pointer-events: auto;
+    }
+
+    .btn-cam {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(51, 65, 85, 0.5);
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      text-align: left;
+      transition: all 0.2s;
+    }
+    .btn-cam:hover, .btn-cam.active {
+      color: #fff;
+      border-color: var(--accent-blue);
+      background: rgba(30, 41, 59, 0.9);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL Canvas Host -->
+  <div id="webgl-container"></div>
+
+  <!-- Interactive 3D Tooltip -->
+  <div id="hover-tooltip"></div>
+
+  <!-- UI Overlay -->
+  <div class="ui-layer">
+    <!-- Top Navigation Bar -->
+    <header class="top-bar interactive">
+      <div class="logo-area">
+        <div class="logo-badge">
+          <svg viewBox="0 0 24 24">
+            <rect x="2" y="2" width="20" height="8" rx="2"></rect>
+            <rect x="2" y="14" width="20" height="8" rx="2"></rect>
+            <line x1="6" y1="6" x2="6.01" y2="6"></line>
+            <line x1="6" y1="18" x2="6.01" y2="18"></line>
+          </svg>
+        </div>
+        <div class="title-group">
+          <h1>SERVER ARCHITECTURE LAB <span style="font-size:10px; padding:2px 6px; border-radius:3px; background:#1e293b; color:#38bdf8; font-weight:normal;">v3.4 PRO</span></h1>
+          <div class="sub">ENTERPRISE 3D HARDWARE ARCHITECTURE &amp; SIMULATION PLATFORM</div>
+        </div>
+      </div>
+
+      <!-- Live Performance & Datacenter Telemetry -->
+      <div class="telemetry-badges">
+        <div class="badge">
+          <span class="badge-dot pulse"></span>
+          <span>MODE: <strong id="lbl-mode" style="color:#38bdf8;">FULL RACK (42U)</strong></span>
+        </div>
+        <div class="badge">
+          <span>FPS: <strong id="val-fps" style="color:#22c55e;">60</strong></span>
+        </div>
+        <div class="badge">
+          <span>DRAWS: <strong id="val-draws" style="color:#f8fafc;">0</strong></span>
+        </div>
+        <div class="badge">
+          <span>POLYS: <strong id="val-polys" style="color:#f8fafc;">0</strong></span>
+        </div>
+        <div class="badge">
+          <span>RACK LOAD: <strong id="val-rack-kw" style="color:#f59e0b;">11.8 kW</strong></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Camera Presets Overlay -->
+    <div class="camera-presets-bar" id="cam-presets-container">
+      <!-- Populated dynamically based on Rack or Slice view -->
+    </div>
+
+    <!-- Slice Switcher (Center Top) -->
+    <div class="slice-nav-overlay" id="slice-nav">
+      <button class="slice-nav-btn" id="btn-prev-slice">&lt; PREVIOUS SERVER</button>
+      <div class="slice-counter">
+        <div id="slice-counter-text" style="color:#38bdf8;">SERVER 01 / 07</div>
+        <div id="slice-counter-name" style="font-size:10px; color:#94a3b8; font-weight:normal;">4U GPU COMPUTE</div>
+      </div>
+      <button class="slice-nav-btn" id="btn-next-slice">NEXT SERVER &gt;</button>
+    </div>
+
+    <!-- Main Body Layout: Left & Right Panels -->
+    <div class="workspace-body">
+      <!-- Left Sidebar: Rack Elevation -->
+      <aside class="left-sidebar" id="left-sidebar">
+        <div class="sidebar-header">
+          <h2>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+              <line x1="8" y1="6" x2="16" y2="6"></line>
+              <line x1="8" y1="10" x2="16" y2="10"></line>
+              <line x1="8" y1="14" x2="16" y2="14"></line>
+              <line x1="8" y1="18" x2="16" y2="18"></line>
+            </svg>
+            42U RACK ELEVATION
+          </h2>
+          <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">EIA-310-D 19"</span>
+        </div>
+
+        <!-- Scrollable Rack Unit List -->
+        <div class="rack-elevation-container" id="rack-list">
+          <!-- Populated by JS -->
+        </div>
+
+        <!-- Rack Total & Power Breakdown Summary -->
+        <div class="rack-summary-box">
+          <div class="summary-row" style="border-bottom:1px solid rgba(51,65,85,0.4); padding-bottom:4px; margin-bottom:4px;">
+            <span style="font-weight:700; color:#38bdf8; font-size:10px;">⚡ RACK POWER ALLOCATION</span>
+            <strong id="summary-power" style="color:var(--accent-amber);">11.8 kW</strong>
+          </div>
+          <div id="rack-power-breakdown" style="display:flex; flex-direction:column; gap:3px; font-family:var(--font-mono); font-size:9.5px; margin-bottom:6px;">
+            <div class="summary-row"><span>AI GPU Server:</span><strong>5.8 kW</strong></div>
+            <div class="summary-row"><span>Virtualization Node:</span><strong>1.1 kW</strong></div>
+            <div class="summary-row"><span>Compute Node 1:</span><strong>0.7 kW</strong></div>
+            <div class="summary-row"><span>Compute Node 2:</span><strong>0.7 kW</strong></div>
+            <div class="summary-row"><span>Storage Server:</span><strong>1.2 kW</strong></div>
+            <div class="summary-row"><span>Database Server:</span><strong>1.8 kW</strong></div>
+            <div class="summary-row"><span>Top-of-Rack Switch:</span><strong>0.4 kW</strong></div>
+          </div>
+          <div class="summary-row">
+            <span>Total Heat Output:</span>
+            <strong id="summary-thermal">40,260 BTU/hr</strong>
+          </div>
+          <div class="summary-row">
+            <span>PDU Redundancy:</span>
+            <strong style="color:var(--accent-green);">2N Dual Grid (A+B)</strong>
+          </div>
+          <div style="font-size:9px; color:#94a3b8; line-height:1.3; background:rgba(30,41,59,0.5); padding:5px 7px; border-radius:3px; margin-top:4px;">
+            Datacenter Thermal Rule: 100% of server electrical wattage converts directly into thermal load requiring chilled air or liquid cooling extraction.
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Sidebar: Context Inspector -->
+      <aside class="right-sidebar" id="right-sidebar">
+        <!-- Selected Server Info -->
+        <div class="panel-section">
+          <div class="section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            SERVER SPECIFICATION
+          </div>
+          <div class="server-hero">
+            <h3 id="hero-name">DeepCompute HGX-800</h3>
+            <div class="hero-sub" id="hero-sub">U39 - U42 • 4U GPU / AI ACCELERATOR</div>
+          </div>
+          <div class="spec-grid" id="hero-specs">
+            <!-- Dynamically populated -->
+          </div>
+          <div class="arch-rationale" id="hero-rationale">
+            GPU servers use extreme front-to-rear static pressure fans and dedicated power distribution busbars because accelerator modules dissipate up to 700W each.
+          </div>
+        </div>
+
+        <!-- Real-Time Telemetry & Health -->
+        <div class="panel-section">
+          <div class="section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+            TELEMETRY &amp; SENSORS
+          </div>
+          <div class="telemetry-grid">
+            <div class="gauge-box">
+              <div class="gauge-header">
+                <span>CPU 1 TEMP</span>
+                <span id="g-cpu1-txt">64°C</span>
+              </div>
+              <div class="gauge-val" id="g-cpu1-val">64°C</div>
+              <div class="progress-track"><div class="progress-bar" id="g-cpu1-bar" style="width:64%;"></div></div>
+            </div>
+            <div class="gauge-box">
+              <div class="gauge-header">
+                <span>CPU 2 TEMP</span>
+                <span id="g-cpu2-txt">62°C</span>
+              </div>
+              <div class="gauge-val" id="g-cpu2-val">62°C</div>
+              <div class="progress-track"><div class="progress-bar" id="g-cpu2-bar" style="width:62%;"></div></div>
+            </div>
+            <div class="gauge-box">
+              <div class="gauge-header">
+                <span>ACCEL / GPU</span>
+                <span id="g-gpu-txt">71°C</span>
+              </div>
+              <div class="gauge-val" id="g-gpu-val" style="color:#c084fc;">71°C</div>
+              <div class="progress-track"><div class="progress-bar" id="g-gpu-bar" style="width:71%; background:#a855f7;"></div></div>
+            </div>
+            <div class="gauge-box">
+              <div class="gauge-header">
+                <span>FAN WALL</span>
+                <span id="g-fan-txt">11,200 RPM</span>
+              </div>
+              <div class="gauge-val" id="g-fan-val" style="color:#22c55e;">11.2k</div>
+              <div class="progress-track"><div class="progress-bar" id="g-fan-bar" style="width:65%; background:#22c55e;"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:8px; display:flex; justify-content:space-between; font-size:10px; font-family:var(--font-mono); color:var(--text-muted);">
+            <span>MEM: <strong id="g-mem-txt" style="color:#fff;">612 / 1024 GB</strong></span>
+            <span>NET: <strong id="g-net-txt" style="color:#fff;">178 Gbps</strong></span>
+            <span>POWER: <strong id="g-pwr-txt" style="color:var(--accent-amber);">5.8 kW</strong></span>
+          </div>
+        </div>
+
+        <!-- Failure Simulation -->
+        <div class="panel-section">
+          <div class="section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            FAILURE SIMULATION
+          </div>
+          <div class="failure-controls">
+            <button class="btn-fail" id="fail-fan">
+              <span>⚠️</span> FAN STALL
+            </button>
+            <button class="btn-fail" id="fail-psu">
+              <span>⚡</span> PSU A TRIP
+            </button>
+            <button class="btn-fail" id="fail-drive">
+              <span>💾</span> DISK FAIL
+            </button>
+            <button class="btn-fail" id="fail-gpu">
+              <span>🔥</span> GPU THROTTLE
+            </button>
+            <button class="btn-fail" id="fail-nic" style="grid-column: span 2;">
+              <span>🌐</span> 100G LINK LOSS
+            </button>
+          </div>
+          <div id="failure-alert" style="display:none;" class="failure-banner">
+            <span style="font-size:14px;">🚨</span>
+            <div id="failure-msg">CRITICAL: Fan Module #03 RPM below threshold (0 RPM). Adjacent fans boosted to 18,500 RPM.</div>
+          </div>
+        </div>
+
+        <!-- Component CAD Inspector -->
+        <div class="panel-section" id="comp-inspector-section">
+          <div class="section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            CAD COMPONENT INSPECTOR
+          </div>
+          <div class="component-inspector-card" id="comp-inspector-body">
+            <div class="comp-title" id="ci-name">Select any hardware component</div>
+            <div style="font-size:10px; color:var(--text-muted); margin-bottom:8px;" id="ci-sub">
+              Click CPUs, memory channels, heatsinks, fan wall, SAS backplane, PSUs, or GPUs to view electrical, thermal, and architectural specifications.
+            </div>
+            <div id="ci-details">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Bottom Toolbar -->
+    <footer class="bottom-toolbar interactive">
+      <!-- Mode Toggles -->
+      <div class="btn-group">
+        <button class="btn-tool active" id="btn-mode-rack">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+            <line x1="4" y1="7" x2="20" y2="7"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="17" x2="20" y2="17"></line>
+          </svg>
+          RACK VIEW
+        </button>
+        <button class="btn-tool" id="btn-mode-slice">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+            <circle cx="7" cy="12" r="2"></circle>
+            <circle cx="17" cy="12" r="2"></circle>
+          </svg>
+          INSPECT SLICE
+        </button>
+      </div>
+
+      <!-- Slice Inspection Tools -->
+      <div class="btn-group" id="slice-tools">
+        <button class="btn-tool" id="btn-toggle-cover">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 15l-6-6-6 6"/>
+          </svg>
+          <span id="lbl-cover">OPEN COVER</span>
+        </button>
+        <button class="btn-tool" id="btn-toggle-cutaway">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          CUTAWAY
+        </button>
+        <button class="btn-tool" id="btn-toggle-explode">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+          </svg>
+          EXPLODE
+        </button>
+      </div>
+
+      <!-- Technical Visualizations -->
+      <div class="btn-group">
+        <button class="btn-tool" id="btn-toggle-airflow">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path>
+          </svg>
+          AIRFLOW
+        </button>
+        <button class="btn-tool" id="btn-toggle-power">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+          </svg>
+          POWER PATHS
+        </button>
+        <button class="btn-tool" id="btn-toggle-data">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          DATA PATHS
+        </button>
+      </div>
+
+      <!-- Comparison & Reset Actions -->
+      <div class="btn-group">
+        <button class="btn-tool" id="btn-open-compare">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          ARCHETYPE MATRIX
+        </button>
+        <button class="btn-tool" id="btn-reset" style="color:#f87171;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2.5 2v6h6M21.5 22v-6h-6"></path>
+            <path d="M22 11.5A10 10 0 0 0 3.2 7.2L2.5 8M2 12.5a10 10 0 0 0 18.8 4.3l.7.7"></path>
+          </svg>
+          RESET
+        </button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Archetype Comparison Modal -->
+  <div class="modal-overlay" id="compare-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>SERVER ARCHETYPE COMPARISON MATRIX</h3>
+        <button class="modal-close" id="btn-close-compare">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Archetype</th>
+              <th>Form Factor</th>
+              <th>Compute Focus</th>
+              <th>Memory Density</th>
+              <th>Storage / I/O</th>
+              <th>Cooling / CFM</th>
+              <th>Typical TDP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong style="color:#c084fc;">AI / GPU Accelerator</strong></td>
+              <td>4U Rack</td>
+              <td>Dual SP5 + 8x SXM5 GPUs</td>
+              <td><div class="metric-bar"><div class="metric-fill" style="width:75%; background:#a855f7;"></div></div> 1024 GB</td>
+              <td>8x NVMe U.2 Gen5</td>
+              <td><strong style="color:#ef4444;">Extreme (320 CFM)</strong></td>
+              <td><strong style="color:#f59e0b;">6.5 - 10.2 kW</strong></td>
+            </tr>
+            <tr>
+              <td><strong style="color:#60a5fa;">Virtualization Node</strong></td>
+              <td>2U Rack</td>
+              <td>Dual 64-Core CPUs</td>
+              <td><div class="metric-bar"><div class="metric-fill" style="width:95%; background:#3b82f6;"></div></div> 2048 GB (32-DIMM)</td>
+              <td>12x 2.5" SAS-4 + HBAs</td>
+              <td>Moderate (140 CFM)</td>
+              <td>0.9 - 1.4 kW</td>
+            </tr>
+            <tr>
+              <td><strong style="color:#4ade80;">General Purpose</strong></td>
+              <td>1U Rack</td>
+              <td>Dual 32-Core CPUs</td>
+              <td><div class="metric-bar"><div class="metric-fill" style="width:50%; background:#22c55e;"></div></div> 512 GB (16-DIMM)</td>
+              <td>4x 2.5" NVMe / SATA</td>
+              <td>Standard (75 CFM)</td>
+              <td>0.5 - 0.8 kW</td>
+            </tr>
+            <tr>
+              <td><strong style="color:#fbbf24;">High-Density Storage</strong></td>
+              <td>4U Rack</td>
+              <td>Single/Dual Balanced CPU</td>
+              <td><div class="metric-bar"><div class="metric-fill" style="width:40%; background:#f59e0b;"></div></div> 256 GB ECC</td>
+              <td><strong style="color:#22c55e;">36x 3.5" SAS-4 (720 TB)</strong></td>
+              <td>High Static Pressure</td>
+              <td>0.8 - 1.3 kW</td>
+            </tr>
+            <tr>
+              <td><strong style="color:#f472b6;">In-Memory Database</strong></td>
+              <td>2U Rack</td>
+              <td>Dual High-Freq CPUs</td>
+              <td><div class="metric-bar"><div class="metric-fill" style="width:100%; background:#ec4899;"></div></div> 3072 GB DDR5</td>
+              <td>24x NVMe Gen5 Direct</td>
+              <td>High (180 CFM)</td>
+              <td>1.4 - 2.1 kW</td>
+            </tr>
+            <tr>
+              <td><strong style="color:#2dd4bf;">Top-of-Rack Switch</strong></td>
+              <td>1U Rack</td>
+              <td>Network ASIC + Ctrl CPU</td>
+              <td><div class="metric-bar"><div class="metric-fill" style="width:25%; background:#14b8a6;"></div></div> 64 GB</td>
+              <td>32x 100GbE QSFP28</td>
+              <td>Directional Reversible</td>
+              <td>0.3 - 0.5 kW</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:16px; font-size:11px; line-height:1.6; color:#94a3b8; font-family:var(--font-mono);">
+          * Note: Ratings are architectural baselines based on standard enterprise datacenter thermal and electrical envelopes (ASHRAE A2 class datacenter environmental standards).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main 3D Simulation Logic -->
+  <script type="module">
+    // --- Application Constants & Physical Dimensions ---
+    // 1U = 44.45 mm -> 0.4445 in Three.js world units
+    const U_HEIGHT = 0.4445;
+    const RACK_WIDTH = 4.826;     // 19 inches internal standard
+    const RACK_FRAME_W = 5.6;     // 600mm outer cabinet width
+    const RACK_DEPTH = 9.5;       // 1000mm standard depth
+    const TOTAL_RU = 42;
+    const RACK_TOTAL_H = TOTAL_RU * U_HEIGHT; // ~18.67 units
+
+    // Server Archetype Definitions
+    const ARCHETYPES = [
+      {
+        id: "gpu_4u",
+        name: "DeepCompute HGX-800",
+        type: "AI / GPU Compute Server",
+        badgeClass: "pill-gpu",
+        uStart: 39,
+        uHeight: 4,
+        wattage: 5800,
+        heatBtu: 19790,
+        specs: {
+          "Form Factor": "4U Rackmount (EIA-310-D)",
+          "Processors": "2x SP5 Sockets (96-Core Server CPUs)",
+          "Accelerators": "8x 700W SXM5 Tensor Core GPUs",
+          "Interconnect": "3.2 Tbps NVLink 4.0 Full-Mesh",
+          "Memory": "1024 GB (32x 32GB DDR5-4800 ECC)",
+          "Storage": "8x 3.84TB U.2 NVMe Gen5 Direct",
+          "Cooling": "8x 80mm Dual-Rotor Fans (320 CFM, 2.1 in-H2O)",
+          "Power": "4x 3000W Titanium Redundant (2+2 Grid N+N)"
+        },
+        rationale: "GPU accelerator modules dissipate extreme thermal power (up to 700W each). Short front-to-rear unimpeded airflow paths, dual-rotor high-pressure fan walls, and thick copper vapor chamber heatsinks prevent thermal throttling under sustained FP8 matrix workloads."
+      },
+      {
+        id: "virt_2u",
+        name: "VirtuHost v240 Enterprise",
+        type: "Virtualization Server",
+        badgeClass: "pill-vm",
+        uStart: 37,
+        uHeight: 2,
+        wattage: 1150,
+        heatBtu: 3924,
+        specs: {
+          "Form Factor": "2U Rackmount",
+          "Processors": "2x 64-Core Cloud CPUs",
+          "Memory": "2048 GB (32x 64GB DDR5 ECC)",
+          "Storage": "12x 1.92TB 2.5\" SAS-4 SSDs",
+          "PCIe Expansion": "3x Riser Cages (6x PCIe Gen5)",
+          "Networking": "Dual-Port 25GbE SFP28 + OCP 3.0",
+          "Cooling": "6x 60mm Hot-Swap Fan Modules",
+          "Power": "2x 1600W Platinum Redundant"
+        },
+        rationale: "Hypervisor environments demand extreme memory density and memory channel symmetry. 32 DIMMs arranged in quad-channel sets around dual sockets provide 300+ GB/s aggregate bandwidth to feed hundreds of concurrent virtual machine instances."
+      },
+      {
+        id: "comp_1u_a",
+        name: "ProEdge 110 Compute Node A",
+        type: "General Purpose Compute",
+        badgeClass: "pill-compute",
+        uStart: 36,
+        uHeight: 1,
+        wattage: 680,
+        heatBtu: 2320,
+        specs: {
+          "Form Factor": "1U Rackmount",
+          "Processors": "2x 32-Core General CPUs",
+          "Memory": "512 GB (16x 32GB DDR5)",
+          "Storage": "4x 960GB 2.5\" NVMe SSDs",
+          "Cooling": "5x 40mm Counter-Rotating Fans",
+          "PCIe": "1x Full-Height Riser (Dual 10GbE)",
+          "Power": "2x 800W Slim Redundant PSUs",
+          "Management": "Dedicated BMC AST2600 1GbE"
+        },
+        rationale: "1U architectures maximize rack spatial density for horizontal web clusters and microservices. Low-profile skived copper heatsinks align precisely with 40mm fan bank airflow tunnels to prevent laminar stagnation."
+      },
+      {
+        id: "comp_1u_b",
+        name: "ProEdge 110 Compute Node B",
+        type: "General Purpose Compute",
+        badgeClass: "pill-compute",
+        uStart: 35,
+        uHeight: 1,
+        wattage: 680,
+        heatBtu: 2320,
+        specs: {
+          "Form Factor": "1U Rackmount",
+          "Processors": "2x 32-Core General CPUs",
+          "Memory": "512 GB (16x 32GB DDR5)",
+          "Storage": "4x 960GB 2.5\" NVMe SSDs",
+          "Cooling": "5x 40mm Counter-Rotating Fans",
+          "PCIe": "1x Full-Height Riser (Dual 10GbE)",
+          "Power": "2x 800W Slim Redundant PSUs",
+          "Management": "Dedicated BMC AST2600 1GbE"
+        },
+        rationale: "Secondary general compute node running container orchestrator worker nodes. Dual redundant feeds provide high availability in clustered N+1 failover configurations."
+      },
+      {
+        id: "storage_4u",
+        name: "PetabyteVault S36",
+        type: "High-Density Storage Server",
+        badgeClass: "pill-storage",
+        uStart: 31,
+        uHeight: 4,
+        wattage: 1250,
+        heatBtu: 4265,
+        specs: {
+          "Form Factor": "4U Dense Storage",
+          "Drive Bays": "36x 3.5\" SAS-4 Hot-Swap Bays",
+          "Gross Capacity": "720 TB (36x 20TB SAS Enterprise)",
+          "Backplane": "12Gb/s Active SAS-4 Expander",
+          "HBA Controller": "Dual LSI SAS 9500-16i HBAs",
+          "Processors": "Dual 24-Core Storage-Optimized",
+          "Memory": "256 GB ECC Registered DDR5",
+          "Power": "2x 2000W Redundant Titanium"
+        },
+        rationale: "Storage density dictates a full-face matrix of 36 drive bays. High static pressure fans pull air through dense drive caddy perforations, past the multi-layer SAS backplane, and exhaust through the rear motherboard and PSU chambers."
+      },
+      {
+        id: "net_1u",
+        name: "CoreSwitch 48X-100G",
+        type: "Top-of-Rack Network Appliance",
+        badgeClass: "pill-net",
+        uStart: 30,
+        uHeight: 1,
+        wattage: 420,
+        heatBtu: 1433,
+        specs: {
+          "Form Factor": "1U High-Speed Switch",
+          "Switch ASIC": "12.8 Tbps Low-Latency Fabric",
+          "Front Ports": "32x 100GbE QSFP28 + 16x 25G SFP28",
+          "Airflow Direction": "Port-to-Power (Front-to-Back)",
+          "Control Plane": "Quad-Core Embedded x86 + 64GB",
+          "Power": "2x 550W 1+1 Hot-Swap AC PSUs",
+          "Cooling": "4x Hot-Swap Directional Fan Trays",
+          "Latency": "Sub-450ns Cut-Through"
+        },
+        rationale: "Top-of-Rack network switches aggregate all host traffic via non-blocking fabric. Reversible fan modules maintain consistent datacenter hot-aisle/cold-aisle thermal isolation regardless of chassis rack depth."
+      },
+      {
+        id: "db_2u",
+        name: "DataScale M32 In-Memory",
+        type: "Database / High-Memory Server",
+        badgeClass: "pill-db",
+        uStart: 28,
+        uHeight: 2,
+        wattage: 1820,
+        heatBtu: 6210,
+        specs: {
+          "Form Factor": "2U High-Memory",
+          "Processors": "Dual High-Frequency 56-Core CPUs",
+          "Memory": "3072 GB (32x 96GB DDR5-5600)",
+          "Storage": "24x 3.84TB NVMe Gen5 U.2",
+          "IOPS": "28,000,000 Random Read IOPS",
+          "Expansion": "3x PCIe Gen5 x16 Low-Profile",
+          "Networking": "Dual 100GbE RoCEv2 RDMA NICs",
+          "Power": "2x 2400W Platinum Redundant"
+        },
+        rationale: "In-memory database workloads require zero CPU wait states and direct PCIe Gen5 lane attachment. 24 front U.2 NVMe drives connect directly to CPU root complexes without expanders to minimize read/write latency."
+      }
+    ];
+
+    // Blanking Panels / Filler Units
+    const BLANKING_PANELS = [
+      { uStart: 25, uHeight: 3, label: "3U Brush Cable Management" },
+      { uStart: 18, uHeight: 5, label: "5U Blanking Panel" },
+      { uStart: 1,  uHeight: 12, label: "12U Lower Expansion Space" }
+    ];
+
+    // Component details catalog for raycast CAD inspector
+    const COMPONENT_DB = {
+      cpu: {
+        name: "Server CPU & Vapor-Chamber Heatsink",
+        role: "Primary Compute Core",
+        socket: "Socket SP5 / LGA-4677",
+        tdp: "350W - 400W TDP",
+        bus: "128x PCIe Gen5 Lanes / 8-Channel DDR5",
+        cooling: "Passive skived copper/aluminum fin stack utilizing chassis forced-air CFM",
+        serviceability: "Toolless load frame with captive Torx T20 retention fasteners."
+      },
+      dimm: {
+        name: "DDR5 ECC Registered DIMM",
+        role: "System High-Bandwidth Memory",
+        capacity: "32GB - 96GB per Module",
+        speed: "4800 - 5600 MT/s ECC Registered",
+        cooling: "Convective airflow between 2.5mm module pitch spacing",
+        serviceability: "Dual latch lever ejectors with keyway notch alignment."
+      },
+      fan: {
+        name: "Dual-Rotor Counter-Rotating Fan Module",
+        role: "Chassis Forced-Air Static Pressure Wall",
+        rpm: "11,200 - 18,500 RPM",
+        flow: "Up to 45 CFM per module at 1.8 in-H2O static pressure",
+        redundancy: "N+1 Redundant hot-swap with back-EMF feedback diodes",
+        serviceability: "Toolless vertical extraction with orange touch-point release clip."
+      },
+      gpu: {
+        name: "700W Tensor Core Accelerator Module",
+        role: "Parallel AI / Deep Learning Matrix Engine",
+        interconnect: "NVLink 4.0 (900 GB/s bidirectional per GPU)",
+        power: "700W sustained TDP via 12V direct busbar connector",
+        cooling: "Custom massive copper baseplate with sealed composite heatpipes",
+        serviceability: "Torx T15 baseboard module mount with blind-mate mezzanine connector."
+      },
+      psu: {
+        name: "Common Redundant Power Supply (CRPS)",
+        role: "AC-DC High-Efficiency Power Conversion",
+        rating: "1600W - 3000W 80-Plus Titanium (96% Efficiency)",
+        input: "200 - 240V AC 50/60Hz, C20 / C14 Receptacle",
+        redundancy: "N+1 / 2N dual-feed failover with hot-swap latch",
+        serviceability: "Rear toolless extraction handle with active LED telemetry light pipe."
+      },
+      backplane: {
+        name: "High-Speed Storage Backplane (SAS-4 / NVMe)",
+        role: "Direct Drive Attachment & Power Delivery",
+        bandwidth: "24Gb/s SAS-4 / 64Gb/s PCIe Gen5 per lane",
+        connectors: "SFF-8654 SlimSAS / MCIO Blind-Mate connectors",
+        features: "Integrated enclosure management (SGPIO / SES-2), dedicated DC-DC step-down",
+        serviceability: "Internal chassis structural mount with vibration isolation dampening."
+      },
+      drive: {
+        name: "Hot-Swap Drive Carrier (NVMe / SAS Enterprise)",
+        role: "Local High-Speed Storage Medium",
+        interface: "U.2 / U.3 NVMe PCIe Gen5 or 24G SAS-4",
+        endurance: "3 - 5 Drive Writes Per Day (DWPD)",
+        indicators: "Dual light pipes (Green: Activity, Amber: Fault / Rebuild)",
+        serviceability: "Front hot-plug latch mechanism with EMI shielding spring fingers."
+      },
+      riser: {
+        name: "PCIe Gen5 Expansion Riser Cage",
+        role: "Add-on Card Modular Integration",
+        interface: "Dual x16 PCIe Gen5 (64 GB/s bi-directional)",
+        supported: "SmartNICs, 100G/400G InfiniBand adapters, Hardware RAID controllers",
+        cooling: "Directed exhaust tunnel",
+        serviceability: "Captive thumbscrew locking mechanism with rear bracket retention."
+      }
+    };
+
+    // --- State Management ---
+    const state = {
+      mode: "rack", // "rack" or "slice"
+      selectedServerIndex: 0,
+      selectedServer: ARCHETYPES[0],
+      cameraPreset: "3/4",
+      coverOpen: false,
+      cutaway: false,
+      exploded: false,
+      showAirflow: false,
+      showPower: false,
+      showData: false,
+      failures: {
+        fan: false,
+        psu: false,
+        drive: false,
+        gpu: false,
+        nic: false
+      },
+      hoveredComponent: null,
+      selectedComponent: null,
+      sliceTransitionProgress: 0,
+      isTransitioning: false,
+      explodeProgress: 0
+    };
+
+    // --- Three.js Setup ---
+    const container = document.getElementById("webgl-container");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0d14);
+    scene.fog = new THREE.FogExp2(0x0a0d14, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(12, 11, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.maxDistance = 45;
+    controls.minDistance = 1.0;
+    controls.target.set(0, RACK_TOTAL_H / 2, 0);
+
+    // --- Lighting ---
+    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.55);
+    scene.add(ambientLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x94a3b8, 0x0f172a, 0.45);
+    hemiLight.position.set(0, 30, 0);
+    scene.add(hemiLight);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.25);
+    keyLight.position.set(15, 25, 20);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 1;
+    keyLight.shadow.camera.far = 60;
+    keyLight.shadow.camera.left = -16;
+    keyLight.shadow.camera.right = 16;
+    keyLight.shadow.camera.top = 22;
+    keyLight.shadow.camera.bottom = -5;
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+    fillLight.position.set(-18, 12, -15);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xc084fc, 0.35);
+    rimLight.position.set(0, -10, 15);
+    scene.add(rimLight);
+
+    // --- Studio Floor & Shadow Receiver ---
+    const floorGeo = new THREE.PlaneGeometry(120, 120);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0b0f19,
+      roughness: 0.85,
+      metalness: 0.2
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.05;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // Studio Grid Overlay
+    const grid = new THREE.GridHelper(60, 60, 0x1e293b, 0x0f172a);
+    grid.position.y = 0;
+    scene.add(grid);
+
+    // --- Reusable Shared Materials ---
+    const MAT = {
+      rackFrame: new THREE.MeshStandardMaterial({ color: 0x181a20, roughness: 0.65, metalness: 0.7 }),
+      rackRail: new THREE.MeshStandardMaterial({ color: 0x2b303c, roughness: 0.4, metalness: 0.85 }),
+      serverChassis: new THREE.MeshStandardMaterial({ color: 0x1f232b, roughness: 0.5, metalness: 0.8 }),
+      serverFrontPlate: new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.7, metalness: 0.6 }),
+      pcbGreen: new THREE.MeshStandardMaterial({ color: 0x0f3d24, roughness: 0.45, metalness: 0.25 }),
+      pcbDark: new THREE.MeshStandardMaterial({ color: 0x111b15, roughness: 0.4, metalness: 0.3 }),
+      heatsinkAlum: new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.25, metalness: 0.9 }),
+      copper: new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.3, metalness: 0.95 }),
+      icBlack: new THREE.MeshStandardMaterial({ color: 0x090a0d, roughness: 0.3, metalness: 0.2 }),
+      goldContact: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.25, metalness: 0.95 }),
+      fanShroud: new THREE.MeshStandardMaterial({ color: 0x17191e, roughness: 0.6, metalness: 0.4 }),
+      fanBlades: new THREE.MeshStandardMaterial({ color: 0x090a0d, roughness: 0.3, metalness: 0.5 }),
+      fanLatchOrange: new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.4, metalness: 0.1 }),
+      acrylicDuct: new THREE.MeshPhysicalMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.28,
+        roughness: 0.1,
+        metalness: 0.1,
+        transmission: 0.85,
+        ior: 1.45
+      }),
+      ledGreen: new THREE.MeshBasicMaterial({ color: 0x22c55e }),
+      ledAmber: new THREE.MeshBasicMaterial({ color: 0xf59e0b }),
+      ledRed: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
+      ledBlue: new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
+      pduRed: new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.5, metalness: 0.6 }),
+      pduBlue: new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.5, metalness: 0.6 }),
+      cableBlack: new THREE.MeshStandardMaterial({ color: 0x0a0c10, roughness: 0.7, metalness: 0.1 }),
+      cableBlue: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.6, metalness: 0.2 }),
+      cableRed: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.6, metalness: 0.2 })
+    };
+
+    // --- Scene Hierarchy Groups ---
+    const rackGroup = new THREE.Group();
+    scene.add(rackGroup);
+
+    const sliceGroup = new THREE.Group();
+    sliceGroup.visible = false;
+    scene.add(sliceGroup);
+
+    // Group for dynamic visual paths
+    const airflowGroup = new THREE.Group();
+    scene.add(airflowGroup);
+    airflowGroup.visible = false;
+
+    const powerPathGroup = new THREE.Group();
+    scene.add(powerPathGroup);
+    powerPathGroup.visible = false;
+
+    const dataPathGroup = new THREE.Group();
+    scene.add(dataPathGroup);
+    dataPathGroup.visible = false;
+
+    // Interactive raycasting collection
+    const interactiveRackMeshes = [];
+    const interactiveSliceMeshes = [];
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // Map of server rack boxes for animations
+    const rackServerNodes = [];
+
+    // ========================================================
+    // PROCEDURAL MODELING: 42U DATACENTER RACK
+    // ========================================================
+    function build42URack() {
+      // 4 Vertical Posts
+      const postGeo = new THREE.BoxGeometry(0.35, RACK_TOTAL_H + 0.6, 0.35);
+      const postPositions = [
+        [-RACK_FRAME_W / 2 + 0.18, (RACK_TOTAL_H + 0.6) / 2, -RACK_DEPTH / 2 + 0.18],
+        [ RACK_FRAME_W / 2 - 0.18, (RACK_TOTAL_H + 0.6) / 2, -RACK_DEPTH / 2 + 0.18],
+        [-RACK_FRAME_W / 2 + 0.18, (RACK_TOTAL_H + 0.6) / 2,  RACK_DEPTH / 2 - 0.18],
+        [ RACK_FRAME_W / 2 - 0.18, (RACK_TOTAL_H + 0.6) / 2,  RACK_DEPTH / 2 - 0.18]
+      ];
+
+      postPositions.forEach(pos => {
+        const post = new THREE.Mesh(postGeo, MAT.rackFrame);
+        post.position.set(pos[0], pos[1], pos[2]);
+        post.castShadow = true;
+        post.receiveShadow = true;
+        rackGroup.add(post);
+      });
+
+      // Top and Bottom Structural Frame Plates
+      const horizCapGeo = new THREE.BoxGeometry(RACK_FRAME_W, 0.3, RACK_DEPTH);
+      const topCap = new THREE.Mesh(horizCapGeo, MAT.rackFrame);
+      topCap.position.set(0, RACK_TOTAL_H + 0.45, 0);
+      topCap.castShadow = true;
+      rackGroup.add(topCap);
+
+      const bottomCap = new THREE.Mesh(horizCapGeo, MAT.rackFrame);
+      bottomCap.position.set(0, 0.15, 0);
+      bottomCap.receiveShadow = true;
+      rackGroup.add(bottomCap);
+
+      // 4 Heavy-Duty Leveling Feet & Caster Wheels
+      const casterGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.3, 16);
+      const footPositions = [
+        [-RACK_FRAME_W / 2 + 0.4, 0.1, -RACK_DEPTH / 2 + 0.4],
+        [ RACK_FRAME_W / 2 - 0.4, 0.1, -RACK_DEPTH / 2 + 0.4],
+        [-RACK_FRAME_W / 2 + 0.4, 0.1,  RACK_DEPTH / 2 - 0.4],
+        [ RACK_FRAME_W / 2 - 0.4, 0.1,  RACK_DEPTH / 2 - 0.4]
+      ];
+      footPositions.forEach(fp => {
+        const caster = new THREE.Mesh(casterGeo, MAT.rackFrame);
+        caster.position.set(fp[0], fp[1], fp[2]);
+        rackGroup.add(caster);
+      });
+
+      // 19" EIA-310-D Standard Vertical Mounting Rails with Hole Pattern
+      const railH = RACK_TOTAL_H;
+      const railGeo = new THREE.BoxGeometry(0.2, railH, 0.2);
+      const railZFront = -RACK_DEPTH / 2 + 1.2;
+      const railZRear  =  RACK_DEPTH / 2 - 1.2;
+      const railXLeft  = -RACK_WIDTH / 2;
+      const railXRight =  RACK_WIDTH / 2;
+
+      const rails = [
+        [railXLeft,  railH / 2 + 0.3, railZFront],
+        [railXRight, railH / 2 + 0.3, railZFront],
+        [railXLeft,  railH / 2 + 0.3, railZRear],
+        [railXRight, railH / 2 + 0.3, railZRear]
+      ];
+
+      rails.forEach(rp => {
+        const rail = new THREE.Mesh(railGeo, MAT.rackRail);
+        rail.position.set(rp[0], rp[1], rp[2]);
+        rail.castShadow = true;
+        rackGroup.add(rail);
+      });
+
+      // Instanced Rack Unit Holes & U Number Indicators
+      const holeCount = TOTAL_RU * 3 * 2; // 3 holes per U on front rails
+      const holeGeo = new THREE.BoxGeometry(0.06, 0.06, 0.02);
+      const holeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const instancedHoles = new THREE.InstancedMesh(holeGeo, holeMat, holeCount);
+
+      let holeIdx = 0;
+      const dummy = new THREE.Object3D();
+      for (let u = 1; u <= TOTAL_RU; u++) {
+        const uCenterY = 0.3 + (u - 0.5) * U_HEIGHT;
+        [-U_HEIGHT / 3, 0, U_HEIGHT / 3].forEach(offset => {
+          // Left Rail Hole
+          dummy.position.set(railXLeft, uCenterY + offset, railZFront - 0.101);
+          dummy.updateMatrix();
+          instancedHoles.setMatrixAt(holeIdx++, dummy.matrix);
+
+          // Right Rail Hole
+          dummy.position.set(railXRight, uCenterY + offset, railZFront - 0.101);
+          dummy.updateMatrix();
+          instancedHoles.setMatrixAt(holeIdx++, dummy.matrix);
+        });
+      }
+      instancedHoles.instanceMatrix.needsUpdate = true;
+      rackGroup.add(instancedHoles);
+
+      // Side Panels (Perforated Sheet Steel)
+      const sidePanelGeo = new THREE.BoxGeometry(0.08, RACK_TOTAL_H - 0.2, RACK_DEPTH - 0.8);
+      const leftSide = new THREE.Mesh(sidePanelGeo, MAT.rackFrame);
+      leftSide.position.set(-RACK_FRAME_W / 2 + 0.05, RACK_TOTAL_H / 2 + 0.3, 0);
+      rackGroup.add(leftSide);
+
+      const rightSide = new THREE.Mesh(sidePanelGeo, MAT.rackFrame);
+      rightSide.position.set(RACK_FRAME_W / 2 - 0.05, RACK_TOTAL_H / 2 + 0.3, 0);
+      rackGroup.add(rightSide);
+
+      // Dual Zero-U Vertical Rack PDUs (Rear Left: PDU A, Rear Right: PDU B)
+      const pduGeo = new THREE.BoxGeometry(0.25, RACK_TOTAL_H * 0.85, 0.3);
+
+      const pduA = new THREE.Mesh(pduGeo, MAT.pduRed);
+      pduA.position.set(-RACK_WIDTH / 2 - 0.25, RACK_TOTAL_H / 2 + 0.3, railZRear - 0.2);
+      rackGroup.add(pduA);
+
+      const pduB = new THREE.Mesh(pduGeo, MAT.pduBlue);
+      pduB.position.set(RACK_WIDTH / 2 + 0.25, RACK_TOTAL_H / 2 + 0.3, railZRear - 0.2);
+      rackGroup.add(pduB);
+
+      // Rear Cable Management Trays with Vertical Wire Bundles
+      const cableTrayGeo = new THREE.BoxGeometry(0.12, RACK_TOTAL_H * 0.9, 0.4);
+      const trayLeft = new THREE.Mesh(cableTrayGeo, MAT.rackFrame);
+      trayLeft.position.set(-RACK_WIDTH / 2 + 0.1, RACK_TOTAL_H / 2 + 0.3, railZRear + 0.4);
+      rackGroup.add(trayLeft);
+
+      // Realistic Vertical Cables routed through tray
+      const cableCurveA = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-RACK_WIDTH / 2 + 0.12, RACK_TOTAL_H * 0.9, railZRear + 0.4),
+        new THREE.Vector3(-RACK_WIDTH / 2 + 0.12, RACK_TOTAL_H * 0.5, railZRear + 0.45),
+        new THREE.Vector3(-RACK_WIDTH / 2 + 0.12, 0.5, railZRear + 0.4)
+      ]);
+      const cableGeoA = new THREE.TubeGeometry(cableCurveA, 20, 0.04, 8, false);
+      const cableMeshA = new THREE.Mesh(cableGeoA, MAT.cableBlue);
+      rackGroup.add(cableMeshA);
+
+      const cableCurveB = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(RACK_WIDTH / 2 - 0.12, RACK_TOTAL_H * 0.9, railZRear + 0.4),
+        new THREE.Vector3(RACK_WIDTH / 2 - 0.12, RACK_TOTAL_H * 0.5, railZRear + 0.45),
+        new THREE.Vector3(RACK_WIDTH / 2 - 0.12, 0.5, railZRear + 0.4)
+      ]);
+      const cableGeoB = new THREE.TubeGeometry(cableCurveB, 20, 0.04, 8, false);
+      const cableMeshB = new THREE.Mesh(cableGeoB, MAT.cableBlack);
+      rackGroup.add(cableMeshB);
+    }
+
+    // ========================================================
+    // POPULATE RACK WITH PHYSICAL SERVER CHASSIS UNITS
+    // ========================================================
+    function populateRackServers() {
+      const railZFront = -RACK_DEPTH / 2 + 1.2;
+      const chassisDepth = 7.8;
+      const chassisWidth = 4.38;
+
+      ARCHETYPES.forEach((arch, idx) => {
+        const heightUnits = arch.uHeight * U_HEIGHT - 0.03; // slight clearance
+        const yPos = 0.3 + (arch.uStart - 1) * U_HEIGHT + heightUnits / 2;
+        const zPos = railZFront + chassisDepth / 2;
+
+        const serverGroup = new THREE.Group();
+        serverGroup.position.set(0, yPos, zPos);
+
+        // Server Main Metal Body
+        const bodyGeo = new THREE.BoxGeometry(chassisWidth, heightUnits, chassisDepth);
+        const bodyMesh = new THREE.Mesh(bodyGeo, MAT.serverChassis);
+        bodyMesh.castShadow = true;
+        bodyMesh.receiveShadow = true;
+        serverGroup.add(bodyMesh);
+
+        // Front Faceplate / Bezel
+        const faceGeo = new THREE.BoxGeometry(chassisWidth + 0.1, heightUnits + 0.01, 0.1);
+        const faceMesh = new THREE.Mesh(faceGeo, MAT.serverFrontPlate);
+        faceMesh.position.set(0, 0, -chassisDepth / 2 - 0.05);
+        serverGroup.add(faceMesh);
+
+        // Distinct Front Face details per archetype
+        buildServerFrontBezel(faceMesh, arch);
+
+        // Rear I/O & PSU details visible from back of rack
+        buildServerRearPanel(serverGroup, arch, chassisDepth, heightUnits);
+
+        // Mounting Ears / Latch Flanges
+        const earGeo = new THREE.BoxGeometry(0.2, heightUnits, 0.08);
+        const earL = new THREE.Mesh(earGeo, MAT.rackRail);
+        earL.position.set(-chassisWidth / 2 - 0.12, 0, -chassisDepth / 2);
+        serverGroup.add(earL);
+
+        const earR = new THREE.Mesh(earGeo, MAT.rackRail);
+        earR.position.set(chassisWidth / 2 + 0.12, 0, -chassisDepth / 2);
+        serverGroup.add(earR);
+
+        // Store reference for raycasting and sliding animation
+        faceMesh.userData = { serverIndex: idx, archetype: arch, parentGroup: serverGroup, defaultZ: zPos };
+        bodyMesh.userData = { serverIndex: idx, archetype: arch, parentGroup: serverGroup, defaultZ: zPos };
+        interactiveRackMeshes.push(faceMesh, bodyMesh);
+
+        rackGroup.add(serverGroup);
+        rackServerNodes.push({
+          group: serverGroup,
+          defaultZ: zPos,
+          currentZ: zPos,
+          arch: arch,
+          index: idx
+        });
+      });
+
+      // Add Blanking Panels in empty spaces
+      BLANKING_PANELS.forEach(panel => {
+        const pHeight = panel.uHeight * U_HEIGHT - 0.02;
+        const yPos = 0.3 + (panel.uStart - 1) * U_HEIGHT + pHeight / 2;
+        const pGeo = new THREE.BoxGeometry(chassisWidth, pHeight, 0.08);
+        const pMat = new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.8, metalness: 0.3 });
+        const pMesh = new THREE.Mesh(pGeo, pMat);
+        pMesh.position.set(0, yPos, railZFront);
+        rackGroup.add(pMesh);
+      });
+    }
+
+    // Helper: Build Archetype-Specific Front Panel Bezel Details
+    function buildServerFrontBezel(parentMesh, arch) {
+      const h = arch.uHeight * U_HEIGHT;
+      const w = 4.38;
+
+      if (arch.id.includes("gpu")) {
+        // GPU Server: 8x NVMe bays on bottom, heavy intake mesh on top
+        const bayGeo = new THREE.BoxGeometry(0.45, 0.32, 0.05);
+        for (let i = 0; i < 8; i++) {
+          const bay = new THREE.Mesh(bayGeo, MAT.serverChassis);
+          bay.position.set(-1.6 + i * 0.46, -h / 2 + 0.28, -0.04);
+          parentMesh.add(bay);
+          // Green Status LED
+          const led = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), MAT.ledGreen);
+          led.position.set(-1.75 + i * 0.46, -h / 2 + 0.4, -0.06);
+          parentMesh.add(led);
+        }
+        // Perforated Air Intake Grille
+        const grilleGeo = new THREE.BoxGeometry(w - 0.6, h * 0.6, 0.02);
+        const grille = new THREE.Mesh(grilleGeo, new THREE.MeshStandardMaterial({ color: 0x050709, roughness: 0.9 }));
+        grille.position.set(0, 0.25, -0.04);
+        parentMesh.add(grille);
+
+      } else if (arch.id.includes("storage")) {
+        // Storage Server: 36x 3.5" Drive Bay Grid (4 rows of 9 bays)
+        const caddyGeo = new THREE.BoxGeometry(0.42, 0.36, 0.05);
+        for (let row = 0; row < 4; row++) {
+          for (let col = 0; col < 9; col++) {
+            const caddy = new THREE.Mesh(caddyGeo, MAT.rackFrame);
+            caddy.position.set(-1.8 + col * 0.45, -h / 2 + 0.26 + row * 0.38, -0.04);
+            parentMesh.add(caddy);
+
+            // Drive Activity Light
+            const led = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.02), (row === 2 && col === 3) ? MAT.ledAmber : MAT.ledGreen);
+            led.position.set(-1.95 + col * 0.45, -h / 2 + 0.38 + row * 0.38, -0.06);
+            parentMesh.add(led);
+          }
+        }
+      } else if (arch.id.includes("virt") || arch.id.includes("db")) {
+        // 2U Server: 12 - 24 Drive bays + Diagnostic LCD
+        const bayGeo = new THREE.BoxGeometry(0.38, 0.34, 0.05);
+        for (let col = 0; col < 10; col++) {
+          const bay = new THREE.Mesh(bayGeo, MAT.serverChassis);
+          bay.position.set(-1.8 + col * 0.4, 0, -0.04);
+          parentMesh.add(bay);
+        }
+      } else if (arch.id.includes("net")) {
+        // Network Switch: Array of QSFP28 cages
+        const cageGeo = new THREE.BoxGeometry(0.18, 0.16, 0.05);
+        for (let i = 0; i < 20; i++) {
+          const cage = new THREE.Mesh(cageGeo, MAT.heatsinkAlum);
+          cage.position.set(-1.9 + i * 0.2, 0, -0.04);
+          parentMesh.add(cage);
+        }
+      } else {
+        // 1U Compute: 4x 3.5" Drive bays
+        const bayGeo = new THREE.BoxGeometry(0.9, 0.32, 0.05);
+        for (let i = 0; i < 4; i++) {
+          const bay = new THREE.Mesh(bayGeo, MAT.serverChassis);
+          bay.position.set(-1.5 + i * 1.0, 0, -0.04);
+          parentMesh.add(bay);
+        }
+      }
+
+      // Universal Power Button & Identification LED
+      const pwrBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 12), MAT.heatsinkAlum);
+      pwrBtn.rotation.x = Math.PI / 2;
+      pwrBtn.position.set(w / 2 - 0.25, h / 2 - 0.15, -0.05);
+      parentMesh.add(pwrBtn);
+
+      const sysLed = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), MAT.ledBlue);
+      sysLed.position.set(w / 2 - 0.38, h / 2 - 0.15, -0.05);
+      parentMesh.add(sysLed);
+    }
+
+    // Helper: Build Rear Panel Features (PSUs, PCIe Cards, Rear Cabling)
+    function buildServerRearPanel(serverGroup, arch, depth, h) {
+      const rearZ = depth / 2 + 0.01;
+
+      // Redundant Hot-Swap PSUs with handles and status LEDs
+      const psuGeo = new THREE.BoxGeometry(0.75, Math.min(h * 0.7, 0.7), 0.1);
+      const psuCount = arch.id.includes("gpu") ? 4 : 2;
+
+      for (let p = 0; p < psuCount; p++) {
+        const xOffset = 1.2 - p * 0.85;
+        const psu = new THREE.Mesh(psuGeo, MAT.heatsinkAlum);
+        psu.position.set(xOffset, 0, rearZ);
+        serverGroup.add(psu);
+
+        // Power Handle
+        const handleGeo = new THREE.TorusGeometry(0.12, 0.025, 8, 12, Math.PI);
+        const handle = new THREE.Mesh(handleGeo, MAT.cableBlack);
+        handle.position.set(xOffset + 0.15, 0, rearZ + 0.06);
+        serverGroup.add(handle);
+
+        // AC Inlet Receptacle
+        const inlet = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.05), MAT.icBlack);
+        inlet.position.set(xOffset - 0.15, 0, rearZ + 0.04);
+        serverGroup.add(inlet);
+
+        // Rear Power Cable Connecting to PDU
+        const pduTargetX = (p % 2 === 0) ? -RACK_WIDTH / 2 - 0.15 : RACK_WIDTH / 2 + 0.15;
+        const cableCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(xOffset - 0.15, 0, rearZ + 0.06),
+          new THREE.Vector3(xOffset - 0.15, 0.1, rearZ + 0.6),
+          new THREE.Vector3(pduTargetX * 0.7, 0.2, rearZ + 0.8),
+          new THREE.Vector3(pduTargetX, 0, rearZ + 0.4)
+        ]);
+        const cableMesh = new THREE.Mesh(
+          new THREE.TubeGeometry(cableCurve, 12, 0.035, 6, false),
+          (p % 2 === 0) ? MAT.cableRed : MAT.cableBlue
+        );
+        serverGroup.add(cableMesh);
+      }
+
+      // PCIe Rear Brackets & High-Speed Network Ports
+      const pcieGeo = new THREE.BoxGeometry(0.3, Math.min(h * 0.8, 0.8), 0.05);
+      for (let b = 0; b < 3; b++) {
+        const bracket = new THREE.Mesh(pcieGeo, MAT.heatsinkAlum);
+        bracket.position.set(-1.4 + b * 0.4, 0, rearZ);
+        serverGroup.add(bracket);
+      }
+    }
+
+    // ========================================================
+    // PROCEDURAL MODELING: HIGH-DETAIL SINGLE SLICE ARCHITECTURES
+    // ========================================================
+    let currentSliceComponents = [];
+    let sliceCoverMesh = null;
+    let sliceChassisBodyMesh = null;
+    let sliceAirBaffleMesh = null;
+    let sliceGpuAssembly = null;
+    let sliceFanWallMesh = null;
+
+    function buildHighDetailSlice(arch) {
+      // Clear previous slice geometry
+      while (sliceGroup.children.length > 0) {
+        const obj = sliceGroup.children[0];
+        sliceGroup.remove(obj);
+      }
+      interactiveSliceMeshes.length = 0;
+      currentSliceComponents = [];
+
+      const width = 4.38;
+      const length = 8.2;
+      const height = arch.uHeight * U_HEIGHT;
+
+      // Base Structural Metal Chassis (Sheet Steel Bottom and Sides)
+      const chassisMat = MAT.serverChassis.clone();
+      const chassisGeo = new THREE.BoxGeometry(width, height, length);
+      sliceChassisBodyMesh = new THREE.Mesh(chassisGeo, chassisMat);
+      sliceChassisBodyMesh.castShadow = true;
+      sliceChassisBodyMesh.receiveShadow = true;
+      sliceGroup.add(sliceChassisBodyMesh);
+
+      // Mainboard PCB inside chassis
+      const pcbW = width - 0.25;
+      const pcbL = length - 2.4; // leave room for drive bays & backplane at front
+      const pcbY = -height / 2 + 0.12;
+      const pcbZ = 1.0;
+
+      const pcbGeo = new THREE.BoxGeometry(pcbW, 0.06, pcbL);
+      const pcbMesh = new THREE.Mesh(pcbGeo, arch.id.includes("gpu") ? MAT.pcbDark : MAT.pcbGreen);
+      pcbMesh.position.set(0, pcbY, pcbZ);
+      pcbMesh.receiveShadow = true;
+      sliceGroup.add(pcbMesh);
+
+      // Gold traces and silkscreen patterns (instanced decorative circuitry)
+      buildSilkscreenAndTraces(pcbMesh, pcbW, pcbL);
+
+      // Slide-Off Top Metal Cover
+      const coverGeo = new THREE.BoxGeometry(width + 0.02, 0.04, length);
+      sliceCoverMesh = new THREE.Mesh(coverGeo, MAT.serverChassis);
+      sliceCoverMesh.position.set(0, height / 2 + 0.02, 0);
+      sliceCoverMesh.castShadow = true;
+      sliceGroup.add(sliceCoverMesh);
+
+      // Front Drive Bays & Visible Active Backplane
+      buildSliceStorageSubsystem(arch, width, height, length);
+
+      // Mid-Chassis Fan Wall Assembly
+      buildSliceFanWall(arch, width, height, -1.2);
+
+      // Compute Zone: CPUs, Heatsinks, VRMs, and Memory DIMMs
+      buildSliceComputeZone(arch, pcbY);
+
+      // PCIe Risers, Cards, and Rear I/O
+      buildSliceExpansionAndPower(arch, width, height, length, pcbY);
+
+      // Acrylic Airflow Duct / Shroud
+      buildSliceAirflowBaffle(arch, width, height);
+
+      // Reset slice group position to center
+      sliceGroup.position.set(0, 3.5, 0);
+    }
+
+    // Sub-builder: Silkscreen traces, SMD capacitors, chokes
+    function buildSilkscreenAndTraces(pcbMesh, w, l) {
+      const capCount = 45;
+      const capGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.08, 12);
+      const capInst = new THREE.InstancedMesh(capGeo, MAT.heatsinkAlum, capCount);
+      const dummy = new THREE.Object3D();
+
+      for (let i = 0; i < capCount; i++) {
+        dummy.position.set(
+          (Math.random() - 0.5) * (w - 0.8),
+          0.06,
+          (Math.random() - 0.5) * (l - 0.8)
+        );
+        dummy.updateMatrix();
+        capInst.setMatrixAt(i, dummy.matrix);
+      }
+      capInst.instanceMatrix.needsUpdate = true;
+      pcbMesh.add(capInst);
+
+      // Surface Mount Chokes (Black ferrite blocks)
+      const chokeCount = 20;
+      const chokeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+      const chokeInst = new THREE.InstancedMesh(chokeGeo, MAT.icBlack, chokeCount);
+      for (let i = 0; i < chokeCount; i++) {
+        dummy.position.set(
+          (Math.random() - 0.5) * (w - 1.2),
+          0.06,
+          (Math.random() - 0.5) * (l - 1.2)
+        );
+        dummy.updateMatrix();
+        chokeInst.setMatrixAt(i, dummy.matrix);
+      }
+      chokeInst.instanceMatrix.needsUpdate = true;
+      pcbMesh.add(chokeInst);
+    }
+
+    // Sub-builder: Storage Cage & SAS/NVMe Backplane
+    function buildSliceStorageSubsystem(arch, w, h, l) {
+      const frontZ = -l / 2 + 0.9;
+      const backplaneZ = -l / 2 + 1.85;
+
+      // Heavy Multi-Layer SAS/NVMe Backplane PCB
+      const bpGeo = new THREE.BoxGeometry(w - 0.3, h * 0.85, 0.08);
+      const backplane = new THREE.Mesh(bpGeo, MAT.pcbGreen);
+      backplane.position.set(0, 0, backplaneZ);
+      backplane.userData = { componentType: "backplane", label: "High-Speed Storage Backplane" };
+      sliceGroup.add(backplane);
+      interactiveSliceMeshes.push(backplane);
+      currentSliceComponents.push({ mesh: backplane, type: "backplane" });
+
+      // SAS / SlimSAS Connectors and High-Speed Ribbon Cables
+      for (let c = 0; c < 4; c++) {
+        const conn = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.15, 0.1), MAT.icBlack);
+        conn.position.set(-1.0 + c * 0.7, 0, backplaneZ + 0.08);
+        sliceGroup.add(conn);
+
+        // Routing cable from backplane to motherboard
+        const cableCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-1.0 + c * 0.7, 0, backplaneZ + 0.12),
+          new THREE.Vector3(-1.0 + c * 0.7, -h / 2 + 0.25, backplaneZ + 0.6),
+          new THREE.Vector3(-0.6 + c * 0.4, -h / 2 + 0.2, 0.2)
+        ]);
+        const cable = new THREE.Mesh(new THREE.TubeGeometry(cableCurve, 10, 0.025, 6, false), MAT.cableBlue);
+        sliceGroup.add(cable);
+      }
+
+      // Hot-Swap Drive Caddies (Detailed with latches and light pipes)
+      const is35 = arch.id.includes("storage");
+      const caddyW = is35 ? 0.95 : 0.46;
+      const caddyH = is35 ? 0.42 : 0.34;
+      const caddyL = 1.6;
+      const cols = is35 ? 4 : 8;
+      const rows = Math.max(1, Math.floor(h / caddyH));
+
+      const caddyGeo = new THREE.BoxGeometry(caddyW, caddyH, caddyL);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const xPos = -(cols - 1) * (caddyW + 0.04) / 2 + c * (caddyW + 0.04);
+          const yPos = -h / 2 + 0.25 + r * (caddyH + 0.05);
+
+          const caddy = new THREE.Mesh(caddyGeo, MAT.serverChassis);
+          caddy.position.set(xPos, yPos, frontZ);
+          caddy.userData = { componentType: "drive", label: `Drive Slot ${r * cols + c + 1} (${is35 ? '3.5" SAS-4' : '2.5" NVMe'})` };
+          sliceGroup.add(caddy);
+          interactiveSliceMeshes.push(caddy);
+
+          // Ejector Latch Lever
+          const latch = new THREE.Mesh(new THREE.BoxGeometry(caddyW * 0.8, 0.06, 0.04), MAT.heatsinkAlum);
+          latch.position.set(xPos, yPos - caddyH * 0.35, frontZ - caddyL / 2 - 0.02);
+          sliceGroup.add(latch);
+
+          // Activity & Status LEDs
+          const ledMat = (state.failures.drive && r === 0 && c === 2) ? MAT.ledAmber : MAT.ledGreen;
+          const led = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), ledMat);
+          led.position.set(xPos - caddyW * 0.35, yPos + caddyH * 0.3, frontZ - caddyL / 2 - 0.02);
+          sliceGroup.add(led);
+        }
+      }
+    }
+
+    // Sub-builder: Hot-Swap Fan Wall Module
+    function buildSliceFanWall(arch, w, h, zPos) {
+      const fanCount = arch.id.includes("gpu") ? 8 : (arch.id.includes("1u") ? 5 : 6);
+      const fanSize = (w - 0.4) / fanCount;
+      const fanWallGroup = new THREE.Group();
+      fanWallGroup.position.set(0, 0, zPos);
+
+      // Structural Fan Wall Frame
+      const frameGeo = new THREE.BoxGeometry(w - 0.2, h * 0.9, 0.45);
+      const frame = new THREE.Mesh(frameGeo, MAT.fanShroud);
+      fanWallGroup.add(frame);
+
+      // Individual Hot-Swap Dual-Rotor Fan Modules
+      for (let i = 0; i < fanCount; i++) {
+        const xPos = -(fanCount - 1) * fanSize / 2 + i * fanSize;
+        const fanModuleGroup = new THREE.Group();
+        fanModuleGroup.position.set(xPos, 0, 0);
+
+        // Fan Housing
+        const housing = new THREE.Mesh(
+          new THREE.CylinderGeometry(fanSize * 0.44, fanSize * 0.44, 0.4, 20),
+          MAT.fanShroud
+        );
+        housing.rotation.x = Math.PI / 2;
+        fanModuleGroup.add(housing);
+
+        // Fan Blades / Impeller (Rotating)
+        const bladeGeo = new THREE.CylinderGeometry(fanSize * 0.4, fanSize * 0.4, 0.04, 7);
+        const blades = new THREE.Mesh(bladeGeo, MAT.fanBlades);
+        blades.rotation.x = Math.PI / 2;
+        blades.userData = { isRotor: true, fanIndex: i };
+        fanModuleGroup.add(blades);
+
+        // Quick-Release Orange Extraction Latch
+        const latch = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.15), MAT.fanLatchOrange);
+        latch.position.set(0, h * 0.42, 0);
+        fanModuleGroup.add(latch);
+
+        // Fan Health Status LED
+        const isStalled = state.failures.fan && i === 2;
+        const ledMat = isStalled ? MAT.ledRed : MAT.ledGreen;
+        const led = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.02), ledMat);
+        led.position.set(0, h * 0.35, 0.22);
+        fanModuleGroup.add(led);
+
+        fanModuleGroup.userData = { componentType: "fan", label: `Fan Module #0${i + 1} (${isStalled ? 'FAULT' : '11,200 RPM'})` };
+        interactiveSliceMeshes.push(housing);
+        currentSliceComponents.push({ mesh: housing, type: "fan" });
+
+        fanWallGroup.add(fanModuleGroup);
+      }
+
+      sliceFanWallMesh = fanWallGroup;
+      sliceGroup.add(fanWallGroup);
+    }
+
+    // Sub-builder: Compute Zone (CPUs, Fin Heatsinks, VRMs, Memory DIMMs, GPU Baseboard)
+    function buildSliceComputeZone(arch, pcbY) {
+      if (arch.id.includes("gpu")) {
+        // --- 4U AI/GPU ARCHITECTURE ---
+        // Dual CPUs positioned mid-front
+        buildDualCpuWithMemory(pcbY, -0.2, 16);
+
+        // Massive Rear GPU Accelerator Baseboard with 8 SXM5 Modules
+        sliceGpuAssembly = new THREE.Group();
+        sliceGpuAssembly.position.set(0, pcbY + 0.15, 1.8);
+
+        const ubbGeo = new THREE.BoxGeometry(3.8, 0.08, 3.2);
+        const ubbMesh = new THREE.Mesh(ubbGeo, MAT.pcbDark);
+        sliceGpuAssembly.add(ubbMesh);
+
+        // 8x High-Output GPU Accelerators (2 rows of 4)
+        const gpuGeo = new THREE.BoxGeometry(0.72, 0.55, 1.25);
+        for (let row = 0; row < 2; row++) {
+          for (let col = 0; col < 4; col++) {
+            const xPos = -1.35 + col * 0.9;
+            const zPos = -0.75 + row * 1.5;
+
+            // Copper Vapor Chamber Base + Aluminum Skived Fin Stack
+            const gpu = new THREE.Mesh(gpuGeo, MAT.heatsinkAlum);
+            gpu.position.set(xPos, 0.32, zPos);
+            gpu.userData = { componentType: "gpu", label: `GPU Accelerator #0${row * 4 + col + 1} (700W SXM5)` };
+            sliceGpuAssembly.add(gpu);
+            interactiveSliceMeshes.push(gpu);
+            currentSliceComponents.push({ mesh: gpu, type: "gpu" });
+
+            // Copper heatpipes running through fin stack
+            const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.1, 8), MAT.copper);
+            pipe.rotation.x = Math.PI / 2;
+            pipe.position.set(xPos, 0.55, zPos);
+            sliceGpuAssembly.add(pipe);
+          }
+        }
+
+        // Heavy-Current 12V Copper Power Busbars
+        const busbarGeo = new THREE.BoxGeometry(3.6, 0.08, 0.08);
+        const busbar1 = new THREE.Mesh(busbarGeo, MAT.copper);
+        busbar1.position.set(0, 0.08, -1.45);
+        sliceGpuAssembly.add(busbar1);
+
+        const busbar2 = new THREE.Mesh(busbarGeo, MAT.copper);
+        busbar2.position.set(0, 0.08, 1.45);
+        sliceGpuAssembly.add(busbar2);
+
+        sliceGroup.add(sliceGpuAssembly);
+
+      } else if (arch.id.includes("virt") || arch.id.includes("db")) {
+        // --- 2U VIRTUALIZATION / HIGH-MEMORY DATABASE ARCHITECTURE ---
+        // Massive 32-DIMM Memory Population around Dual High-Core CPUs
+        buildDualCpuWithMemory(pcbY, 0.4, 32);
+
+      } else if (arch.id.includes("storage")) {
+        // --- 4U STORAGE ARCHITECTURE ---
+        // Moderate Dual-Socket Compute with 16 DIMMs + Hardware RAID SAS Expander
+        buildDualCpuWithMemory(pcbY, 0.6, 16);
+
+        // Hardware SAS Expander & RAID Controller Cards
+        const raidGeo = new THREE.BoxGeometry(1.4, 0.6, 0.06);
+        const raidCard = new THREE.Mesh(raidGeo, MAT.pcbGreen);
+        raidCard.position.set(-1.1, pcbY + 0.4, 2.8);
+        raidCard.userData = { componentType: "riser", label: "LSI MegaRAID 9500-16i SAS Controller" };
+        sliceGroup.add(raidCard);
+        interactiveSliceMeshes.push(raidCard);
+
+      } else {
+        // --- 1U COMPUTE / NETWORK ARCHITECTURE ---
+        // Compact low-profile copper heatsinks
+        buildDualCpuWithMemory(pcbY, 0.2, 16, true);
+      }
+    }
+
+    // Helper: Dual CPU sockets with realistic DIMM channel banks
+    function buildDualCpuWithMemory(pcbY, centerZ, dimmCount, is1U = false) {
+      const cpuSpacingX = 1.6;
+      const heatsinkH = is1U ? 0.32 : 0.65;
+      const heatsinkGeo = new THREE.BoxGeometry(1.0, heatsinkH, 1.1);
+
+      [-cpuSpacingX / 2, cpuSpacingX / 2].forEach((xPos, idx) => {
+        // CPU Heatsink
+        const heatsink = new THREE.Mesh(heatsinkGeo, is1U ? MAT.copper : MAT.heatsinkAlum);
+        heatsink.position.set(xPos, pcbY + heatsinkH / 2 + 0.05, centerZ);
+        heatsink.userData = { componentType: "cpu", label: `CPU Socket ${idx + 1} (SP5 LGA-4677)` };
+        sliceGroup.add(heatsink);
+        interactiveSliceMeshes.push(heatsink);
+        currentSliceComponents.push({ mesh: heatsink, type: "cpu" });
+
+        // VRM Power Delivery Stages (Chokes & Aluminum VRM Heatsink)
+        const vrmGeo = new THREE.BoxGeometry(0.18, heatsinkH * 0.7, 0.9);
+        const vrmL = new THREE.Mesh(vrmGeo, MAT.heatsinkAlum);
+        vrmL.position.set(xPos - 0.7, pcbY + heatsinkH * 0.35 + 0.05, centerZ);
+        sliceGroup.add(vrmL);
+
+        // DIMM Memory Sockets (Channel-divided DDR5 RDIMMs)
+        const dimmsPerSide = dimmCount / 4;
+        const dimmGeo = new THREE.BoxGeometry(0.04, is1U ? 0.25 : 0.4, 0.95);
+        const slotPitch = 0.12;
+
+        // Left Bank
+        for (let d = 0; d < dimmsPerSide; d++) {
+          const dimmX = xPos - 0.65 - d * slotPitch;
+          const dimm = new THREE.Mesh(dimmGeo, MAT.pcbGreen);
+          dimm.position.set(dimmX, pcbY + (is1U ? 0.18 : 0.25), centerZ);
+          dimm.userData = { componentType: "dimm", label: `DIMM Bank ${String.fromCharCode(65 + idx)}${d + 1} (DDR5-5600 ECC)` };
+          sliceGroup.add(dimm);
+          interactiveSliceMeshes.push(dimm);
+          currentSliceComponents.push({ mesh: dimm, type: "dimm" });
+        }
+
+        // Right Bank
+        for (let d = 0; d < dimmsPerSide; d++) {
+          const dimmX = xPos + 0.65 + d * slotPitch;
+          const dimm = new THREE.Mesh(dimmGeo, MAT.pcbGreen);
+          dimm.position.set(dimmX, pcbY + (is1U ? 0.18 : 0.25), centerZ);
+          dimm.userData = { componentType: "dimm", label: `DIMM Bank ${String.fromCharCode(67 + idx)}${d + 1} (DDR5-5600 ECC)` };
+          sliceGroup.add(dimm);
+          interactiveSliceMeshes.push(dimm);
+          currentSliceComponents.push({ mesh: dimm, type: "dimm" });
+        }
+      });
+    }
+
+    // Sub-builder: PCIe Risers, Cards, Redundant PSUs
+    function buildSliceExpansionAndPower(arch, w, h, l, pcbY) {
+      const rearZ = l / 2 - 0.9;
+
+      // PCIe Riser Assemblies
+      const riserCount = arch.id.includes("1u") ? 1 : (arch.id.includes("gpu") ? 4 : 3);
+      for (let r = 0; r < riserCount; r++) {
+        const xPos = -1.4 + r * 0.95;
+        const cardH = Math.min(h * 0.65, 0.7);
+        const riserGeo = new THREE.BoxGeometry(0.05, cardH, 1.4);
+        const card = new THREE.Mesh(riserGeo, MAT.pcbDark);
+        card.position.set(xPos, pcbY + cardH / 2 + 0.15, rearZ - 0.2);
+        card.userData = { componentType: "riser", label: `PCIe Gen5 Riser #${r + 1} (ConnectX-7 400GbE / SAS)` };
+        sliceGroup.add(card);
+        interactiveSliceMeshes.push(card);
+        currentSliceComponents.push({ mesh: card, type: "riser" });
+      }
+
+      // Hot-Swap CRPS Power Supply Enclosures (with gold-finger edge connectors)
+      const psuCount = arch.id.includes("gpu") ? 4 : 2;
+      const psuW = 0.75;
+      const psuH = Math.min(h * 0.75, 0.75);
+      const psuL = 2.0;
+
+      for (let p = 0; p < psuCount; p++) {
+        const xPos = w / 2 - 0.55 - (p % 2) * (psuW + 0.1);
+        const yPos = (psuCount > 2 && p >= 2) ? (pcbY + psuH + 0.1) : (pcbY + psuH / 2 + 0.05);
+
+        const psuGeo = new THREE.BoxGeometry(psuW, psuH, psuL);
+        const psu = new THREE.Mesh(psuGeo, MAT.heatsinkAlum);
+        psu.position.set(xPos, yPos, rearZ + 0.1);
+
+        const isFailed = (state.failures.psu && p === 0);
+        psu.userData = { componentType: "psu", label: `PSU Module 0${p + 1} (${isFailed ? 'OFFLINE' : 'ONLINE 12V 2400W'})` };
+        sliceGroup.add(psu);
+        interactiveSliceMeshes.push(psu);
+        currentSliceComponents.push({ mesh: psu, type: "psu" });
+
+        // Blue / Red Extraction Finger Lever
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.12), MAT.cableBlue);
+        handle.position.set(xPos + psuW * 0.35, yPos, rearZ + psuL / 2 + 0.06);
+        sliceGroup.add(handle);
+      }
+    }
+
+    // Sub-builder: Acrylic Airflow Duct / Shroud
+    function buildSliceAirflowBaffle(arch, w, h) {
+      const baffleGeo = new THREE.BoxGeometry(w - 0.3, h * 0.45, 3.2);
+      sliceAirBaffleMesh = new THREE.Mesh(baffleGeo, MAT.acrylicDuct);
+      sliceAirBaffleMesh.position.set(0, h * 0.1, 0.6);
+      sliceAirBaffleMesh.castShadow = false;
+      sliceGroup.add(sliceAirBaffleMesh);
+    }
+
+    // ========================================================
+    // VISUALIZATION PATHS: AIRFLOW, POWER, DATA FLOW
+    // ========================================================
+    let airflowParticles = [];
+    let powerPathLines = [];
+    let dataPacketMeshes = [];
+
+    function setupAirflowVisualization() {
+      // Clear previous airflow
+      while (airflowGroup.children.length > 0) {
+        airflowGroup.remove(airflowGroup.children[0]);
+      }
+      airflowParticles = [];
+
+      const count = 350;
+      const pGeo = new THREE.SphereGeometry(0.05, 8, 8);
+      const pMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.75 });
+
+      for (let i = 0; i < count; i++) {
+        const p = new THREE.Mesh(pGeo, pMat.clone());
+        // Stagger positions from front cold aisle to rear hot exhaust
+        p.position.set(
+          (Math.random() - 0.5) * 3.8,
+          (Math.random() - 0.5) * 1.2 + 3.5,
+          -4.5 + Math.random() * 9.0
+        );
+        p.userData = {
+          speed: 0.12 + Math.random() * 0.08,
+          seedX: p.position.x,
+          seedY: p.position.y
+        };
+        airflowParticles.push(p);
+        airflowGroup.add(p);
+      }
+    }
+
+    function updateAirflowVisualization(delta) {
+      if (!state.showAirflow) return;
+
+      airflowParticles.forEach(p => {
+        p.position.z += p.userData.speed;
+        // Thermal color shift: Cold Cyan (front) -> Neutral Green -> Hot Orange/Red (rear)
+        const progress = (p.position.z + 4.5) / 9.0;
+        if (progress < 0.4) {
+          p.material.color.setHex(0x38bdf8); // Cold Intake (Front)
+        } else if (progress < 0.7) {
+          p.material.color.setHex(0x4ade80); // Motherboard / RAM
+        } else {
+          p.material.color.setHex(0xef4444); // Hot Exhaust (Rear)
+        }
+
+        // Slight turbulent wave around heatsinks
+        p.position.x = p.userData.seedX + Math.sin(p.position.z * 2.5) * 0.1;
+
+        // Reset particle to front intake
+        if (p.position.z > 4.5) {
+          p.position.z = -4.5;
+        }
+      });
+    }
+
+    function setupPowerPathVisualization() {
+      while (powerPathGroup.children.length > 0) {
+        powerPathGroup.remove(powerPathGroup.children[0]);
+      }
+
+      // Path A: AC Inlet 1 -> PSU 1 -> PDB Busbar -> CPU VRMs -> DIMMs
+      const pathACurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(1.4, 3.5, 4.2),
+        new THREE.Vector3(1.4, 3.2, 2.5),
+        new THREE.Vector3(0.8, 2.8, 1.2),
+        new THREE.Vector3(-0.8, 2.8, 0.4),
+        new THREE.Vector3(-0.8, 3.2, 0.4)
+      ]);
+      const lineAMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(pathACurve, 32, 0.045, 8, false),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 })
+      );
+      powerPathGroup.add(lineAMesh);
+
+      // Path B: AC Inlet 2 -> PSU 2 -> PDB Busbar -> GPU / PCIe Accelerator
+      const pathBCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.6, 3.5, 4.2),
+        new THREE.Vector3(0.6, 3.2, 2.5),
+        new THREE.Vector3(0.2, 2.8, 1.8),
+        new THREE.Vector3(0.0, 3.3, 2.0)
+      ]);
+      const lineBMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(pathBCurve, 32, 0.045, 8, false),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.85 })
+      );
+      powerPathGroup.add(lineBMesh);
+    }
+
+    function setupDataPathVisualization() {
+      while (dataPathGroup.children.length > 0) {
+        dataPathGroup.remove(dataPathGroup.children[0]);
+      }
+      dataPacketMeshes = [];
+
+      // Conceptual data flow curve: NVMe Storage -> CPU -> High-Speed Network
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-1.0, 3.0, -3.2), // Front NVMe
+        new THREE.Vector3(-0.5, 2.9, -1.8), // Backplane
+        new THREE.Vector3(-0.8, 3.1, 0.2),  // CPU 1
+        new THREE.Vector3(0.8, 3.1, 0.2),   // Inter-socket UPI / Infinity Fabric
+        new THREE.Vector3(-1.2, 3.4, 3.2)   // Rear 100G NIC
+      ]);
+
+      const dataTube = new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 40, 0.03, 8, false),
+        new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.4 })
+      );
+      dataPathGroup.add(dataTube);
+
+      // Animated glowing data packets
+      for (let i = 0; i < 8; i++) {
+        const pkt = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xc084fc }));
+        pkt.userData = { curve: curve, t: i / 8 };
+        dataPacketMeshes.push(pkt);
+        dataPathGroup.add(pkt);
+      }
+    }
+
+    function updateDataPathVisualization() {
+      if (!state.showData) return;
+      dataPacketMeshes.forEach(pkt => {
+        pkt.userData.t = (pkt.userData.t + 0.008) % 1.0;
+        const pt = pkt.userData.curve.getPointAt(pkt.userData.t);
+        pkt.position.copy(pt);
+      });
+    }
+
+    // ========================================================
+    // UI POPULATION & EVENT LISTENERS
+    // ========================================================
+    function populateRackElevationUI() {
+      const rackList = document.getElementById("rack-list");
+      rackList.innerHTML = "";
+
+      for (let u = TOTAL_RU; u >= 1; u--) {
+        const arch = ARCHETYPES.find(a => u <= a.uStart && u > (a.uStart - a.uHeight));
+        const blank = BLANKING_PANELS.find(b => u <= b.uStart && u > (b.uStart - b.uHeight));
+
+        // Only render row on start U
+        if (arch && u === arch.uStart) {
+          const item = document.createElement("div");
+          item.className = `rack-unit-item ${state.selectedServer.id === arch.id ? 'selected' : ''}`;
+          item.onclick = () => selectServer(arch);
+
+          item.innerHTML = `
+            <div class="ru-badge">
+              <span>U${arch.uStart}</span>
+              <span style="font-size:8px; opacity:0.6;">U${arch.uStart - arch.uHeight + 1}</span>
+            </div>
+            <div class="ru-info">
+              <div class="ru-name">${arch.name}</div>
+              <div class="ru-meta">
+                <span class="type-pill ${arch.badgeClass}">${arch.uHeight}U</span>
+                <span>${arch.wattage}W</span>
+              </div>
+            </div>
+          `;
+          rackList.appendChild(item);
+        } else if (blank && u === blank.uStart) {
+          const item = document.createElement("div");
+          item.className = "rack-unit-item empty";
+          item.innerHTML = `
+            <div class="ru-badge"><span>U${blank.uStart}</span></div>
+            <div class="ru-info">
+              <div class="ru-name" style="color:#64748b;">${blank.label}</div>
+              <div class="ru-meta"><span class="type-pill pill-blank">${blank.uHeight}U FILLER</span></div>
+            </div>
+          `;
+          rackList.appendChild(item);
+        }
+      }
+    }
+
+    function updateServerInfoPanel(arch) {
+      document.getElementById("hero-name").textContent = arch.name;
+      document.getElementById("hero-sub").textContent = `U${arch.uStart - arch.uHeight + 1} - U${arch.uStart} • ${arch.uHeight}U ${arch.type.toUpperCase()}`;
+      document.getElementById("hero-rationale").textContent = arch.rationale;
+
+      const specsContainer = document.getElementById("hero-specs");
+      specsContainer.innerHTML = "";
+      for (const [key, val] of Object.entries(arch.specs)) {
+        const card = document.createElement("div");
+        card.className = "spec-card";
+        card.innerHTML = `
+          <div class="spec-label">${key}</div>
+          <div class="spec-val">${val}</div>
+        `;
+        specsContainer.appendChild(card);
+      }
+
+      // Update Top slice counter
+      const idx = ARCHETYPES.findIndex(a => a.id === arch.id);
+      document.getElementById("slice-counter-text").textContent = `SERVER 0${idx + 1} / 0${ARCHETYPES.length}`;
+      document.getElementById("slice-counter-name").textContent = arch.name.toUpperCase();
+    }
+
+    function updateCameraPresetsUI() {
+      const bar = document.getElementById("cam-presets-container");
+      bar.innerHTML = "";
+
+      if (state.mode === "rack") {
+        const rackPresets = [
+          { label: "FULL RACK FRONT", pos: [0, 9.5, 25], target: [0, 9.5, 0] },
+          { label: "FULL RACK 3/4",   pos: [16, 12, 22], target: [0, 9.5, 0] },
+          { label: "FULL RACK SIDE",  pos: [25, 9.5, 0], target: [0, 9.5, 0] },
+          { label: "FULL RACK REAR",  pos: [0, 9.5, -25], target: [0, 9.5, 0] }
+        ];
+        rackPresets.forEach(preset => {
+          const btn = document.createElement("button");
+          btn.className = "btn-cam";
+          btn.textContent = preset.label;
+          btn.onclick = () => tweenCamera(preset.pos, preset.target);
+          bar.appendChild(btn);
+        });
+      } else {
+        const slicePresets = [
+          { label: "WHOLE SLICE",           pos: [0, 8.5, 9.5],    target: [0, 3.5, 0] },
+          { label: "TOP DOWN",              pos: [0, 14.0, 0.05],  target: [0, 3.5, 0] },
+          { label: "3/4 ENGINEERING VIEW",  pos: [8.5, 8.0, 8.5],  target: [0, 3.5, 0] },
+          { label: "FRONT INTERNALS",       pos: [0, 6.0, -7.0],   target: [0, 3.5, -2.5] },
+          { label: "REAR INTERNALS",        pos: [0, 6.0, 7.5],    target: [0, 3.5, 2.5] },
+          { label: "CPU + MEMORY",          pos: [2.5, 6.5, 2.0],  target: [0, 3.5, 0.2] },
+          { label: "GPU AREA",              pos: [0, 7.0, 4.5],    target: [0, 3.5, 1.8] },
+          { label: "STORAGE AREA",          pos: [-3.5, 5.8, -4.5], target: [0, 3.5, -2.8] }
+        ];
+        slicePresets.forEach(preset => {
+          const btn = document.createElement("button");
+          btn.className = "btn-cam";
+          btn.textContent = preset.label;
+          btn.onclick = () => tweenCamera(preset.pos, preset.target);
+          bar.appendChild(btn);
+        });
+      }
+    }
+
+    // Smooth Camera Transition Helper
+    let cameraTween = null;
+    function tweenCamera(destPos, destTarget, duration = 1200) {
+      const startPos = camera.position.clone();
+      const startTarget = controls.target.clone();
+      const startTime = performance.now();
+
+      cameraTween = {
+        update: (now) => {
+          const elapsed = now - startTime;
+          const t = Math.min(1.0, elapsed / duration);
+          // Smooth easeInOutCubic
+          const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+          camera.position.lerpVectors(startPos, new THREE.Vector3(...destPos), ease);
+          controls.target.lerpVectors(startTarget, new THREE.Vector3(...destTarget), ease);
+
+          if (t >= 1.0) {
+            cameraTween = null;
+          }
+        }
+      };
+    }
+
+    // --- Mode Transitions ---
+    function setViewMode(mode) {
+      if (state.mode === mode) return;
+      state.mode = mode;
+
+      document.getElementById("btn-mode-rack").classList.toggle("active", mode === "rack");
+      document.getElementById("btn-mode-slice").classList.toggle("active", mode === "slice");
+      document.getElementById("lbl-mode").textContent = mode === "rack" ? "FULL RACK (42U)" : "ISOLATED SLICE INSPECTION";
+      document.getElementById("slice-nav").style.display = mode === "slice" ? "flex" : "none";
+
+      updateCameraPresetsUI();
+
+      if (mode === "slice") {
+        enterSliceModeAnimation();
+      } else {
+        exitSliceModeAnimation();
+      }
+    }
+
+    function enterSliceModeAnimation() {
+      // Find selected server node in rack
+      const node = rackServerNodes.find(n => n.arch.id === state.selectedServer.id);
+
+      // Slide server out of rack by 70% of depth
+      const slideOutZ = node.defaultZ - 5.5;
+      const startZ = node.group.position.z;
+
+      let slideStart = performance.now();
+      const slideAnim = () => {
+        const elapsed = performance.now() - slideStart;
+        const t = Math.min(1.0, elapsed / 800);
+        node.group.position.z = THREE.MathUtils.lerp(startZ, slideOutZ, t);
+
+        if (t < 1.0) {
+          requestAnimationFrame(slideAnim);
+        } else {
+          // Fade/Hide rack and show detailed slice
+          rackGroup.visible = false;
+          sliceGroup.visible = true;
+          buildHighDetailSlice(state.selectedServer);
+
+          // Focus camera on isolated slice (engineering CAD angle)
+          tweenCamera([7.5, 8.0, 7.5], [0, 3.5, 0], 1000);
+        }
+      };
+      requestAnimationFrame(slideAnim);
+    }
+
+    function exitSliceModeAnimation() {
+      // Reset slice animations
+      resetSliceState();
+      sliceGroup.visible = false;
+      rackGroup.visible = true;
+
+      // Slide server back into rails
+      const node = rackServerNodes.find(n => n.arch.id === state.selectedServer.id);
+      node.group.position.z = node.defaultZ;
+
+      tweenCamera([14, 12, 19], [0, 9.5, 0], 1200);
+    }
+
+    function selectServer(arch) {
+      state.selectedServer = arch;
+      state.selectedServerIndex = ARCHETYPES.findIndex(a => a.id === arch.id);
+      populateRackElevationUI();
+      updateServerInfoPanel(arch);
+
+      if (state.mode === "slice") {
+        buildHighDetailSlice(arch);
+        if (state.showAirflow) setupAirflowVisualization();
+        if (state.showPower) setupPowerPathVisualization();
+        if (state.showData) setupDataPathVisualization();
+      }
+    }
+
+    // Toggle Cover Animation (Smooth Slide & Lift)
+    function toggleCover() {
+      if (!sliceCoverMesh) return;
+      state.coverOpen = !state.coverOpen;
+      document.getElementById("lbl-cover").textContent = state.coverOpen ? "CLOSE COVER" : "OPEN COVER";
+      document.getElementById("btn-toggle-cover").classList.toggle("active", state.coverOpen);
+
+      const targetZ = state.coverOpen ? 4.5 : 0;
+      const targetY = state.coverOpen ? (state.selectedServer.uHeight * U_HEIGHT / 2 + 1.5) : (state.selectedServer.uHeight * U_HEIGHT / 2 + 0.02);
+
+      const startZ = sliceCoverMesh.position.z;
+      const startY = sliceCoverMesh.position.y;
+      const startTime = performance.now();
+
+      const anim = () => {
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(1.0, elapsed / 600);
+        sliceCoverMesh.position.z = THREE.MathUtils.lerp(startZ, targetZ, t);
+        sliceCoverMesh.position.y = THREE.MathUtils.lerp(startY, targetY, t);
+
+        if (t < 1.0) requestAnimationFrame(anim);
+      };
+      requestAnimationFrame(anim);
+    }
+
+    // Toggle Chassis Cutaway
+    function toggleCutaway() {
+      state.cutaway = !state.cutaway;
+      document.getElementById("btn-toggle-cutaway").classList.toggle("active", state.cutaway);
+
+      if (sliceChassisBodyMesh) {
+        sliceChassisBodyMesh.material.transparent = state.cutaway;
+        sliceChassisBodyMesh.material.opacity = state.cutaway ? 0.22 : 1.0;
+        sliceChassisBodyMesh.material.wireframe = false;
+        sliceChassisBodyMesh.material.needsUpdate = true;
+      }
+    }
+
+    // Toggle Exploded View
+    function toggleExploded() {
+      state.exploded = !state.exploded;
+      document.getElementById("btn-toggle-explode").classList.toggle("active", state.exploded);
+
+      const targetProgress = state.exploded ? 1.0 : 0.0;
+      const startProgress = state.explodeProgress;
+      const startTime = performance.now();
+
+      const anim = () => {
+        const elapsed = performance.now() - startTime;
+        const t = Math.min(1.0, elapsed / 800);
+        state.explodeProgress = THREE.MathUtils.lerp(startProgress, targetProgress, t);
+
+        // Displace major modular layers
+        if (sliceCoverMesh) sliceCoverMesh.position.y = (state.selectedServer.uHeight * U_HEIGHT / 2 + 0.02) + state.explodeProgress * 2.8;
+        if (sliceAirBaffleMesh) sliceAirBaffleMesh.position.y = 0.6 + state.explodeProgress * 1.8;
+        if (sliceFanWallMesh) sliceFanWallMesh.position.z = -1.2 - state.explodeProgress * 1.2;
+        if (sliceGpuAssembly) sliceGpuAssembly.position.y = 0.25 + state.explodeProgress * 1.2;
+
+        if (t < 1.0) requestAnimationFrame(anim);
+      };
+      requestAnimationFrame(anim);
+    }
+
+    function resetSliceState() {
+      state.coverOpen = false;
+      state.cutaway = false;
+      state.exploded = false;
+      state.showAirflow = false;
+      state.showPower = false;
+      state.showData = false;
+      state.explodeProgress = 0;
+
+      document.getElementById("lbl-cover").textContent = "OPEN COVER";
+      document.getElementById("btn-toggle-cover").classList.remove("active");
+      document.getElementById("btn-toggle-cutaway").classList.remove("active");
+      document.getElementById("btn-toggle-explode").classList.remove("active");
+      document.getElementById("btn-toggle-airflow").classList.remove("active");
+      document.getElementById("btn-toggle-power").classList.remove("active");
+      document.getElementById("btn-toggle-data").classList.remove("active");
+
+      airflowGroup.visible = false;
+      powerPathGroup.visible = false;
+      dataPathGroup.visible = false;
+
+      // Clear failures
+      for (const k in state.failures) state.failures[k] = false;
+      document.querySelectorAll(".btn-fail").forEach(b => b.classList.remove("active"));
+      document.getElementById("failure-alert").style.display = "none";
+    }
+
+    // --- Failure Simulation Triggers ---
+    function triggerFailure(type) {
+      state.failures[type] = !state.failures[type];
+      const btn = document.getElementById(`fail-${type}`);
+      btn.classList.toggle("active", state.failures[type]);
+
+      const alertBox = document.getElementById("failure-alert");
+      const alertMsg = document.getElementById("failure-msg");
+
+      if (state.failures[type]) {
+        alertBox.style.display = "flex";
+        if (type === "fan") {
+          alertMsg.textContent = "CRITICAL: Fan Module #03 RPM below threshold (0 RPM). Adjacent fan modules boosted to 18,500 RPM for emergency CFM compensation.";
+        } else if (type === "psu") {
+          alertMsg.textContent = "WARNING: Power Supply A feed lost. Redundant PSU B has assumed 100% load. Dual-feed reliability compromised.";
+        } else if (type === "drive") {
+          alertMsg.textContent = "ALERT: Drive Slot 04 reported unrecoverable read errors. Hot-spare parity rebuild initialized.";
+        } else if (type === "gpu") {
+          alertMsg.textContent = "THERMAL THROTTLE: GPU #02 die temperature reached 88°C. Core clocks dropped to 1100 MHz.";
+        } else if (type === "nic") {
+          alertMsg.textContent = "NETWORK DEGRADED: Primary 100G RoCEv2 link down. Traffic failed over to secondary QSFP28 port.";
+        }
+      } else {
+        alertBox.style.display = "none";
+      }
+
+      // Re-render slice details to show red/amber LED states
+      if (state.mode === "slice") {
+        buildHighDetailSlice(state.selectedServer);
+      }
+    }
+
+    // --- Telemetry Simulation Tick ---
+    function updateTelemetrySimulation() {
+      // Nominal values with slight organic drift
+      let cpu1 = 58 + Math.sin(Date.now() * 0.001) * 3;
+      let cpu2 = 60 + Math.cos(Date.now() * 0.0012) * 3;
+      let gpu = 68 + Math.sin(Date.now() * 0.0008) * 4;
+      let fans = 11200 + Math.floor(Math.sin(Date.now() * 0.002) * 300);
+      let pwr = state.selectedServer.wattage / 1000;
+
+      // Apply failure penalties
+      if (state.failures.fan) {
+        cpu1 += 14;
+        cpu2 += 12;
+        fans = 18500;
+      }
+      if (state.failures.gpu) {
+        gpu = 88;
+        fans = 18500;
+      }
+      if (state.failures.psu) {
+        pwr *= 0.95;
+      }
+
+      // Update DOM
+      document.getElementById("g-cpu1-txt").textContent = `${Math.round(cpu1)}°C`;
+      document.getElementById("g-cpu1-val").textContent = `${Math.round(cpu1)}°C`;
+      document.getElementById("g-cpu1-bar").style.width = `${Math.min(100, cpu1)}%`;
+      document.getElementById("g-cpu1-bar").style.background = cpu1 > 75 ? "#ef4444" : "#38bdf8";
+
+      document.getElementById("g-cpu2-txt").textContent = `${Math.round(cpu2)}°C`;
+      document.getElementById("g-cpu2-val").textContent = `${Math.round(cpu2)}°C`;
+      document.getElementById("g-cpu2-bar").style.width = `${Math.min(100, cpu2)}%`;
+      document.getElementById("g-cpu2-bar").style.background = cpu2 > 75 ? "#ef4444" : "#38bdf8";
+
+      document.getElementById("g-gpu-txt").textContent = `${Math.round(gpu)}°C`;
+      document.getElementById("g-gpu-val").textContent = `${Math.round(gpu)}°C`;
+      document.getElementById("g-gpu-bar").style.width = `${Math.min(100, gpu)}%`;
+
+      document.getElementById("g-fan-txt").textContent = `${fans.toLocaleString()} RPM`;
+      document.getElementById("g-fan-val").textContent = `${(fans / 1000).toFixed(1)}k`;
+      document.getElementById("g-fan-bar").style.width = `${Math.min(100, (fans / 20000) * 100)}%`;
+
+      document.getElementById("g-pwr-txt").textContent = `${pwr.toFixed(1)} kW`;
+    }
+
+    // --- Interactive Raycasting & Tooltips ---
+    const tooltip = document.getElementById("hover-tooltip");
+
+    function setupRaycasting() {
+      window.addEventListener("mousemove", (e) => {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        if (state.mode === "rack") {
+          const intersects = raycaster.intersectObjects(interactiveRackMeshes);
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            const arch = hit.userData.archetype;
+            tooltip.style.display = "block";
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
+            tooltip.innerHTML = `<strong>${arch.name}</strong> (${arch.uHeight}U)<br><span style="color:#94a3b8;">Click to inspect hardware</span>`;
+            document.body.style.cursor = "pointer";
+          } else {
+            tooltip.style.display = "none";
+            document.body.style.cursor = "default";
+          }
+        } else {
+          // Slice Mode Component Raycasting
+          const intersects = raycaster.intersectObjects(interactiveSliceMeshes);
+          if (intersects.length > 0) {
+            const hit = intersects[0].object;
+            tooltip.style.display = "block";
+            tooltip.style.left = `${e.clientX}px`;
+            tooltip.style.top = `${e.clientY}px`;
+            tooltip.innerHTML = `<strong>${hit.userData.label || 'Hardware Component'}</strong>`;
+            document.body.style.cursor = "pointer";
+          } else {
+            tooltip.style.display = "none";
+            document.body.style.cursor = "default";
+          }
+        }
+      });
+
+      window.addEventListener("click", (e) => {
+        // Disregard clicks on UI panels
+        if (e.target.closest(".left-sidebar") || e.target.closest(".right-sidebar") || e.target.closest("footer") || e.target.closest("header") || e.target.closest(".modal-card")) return;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        if (state.mode === "rack") {
+          const intersects = raycaster.intersectObjects(interactiveRackMeshes);
+          if (intersects.length > 0) {
+            const arch = intersects[0].object.userData.archetype;
+            selectServer(arch);
+          }
+        } else {
+          const intersects = raycaster.intersectObjects(interactiveSliceMeshes);
+          if (intersects.length > 0) {
+            const comp = intersects[0].object.userData;
+            inspectComponent(comp);
+          }
+        }
+      });
+    }
+
+    function inspectComponent(comp) {
+      const type = comp.componentType;
+      const details = COMPONENT_DB[type] || {
+        name: comp.label || "System Component",
+        role: "Modular hardware component",
+        cooling: "Chassis guided forced airflow",
+        serviceability: "Field Replaceable Unit (FRU)"
+      };
+
+      document.getElementById("ci-name").textContent = details.name;
+      document.getElementById("ci-sub").textContent = comp.label || details.role;
+
+      const container = document.getElementById("ci-details");
+      container.innerHTML = "";
+      for (const [key, val] of Object.entries(details)) {
+        if (key === "name" || key === "role") continue;
+        const row = document.createElement("div");
+        row.className = "comp-detail-row";
+        row.innerHTML = `
+          <span>${key.toUpperCase()}:</span>
+          <span>${val}</span>
+        `;
+        container.appendChild(row);
+      }
+    }
+
+    // --- Wire Up Button Handlers ---
+    function initEventHandlers() {
+      // Mode switches
+      document.getElementById("btn-mode-rack").onclick = () => setViewMode("rack");
+      document.getElementById("btn-mode-slice").onclick = () => setViewMode("slice");
+
+      // Slice Tools
+      document.getElementById("btn-toggle-cover").onclick = toggleCover;
+      document.getElementById("btn-toggle-cutaway").onclick = toggleCutaway;
+      document.getElementById("btn-toggle-explode").onclick = toggleExploded;
+
+      // Slice Switcher
+      document.getElementById("btn-prev-slice").onclick = () => {
+        let nextIdx = (state.selectedServerIndex - 1 + ARCHETYPES.length) % ARCHETYPES.length;
+        selectServer(ARCHETYPES[nextIdx]);
+      };
+      document.getElementById("btn-next-slice").onclick = () => {
+        let nextIdx = (state.selectedServerIndex + 1) % ARCHETYPES.length;
+        selectServer(ARCHETYPES[nextIdx]);
+      };
+
+      // Visualizations
+      document.getElementById("btn-toggle-airflow").onclick = () => {
+        state.showAirflow = !state.showAirflow;
+        document.getElementById("btn-toggle-airflow").classList.toggle("active", state.showAirflow);
+        airflowGroup.visible = state.showAirflow;
+        if (state.showAirflow) setupAirflowVisualization();
+      };
+
+      document.getElementById("btn-toggle-power").onclick = () => {
+        state.showPower = !state.showPower;
+        document.getElementById("btn-toggle-power").classList.toggle("active", state.showPower);
+        powerPathGroup.visible = state.showPower;
+        if (state.showPower) setupPowerPathVisualization();
+      };
+
+      document.getElementById("btn-toggle-data").onclick = () => {
+        state.showData = !state.showData;
+        document.getElementById("btn-toggle-data").classList.toggle("active", state.showData);
+        dataPathGroup.visible = state.showData;
+        if (state.showData) setupDataPathVisualization();
+      };
+
+      // Failure simulation buttons
+      document.getElementById("fail-fan").onclick = () => triggerFailure("fan");
+      document.getElementById("fail-psu").onclick = () => triggerFailure("psu");
+      document.getElementById("fail-drive").onclick = () => triggerFailure("drive");
+      document.getElementById("fail-gpu").onclick = () => triggerFailure("gpu");
+      document.getElementById("fail-nic").onclick = () => triggerFailure("nic");
+
+      // Comparison Modal
+      const modal = document.getElementById("compare-modal");
+      document.getElementById("btn-open-compare").onclick = () => modal.style.display = "flex";
+      document.getElementById("btn-close-compare").onclick = () => modal.style.display = "none";
+      modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+
+      // Master Reset
+      document.getElementById("btn-reset").onclick = () => {
+        resetSliceState();
+        setViewMode("rack");
+      };
+
+      // Window resize
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+
+    // --- Main Render Loop & Performance Counter ---
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = clock.getDelta();
+      const now = performance.now();
+
+      // Camera tweens
+      if (cameraTween) {
+        cameraTween.update(now);
+      }
+
+      controls.update();
+
+      // Rotating fan rotors in Slice mode
+      if (state.mode === "slice" && sliceFanWallMesh) {
+        sliceFanWallMesh.traverse(child => {
+          if (child.userData && child.userData.isRotor) {
+            // If stalled by failure, stop rotating
+            if (state.failures.fan && child.userData.fanIndex === 2) return;
+            child.rotation.z += 0.35;
+          }
+        });
+      }
+
+      // Visualizations update
+      updateAirflowVisualization(delta);
+      updateDataPathVisualization();
+
+      // Telemetry update (every 500ms)
+      if (frameCount % 30 === 0) {
+        updateTelemetrySimulation();
+      }
+
+      // Render
+      renderer.render(scene, camera);
+
+      // Performance Monitor Counter
+      frameCount++;
+      if (now - lastFpsTime >= 1000) {
+        document.getElementById("val-fps").textContent = frameCount;
+        document.getElementById("val-draws").textContent = renderer.info.render.calls;
+        document.getElementById("val-polys").textContent = (renderer.info.render.triangles).toLocaleString();
+        frameCount = 0;
+        lastFpsTime = now;
+      }
+    }
+
+    // --- Initialization Entry Point ---
+    function init() {
+      build42URack();
+      populateRackServers();
+      populateRackElevationUI();
+      updateServerInfoPanel(state.selectedServer);
+      updateCameraPresetsUI();
+      setupRaycasting();
+      initEventHandlers();
+      animate();
+    }
+
+    init();
+  </script>
+</body>
+</html>
