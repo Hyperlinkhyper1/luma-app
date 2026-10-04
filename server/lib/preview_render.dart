@@ -201,7 +201,18 @@ class PreviewRenderService {
 
   /// Checks an on-demand repair in an isolated override directory. It cannot
   /// replace a live scene or its banner until the candidate renders.
-  Future<String?> validateRepair(String id, List<int> bytes) async {
+  Future<String?> validateRepair(String id, List<int> bytes) {
+    final result = _validations.then((_) => _validateRepairNow(id, bytes));
+    _validations = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
+
+  /// Candidate renders take turns. Repairs run side by side, but each
+  /// candidate launches a browser on the one GPU, and renders that share it
+  /// time out on slow-loading scenes that render fine alone.
+  static Future<void> _validations = Future<void>.value();
+
+  Future<String?> _validateRepairNow(String id, List<int> bytes) async {
     final parent = await Directory('$dataDir/benchmark_repair_checks')
         .create(recursive: true);
     final scratch = await parent.createTemp('candidate_');

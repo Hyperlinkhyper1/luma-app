@@ -60,6 +60,11 @@ bool completeRepairPrice(AiPrice? price) =>
     price.input! >= 0 &&
     price.output! >= 0;
 
+/// The most output a repair may ask for, however much the limit would buy.
+/// Reasoning counts against it, and a model that thinks first needs room to
+/// think and still answer; the price limit stays the real bound.
+const kRepairMaxOutputTokens = 32768;
+
 /// Conservative input bound: one token per UTF-8 byte plus message overhead.
 /// Output includes reasoning and is capped at the provider request boundary.
 int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd) {
@@ -72,8 +77,10 @@ int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd) {
   final remaining = maxCostUsd - inputCost;
   if (remaining <= 0) throw ArgumentError('Input exceeds the price guard.');
   final output = price.output == 0
-      ? 8192
-      : (remaining * 1000000 / price.output!).floor().clamp(0, 8192);
+      ? kRepairMaxOutputTokens
+      : (remaining * 1000000 / price.output!)
+          .floor()
+          .clamp(0, kRepairMaxOutputTokens);
   if (output < 512) {
     throw ArgumentError('The price guard leaves too few output tokens.');
   }
@@ -90,7 +97,36 @@ No tools or other files are available. Return only a JSON object of this shape:
 {"edits":[{"before":"exact unique source substring","after":"corrected substring"}]}
 Use at most 12 small edits. Each before must match exactly once in the original.
 If the error cannot be fixed in this HTML, return {"edits":[]}.
+Think briefly: find the cause, then answer with the JSON as soon as you have
+the fix. Copy each before exactly as it appears in the source.
 ''';
+
+/// Where [before] sits in [source]. It must match exactly once; when it
+/// matches nowhere, a match that differs only in whitespace (line endings,
+/// indentation, a run of spaces) is accepted if that is just as unique, since
+/// models routinely retype those slightly differently.
+({int start, int end}) _locateEdit(String source, String before) {
+  final exact = source.indexOf(before);
+  if (exact >= 0) {
+    if (source.indexOf(before, exact + 1) >= 0) {
+      throw const FormatException(
+          'An edit matches more than one place in the source.');
+    }
+    return (start: exact, end: exact + before.length);
+  }
+  final loose = RegExp(before.splitMapJoin(RegExp(r'\s+'),
+      onMatch: (_) => r'\s+', onNonMatch: RegExp.escape));
+  final found = loose.allMatches(source).take(2).toList();
+  if (found.isEmpty) {
+    throw const FormatException(
+        'An edit\'s "before" text was not found in the source.');
+  }
+  if (found.length > 1) {
+    throw const FormatException(
+        'An edit matches more than one place in the source.');
+  }
+  return (start: found.first.start, end: found.first.end);
+}
 
 /// Exact patches prevent a reply from replacing an entire contestant.
 String applyBenchmarkRepair(String source, String reply) {
@@ -118,12 +154,9 @@ String applyBenchmarkRepair(String source, String reply) {
         after.length > 12000) {
       throw const FormatException('Repair edits must be small exact changes.');
     }
-    final start = source.indexOf(before);
-    if (start < 0 || source.indexOf(before, start + 1) >= 0) {
-      throw const FormatException('An edit does not match uniquely.');
-    }
-    spans.add((start: start, end: start + before.length, after: after));
-    changed += before.length;
+    final at = _locateEdit(source, before);
+    spans.add((start: at.start, end: at.end, after: after));
+    changed += at.end - at.start;
   }
   if (changed >= source.length ||
       changed > (source.length * .25).clamp(4000, 24000)) {

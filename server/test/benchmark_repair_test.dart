@@ -84,12 +84,85 @@ void main() {
             })),
         throwsFormatException);
   });
+  test('an edit that differs only in whitespace still lands, once', () {
+    const source =
+        '<script>\r\n  function go() {\r\n    broken();\r\n  }\r\n</script>';
+    String fixed(String before) => applyBenchmarkRepair(
+        source,
+        jsonEncode({
+          'edits': [
+            {'before': before, 'after': 'fixed();'}
+          ]
+        }));
+    expect(fixed('broken();'), contains('fixed();'));
+    expect(fixed('function go() {\n    broken();\n  }'),
+        '<script>\r\n  fixed();\r\n</script>');
+    expect(() => fixed('function stop() {\n broken();'), throwsFormatException);
+    expect(
+        () => applyBenchmarkRepair(
+            '<p>a  b</p><p>a b</p>',
+            jsonEncode({
+              'edits': [
+                {'before': 'a\nb', 'after': 'c'}
+              ]
+            })),
+        throwsFormatException);
+  });
+
+  test('candidate renders take turns instead of sharing the GPU', () async {
+    final dir = await Directory.systemTemp.createTemp('repair_render_turns');
+    try {
+      final store = await AiBenchmarkStore.open(dir.path);
+      for (final id in ['pagoda_one', 'pagoda_two', 'pagoda_three']) {
+        await store.saveUpload(
+            kind: 'pagoda',
+            id: id,
+            model: id,
+            vendor: '',
+            description: '',
+            bytes: utf8.encode(original));
+      }
+      var active = 0;
+      var most = 0;
+      final service = PreviewRenderService(
+          dataDir: dir.path,
+          fileExists: (_) async => true,
+          runProcess: (_, __) async => ProcessResult(1, 0, 'v20', ''),
+          startProcess: (_, args) async {
+            final id = args[args.indexOf('--ids') + 1];
+            active++;
+            most = active > most ? active : most;
+            final process = FakeRenderProcess();
+            unawaited(Future<void>.delayed(const Duration(milliseconds: 60),
+                () async {
+              process.line('START $id');
+              process.line('OK   $id');
+              active--;
+              await process.exit(0);
+            }));
+            return process;
+          });
+      final bytes = utf8.encode(original.replaceFirst('broken()', 'fixed()'));
+      final results = await Future.wait([
+        for (final id in ['pagoda_one', 'pagoda_two', 'pagoda_three'])
+          service.validateRepair(id, bytes),
+      ]);
+      expect(results, everyElement(isNull));
+      expect(most, 1);
+    } finally {
+      await dir.delete(recursive: true);
+    }
+  });
+
   test('price guard handles unknown, free and expensive prices', () {
     expect(() => repairOutputLimit('source', const AiPrice(null, 1), .25),
         throwsArgumentError);
     expect(() => repairOutputLimit('source', const AiPrice(100, 100), .001),
         throwsArgumentError);
-    expect(repairOutputLimit('source', const AiPrice(0, 0), .001), 8192);
+    expect(repairOutputLimit('source', const AiPrice(0, 0), .001),
+        kRepairMaxOutputTokens);
+    expect(repairOutputLimit('source', const AiPrice(1, 2), .25),
+        kRepairMaxOutputTokens);
     final tokens = repairOutputLimit('source', const AiPrice(1, 100), .1);
     expect(tokens, lessThan(1000));
     expect((4102 + tokens * 100) / 1000000, lessThanOrEqualTo(.1));
@@ -180,6 +253,7 @@ void main() {
     late AiPrice? price;
     late int calls;
     late bool failCall;
+    late String finish;
     late Map<String, dynamic> sent;
     Completer<void>? hold;
 
@@ -243,6 +317,7 @@ void main() {
       price = const AiPrice(1, 2);
       calls = 0;
       failCall = false;
+      finish = 'stop';
       hold = null;
       api = Api(
           accounts,
@@ -294,7 +369,7 @@ void main() {
                   'choices': [
                     {
                       'delta': {'content': reply},
-                      'finish_reason': 'stop'
+                      'finish_reason': finish
                     }
                   ]
                 })}');
@@ -370,6 +445,20 @@ void main() {
       await finished();
       expect(calls, 1);
       expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
+    });
+    test('a model that runs out of tokens is told so, with the room it had',
+        () async {
+      await save();
+      finish = 'length';
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      expect(sent['max_tokens'], kRepairMaxOutputTokens);
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(job.detail, contains('ran out of its $kRepairMaxOutputTokens'));
+      expect(job.detail, isNot(contains('Bad state')));
+      expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
+          original);
     });
     test('a failed candidate keeps the live file and still records paid usage',
         () async {

@@ -360,7 +360,7 @@ async function shootKeyboard(page) {
 async function shootCruiseShip(page) {
   step(0.2, 'waiting for the ship');
   await page.waitForFunction(() => window.cruiseDebug?.ready === true || window.cruiseDebug?.error,
-    { timeout: 45000, polling: 100 });
+    { timeout: 90000, polling: 100 });
   await page.evaluate(() => {
     if (window.cruiseDebug.error) throw new Error(window.cruiseDebug.error);
     window.cruiseDebug.setView('tender');

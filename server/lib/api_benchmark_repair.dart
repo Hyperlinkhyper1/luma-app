@@ -345,9 +345,11 @@ extension BenchmarkRepairApi on Api {
         throw StateError(
             'Price guard: the provider reported a cost above the repair limit. Usage was recorded; the live test was kept.');
       }
-      if (acc.error != null || acc.finishReason == 'length' || !acc.done) {
-        throw StateError(acc.error ??
-            'The repair reply was incomplete; the live test was kept.');
+      if (acc.error != null ||
+          acc.finishReason == 'length' ||
+          !acc.done ||
+          acc.content.trim().isEmpty) {
+        throw StateError(_incompleteReason(acc, maxTokens));
       }
       final repaired = applyBenchmarkRepair(source, acc.content);
       final bytes = utf8.encode(repaired);
@@ -379,8 +381,35 @@ extension BenchmarkRepairApi on Api {
           'Minimal repair saved; original backed up. Banner: ${published['render'] ?? 'queued'}.'
           '${published['github'] == 'failed' ? ' GitHub: ${published['githubError']}' : ''}');
     } catch (e) {
-      job.finish('failed', '$e');
+      job.finish(
+          'failed',
+          switch (e) {
+            StateError(:final message) => message,
+            FormatException(:final message) =>
+              '$message The live test was kept.',
+            _ => '$e',
+          });
     }
+  }
+
+  /// Why a reply can't be used, in terms of what to change about it.
+  String _incompleteReason(ChatStreamAccumulator acc, int maxTokens) {
+    const kept = 'The live test was kept.';
+    final error = acc.error;
+    if (error != null) return '$error. $kept';
+    final thought = acc.reasoningChars > 0
+        ? ' (${acc.reasoningChars} characters went on reasoning)'
+        : '';
+    if (acc.finishReason == 'length') {
+      return 'The model ran out of its $maxTokens output tokens before it '
+          'finished$thought. $kept';
+    }
+    if (acc.content.trim().isEmpty) {
+      return 'The model returned no answer$thought'
+          '${acc.finishReason == null ? '' : ' (finish: ${acc.finishReason})'}. '
+          '$kept';
+    }
+    return 'The reply stream ended before it was complete. $kept';
   }
 
   /// Exactly one request, with no automatic retry, fallback, tools or chat history.
@@ -392,7 +421,7 @@ extension BenchmarkRepairApi on Api {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
     final deadline =
-        Timer(const Duration(minutes: 5), () => client.close(force: true));
+        Timer(const Duration(minutes: 10), () => client.close(force: true));
     try {
       final req = await client.postUrl(Uri.parse(route.upstream.endpoint));
       req.headers.set(HttpHeaders.authorizationHeader,
