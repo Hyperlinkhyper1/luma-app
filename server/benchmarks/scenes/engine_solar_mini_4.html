@@ -54,6 +54,7 @@ const bore=82;
 const cylinderOrder=[1,8,4,3,6,5,7,2]; // firing order, index 0..7
 const phaseOffset=0; // 180° advance for 360° fired
 const CamBoreOffset=220;
+const CrankOffsetRight=220;
 const blockY=-120;
 
 // ============================================================
@@ -622,8 +623,6 @@ function buildCrankshaft(){
   const throws=8;
   const radius=Math.sqrt(2)*r;
   for(let i=0;i<throws;i++){
-    const angle=Math.PI*0.5 + i*Math.PI/4 + Math.PI*0.25; // start at -z?
-    // Actually lay at 0,90,180,270...
     const angle= i*Math.PI/4 + 0.6; 
     const throwZ=Math.cos(angle)*radius;
     const throwX=Math.sin(angle)*radius;
@@ -1240,7 +1239,6 @@ particleSystem.setAttribute('color',new THREE.BufferAttribute(colArray,3));
 particleSystem.setAttribute('size',new THREE.BufferAttribute(sizes,1));
 const particleMaterial=new THREE.PointsMaterial({size:2,vertexColors:true,dtransparent:true,transparent:true,blending:THREE.AdditiveBlending});
 const particlesMesh=new THREE.Points(particleSystem,particleMaterial);
-particleSystem = particleSystem; // keep
 particlesMesh.name='particles';
 engine.add(particlesMesh);
 
