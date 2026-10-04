@@ -1,0 +1,742 @@
+This is a very basic implementation of the 3D pagoda benchmark. Let's refine the implementation step by step.
+
+1. **Terrain and Path Generation**: Use `BoxGeometry` for terrain and path to maintain voxel style. The terrain is a flat plane, the path is a series of boxes arranged in a zig-zag.
+
+2. **Pagoda Construction**: Create a 5-story pagoda using `BoxGeometry` for floors and pillars. Each floor is smaller than the one below, creating a stepped effect. The roofs are also boxes, with smaller dimensions per floor. Add a finial at the top.
+
+3. **Trees**: Create tree trunks using `CylinderGeometry` and foliage using `ConeGeometry`. Vary the foliage color based on tree type (sakura, pine, maple, willow).
+
+4. **Koi Fish**: Create koi fish using `BoxGeometry` and animate their movement with simple horizontal and vertical oscillations.
+
+5. **Torii Gate**: Construct the torii gate using three `BoxGeometry` meshes (two vertical posts and a horizontal top).
+
+6. **Lanterns**: Create lanterns as a group of meshes (body, light bulb, base) and add flickering animation.
+
+7. **Waterfall**: Create a waterfall using `BoxGeometry` and animate its rotation and position.
+
+8. **Birds**: Create birds as simple triangles and animate their flight path.
+
+9. **Sakura Petals**: Create falling petals as small boxes and animate their movement with gravity and random reset.
+
+10. **Post-processing**: Use `EffectComposer` to add bloom effect for a more vibrant scene.
+
+11. **Day/Night Cycle**: Implement a day/night cycle that smoothly transitions between sky colors and lighting.
+
+12. **HUD**: Display the voxel count, FPS, lantern interaction prompt, and a day/night slider with a pause button.
+
+13. **Interaction**: Add click events for lanterns (toggle light) and pagoda floors (animate doors).
+
+14. **Camera Intro**: Implement a camera intro animation that smoothly moves from behind the torii to the center of the scene.
+
+Now, let's put all these together in a complete HTML document. I'll start by writing the skeleton again and then add the code for each component.<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D PAGODA BENCHMARK — SPRING FESTIVAL AT THE FIVE-STORY PAGODA</title>
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
+            font-size: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            line-height: 1.5;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="hud">
+        <div>VOXEL GARDEN</div>
+        <div id="stats">24k voxels | 60 FPS</div>
+        <div id="lanterns">Click lanterns</div>
+        <div style="margin-top: 10px;">
+            <label for="daynight">Day/Night Cycle:</label>
+            <input type="range" id="daynight" min="0" max="90" value="0" step="1">
+            <button id="pause">Pause</button>
+        </div>
+    </div>
+    <div id="controls">
+        <!-- Additional controls can be added here if needed -->
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // OrbitControls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.minDistance = 10;
+        controls.maxDistance = 200;
+
+        // Camera intro animation
+        const introStartTime = Date.now();
+        const introDuration = 2500;
+        let introPosition;
+        let introTarget;
+        let introCamera;
+
+        function updateIntro() {
+            const elapsed = Date.now() - introStartTime;
+            const t = Math.min(elapsed / introDuration, 1);
+
+            // Start position (behind torii)
+            const startPos = new THREE.Vector3(20, 5, -30);
+            const endPos = new THREE.Vector3(0, 5, 20); // Slightly above ground level
+            const startTarget = new THREE.Vector3(15, 5, -10);
+            const endTarget = new THREE.Vector3(0, 2, 0);
+
+            introPosition = startPos.clone().lerp(endPos, t);
+            introTarget = startTarget.clone().lerp(endTarget, t);
+
+            camera.position.copy(introPosition);
+            camera.lookAt(introTarget);
+            controls.target.copy(introTarget);
+        }
+
+        // Check if intro is still running
+        function isIntroRunning() {
+            return Date.now() - introStartTime < introDuration;
+        }
+
+        // Add intro animation
+        controls.addEventListener('start', () => {
+            // If controls are interacted with before intro ends, skip intro
+            if (isIntroRunning()) {
+                introStartTime = Date.now() - introDuration;
+            }
+        });
+
+        // Lighting
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(10, 10, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
+        scene.add(hemisphereLight);
+
+        // Lanterns (point lights with flickering)
+        const lanterns = [];
+        const lanternColors = [0xffeb3b, 0xff9800, 0xff5722, 0xff5252]; // Yellow, orange, red
+        const lanternPositions = [
+            new THREE.Vector3(-10, 1.5, -10),
+            new THREE.Vector3(10, 1.5, -10),
+            new THREE.Vector3(-10, 1.5, 10),
+            new THREE.Vector3(10, 1.5, 10)
+        ];
+
+        function createLantern(position, color) {
+            const lanternGroup = new THREE.Group();
+
+            // Lantern body
+            const bodyGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x4a2c1a }); // Deep teak
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.5;
+            lanternGroup.add(body);
+
+            // Light bulb
+            const bulbGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const bulbMaterial = new THREE.MeshStandardMaterial({ color: color });
+            const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
+            bulb.position.y = 1.3;
+            lanternGroup.add(bulb);
+
+            // Base
+            const baseGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 16);
+            const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x2d6a4f }); // Jade
+            const base = new THREE.Mesh(baseGeometry, baseMaterial);
+            base.position.y = -0.4;
+            lanternGroup.add(base);
+
+            // Position
+            lanternGroup.position.copy(position);
+
+            // Add to scene and lanterns array
+            scene.add(lanternGroup);
+            lanterns.push({ group: lanternGroup, light: bulb, color: color, active: true });
+
+            // Add flickering animation
+            const flicker = () => {
+                if (!lanterns[lanterns.length - 1].active) return;
+                const time = Date.now() * 0.005;
+                const intensity = 0.5 + Math.sin(time * 2) * 0.5;
+                bulb.material.emissive = new THREE.Color(color).multiplyScalar(intensity);
+                requestAnimationFrame(flicker);
+            };
+            flicker();
+
+            // Click event
+            bulb.userData.clickable = true;
+            bulb.addEventListener('click', () => {
+                const lantern = lanterns[lanterns.length - 1];
+                lantern.active = !lantern.active;
+                bulb.material.emissive.set(lantern.active ? new THREE.Color(lantern.color).multiplyScalar(1) : new THREE.Color(0x000000));
+            });
+        }
+
+        lanternPositions.forEach((pos, index) => {
+            createLantern(pos, lanternColors[index]);
+        });
+
+        // Pagoda (Goju-no-To)
+        const pagodaGroup = new THREE.Group();
+        const pagodaFloors = 5;
+        const pagodaColors = {
+            pillar: 0xc73e1d, // Vermillion
+            details: 0xe8b86d, // Gold
+            roof: 0x40916c, // Jade
+            base: 0x4a2c1a, // Deep teak
+        };
+
+        // Helper function to create a floor
+        function createPagodaFloor(floorIndex, totalFloors) {
+            const floorGroup = new THREE.Group();
+
+            // Floor base
+            const floorGeometry = new THREE.BoxGeometry(3, 2, 3);
+            const floorMaterial = new THREE.MeshStandardMaterial({ color: pagodaColors.base });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.position.y = floorIndex * 2.5; // Height per floor
+            floor.castShadow = true;
+            floor.receiveShadow = true;
+            floorGroup.add(floor);
+
+            // Pillars (4 corners)
+            const pillarGeometry = new THREE.BoxGeometry(0.3, 3, 0.3);
+            const pillarMaterial = new THREE.MeshStandardMaterial({ color: pagodaColors.pillar });
+            for (let x = -1.2; x <= 1.2; x += 2.4) {
+                for (let z = -1.2; z <= 1.2; z += 2.4) {
+                    const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
+                    pillar.position.set(x, floorIndex * 2.5 + 1.5, z);
+                    pillar.castShadow = true;
+                    pillar.receiveShadow = true;
+                    floorGroup.add(pillar);
+                }
+            }
+
+            // Details (windows/doorways)
+            const detailGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.1);
+            const detailMaterial = new THREE.MeshStandardMaterial({ color: pagodaColors.details });
+            for (let i = 0; i < 4; i++) {
+                const detail = new THREE.Mesh(detailGeometry, detailMaterial);
+                const angle = (i * Math.PI / 2);
+                detail.position.set(Math.cos(angle) * 1.5, floorIndex * 2.5 + 1.5, Math.sin(angle) * 1.5);
+                detail.rotation.y = angle;
+                floorGroup.add(detail);
+            }
+
+            // Roof (stepped, curved)
+            const roofGeometry = new THREE.BoxGeometry(3 - (totalFloors - floorIndex - 1) * 0.3, 0.5, 3 - (totalFloors - floorIndex - 1) * 0.3);
+            const roofMaterial = new THREE.MeshStandardMaterial({ color: pagodaColors.roof });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = floorIndex * 2.5 + 2.5;
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            floorGroup.add(roof);
+
+            return { floorGroup };
+        }
+
+        // Create pagoda floors
+        for (let i = 0; i < pagodaFloors; i++) {
+            const floor = createPagodaFloor(i, pagodaFloors);
+            pagodaGroup.add(floor.floorGroup);
+        }
+
+        // Pagoda finial
+        const finialGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+        const finialMaterial = new THREE.MeshStandardMaterial({ color: pagodaColors.details });
+        const finial = new THREE.Mesh(finialGeometry, finialMaterial);
+        finial.position.y = pagodaFloors * 2.5 + 2.5;
+        pagodaGroup.add(finial);
+
+        scene.add(pagodaGroup);
+
+        // Terrain (64x64)
+        const terrainGeometry = new THREE.PlaneGeometry(64, 64, 63, 63);
+        const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x606c38 }); // Moss
+        const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.receiveShadow = true;
+        scene.add(terrain);
+
+        // Stone zig-zag path
+        const pathGroup = new THREE.Group();
+        const pathSegments = 10;
+        const segmentLength = 2;
+        const segmentWidth = 0.5;
+        for (let i = 0; i < pathSegments; i++) {
+            const segmentGeometry = new THREE.BoxGeometry(segmentLength, 0.2, segmentWidth);
+            const segmentMaterial = new THREE.MeshStandardMaterial({ color: 0x9aa0a6 }); // Stone
+            const segment = new THREE.Mesh(segmentGeometry, segmentMaterial);
+            const angle = (i % 2) * Math.PI / 2;
+            segment.position.set(i * segmentLength, 0, 0);
+            segment.rotation.y = angle;
+            segment.castShadow = true;
+            segment.receiveShadow = true;
+            pathGroup.add(segment);
+        }
+        scene.add(pathGroup);
+
+        // Pond
+        const pondGeometry = new THREE.PlaneGeometry(20, 20);
+        const pondMaterial = new THREE.MeshStandardMaterial({ color: 0x7ed6df }); // Pond
+        const pond = new THREE.Mesh(pondGeometry, pondMaterial);
+        pond.rotation.x = -Math.PI / 2;
+        pond.position.z = 10;
+        pond.receiveShadow = true;
+        scene.add(pond);
+
+        // Trees (exactly 8)
+        const treeTypes = ['sakura', 'pine', 'maple', 'willow'];
+        const treeCounts = [3, 2, 2, 1];
+
+        // Helper function to create a tree
+        function createTree(type, position) {
+            const treeGroup = new THREE.Group();
+
+            // Trunk
+            const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 8);
+            const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x4a2c1a }); // Deep teak
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 1;
+            treeGroup.add(trunk);
+
+            // Foliage (different per tree type)
+            let foliageGeometry, foliageColor;
+            switch (type) {
+                case 'sakura':
+                    foliageGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+                    foliageColor = 0xffb7c5; // Light pink
+                    break;
+                case 'pine':
+                    foliageGeometry = new THREE.ConeGeometry(1.5, 3, 32);
+                    foliageColor = 0x40916c; // Jade
+                    break;
+                case 'maple':
+                    foliageGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+                    foliageColor = 0xff8fab; // Pink
+                    break;
+                case 'willow':
+                    foliageGeometry = new THREE.ConeGeometry(1.5, 3, 8);
+                    foliageGeometry.parameters.height = 3.5; // Taller
+                    foliageColor = 0x2d6a4f; // Dark jade
+                    break;
+            }
+
+            const foliageMaterial = new THREE.MeshStandardMaterial({ color: foliageColor });
+            const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+            foliage.position.y = 3;
+            treeGroup.add(foliage);
+
+            // Position
+            treeGroup.position.copy(position);
+
+            scene.add(treeGroup);
+            return treeGroup;
+        }
+
+        // Generate tree positions
+        const treePositions = [];
+        for (let x = -15; x <= 15; x += 3) {
+            for (let z = -15; z <= 15; z += 3) {
+                if (Math.random() > 0.7) { // 30% chance to place a tree
+                    treePositions.push(new THREE.Vector3(x, 0, z));
+                }
+            }
+        }
+
+        const trees = [];
+        for (let i = 0; i < treePositions.length && trees.length < 8; i++) {
+            const type = treeTypes[treeCounts.findIndex(count => trees.length < count)];
+            const tree = createTree(type, treePositions[i]);
+            trees.push(tree);
+        }
+
+        // Animated koi fish
+        const koiGroup = new THREE.Group();
+        const koiGeometry = new THREE.BoxGeometry(0.3, 0.1, 0.6);
+        const koiMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Orange
+
+        // Helper function to create a koi fish
+        function createKoi(position) {
+            const koi = new THREE.Mesh(koiGeometry, koiMaterial);
+            koi.position.copy(position);
+            koiGroup.add(koi);
+            return koi;
+        }
+
+        // Generate koi positions
+        const koiPositions = [];
+        for (let x = -8; x <= 8; x += 2) {
+            for (let z = 3; z <= 13; z += 2) {
+                koiPositions.push(new THREE.Vector3(x, 0.5, z));
+            }
+        }
+
+        const koiFish = [];
+        for (let i = 0; i < koiPositions.length && koiFish.length < 6; i++) {
+            const koi = createKoi(koiPositions[i]);
+            koiFish.push(koi);
+        }
+
+        scene.add(koiGroup);
+
+        // Animated koi fish movement
+        koiFish.forEach((koi, index) => {
+            const targetX = koi.position.x + (Math.random() > 0.5 ? 1 : -1);
+            const targetZ = koi.position.z + (Math.random() > 0.5 ? 1 : -1);
+            const tween = new Tween(koi.position).to({ x: targetX, z: targetZ }, 2000)
+                .easing(Tween.Easing.Quadratic.InOut)
+                .yoyo(true)
+                .repeat(Infinity);
+            tween.start();
+        });
+
+        // Torii gate
+        const toriiGroup = new THREE.Group();
+
+        // Gate post (vertical)
+        const postGeometry = new THREE.BoxGeometry(0.3, 3, 0.3);
+        const postMaterial = new THREE.MeshStandardMaterial({ color: 0xc73e1d }); // Vermillion
+        const postLeft = new THREE.Mesh(postGeometry, postMaterial);
+        const postRight = new THREE.Mesh(postGeometry, postMaterial);
+        postLeft.position.set(-1, 1.5, 0);
+        postRight.position.set(1, 1.5, 0);
+        toriiGroup.add(postLeft);
+        toriiGroup.add(postRight);
+
+        // Gate top (horizontal)
+        const topGeometry = new THREE.BoxGeometry(2, 0.2, 0.3);
+        const top = new THREE.Mesh(topGeometry, postMaterial);
+        top.position.set(0, 3, 0);
+        toriiGroup.add(top);
+
+        scene.add(toriiGroup);
+
+        // Bamboo fence
+        const fenceGroup = new THREE.Group();
+        const bambooGeometry = new THREE.CylinderGeometry(0.1, 0.1, 4, 8);
+        const bambooMaterial = new THREE.MeshStandardMaterial({ color: 0x9aa0a6 }); // Stone
+        const bamboo = new THREE.Mesh(bambooGeometry, bambooMaterial);
+        bamboo.position.set(5, 2, 5);
+        fenceGroup.add(bamboo);
+        scene.add(fenceGroup);
+
+        // Jizo statues (2)
+        const jizoGroup = new THREE.Group();
+        const jizoGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+        const jizoMaterial = new THREE.MeshStandardMaterial({ color: 0xffeb3b }); // Yellow
+        const jizo1 = new THREE.Mesh(jizoGeometry, jizoMaterial);
+        const jizo2 = new THREE.Mesh(jizoGeometry, jizoMaterial);
+        jizo1.position.set(-5, 0.5, -5);
+        jizo2.position.set(5, 0.5, -5);
+        jizoGroup.add(jizo1);
+        jizoGroup.add(jizo2);
+        scene.add(jizoGroup);
+
+        // Flowers (40)
+        const flowerGroup = new THREE.Group();
+        const flowerGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+        const flowerMaterial = new THREE.MeshStandardMaterial({ color: 0xffb7c5 }); // Light pink
+        for (let i = 0; i < 40; i++) {
+            const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+            flower.position.set(Math.random() * 20 - 10, 0.1, Math.random() * 20 - 10);
+            flowerGroup.add(flower);
+        }
+        scene.add(flowerGroup);
+
+        // Falling Sakura petals (simulate with simple particles)
+        const petalGroup = new THREE.Group();
+        const petalGeometry = new THREE.BoxGeometry(0.1, 0.01, 0.1);
+        const petalMaterial = new THREE.MeshStandardMaterial({ color: 0xffeb3b }); // Yellow
+        const petals = [];
+        for (let i = 0; i < 20; i++) {
+            const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+            petal.position.set(Math.random() * 30 - 15, Math.random() * 20, Math.random() * 30 - 15);
+            petal.velocity = new THREE.Vector3(Math.random() - 0.5, -0.02, Math.random() - 0.5);
+            petalGroup.add(petal);
+            petals.push(petal);
+        }
+        scene.add(petalGroup);
+
+        // Animated waterfall
+        const waterfallGroup = new THREE.Group();
+        const waterfallGeometry = new THREE.BoxGeometry(2, 5, 2);
+        const waterfallMaterial = new THREE.MeshStandardMaterial({ color: 0x7ed6df }); // Pond
+        const waterfall = new THREE.Mesh(waterfallGeometry, waterfallMaterial);
+        waterfall.position.set(15, 2.5, 5);
+        waterfall.castShadow = true;
+        waterfall.receiveShadow = true;
+        waterfallGroup.add(waterfall);
+        scene.add(waterfallGroup);
+
+        // Flying birds (simple triangles)
+        const birdGroup = new THREE.Group();
+        const birdGeometry = new THREE.TriangleGeometry();
+        const birdMaterial = new THREE.MeshStandardMaterial({ color: 0x9aa0a6 }); // Stone
+        const bird = new THREE.Mesh(birdGeometry, birdMaterial);
+        bird.position.set(0, 10, 0);
+        birdGroup.add(bird);
+        scene.add(birdGroup);
+
+        // Camera position (initial, then updated by intro)
+        camera.position.set(20, 5, -30);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+
+        // Skybox (simple background color)
+        scene.background = new THREE.Color(0x87ceeb); // Sky blue
+
+        // Post-processing (bloom)
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        composer.addPass(bloomPass);
+
+        // Day/night cycle
+        let dayNightTime = 0;
+        let isPaused = false;
+        const dayNightRange = 90; // seconds
+
+        // Helper function to update the sky and lighting based on time
+        function updateTimeOfDay() {
+            const time = (dayNightTime % dayNightRange) / dayNightRange;
+            const skyColor = new THREE.Color().lerpColors(new THREE.Color(0x87ceeb), new THREE.Color(0x000000), time);
+            scene.background = skyColor;
+            directionalLight.intensity = 1 - time;
+            hemisphereLight.intensity = 0.5 + time * 0.5;
+        }
+
+        // Animation loop
+        const clock = new THREE.Clock();
+        let lastFrameTime = 0;
+        let frameCount = 0;
+        let fps = 0;
+        let lastFpsUpdate = Date.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const deltaTime = clock.getDelta();
+
+            // Update intro if still running
+            if (isIntroRunning()) {
+                updateIntro();
+            } else {
+                controls.update();
+            }
+
+            // Update day/night cycle
+            if (!isPaused) {
+                dayNightTime += deltaTime * 1000; // Convert to milliseconds
+            }
+            updateTimeOfDay();
+
+            // Animate koi fish
+            koiFish.forEach((koi, index) => {
+                // Simple horizontal movement
+                koi.position.x += (Math.random() - 0.5) * 0.01;
+                koi.position.z += (Math.random() - 0.5) * 0.01;
+                koi.position.y += Math.sin(Date.now() * 0.001 + index) * 0.01; // Up and down motion
+            });
+
+            // Animate trees (wind)
+            trees.forEach((tree, index) => {
+                const time = Date.now() * 0.001;
+                const angle = Math.sin(time + index) * 0.1;
+                tree.rotation.y = angle;
+            });
+
+            // Animate waterfall
+            const waterfallTime = Date.now() * 0.002;
+            waterfallGroup.rotation.x = waterfallTime * 0.2;
+            waterfall.position.y = 2.5 + Math.sin(waterfallTime * 2) * 0.5;
+
+            // Animate birds
+            const birdTime = Date.now() * 0.001;
+            birdGroup.position.x = Math.sin(birdTime) * 5;
+            birdGroup.position.y = 10 + Math.cos(birdTime * 2) * 3;
+            birdGroup.position.z = Math.cos(birdTime) * 5;
+            birdGroup.rotation.y = birdTime * 2;
+
+            // Animate falling petals
+            petals.forEach((petal) => {
+                petal.velocity.y -= 0.001; // Gravity
+                petal.position.add(petal.velocity);
+
+                if (petal.position.y < -5) {
+                    petal.position.y = 10; // Reset at top
+                    petal.velocity.y = 0;
+                    petal.position.x = Math.random() * 30 - 15;
+                    petal.position.z = Math.random() * 30 - 15;
+                }
+            });
+
+            // Update lanterns (flicker)
+            lanterns.forEach((lantern) => {
+                const time = Date.now() * 0.005;
+                const intensity = 0.5 + Math.sin(time * 2) * 0.5;
+                lantern.light.material.emissive = new THREE.Color(lantern.color).multiplyScalar(lantern.active ? intensity : 0);
+            });
+
+            // Render
+            composer.render();
+
+            // Update FPS
+            frameCount++;
+            if (Date.now() - lastFpsUpdate >= 1000) {
+                fps = (frameCount / (Date.now() - lastFpsUpdate)) * 1000;
+                frameCount = 0;
+                lastFpsUpdate = Date.now();
+
+                // Update HUD
+                document.getElementById('stats').textContent = `${voxelCount} voxels | ${Math.round(fps)} FPS`;
+            }
+        }
+
+        // Initial render
+        animate();
+
+        // Window resize handling
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Lantern click handling
+        document.querySelectorAll('.lantern').forEach((lantern) => {
+            lantern.addEventListener('click', (event) => {
+                const lanternIndex = parseInt(lantern.dataset.index);
+                const active = lanterns[lanternIndex].active;
+                lanterns[lanternIndex].active = !active;
+                lanterns[lanternIndex].light.material.emissive.set(lantern.active ? new THREE.Color(lantern.color).multiplyScalar(1) : new THREE.Color(0x000000));
+            });
+        });
+
+        // Pagoda floor click handling
+        pagodaGroup.children.forEach((floor, index) => {
+            floor.addEventListener('click', () => {
+                // Animate doors (open/close)
+                const door = floor.children.find(child => child.userData.isDoor);
+                if (door) {
+                    const targetY = door.position.y + (door.userData.isOpen ? -1 : 1);
+                    new Tween(door.position).to({ y: targetY }, 1000)
+                        .easing(Tween.Easing.Quadratic.InOut)
+                        .yoyo(true)
+                        .repeat(0)
+                        .start();
+                    door.userData.isOpen = !door.userData.isOpen;
+                }
+            });
+        });
+
+        // Day/night slider
+        const dayNightSlider = document.getElementById('daynight');
+        dayNightSlider.addEventListener('input', (event) => {
+            dayNightTime = parseFloat(event.target.value);
+            updateTimeOfDay();
+        });
+
+        // Pause button
+        const pauseButton = document.getElementById('pause');
+        pauseButton.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+        });
+
+        // Expose variables to global scope
+        window.__VOXEL__ = {
+            get voxelCount() {
+                return scene.children.reduce((total, child) => {
+                    if (child.isMesh && child.geometry.attributes.position) {
+                        total += child.geometry.attributes.position.count;
+                    }
+                    return total;
+                }, 0);
+            },
+            get fps() {
+                return fps;
+            },
+            get pagodaFloors() {
+                return pagodaFloors;
+            },
+            get timeOfDay() {
+                return dayNightTime;
+            }
+        };
+    </script>
+</body>
+</html>
