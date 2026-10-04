@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERVER ARCHITECTURE LAB</title>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;500;700&family=Inter:wght@300;400;600;800&display=swap');
+
+:root {
+  --bg-deep: #060a14;
+  --bg-surface: #0b1120;
+  --bg-panel: rgba(11, 17, 32, 0.85);
+  --border-subtle: rgba(255,255,255,0.08);
+  --text-primary: #e8edf5;
+  --text-secondary: #8898aa;
+  --text-muted: #4a5568;
+  --accent: #38bdf8;
+  --accent-warm: #f59e0b;
+  --accent-green: #10b981;
+  --danger: #ef4444;
+  --font-tech: 'IBM Plex Mono', monospace;
+  --font-body: 'Inter', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#canvas-container { position: absolute; inset: 0; z-index: 1; }
+#canvas-container canvas { display: block; outline: none; }
+
+/* Glass UI Panels */
+.glass {
+  background: rgba(11, 17, 32, 0.72);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* Top Bar */
+#top-bar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 20;
+  height: 72px; padding: 0 28px;
+  display: flex; align-items: center; justify-content: space-between;
+  pointer-events: none;
+}
+#top-bar > * { pointer-events: auto; }
+
+.title-group h1 {
+  font-family: var(--font-tech); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.08em;
+  color: var(--text-primary); text-transform: uppercase;
+}
+.title-group span {
+  display: block; font-family: var(--font-body); font-size: 0.65rem; letter-spacing: 0.12em;
+  color: var(--text-muted); margin-top: 2px;
+}
+
+.metrics {
+  display: flex; gap: 24px; align-items: center;
+  font-family: var(--font-tech); font-size: 0.75rem; color: var(--text-secondary);
+}
+.metrics span { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.metrics .val { color: var(--accent); font-weight: 700; margin-left: 4px; }
+
+/* Left Panel */
+#left-panel {
+  position: absolute; top: 92px; left: 20px; z-index: 20;
+  width: 340px; padding: 22px;
+  pointer-events: auto;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+.panel-section { display: flex; flex-direction: column; gap: 8px; }
+.panel-section h3 {
+  font-family: var(--font-tech); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--text-muted); padding-bottom: 4px; border-bottom: 1px solid var(--border-subtle);
+}
+
+.info-row { display: flex; justify-content: space-between; align-items: baseline; }
+.info-row .label { font-size: 0.75rem; color: var(--text-secondary); }
+.info-row .value { font-family: var(--font-tech); font-size: 0.85rem; color: var(--text-primary); }
+.info-row .value.accent { color: var(--accent); }
+.info-row .value.warm { color: var(--accent-warm); }
+
+/* Server List */
+.server-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+.server-card {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;
+  padding: 10px 12px; cursor: pointer; transition: all 0.15s ease;
+}
+.server-card:hover { border-color: rgba(56, 189, 248, 0.3); background: rgba(56, 189, 248, 0.04); }
+.server-card.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.08); box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); }
+.server-card .sc-name { font-family: var(--font-tech); font-size: 0.8rem; font-weight: 700; color: var(--text-primary); }
+.server-card .sc-meta { font-size: 0.65rem; color: var(--text-muted); margin-top: 2px; }
+
+/* Right Panel */
+#right-panel {
+  position: absolute; top: 92px; right: 20px; z-index: 20;
+  width: 340px; padding: 22px;
+  pointer-events: auto;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+/* Component Info Card */
+.component-card {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 8px;
+  padding: 14px 16px; transition: border-color 0.2s;
+}
+.component-card h4 { font-family: var(--font-tech); font-size: 0.75rem; color: var(--text-primary); margin-bottom: 6px; }
+.component-card .specs { font-size: 0.7rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* Health Monitor */
+.health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.health-item {
+  background: rgba(255,255,255,0.02); border-radius: 6px; padding: 8px 10px; border: 1px solid var(--border-subtle);
+}
+.health-item .h-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.health-item .h-value { font-family: var(--font-tech); font-size: 0.9rem; color: var(--text-primary); margin-top: 2px; }
+.health-item .h-bar { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.health-item .h-fill { height: 100%; width: 60%; background: linear-gradient(90deg, var(--accent-green), var(--accent)); border-radius: 2px; }
+
+/* Bottom Toolbar */
+#bottom-bar {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20;
+  padding: 12px 24px; display: flex; gap: 10px; align-items: center;
+  pointer-events: auto;
+}
+
+.btn {
+  font-family: var(--font-tech); font-size: 0.7rem; letter-spacing: 0.05em;
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03);
+  color: var(--text-secondary); cursor: pointer; transition: all 0.15s ease; text-transform: uppercase; pointer-events: auto;
+}
+.btn:hover { border-color: var(--accent); color: var(--text-primary); background: rgba(56, 189, 248, 0.05); }
+.btn.active { background: var(--accent); color: #0b1120; border-color: var(--accent); font-weight: 700; box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
+.btn.danger { border-color: rgba(239, 68, 68, 0.3); color: var(--danger); }
+.btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Selection Highlight */
+.selection-ring {
+  position: absolute; border: 2px solid var(--accent); border-radius: 4px;
+  pointer-events: none; z-index: 30; box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+  transition: left 0.3s, top 0.3s, width 0.3s, height 0.3s, opacity 0.2s;
+  opacity: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- 3D Scene -->
+<div id="canvas-container"></div>
+
+<!-- Top Bar -->
+<header id="top-bar" class="glass">
+  <div class="title-group">
+    <h1>SERVER ARCHITECTURE LAB</h1>
+    <span>Enterprise Hardware Visualization &bull; Interactive Simulation</span>
+  </div>
+  <div class="metrics">
+    <div><span>FPS</span><span class="val" id="fps">60</span></div>
+    <div><span>DRAWS</span><span class="val" id="draws">--</span></div>
+    <div><span>TRIS</span><span class="val" id="tris">--</span></div>
+  </div>
+</header>
+
+<!-- Left Panel -->
+<aside id="left-panel" class="glass">
+  <div class="panel-section">
+    <h3>Rack Overview</h3>
+    <div class="info-row"><span class="label">Rack Height</span><span class="value">42U</span></div>
+    <div class="info-row"><span class="label">Standard</span><span class="value">19" EIA-310</span></div>
+    <div class="info-row"><span class="label">Depth</span><span class="value">1000 mm</span></div>
+    <div class="info-row"><span class="label">Current Mode</span><span class="value" id="mode-label">Full Rack</span></div>
+    <div class="info-row"><span class="label">Selected Server</span><span class="value accent" id="sel-server">None</span></div>
+    <div class="info-row"><span class="label">Position</span><span class="value" id="sel-pos">--</span></div>
+  </div>
+
+  <div class="panel-section">
+    <h3>Installed Servers</h3>
+    <div class="server-list" id="server-list">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>System Metrics</h3>
+    <div class="info-row"><span class="label">Rack Power</span><span class="value warm" id="rack-power">0.0 kW</span></div>
+    <div class="info-row"><span class="label">Heat Load</span><span class="value warm" id="rack-heat">0.0 kW</span></div>
+  </div>
+</aside>
+
+<!-- Right Panel -->
+<aside id="right-panel" class="glass">
+  <div class="panel-section" id="component-panel">
+    <h3>Component Details</h3>
+    <div class="component-card" id="comp-card">
+      <h4>Click a server, then select SLICE VIEW to inspect components in detail.</h4>
+      <div class="specs">Component-level inspection reveals CPU sockets, DIMM banks, PCIe risers, drive carriers, and cooling architecture.</div>
+    </div>
+  </div>
+
+  <div class="panel-section">
+    <h3>Health Monitor</h3>
+    <div class="health-grid" id="health-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <div class="panel-section" id="arch-info">
+    <h3>Architecture Note</h3>
+    <div class="specs" id="arch-text">
+      Select a server archetype to view design rationale. Each architecture balances cooling, power, and serviceability for its workload class.
+    </div>
+  </div>
+</aside>
+
+<!-- Bottom Toolbar -->
+<nav id="bottom-bar" class="glass">
+  <button class="btn active" id="btn-rack" onclick="setMode('rack')">RACK VIEW</button>
+  <button class="btn" id="btn-slice" onclick="setMode('slice')">SLICE VIEW</button>
+  <div style="width:1px;height:24px;background:var(--border-subtle);margin:0 8px;"></div>
+  <button class="btn" id="btn-cover" onclick="toggleCover()">OPEN COVER</button>
+  <button class="btn" id="btn-cutaway" onclick="toggleCutaway()">CUTAWAY</button>
+  <button class="btn" id="btn-explode" onclick="toggleExplode()">EXPLODE</button>
+  <div style="width:1px;height:24px;background:var(--border-subtle);margin:0 8px;"></div>
+  <button class="btn" id="btn-air" onclick="toggleAirflow()">AIRFLOW</button>
+  <button class="btn" id="btn-power" onclick="togglePower()">POWER</button>
+  <button class="btn" id="btn-data" onclick="toggleData()">DATA PATHS</button>
+  <div style="width:1px;height:24px;background:var(--border-subtle);margin:0 8px;"></div>
+  <button class="btn danger" id="btn-fail" onclick="simulateFailure()">SIMULATE FAILURE</button>
+  <button class="btn" onclick="resetScene()">RESET</button>
+</nav>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   ENGINEERING CONSTANTS & CONFIG
+   ============================================================ */
+const U_HEIGHT = 0.04445; // 44.45mm = 1U
+const RACK_HEIGHT = 42 * U_HEIGHT; // 1.867m
+const CHASSIS_DEPTH = 0.9;
+const CHASSIS_WIDTH = 0.434; // 19" rack ~ 430mm internal
+
+const COLORS = {
+  chassis: 0x1a2332,
+  chassisLight: 0x232e42,
+  pcb: 0x0f3a22,
+  pcbTrace: 0x1a5c38,
+  heatsink: 0xc0c0c0,
+  copper: 0xb87333,
+  gold: 0xd4af37,
+  fan: 0x111827,
+  ledGreen: 0x10b981,
+  ledRed: 0xef4444,
+  ledBlue: 0x38bdf8,
+  psu: 0x0a0f17,
+  rails: 0x8898aa,
+  text: 0xe8edf5,
+};
+
+/* ============================================================
+   SCENE SETUP
+   ============================================================ */
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x060a14);
+scene.fog = new THREE.FogExp2(0x060a14, 0.015);
+
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 50);
+camera.position.set(2.5, 1.8, 3.0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 0.9, 0);
+controls.update();
+
+/* Lighting */
+const hemi = new THREE.HemisphereLight(0xffffff, 0x333333, 0.8);
+scene.add(hemi);
+
+const dir = new THREE.DirectionalLight(0xffffff, 1.2);
+dir.position.set(2, 5, 4);
+dir.castShadow = true;
+dir.shadow.mapSize.set(1024, 1024);
+dir.shadow.bias = -0.001;
+scene.add(dir);
+
+const fill = new THREE.DirectionalLight(0xa0c8ff, 0.3);
+fill.position.set(-3, 2, -3);
+scene.add(fill);
+
+const ambient = new THREE.AmbientLight(0x445566, 0.4);
+scene.add(ambient);
+
+/* ============================================================
+   STATE MANAGEMENT
+   ============================================================ */
+const state = {
+  mode: 'rack', // 'rack' | 'slice'
+  selectedServer: null,
+  activeFailure: null,
+  showAirflow: false,
+  showPower: false,
+  showData: false,
+  coverOpen: false,
+  cutaway: false,
+  exploded: false,
+  sliceAnimProgress: 0,
+  health: {},
+  servers: [],
+  serverMeshes: {},
+  airflowParticles: null,
+  powerLines: [],
+  dataLines: [],
+};
+
+/* ============================================================
+   GEOMETRY HELPERS
+   ============================================================ */
+function createMat(color, metalness = 0.6, roughness = 0.5, emissive = 0) {
+  return new THREE.MeshStandardMaterial({ color, metalness, roughness, emissive, emissiveIntensity: emissive ? 0.3 : 0 });
+}
+
+function boxGeometry(w, h, d) {
+  return new THREE.BoxGeometry(w, h, d);
+}
+
+function cylinderGeometry(r, h, radialSeg = 12) {
+  return new THREE.CylinderGeometry(r, r, h, radialSeg);
+}
+
+/* ============================================================
+   RACK FRAME
+   ============================================================ */
+function buildRackFrame() {
+  const group = new THREE.Group();
+  const w = 0.6; // Rack width (approx 600mm external)
+  const d = 1.0; // Rack depth
+  const railW = 0.04;
+  const railD = 0.03;
+
+  // Front vertical rails (left & right)
+  const matRail = createMat(0x8898aa, 0.9, 0.2);
+  const railGeo = new THREE.BoxGeometry(railW, RACK_HEIGHT, railD);
+  const frontL = new THREE.Mesh(railGeo, matRail); frontL.position.set(-w/2 + railW/2, RACK_HEIGHT/2, d/2 - railD/2); group.add(frontL);
+  const frontR = new THREE.Mesh(railGeo, matRail); frontR.position.set(w/2 - railW/2, RACK_HEIGHT/2, d/2 - railD/2); group.add(frontR);
+
+  // Rear vertical rails
+  const rearL = new THREE.Mesh(railGeo, matRail); rearL.position.set(-w/2 + railW/2, RACK_HEIGHT/2, -d/2 + railD/2); group.add(rearL);
+  const rearR = new THREE.Mesh(railGeo, matRail); rearR.position.set(w/2 - railW/2, RACK_HEIGHT/2, -d/2 + railD/2); group.add(rearR);
+
+  // Top / Bottom frames
+  const frameMat = createMat(0x334455, 0.7, 0.3);
+  const topFrame = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, d), frameMat); topFrame.position.set(0, RACK_HEIGHT + 0.02, 0); group.add(topFrame);
+  const botFrame = new THREE.Mesh(new THREE.BoxGeometry(w, 0.04, d), frameMat); botFrame.position.set(0, 0.02, 0); group.add(botFrame);
+
+  // Horizontal cross bars (approx every 10 U)
+  for (let i = 1; i < 4; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w - railW*2, 0.02, 0.04), frameMat);
+    bar.position.set(0, i * (RACK_HEIGHT/4), 0); group.add(bar);
+  }
+
+  // Rack holes (simplified visual representation)
+  const holeMat = createMat(0x0a0f17);
+  for (let u = 1; u <= 42; u++) {
+    const yPos = (u - 0.5) * U_HEIGHT;
+    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.006, 0.02), holeMat);
+    hl.position.set(-w/2 + railW/2, yPos, d/2 - railD/2 + 0.01); group.add(hl);
+    const hr = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.006, 0.02), holeMat);
+    hr.position.set(w/2 - railW/2, yPos, d/2 - railD/2 + 0.01); group.add(hr);
+  }
+
+  // Side panels (optional, slightly transparent)
+  const panelMat = new THREE.MeshStandardMaterial({ color: 0x1a2332, metalness: 0.5, roughness: 0.8, transparent: true, opacity: 0.6 });
+  const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.01, RACK_HEIGHT, d), panelMat); sideL.position.set(-w/2 - 0.005, RACK_HEIGHT/2, 0); group.add(sideL);
+  const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.01, RACK_HEIGHT, d), panelMat); sideR.position.set(w/2 + 0.005, RACK_HEIGHT/2, 0); group.add(sideR);
+
+  // Vertical PDUs (simplified)
+  const pduMat = createMat(0x0a0f17, 0.9, 0.4);
+  const pduGeo = new THREE.BoxGeometry(0.06, RACK_HEIGHT * 0.8, 0.04);
+  const pduL = new THREE.Mesh(pduGeo, pduMat); pduL.position.set(-w/2 + 0.1, RACK_HEIGHT/2, -d/2 + 0.1); group.add(pduL);
+  const pduR = new THREE.Mesh(pduGeo, pduMat); pduR.position.set(w/2 - 0.1, RACK_HEIGHT/2, d/2 - 0.1); group.add(pduR);
+
+  // Cable management (simplified channels)
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x151b2d, metalness: 0.3, roughness: 0.8 });
+  const cableChannel = new THREE.Mesh(new THREE.BoxGeometry(w - 0.2, 0.03, 0.06), cableMat); cableChannel.position.set(0, RACK_HEIGHT - 0.1, -d/2 - 0.03); group.add(cableChannel);
+
+  group.position.set(0, 0, 0);
+  return group;
+}
+
+/* ============================================================
+   SERVER ARCHETYPES (Procedural)
+   ============================================================ */
+function buildGeneralCompute() {
+  const group = new THREE.Group();
+  const w = 0.42; const h = U_HEIGHT; const d = 0.8; // 1U height approx
+  // Chassis
+  const chassisMat = createMat(COLORS.chassis, 0.6, 0.7);
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), chassisMat);
+  chassis.position.set(0, 0, 0); group.add(chassis);
+
+  // Front face (drives + intake)
+  const frontMat = new THREE.MeshStandardMaterial({ color: 0x151b2d, metalness: 0.4, roughness: 0.9 });
+  const frontFace = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), frontMat); frontFace.position.set(0, 0, d/2 - 0.01); group.add(frontFace);
+
+  // Two drive bays (simplified 2.5")
+  for (let i = 0; i < 2; i++) {
+    const driveMat = createMat(0x1a2332, 0.5, 0.5);
+    const drive = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 0.1), driveMat); drive.position.set(-0.08 + i*0.08, 0, d/2 - 0.05 - 0.05); group.add(drive);
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.005, 0.01), createMat(COLORS.ledGreen)); led.position.set(-0.08 + i*0.08 + 0.03, 0.01, d/2 - 0.01); group.add(led);
+  }
+
+  // Internal motherboard (simplified representation)
+  const mbMat = createMat(COLORS.pcb, 0.2, 0.8);
+  const mb = new THREE.Mesh(new THREE.BoxGeometry(w - 0.02, 0.01, d - 0.2), mbMat); mb.position.set(0, 0.008, 0); group.add(mb);
+
+  // CPU sockets (2)
+  for (let i = 0; i < 2; i++) {
+    const cpuBase = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.06), createMat(0x222222, 0.8, 0.2)); cpuBase.position.set(-0.08 + i*0.16, 0.02, -0.1); group.add(cpuBase);
+    const heatsink = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.05), createMat(COLORS.heatsink, 0.9, 0.4)); heatsink.position.set(-0.08 + i*0.16, 0.035, -0.1); group.add(heatsink);
+  }
+
+  // Memory banks (simplified 24 DIMMs)
+  const dimmMat = createMat(0x232e42, 0.5, 0.4);
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < 6; i++) {
+      const dimm = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.02, 0.005), dimmMat); dimm.position.set(side*0.1, 0.02, -0.05 - i*0.035); group.add(dimm);
+    }
+  }
+
+  // Fan wall
+  const fanMat = createMat(COLORS.fan, 0.9, 0.3);
+  for (let i = 0; i < 4; i++) {
+    const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 12), fanMat); fan.rotation.set(0, 0, Math.PI/2); fan.position.set(0, 0.01, 0.15 + i*0.06 - 0.09); group.add(fan);
+  }
+
+  // Redundant PSUs (rear)
+  const psuMat = createMat(COLORS.psu, 0.9, 0.2);
+  for (let i = 0; i < 2; i++) {
+    const psu = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.035, 0.1), psuMat); psu.position.set(-0.08 + i*0.08, 0, d/2 - 0.05 - 0.12); group.add(psu);
+  }
+
+  group.rotation.y = Math.PI; // Face front usually means orientation
+  return group;
+}
+
+function buildVirtualization() {
+  const group = new THREE.Group();
+  const w = 0.42; const h = U_HEIGHT * 2; const d = 0.8;
+  const chassisMat = createMat(COLORS.chassis, 0.6, 0.7);
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), chassisMat); chassis.position.set(0, 0, 0); group.add(chassis);
+
+  const mbMat = createMat(COLORS.pcb, 0.2, 0.8);
+  const mb = new THREE.Mesh(new THREE.BoxGeometry(w - 0.02, 0.015, d - 0.2), mbMat); mb.position.set(0, 0.015, -0.05); group.add(mb);
+
+  // 2 High-core CPUs with large heatsinks
+  for (let i = 0; i < 2; i++) {
+    const cpuBase = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.018, 0.07), createMat(0x222222)); cpuBase.position.set(-0.1 + i*0.2, 0.035, 0); group.add(cpuBase);
+    const hs = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.035, 0.06), createMat(COLORS.heatsink, 0.9, 0.4)); hs.position.set(-0.1 + i*0.2, 0.055, 0); group.add(hs);
+  }
+
+  // Massive memory banks (32 DIMMs conceptually)
+  const dimmMat = createMat(COLORS.pcbTrace, 0.4, 0.7);
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < 8; i++) {
+      const dimm = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.025, 0.006), dimmMat); dimm.position.set(side*0.08, 0.038, 0.15 - i*0.035); group.add(dimm);
+      const chip = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.006, 0.002), createMat(0x111827)); chip.position.set(side*0.08, 0.045, 0.15 - i*0.035); group.add(chip);
+    }
+  }
+
+  // High-speed NIC area
+  const nicMat = createMat(0x334455, 0.6, 0.4);
+  const nic = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 0.1), nicMat); nic.position.set(0, 0.03, -0.3); group.add(nic);
+  // Ports
+  for (let i = 0; i < 4; i++) {
+    const port = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.01, 0.01), createMat(0xd4af37)); port.position.set(-0.05 + i*0.03, 0.035, -0.35); group.add(port);
+  }
+
+  // Fans
+  for (let i = 0; i < 6; i++) {
+    const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12), createMat(COLORS.fan)); fan.rotation.set(0, 0, Math.PI/2); fan.position.set(0, 0.01, 0.2 + i*0.05 - 0.125); group.add(fan);
+  }
+
+  // PSUs
+  for (let i = 0; i < 2; i++) {
+    const psu = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.12), createMat(COLORS.psu)); psu.position.set(-0.1 + i*0.2, 0.05, d/2 - 0.15); group.add(psu);
+  }
+
+  group.rotation.y = Math.PI;
+  return group;
+}
+
+function buildGPUCompute() {
+  const group = new THREE.Group();
+  const w = 0.42; const h = U_HEIGHT * 4; const d = 0.8;
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), createMat(COLORS.chassis)); chassis.position.set(0, 0, 0); group.add(chassis);
+
+  // Large motherboard area
+  const mbMat = createMat(COLORS.pcb, 0.2, 0.8);
+  const mb = new THREE.Mesh(new THREE.BoxGeometry(w - 0.02, 0.015, d - 0.2), mbMat); mb.position.set(0, 0.02, -0.1); group.add(mb);
+
+  // 2 CPU sockets (high TDP)
+  for (let i = 0; i < 2; i++) {
+    const cpuBase = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.08), createMat(0x222222)); cpuBase.position.set(-0.1 + i*0.2, 0.05, -0.15); group.add(cpuBase);
+    const hs = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.07), createMat(COLORS.heatsink, 0.9, 0.3)); hs.position.set(-0.1 + i*0.2, 0.08, -0.15); group.add(hs);
+  }
+
+  // 8 GPUs - Large accelerator modules arranged horizontally
+  const gpuMat = createMat(0x111827, 0.8, 0.2);
+  for (let i = 0; i < 8; i++) {
+    const gpu = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.025, 0.1), gpuMat); gpu.position.set(-0.21 + i*0.06, 0.04, 0.1); group.add(gpu);
+    // Gold contacts (simulating PCIe / interconnect)
+    const gold = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.002, 0.003), createMat(COLORS.gold)); gold.position.set(-0.21 + i*0.06, 0.028, 0.15); group.add(gold);
+    // GPU cooling fins (simplified)
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.015, 0.08), createMat(COLORS.heatsink, 0.9, 0.5)); fin.position.set(-0.21 + i*0.06, 0.055, 0.1); group.add(fin);
+  }
+
+  // Interconnect region (conceptual high-speed links)
+  const inter = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.01, 0.05), createMat(COLORS.copper, 0.7, 0.4)); inter.position.set(0, 0.03, 0); group.add(inter);
+
+  // Memory (large config, but less dense than virt server)
+  const dimmMat = createMat(COLORS.pcbTrace, 0.4, 0.7);
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < 4; i++) {
+      const dimm = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.025, 0.006), dimmMat); dimm.position.set(side*0.08, 0.038, 0.15 - i*0.05); group.add(dimm);
+    }
+  }
+
+  // Extreme cooling: Multiple fan banks
+  for (let bank = 0; bank < 3; bank++) {
+    for (let i = 0; i < 4; i++) {
+      const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 12), createMat(COLORS.fan)); fan.rotation.set(0, 0, Math.PI/2); fan.position.set(0, 0.02 + bank*0.15, 0.25 + i*0.05 - 0.075); group.add(fan);
+    }
+  }
+
+  // Large PSUs (4x for redundancy and output)
+  for (let i = 0; i < 4; i++) {
+    const psu = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.1), createMat(COLORS.psu)); psu.position.set(-0.15 + (i%2)*0.3, 0.08, d/2 - 0.15 - (Math.floor(i/2)*0.1)); group.add(psu);
+  }
+
+  // Rear high-speed NICs
+  const hsNicMat = createMat(0x334455, 0.6, 0.4);
+  const hsNic = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.08), hsNicMat); hsNic.position.set(0, 0.06, d/2 - 0.2); group.add(hsNic);
+
+  group.rotation.y = Math.PI;
+  return group;
+}
+
+function buildStorage() {
+  const group = new THREE.Group();
+  const w = 0.42; const h = U_HEIGHT * 4; const d = 0.8;
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), createMat(COLORS.chassis)); chassis.position.set(0, 0, 0); group.add(chassis);
+
+  // Massive front drive array (conceptual 36 bays in 4U - shown as 4x6 arrays)
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < 6; col++) {
+      const driveMat = createMat(0x1a2332, 0.6, 0.5);
+      const drive = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.025, 0.1), driveMat); drive.position.set(-0.17 + col*0.06, 0.02 + row*0.06, d/2 - 0.06); group.add(drive);
+      // LED
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.003, 0.002), createMat(COLORS.ledGreen)); led.position.set(-0.17 + col*0.06 + 0.025, 0.025 + row*0.06, d/2 - 0.055); group.add(led);
+      // Handle simulation
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.005, 0.002), createMat(COLORS.rails, 0.9, 0.1)); handle.position.set(-0.17 + col*0.06 + 0.02, 0.02 + row*0.06, d/2 - 0.055); group.add(handle);
+    }
+  }
+
+  // Backplane (conceptual, visible near front but behind drives in some designs, let's place it as a sheet)
+  const bpMat = createMat(COLORS.pcb, 0.3, 0.9);
+  const bp = new THREE.Mesh(new THREE.BoxGeometry(w - 0.02, 0.005, d - 0.1), bpMat); bp.position.set(0, 0.015, 0); group.add(bp);
+
+  // Storage Controller / HBA area
+  const hbaMat = createMat(0x334455, 0.7, 0.3);
+  const hba = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.01, 0.08), hbaMat); hba.position.set(-0.1, 0.02, 0.1); group.add(hba);
+
+  // Moderate CPU
+  const cpuBase = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.06), createMat(0x222222)); cpuBase.position.set(0.1, 0.03, -0.1); group.add(cpuBase);
+  const hs = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.025, 0.05), createMat(COLORS.heatsink)); hs.position.set(0.1, 0.045, -0.1); group.add(hs);
+
+  // Memory (moderate)
+  for (let i = 0; i < 4; i++) {
+    const dimm = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.02, 0.006), createMat(COLORS.pcbTrace)); dimm.position.set(0.1 + 0.01, 0.035, -0.05 - i*0.035); group.add(dimm);
+  }
+
+  // Fans
+  for (let i = 0; i < 6; i++) {
+    const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12), createMat(COLORS.fan)); fan.rotation.set(0, 0, Math.PI/2); fan.position.set(0, 0.015, 0.2 + i*0.05 - 0.125); group.add(fan);
+  }
+
+  // Redundant PSUs
+  for (let i = 0; i < 2; i++) {
+    const psu = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.1), createMat(COLORS.psu)); psu.position.set(-0.08 + i*0.16, 0.06, d/2 - 0.15); group.add(psu);
+  }
+
+  group.rotation.y = Math.PI;
+  return group;
+}
+
+function buildDatabase() {
+  const group = new THREE.Group();
+  const w = 0.42; const h = U_HEIGHT * 2; const d = 0.8;
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), createMat(COLORS.chassis)); chassis.position.set(0, 0, 0); group.add(chassis);
+
+  const mb = new THREE.Mesh(new THREE.BoxGeometry(w - 0.02, 0.015, d - 0.2), createMat(COLORS.pcb, 0.2, 0.8)); mb.position.set(0, 0.015, 0); group.add(mb);
+
+  // High-core CPU (similar to virt, but with more dense memory and NVMe)
+  for (let i = 0; i < 2; i++) {
+    const cpuBase = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.018, 0.07), createMat(0x222222)); cpuBase.position.set(-0.1 + i*0.2, 0.038, -0.1); group.add(cpuBase);
+    const hs = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.035, 0.06), createMat(COLORS.heatsink, 0.9, 0.4)); hs.position.set(-0.1 + i*0.2, 0.06, -0.1); group.add(hs);
+  }
+
+  // Very dense memory banks (database requires high memory bandwidth)
+  const dimmMat = createMat(COLORS.pcbTrace, 0.4, 0.7);
+  for (let side = -1; side <= 1; side += 2) {
+    for (let i = 0; i < 10; i++) {
+      const dimm = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.025, 0.005), dimmMat); dimm.position.set(side*0.08, 0.045, 0.1 - i*0.03); group.add(dimm);
+    }
+  }
+
+  // NVMe drives (front or internal in 2.5" slots)
+  for (let i = 0; i < 4; i++) {
+    const nvme = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.01, 0.07), createMat(0x151b2d, 0.7, 0.3)); nvme.position.set(-0.1 + i*0.06, 0.015, 0.3); group.add(nvme);
+  }
+
+  // Networking
+  const nicMat = createMat(0x334455, 0.7, 0.4);
+  const nic = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.015, 0.08), nicMat); nic.position.set(0, 0.025, -0.25); group.add(nic);
+
+  // Fans
+  for (let i = 0; i < 6; i++) {
+    const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.025, 12), createMat(COLORS.fan)); fan.rotation.set(0, 0, Math.PI/2); fan.position.set(0, 0.015, 0.2 + i*0.05 - 0.125); group.add(fan);
+  }
+
+  // PSUs
+  for (let i = 0; i < 2; i++) {
+    const psu = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.1), createMat(COLORS.psu)); psu.position.set(-0.08 + i*0.16, 0.05, d/2 - 0.15); group.add(psu);
+  }
+
+  group.rotation.y = Math.PI;
+  return group;
+}
+
+function buildNetworkAppliance() {
+  const group = new THREE.Group();
+  const w = 0.42; const h = U_HEIGHT; const d = 0.8;
+  const chassis = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), createMat(COLORS.chassis)); chassis.position.set(0, 0, 0); group.add(chassis);
+
+  // Networking focused CPU area (simpler, smaller)
+  const cpuBase = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.015, 0.05), createMat(0x222222)); cpuBase.position.set(-0.1, 0.025, 0); group.add(cpuBase);
+  const hs = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.04), createMat(COLORS.heatsink)); hs.position.set(-0.1, 0.035, 0); group.add(hs);
+
+  // Smaller memory
+  for (let i = 0; i < 3; i++) {
+    const dimm = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.02, 0.005), createMat(COLORS.pcbTrace)); dimm.position.set(0.1, 0.03, -0.05 - i*0.035); group.add(dimm);
+  }
+
+  // Many ports (SFP style) at rear/front
+  const portMat = createMat(COLORS.gold, 0.9, 0.3);
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 6; col++) {
+      const port = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.01, 0.02), portMat); port.position.set(-0.15 + col*0.05, 0.015 + row*0.02, d/2 - 0.05); group.add(port);
+      // Small LED for link status
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.002, 0.002), createMat(COLORS.ledGreen)); led.position.set(-0.15 + col*0.05 + 0.01, 0.018 + row*0.02, d/2 - 0.03); group.add(led);
+    }
+  }
+
+  // Minimal internal storage (management only)
+  const storageMat = createMat(COLORS.pcbTrace);
+  const storage = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.01, 0.06), storageMat); storage.position.set(0, 0.01, 0.3); group.add(storage);
+
+  // Fans for front-to-rear airflow
+  for (let i = 0; i < 4; i++) {
+    const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 12), createMat(COLORS.fan)); fan.rotation.set(0, 0, Math.PI/2); fan.position.set(0, 0.01, 0.15 + i*0.05 - 0.075); group.add(fan);
+  }
+
+  // Small PSUs (redundant)
+  for (let i = 0; i < 2; i++) {
+    const psu = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.035, 0.08), createMat(COLORS.psu)); psu.position.set(-0.08 + i*0.08, 0.04, d/2 - 0.12); group.add(psu);
+  }
+
+  group.rotation.y = Math.PI;
+  return group;
+}
+
+/* ============================================================
+   SERVER CONTAINER (Rack proxy + Slice detail)
+   ============================================================ */
+function createServerData(type, name, uStart, uEnd, purpose, specs) {
+  return { type, name, uStart, uEnd, purpose, specs, health: { cpu1: 68, cpu2: 65, gpu: 72, memory: 45, power: 0, fans: 9000, network: 78 }, id: Math.random().toString(36).substr(2, 9) };
+}
+
+function createServerMesh(type, uStart, uEnd, name) {
+  const group = new THREE.Group();
+  const h = (uEnd - uStart + 1) * U_HEIGHT;
+  const w = 0.42; const d = 0.8;
+  const yPos = (uStart - 0.5) * U_HEIGHT + h/2;
+  group.position.set(0, yPos, 0);
+
+  // Rack proxy (simplified box for selection in rack mode)
+  const proxyMat = createMat(COLORS.chassis, 0.6, 0.7);
+  const proxy = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), proxyMat); proxy.name = `proxy-${name}`; group.add(proxy);
+
+  // Add a simple label line (vertical stripe) to identify server
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.002, h, 0.8), createMat(0x8898aa, 0.9, 0.1)); stripe.position.set(w/2 - 0.001, 0, 0); group.add(stripe);
+
+  // Internal detail (hidden by default, revealed in slice)
+  const detailGroup = new THREE.Group(); detailGroup.name = 'detail'; detailGroup.visible = false;
+  detailGroup.position.set(0, 0, 0);
+
+  let detailMesh = new THREE.Group();
+  switch (type) {
+    case 'compute': detailMesh = buildGeneralCompute(); break;
+    case 'virt': detailMesh = buildVirtualization(); break;
+    case 'gpu': detailMesh = buildGPUCompute(); break;
+    case 'storage': detailMesh = buildStorage(); break;
+    case 'database': detailMesh = buildDatabase(); break;
+    case 'network': detailMesh = buildNetworkAppliance(); break;
+    default: detailMesh = buildGeneralCompute();
+  }
+  detailMesh.rotation.y = Math.PI; // Match front-facing
+  detailGroup.add(detailMesh);
+  group.add(detailGroup);
+
+  // Cover (removable top)
+  const coverMat = createMat(0x334455, 0.7, 0.3);
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(w, 0.015, d), coverMat); cover.name = 'cover'; cover.position.set(0, h/2 + 0.008, 0); group.add(cover);
+
+  return group;
+}
+
+/* ============================================================
+   POPULATE RACK
+   ============================================================ */
+const SERVER_DEFS = [
+  { name: 'AI COMPUTE NODE', type: 'gpu', uStart: 39, uEnd: 42, purpose: 'Machine learning training & accelerated inference', specs: { cpu: 2, gpu: 8, ram: '1.0 TB', storage: '8x NVMe', psu: '4x 2.4kW', net: '2x 100GbE' } },
+  { name: 'VIRTUALIZATION SERVER', type: 'virt', uStart: 37, uEnd: 38, purpose: 'Hypervisor, VM hosting, private cloud', specs: { cpu: 2, ram: '2.0 TB', storage: '4x NVMe', psu: '2x 1.6kW', net: '2x 25GbE' } },
+  { name: 'GENERAL COMPUTE NODE 1', type: 'compute', uStart: 36, uEnd: 36, purpose: 'Web hosting, APIs, application services', specs: { cpu: 2, ram: '256 GB', storage: '2x SSD', psu: '2x 750W', net: '2x 10GbE' } },
+  { name: 'GENERAL COMPUTE NODE 2', type: 'compute', uStart: 35, uEnd: 35, purpose: 'Web hosting, APIs, application services', specs: { cpu: 2, ram: '256 GB', storage: '2x SSD', psu: '2x 750W', net: '2x 10GbE' } },
+  { name: 'STORAGE SERVER', type: 'storage', uStart: 31, uEnd: 34, purpose: 'Object storage, backups, NAS pools', specs: { cpu: 1, ram: '128 GB', storage: '24x SAS', psu: '2x 1.2kW', net: '2x 10GbE' } },
+  { name: 'NETWORK APPLIANCE', type: 'network', uStart: 30, uEnd: 30, purpose: 'Routing, firewall, load balancing', specs: { cpu: 1, ram: '64 GB', storage: '1x M.2', psu: '2x 500W', net: '16x SFP+' } },
+  { name: 'DATABASE SERVER', type: 'database', uStart: 28, uEnd: 29, purpose: 'Relational DB, analytics, in-memory', specs: { cpu: 2, ram: '1.5 TB', storage: '4x NVMe', psu: '2x 1.5kW', net: '2x 25GbE' } },
+];
+
+function initServers() {
+  SERVER_DEFS.forEach((def, idx) => {
+    const mesh = createServerMesh(def.type, def.uStart, def.uEnd, def.name);
+    mesh.userData = { ...def, index: idx, group: mesh };
+    state.servers.push(def);
+    state.serverMeshes[def.name] = mesh;
+    scene.add(mesh);
+  });
+  updateServerListUI();
+  updateHealthUI();
+  updateRackPowerUI();
+}
+
+/* ============================================================
+   RACK LAYOUT POSITIONING
+   ============================================================ */
+function positionServersInRack() {
+  // Servers are positioned by the builder already using U_HEIGHT
+  // Just verify their x/z placement
+  SERVER_DEFS.forEach(def => {
+    const mesh = state.serverMeshes[def.name];
+    // Place in rack row (center of rack in X, along Z)
+    mesh.position.x = 0;
+    mesh.position.z = 0; // Centered in depth
+    // Rotate for rack orientation
+    mesh.rotation.y = 0; // Facing front of rack
+  });
+}
+
+/* ============================================================
+   UI BUILDERS
+   ============================================================ */
+function updateServerListUI() {
+  const container = document.getElementById('server-list');
+  container.innerHTML = '';
+  SERVER_DEFS.forEach((s, i) => {
+    const card = document.createElement('div');
+    card.className = 'server-card' + (state.selectedServer === s.name ? ' active' : '');
+    card.innerHTML = `<div class="sc-name">${s.name}</div><div class="sc-meta">U${s.uStart}-U${s.uEnd} &bull; ${s.uEnd - s.uStart + 1}U &bull; ${s.type}</div>`;
+    card.onclick = () => selectServer(s.name);
+    container.appendChild(card);
+  });
+}
+
+function updateHealthUI() {
+  const grid = document.getElementById('health-grid');
+  if (!state.selectedServer) { grid.innerHTML = '<div style="font-size:0.7rem;color:var(--text-muted);">Select a server to view health.</div>'; return; }
+  const s = SERVER_DEFS.find(x => x.name === state.selectedServer);
+  if (!s) return;
+  const h = s.health;
+  grid.innerHTML = `
+    <div class="health-item"><div class="h-label">CPU 1</div><div class="h-value">${h.cpu1}°C</div><div class="h-bar"><div class="h-fill" style="width:${h.cpu1/100*100}%"></div></div></div>
+    <div class="health-item"><div class="h-label">CPU 2</div><div class="h-value">${h.cpu2}°C</div><div class="h-bar"><div class="h-fill" style="width:${h.cpu2/100*100}%"></div></div></div>
+    <div class="health-item"><div class="h-label">GPU Avg</div><div class="h-value">${h.gpu || '--'}°C</div><div class="h-bar"><div class="h-fill" style="width:${h.gpu ? h.gpu/100*100 : 0}%"></div></div></div>
+    <div class="health-item"><div class="h-label">Memory</div><div class="h-value">${h.memory}%</div><div class="h-bar"><div class="h-fill" style="width:${h.memory}%"></div></div></div>
+    <div class="health-item"><div class="h-label">Fans</div><div class="h-value">${h.fans} RPM</div></div>
+    <div class="health-item"><div class="h-label">Network</div><div class="h-value">${h.network} Gb/s</div></div>
+  `;
+}
+
+function updateComponentInfo() {
+  const card = document.getElementById('comp-card');
+  if (!state.selectedServer || state.mode !== 'slice') {
+    card.innerHTML = `<h4>Click a server, then select SLICE VIEW to inspect components in detail.</h4><div class="specs">Component-level inspection reveals CPU sockets, DIMM banks, PCIe risers, drive carriers, and cooling architecture.</div>`;
+    return;
+  }
+  const s = SERVER_DEFS.find(x => x.name === state.selectedServer);
+  card.innerHTML = `
+    <h4>${s.name}</h4>
+    <div class="specs" style="margin-bottom:8px;">Form Factor: ${(s.uEnd - s.uStart + 1)}U &bull; ${s.type.toUpperCase()}</div>
+    <div class="specs"><b>CPUs:</b> ${s.specs.cpu || 1} sockets &bull; <b>RAM:</b> ${s.specs.ram} &bull; <b>Storage:</b> ${s.specs.storage}<br>
+    <b>PSUs:</b> ${s.specs.psu || '2x'} &bull; <b>Network:</b> ${s.specs.net || '2x 10GbE'}</div>
+  `;
+}
+
+function updateArchInfo() {
+  const text = document.getElementById('arch-text');
+  if (!state.selectedServer) {
+    text.innerHTML = 'Select a server archetype to view design rationale. Each architecture balances cooling, power, and serviceability for its workload class.';
+    return;
+  }
+  const s = SERVER_DEFS.find(x => x.name === state.selectedServer);
+  if (!s) return;
+  const explanations = {
+    'gpu': 'GPU servers use very high airflow and large power systems because accelerator modules can dissipate several hundred watts each. Short front-to-rear airflow paths reduce pressure losses and help cool densely packed accelerators.',
+    'virt': 'Virtualization hosts prioritize memory capacity and CPU density over raw accelerator performance. Large memory banks support many concurrent VMs, while redundant PSUs ensure hypervisor availability.',
+    'compute': 'General purpose nodes balance CPU, memory, storage, and network for broad application hosting. They avoid extreme specialization to remain flexible across workload types.',
+    'storage': 'Storage architectures dominate the front face with hot-swap drive bays connected to a visible backplane. The HBA/controller connects to moderate CPU resources optimized for I/O rather than compute.',
+    'database': 'Database systems emphasize memory bandwidth, low-latency NVMe storage, and powerful dual CPUs. Network interfaces must handle high transaction throughput.',
+    'network': 'Network appliances prioritize front-facing high-density ports and strong airflow. Internal compute and storage are minimal as the workload is packet processing.',
+  };
+  text.innerHTML = explanations[s.type] || explanations['compute'];
+}
+
+function updateRackPowerUI() {
+  let total = 0;
+  SERVER_DEFS.forEach(s => {
+    const vals = { 'gpu': 8.5, 'virt': 1.2, 'compute': 0.7, 'storage': 1.0, 'database': 1.5, 'network': 0.4 };
+    total += vals[s.type] || 0.5;
+  });
+  document.getElementById('rack-power').textContent = total.toFixed(1) + ' kW';
+  document.getElementById('rack-heat').textContent = total.toFixed(1) + ' kW';
+}
+
+/* ============================================================
+   SELECTION & INTERACTION
+   ============================================================ */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onMouseMove(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  // Basic hover highlight could go here via a second raycast, but we'll keep it simple to save performance
+}
+
+function onMouseClick(event) {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  // In slice mode, we want to select components inside the server
+  if (state.mode === 'slice') {
+    const meshes = [];
+    if (state.selectedServer && state.serverMeshes[state.selectedServer]) {
+      state.serverMeshes[state.selectedServer].traverse(o => {
+        if (o.isMesh && o.name !== 'proxy-' + state.selectedServer) meshes.push(o);
+      });
+    }
+    const hits = raycaster.intersectObjects(meshes, true);
+    if (hits.length > 0) {
+      const obj = hits[0].object;
+      highlightComponent(obj);
+      return;
+    }
+  }
+
+  // In rack mode, select server proxies
+  const proxies = [];
+  SERVER_DEFS.forEach(s => {
+    if (state.serverMeshes[s.name]) {
+      state.serverMeshes[s.name].traverse(o => {
+        if (o.isMesh && o.name === 'proxy-' + s.name) proxies.push(o);
+      });
+    }
+  });
+  const hits = raycaster.intersectObjects(proxies, false);
+  if (hits.length > 0) {
+    const obj = hits[0].object;
+    const name = obj.name.replace('proxy-', '');
+    selectServer(name);
+  }
+}
+
+function highlightComponent(obj) {
+  const card = document.getElementById('comp-card');
+  const info = { name: obj.name || 'Component', desc: 'Enterprise server component', specs: 'Standard enterprise specification' };
+  // Try to infer component from material or parent names
+  if (obj.material && obj.material.color) {
+    const c = obj.material.color.getHex();
+    if (c === 0xb87333) info = { name: 'Copper Interconnect', desc: 'High-current power or signal trace', specs: 'Copper, low resistance' };
+    else if (c === 0xc0c0c0) info = { name: 'Heatsink', desc: 'Passive thermal dissipation', specs: 'Aluminum, high surface area' };
+    else if (c === 0x0f3a22) info = { name: 'PCB / Mainboard', desc: 'Server motherboard', specs: 'Multi-layer FR4' };
+    else info = { name: 'Component', desc: obj.name || 'Internal hardware', specs: '' };
+  }
+  card.innerHTML = `<h4>${info.name}</h4><div class="specs"><b>Type:</b> ${info.desc}<br><b>Specs:</b> ${info.specs}</div>`;
+}
+
+function selectServer(name) {
+  state.selectedServer = name;
+  state.mode = 'slice'; // Auto-switch or require button? We'll keep button control but highlight server.
+  // Update UI
+  document.getElementById('sel-server').textContent = name;
+  const s = SERVER_DEFS.find(x => x.name === name);
+  document.getElementById('sel-pos').textContent = `U${s.uStart}-U${s.uEnd} (${s.uEnd - s.uStart + 1}U)`;
+  document.getElementById('mode-label').textContent = 'Slice View Ready';
+  updateServerListUI();
+  updateComponentInfo();
+  updateArchInfo();
+  updateHealthUI();
+  // Move camera to inspect server (simple transition)
+  moveToServer(name);
+}
+
+/* ============================================================
+   CAMERA PRESETS
+   ============================================================ */
+function moveToSliceView() {
+  const mesh = state.serverMeshes[state.selectedServer];
+  if (!mesh) return;
+  // Animate camera to an engineering 3/4 view above the isolated server
+  const targetPos = new THREE.Vector3(1.0, 2.0, 3.5);
+  const targetLook = new THREE.Vector3(0, 0.5, 0); // Adjust based on server position
+  // For simplicity, we set it instantly; a smooth interpolation would be ideal but complex in a single file
+  camera.position.copy(targetPos);
+  controls.target.copy(targetLook);
+  controls.update();
+}
+
+function moveToServer(name) {
+  const mesh = state.serverMeshes[name];
+  if (!mesh) return;
+  // Focus on server in rack for initial selection
+  const box = new THREE.Box3().setFromObject(mesh);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const distance = Math.max(size.x, size.y, size.z) * 2.5;
+  camera.position.set(center.x + distance, center.y + distance*0.8, center.z + distance);
+  controls.target.copy(center);
+  controls.update();
+}
+
+/* ============================================================
+   MODE SWITCHING
+   ============================================================ */
+window.setMode = function(mode) {
+  state.mode = mode;
+  document.getElementById('btn-rack').classList.toggle('active', mode === 'rack');
+  document.getElementById('btn-slice').classList.toggle('active', mode === 'slice');
+  document.getElementById('mode-label').textContent = mode === 'rack' ? 'Full Rack' : 'Single Slice';
+
+  if (mode === 'slice') {
+    // Ensure we have a selected server
+    if (!state.selectedServer) {
+      state.selectedServer = SERVER_DEFS[0].name;
+      selectServer(state.selectedServer);
+    }
+    // Hide other servers slowly or just fade them out
+    SERVER_DEFS.forEach(s => {
+      const mesh = state.serverMeshes[s.name];
+      if (mesh) {
+        if (s.name === state.selectedServer) {
+          mesh.visible = true;
+          // Animate out of rack to inspection position
+          // We can animate the position of the selected server group
+          mesh.position.z = Math.abs(mesh.position.z); // Pull forward slightly? Actually let's just leave it and move camera
+          // Show internal detail
+          const detail = mesh.getObjectByName('detail');
+          if (detail) detail.visible = true;
+          // Show cover as removed (rotate up)
+          const cover = mesh.getObjectByName('cover');
+          if (cover && state.coverOpen) {
+            cover.rotation.x = Math.PI / 4;
+            cover.position.y += 0.05;
+          }
+        } else {
+          mesh.visible = false; // Hide others for isolation
+        }
+      }
+    });
+    moveToSliceView();
+  } else {
+    // Rack mode
+    SERVER_DEFS.forEach(s => {
+      const mesh = state.serverMeshes[s.name];
+      if (mesh) {
+        mesh.visible = true;
+        const detail = mesh.getObjectByName('detail');
+        if (detail) detail.visible = false;
+        const cover = mesh.getObjectByName('cover');
+        if (cover) {
+          cover.rotation.set(0, 0, 0);
+          const parentHeight = mesh.children[0].geometry ? mesh.children[0].geometry.parameters.height / 2 : 0.05;
+          cover.position.set(0, parentHeight + 0.008, 0);
+        }
+      }
+    });
+    // Return camera to full rack
+    camera.position.set(2.5, 2.5, 4.0);
+    controls.target.set(0, 0.9, 0);
+    controls.update();
+  }
+  updateComponentInfo();
+};
+
+/* ============================================================
+   COVER / EXPLODE / CUTAWAY / ANIMATIONS
+   ============================================================ */
+window.toggleCover = function() {
+  state.coverOpen = !state.coverOpen;
+  document.getElementById('btn-cover').classList.toggle('active', state.coverOpen);
+  if (state.selectedServer) {
+    const mesh = state.serverMeshes[state.selectedServer];
+    const cover = mesh ? mesh.getObjectByName('cover') : null;
+    if (cover) {
+      if (state.coverOpen) {
+        cover.rotation.x = Math.PI / 2;
+        cover.position.y += 0.3; // Lift up visually
+        cover.position.z -= 0.1; // Slide back slightly
+      } else {
+        cover.rotation.set(0, 0, 0);
+        // Restore position based on server group
+        const parentHeight = mesh.children[0].geometry ? mesh.children[0].geometry.parameters.height / 2 : 0.05;
+        cover.position.set(0, parentHeight + 0.008, 0);
+      }
+    }
+  }
+};
+
+window.toggleCutaway = function() {
+  state.cutaway = !state.cutaway;
+  document.getElementById('btn-cutaway').classList.toggle('active', state.cutaway);
+  // In slice mode, make chassis slightly transparent or hide side walls
+  if (state.mode === 'slice' && state.selectedServer) {
+    const mesh = state.serverMeshes[state.selectedServer];
+    // Find the chassis mesh
+    if (mesh) {
+      mesh.traverse(o => {
+        if (o.isMesh && o.geometry && (o.geometry.type === 'BoxGeometry')) {
+          if (o.name.includes('proxy')) {
+            o.material.transparent = state.cutaway;
+            o.material.opacity = state.cutaway ? 0.3 : 1.0;
+          }
+        }
+      });
+    }
+  }
+};
+
+window.toggleExplode = function() {
+  state.exploded = !state.exploded;
+  document.getElementById('btn-explode').classList.toggle('active', state.exploded);
+  if (state.mode === 'slice' && state.selectedServer) {
+    const mesh = state.serverMeshes[state.selectedServer];
+    if (mesh && mesh.getObjectByName('detail')) {
+      const detail = mesh.getObjectByName('detail');
+      // Move detail group slightly up and out
+      if (state.exploded) {
+        detail.position.y = 0.2;
+        detail.scale.set(1.05, 1.05, 1.05);
+      } else {
+        detail.position.set(0, 0, 0);
+        detail.scale.set(1, 1, 1);
+      }
+    }
+  }
+};
+
+/* ============================================================
+   AIRFLOW VISUALIZATION
+   ============================================================ */
+function initAirflow() {
+  if (state.airflowParticles) {
+    scene.remove(state.airflowParticles);
+    state.airflowParticles = null;
+  }
+  // Simple particle stream from front to rear
+  const particleCount = 800;
+  const positions = new Float32Array(particleCount * 3);
+  const colors = new Float32Array(particleCount * 3);
+  const color = new THREE.Color(0x38bdf8);
+  for (let i = 0; i < particleCount; i++) {
+    positions[i*3+0] = (Math.random() - 0.5) * 1.2;
+    positions[i*3+1] = (Math.random() - 0.5) * 1.5 + 0.9; // Around server height
+    positions[i*3+2] = Math.random() - 0.6; // Along depth
+    colors[i*3+0] = color.r; colors[i*3+1] = color.g; colors[i*3+2] = color.b;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const mat = new THREE.PointsMaterial({ size: 0.03, transparent: true, opacity: 0.5, vertexColors: true, sizeAttenuation: true });
+  const points = new THREE.Points(geo, mat);
+  points.name = 'airflow';
+  state.airflowParticles = points;
+  scene.add(points);
+}
+
+window.toggleAirflow = function() {
+  state.showAirflow = !state.showAirflow;
+  document.getElementById('btn-air').classList.toggle('active', state.showAirflow);
+  if (state.showAirflow) {
+    initAirflow();
+  } else {
+    if (state.airflowParticles) scene.remove(state.airflowParticles);
+    state.airflowParticles = null;
+  }
+};
+
+/* ============================================================
+   POWER PATH VISUALIZATION
+   ============================================================ */
+function createPowerLines() {
+  // Simple glowing lines from rear PSUs to front motherboard area
+  if (state.powerLines.length > 0) {
+    state.powerLines.forEach(l => scene.remove(l));
+    state.powerLines = [];
+  }
+  if (!state.selectedServer || state.mode !== 'slice') return;
+  const mesh = state.serverMeshes[state.selectedServer];
+  if (!mesh) return;
+  const points = [
+    new THREE.Vector3(-0.1, 0.05, 0.3),
+    new THREE.Vector3(-0.05, 0.03, 0),
+    new THREE.Vector3(0, 0.03, -0.1),
+  ];
+  const mat = new THREE.LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.6 });
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const line = new THREE.Line(geo, mat);
+  mesh.add(line);
+  state.powerLines.push(line);
+}
+
+window.togglePower = function() {
+  state.showPower = !state.showPower;
+  document.getElementById('btn-power').classList.toggle('active', state.showPower);
+  if (state.showPower) {
+    createPowerLines();
+  } else {
+    if (state.powerLines.length > 0) {
+      state.powerLines.forEach(l => {
+        if (l.parent) l.parent.remove(l);
+      });
+      state.powerLines = [];
+    }
+  }
+};
+
+/* ============================================================
+   DATA PATH VISUALIZATION
+   ============================================================ */
+function createDataLines() {
+  if (state.dataLines.length > 0) {
+    state.dataLines.forEach(l => scene.remove(l));
+    state.dataLines = [];
+  }
+  if (!state.selectedServer || state.mode !== 'slice') return;
+  const mesh = state.serverMeshes[state.selectedServer];
+  if (!mesh) return;
+  // Conceptual data flow line from drive/storage to network
+  const points = [
+    new THREE.Vector3(0.1, 0.02, 0.2), // Storage/HBA
+    new THREE.Vector3(0, 0.03, 0), // CPU/Memory
+    new THREE.Vector3(0, 0.03, -0.2), // Network
+  ];
+  const mat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5, linewidth: 2 });
+  const geo = new THREE.BufferGeometry().setFromPoints(points);
+  const line = new THREE.Line(geo, mat);
+  mesh.add(line);
+  state.dataLines.push(line);
+}
+
+window.toggleData = function() {
+  state.showData = !state.showData;
+  document.getElementById('btn-data').classList.toggle('active', state.showData);
+  if (state.showData) {
+    createDataLines();
+  } else {
+    if (state.dataLines.length > 0) {
+      state.dataLines.forEach(l => {
+        if (l.parent) l.parent.remove(l);
+      });
+      state.dataLines = [];
+    }
+  }
+};
+
+/* ============================================================
+   FAILURE SIMULATION
+   ============================================================ */
+window.simulateFailure = function() {
+  // Cycle through failures
+  const failures = ['FAN', 'PSU', 'DRIVE', 'GPU_OVERHEAT', 'NET_LINK'];
+  const currentIndex = failures.indexOf(state.activeFailure);
+  const next = failures[(currentIndex + 1) % failures.length];
+  state.activeFailure = next;
+  document.getElementById('btn-fail').textContent = `FAIL: ${next}`;
+
+  // Visual effects
+  if (state.selectedServer && state.serverMeshes[state.selectedServer]) {
+    const mesh = state.serverMeshes[state.selectedServer];
+    mesh.traverse(o => {
+      if (o.isMesh && o.geometry && o.geometry.type === 'CylinderGeometry') {
+        // Stop a fan
+        o.material.color.setHex(0x333333);
+        o.rotation.z = Math.PI / 2; // Tilt slightly to indicate stop? Not really, just keep it.
+      }
+    });
+  }
+  // Increase temperature readings temporarily
+  if (state.selectedServer) {
+    const s = SERVER_DEFS.find(x => x.name === state.selectedServer);
+    if (s) {
+      s.health.cpu1 += 5; s.health.gpu += 8;
+      updateHealthUI();
+    }
+  }
+};
+
+/* ============================================================
+   RESET
+   ============================================================ */
+window.resetScene = function() {
+  state.activeFailure = null;
+  state.showAirflow = false;
+  state.showPower = false;
+  state.showData = false;
+  state.coverOpen = false;
+  state.cutaway = false;
+  state.exploded = false;
+  state.mode = 'rack';
+  document.getElementById('btn-fail').textContent = 'SIMULATE FAILURE';
+  document.getElementById('btn-air').classList.remove('active');
+  document.getElementById('btn-power').classList.remove('active');
+  document.getElementById('btn-data').classList.remove('active');
+  document.getElementById('btn-cover').classList.remove('active');
+  document.getElementById('btn-cutaway').classList.remove('active');
+  document.getElementById('btn-explode').classList.remove('active');
+
+  // Reset health
+  SERVER_DEFS.forEach(s => {
+    s.health = { cpu1: 65 + Math.random()*10, cpu2: 62 + Math.random()*8, gpu: 70 + Math.random()*6, memory: 30 + Math.random()*30, power: 0, fans: 8000 + Math.random()*2000, network: 60 + Math.random()*20 };
+  });
+  updateHealthUI();
+
+  // Reset servers
+  SERVER_DEFS.forEach(def => {
+    const mesh = state.serverMeshes[def.name];
+    if (mesh) {
+      mesh.visible = true;
+      const detail = mesh.getObjectByName('detail');
+      if (detail) detail.visible = false;
+      const cover = mesh.getObjectByName('cover');
+      if (cover) { cover.rotation.set(0,0,0); const h = mesh.children[0].geometry ? mesh.children[0].geometry.parameters.height/2 : 0.05; cover.position.set(0, h+0.008, 0); }
+      // Reset fan colors
+      mesh.traverse(o => { if (o.isMesh && o.material) o.material.color.setHex(COLORS.fan); });
+    }
+  });
+
+  // Remove particles and lines
+  if (state.airflowParticles) { scene.remove(state.airflowParticles); state.airflowParticles = null; }
+  if (state.powerLines.length > 0) { state.powerLines.forEach(l => { if(l.parent) l.parent.remove(l); }); state.powerLines = []; }
+  if (state.dataLines.length > 0) { state.dataLines.forEach(l => { if(l.parent) l.parent.remove(l); }); state.dataLines = []; }
+
+  // Camera
+  setMode('rack');
+}
+
+/* ============================================================
+   ANIMATION LOOP
+   ============================================================ */
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+
+  // Rotate airflow particles slowly
+  if (state.airflowParticles) {
+    state.airflowParticles.rotation.y += 0.002;
+    // Animate positions slightly to feel like air moving
+    const pos = state.airflowParticles.geometry.attributes.position.array;
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i+2] -= 0.005; // Move along Z (front to back)
+      if (pos[i+2] < -0.6) pos[i+2] = 0.6; // Loop
+      pos[i+0] += Math.sin(Date.now() * 0.001 + i) * 0.0005; // Slight wobble
+    }
+    state.airflowParticles.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // Update metrics UI
+  document.getElementById('fps').textContent = Math.round(1000 / (performance.now() - (window.__lastTime || performance.now()))) || 60;
+  document.getElementById('draws').textContent = renderer.info.render.calls || '--';
+  document.getElementById('tris').textContent = renderer.info.render.triangles ? (renderer.info.render.triangles).toLocaleString() : '--';
+  window.__lastTime = performance.now();
+
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   RESIZE
+   ============================================================ */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+window.addEventListener('mousemove', onMouseMove);
+window.addEventListener('click', onMouseClick);
+
+/* ============================================================
+   INIT
+   ============================================================ */
+initServers();
+positionServersInRack();
+
+// Build rack frame around the servers
+const rackFrame = buildRackFrame();
+scene.add(rackFrame);
+
+// Add floor
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x060a14, roughness: 1, metalness: 0.1 });
+const floor = new THREE.Mesh(new THREE.BoxGeometry(4, 0.02, 4), floorMat); floor.position.set(0, -0.01, 0); floor.receiveShadow = true; scene.add(floor);
+
+// Add subtle environment grid for engineering feel
+const gridMat = new THREE.MeshStandardMaterial({ color: 0x101830, transparent: true, opacity: 0.2, roughness: 1 });
+const grid = new THREE.Mesh(new THREE.BoxGeometry(3, 0.001, 3), gridMat); grid.position.set(0, 0.002, 0); scene.add(grid);
+
+// Set initial mode
+setMode('rack');
+
+// Begin loop
+animate();
+</script>
+</body>
+</html>
