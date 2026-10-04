@@ -323,7 +323,7 @@ function makeTrain(type,index,edgeId,s,dir,config){
  const cars=[];let offset=0;for(let i=0;i<config.length;i++){const [kind,len]=config[i];const c=buildCar(type,i,len,kind);c.offset=offset+len/2;offset+=len+.35;scene.add(c.group);cars.push(c)}
  const t={id:type,type,index,name:trainNames[type],cars,edgeId,dir,s,distance:s,history:[],speed:0,max:config.speed,dwellLeft:0,stationDone:false,nextId:null,state:'running',lap:0,lastStation:null,acc:0};
  const e=edges[edgeId];t.history=[{edgeId,start:0,end:e.length}];let node=entryNode(e),prev=edgeId;
- for(let n=0;offset+20>0;n++){const ins=edges.filter(x=>x.id!==prev&&(x.a===node||x.b===node));if(!ins.length)break;const x=ins[(type.length+index+n)%ins.length];const end=t.history.at(-1).start;node=x.a===node?x.b:x.a;t.history.unshift({edgeId:x.id,start:end-x.length,end});prev=x.id}
+ for(let n=0;n<30;n++){const ins=edges.filter(x=>x.id!==prev&&(x.a===node||x.b===node));if(!ins.length)break;const x=ins[(type.length+index+n)%ins.length];const end=t.history.at(-1).start;node=x.a===node?x.b:x.a;t.history.unshift({edgeId:x.id,start:end-x.length,end});prev=x.id}
  e.owner=type;updateOccupancy();return t;
 }
 const trainConfigs={
