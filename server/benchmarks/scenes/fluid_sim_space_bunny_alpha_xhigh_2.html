@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Aqua Lab — 3D Fluid Simulation</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --panel: rgba(8, 18, 28, .78);
+    --panel-strong: rgba(8, 19, 29, .93);
+    --line: rgba(164, 226, 255, .15);
+    --text: #e9f8ff;
+    --muted: #8eaeba;
+    --cyan: #63ddff;
+    --cyan-2: #22bde7;
+    --good: #72f3bd;
+    --warn: #ffd479;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #071018;
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  button, select, input { font: inherit; }
+  button, select {
+    color: var(--text);
+    background: rgba(19, 40, 54, .78);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    outline: none;
+  }
+  button {
+    min-height: 34px;
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  button:hover { background: rgba(31, 75, 94, .9); border-color: rgba(99, 221, 255, .42); }
+  button:active { transform: translateY(1px); }
+  select {
+    width: 100%;
+    height: 34px;
+    padding: 0 30px 0 10px;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #8fc8d8 50%), linear-gradient(135deg, #8fc8d8 50%, transparent 50%);
+    background-position: calc(100% - 14px) 14px, calc(100% - 9px) 14px;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select:focus, button:focus-visible { border-color: var(--cyan); }
+  #viewport, #viewport canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #loading {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 42%, #123144 0, #071018 55%, #03080d 100%);
+    transition: opacity .45s ease, visibility .45s;
+  }
+  #loading.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .loader-card { text-align: center; width: min(430px, calc(100vw - 42px)); }
+  .loader-ring {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 19px;
+    border-radius: 50%;
+    border: 2px solid rgba(99, 221, 255, .16);
+    border-top-color: var(--cyan);
+    border-right-color: #8b7dff;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-title { letter-spacing: .24em; font-size: 13px; font-weight: 750; }
+  #loadingText { color: var(--muted); font-size: 13px; margin-top: 8px; line-height: 1.5; }
+  #loading.error .loader-ring { display: none; }
+  #loading.error #loadingText { color: #ffb4b4; }
+  .ui {
+    position: fixed;
+    z-index: 10;
+    transition: opacity .2s, transform .2s;
+  }
+  .panel {
+    background: linear-gradient(145deg, rgba(12, 29, 41, .88), rgba(5, 14, 22, .72));
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 55px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255,255,255,.035);
+    backdrop-filter: blur(16px) saturate(125%);
+    -webkit-backdrop-filter: blur(16px) saturate(125%);
+  }
+  #controlPanel {
+    top: 14px;
+    left: 14px;
+    width: 304px;
+    max-height: calc(100vh - 28px);
+    border-radius: 16px;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99,221,255,.25) transparent;
+  }
+  .brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 15px 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 780; letter-spacing: .18em; font-size: 13px; }
+  .brand span { color: var(--cyan); }
+  .version {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: .13em;
+    border: 1px solid var(--line);
+    padding: 4px 6px;
+    border-radius: 999px;
+  }
+  .method {
+    padding: 10px 15px;
+    color: #ccefff;
+    font-size: 10px;
+    letter-spacing: .095em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(44, 186, 225, .055);
+  }
+  .method b { color: var(--good); font-weight: 650; }
+  .section { padding: 12px 15px; border-top: 1px solid var(--line); }
+  .section:first-of-type { border-top: 0; }
+  .section-title {
+    margin: 0 0 9px;
+    color: #7598a9;
+    font-size: 9px;
+    letter-spacing: .17em;
+    text-transform: uppercase;
+    font-weight: 750;
+  }
+  .field { display: grid; gap: 6px; margin-bottom: 10px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  label, .label { color: #c6dce5; font-size: 11px; }
+  output { color: var(--cyan); font-size: 10px; font-variant-numeric: tabular-nums; }
+  input[type="range"] {
+    width: 100%;
+    height: 4px;
+    margin: 4px 0;
+    appearance: none;
+    background: linear-gradient(90deg, rgba(99,221,255,.55), rgba(99,221,255,.08));
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #d9f8ff;
+    border: 2px solid #3bbddd;
+    box-shadow: 0 0 0 4px rgba(99,221,255,.08);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #d9f8ff;
+    border: 2px solid #3bbddd;
+  }
+  .button-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+  .button-grid .primary { border-color: rgba(99,221,255,.38); background: rgba(27, 120, 151, .52); }
+  .button-grid .wide { grid-column: span 2; }
+  .check-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .switch { position: relative; width: 35px; height: 19px; flex: 0 0 auto; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: rgba(115, 145, 158, .27);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    transition: .2s;
+  }
+  .switch span::after {
+    content: "";
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    left: 2px;
+    top: 2px;
+    border-radius: 50%;
+    background: #a8c1ca;
+    transition: .2s;
+  }
+  .switch input:checked + span { background: rgba(34, 189, 231, .5); }
+  .switch input:checked + span::after { transform: translateX(16px); background: #e9fbff; }
+  .object-row { display: grid; grid-template-columns: 1fr auto; gap: 7px; }
+  .object-row select { min-width: 0; }
+  .object-row button { width: 88px; }
+  #statsPanel {
+    top: 14px;
+    right: 14px;
+    width: 222px;
+    padding: 12px 13px;
+    border-radius: 14px;
+  }
+  .stats-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+  .stats-title { font-size: 9px; color: #789cac; letter-spacing: .17em; font-weight: 700; }
+  .support { color: var(--good); font-size: 9px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .stat { min-width: 0; }
+  .stat span { display: block; color: #6f91a1; font-size: 8px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 2px; }
+  .stat strong { font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; color: #dff7ff; }
+  .density-bar { height: 3px; border-radius: 999px; background: rgba(255,255,255,.08); margin-top: 10px; overflow: hidden; }
+  #densityBarFill { width: 50%; height: 100%; background: linear-gradient(90deg, #2a92c9, #70efbf); transition: width .3s; }
+  #hideUi {
+    position: fixed;
+    z-index: 12;
+    right: 14px;
+    top: 157px;
+    min-height: 30px;
+    padding: 6px 10px;
+    border-radius: 9px;
+    font-size: 10px;
+  }
+  #hint {
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    padding: 8px 14px;
+    color: #b4ccd5;
+    font-size: 10px;
+    letter-spacing: .035em;
+    white-space: nowrap;
+  }
+  body.ui-hidden .ui, body.ui-hidden #hideUi { opacity: 0; pointer-events: none; }
+  body.ui-hidden #showUi { display: block; }
+  #showUi { display: none; }
+  @media (max-width: 720px) {
+    #controlPanel { width: min(286px, calc(100vw - 28px)); top: 10px; left: 10px; }
+    #statsPanel { right: 10px; top: 10px; width: 154px; padding: 9px; }
+    .stat-grid { gap: 6px; }
+    .stat strong { font-size: 10px; }
+    #hideUi { right: 10px; top: 139px; }
+    #hint { max-width: calc(100vw - 20px); white-space: normal; text-align: center; border-radius: 12px; }
+    .stats-top .stats-title { display: none; }
+  }
+  @media (max-width: 470px) {
+    #statsPanel { top: auto; bottom: 54px; right: 10px; width: 145px; }
+    #hideUi { top: 10px; }
+    #hint { font-size: 9px; }
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="viewport"></div>
+
+<div id="loading">
+  <div class="loader-card">
+    <div class="loader-ring"></div>
+    <div class="loader-title">AQUA / LAB</div>
+    <div id="loadingText">Preparing the 3D SPH solver…</div>
+  </div>
+</div>
+
+<div id="controlPanel" class="ui panel">
+  <div class="brand-row">
+    <div class="brand">AQUA <span>/</span> LAB</div>
+    <div class="version">3D FLUID BENCH</div>
+  </div>
+  <div class="method">
+    <span id="methodName">GPU SPH · 3D</span>
+    <b id="backendName">WEBGL2 FLOAT</b>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Experiment</div>
+    <div class="field">
+      <label for="scenario">Scenario</label>
+      <select id="scenario">
+        <option value="0">Dam break</option>
+        <option value="1">Double dam</option>
+        <option value="2">Drop</option>
+        <option value="3">Faucet</option>
+        <option value="4">Wave machine</option>
+      </select>
+    </div>
+    <div class="field">
+      <div class="field-line">
+        <label for="particleCount">Particle budget</label>
+        <output id="countValue">32,768</output>
+      </div>
+      <select id="particleCount">
+        <option value="24576">24,576 particles</option>
+        <option value="32768" selected>32,768 particles</option>
+        <option value="49152">49,152 particles</option>
+        <option value="65536">65,536 particles</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Fluid properties</div>
+    <div class="field">
+      <div class="field-line"><label for="viscosity">Viscosity</label><output id="viscosityValue">0.024</output></div>
+      <input id="viscosity" type="range" min="0" max="0.065" step="0.001" value="0.024">
+    </div>
+    <div class="field">
+      <div class="field-line"><label for="gravity">Gravity</label><output id="gravityValue">9.81 m/s²</output></div>
+      <input id="gravity" type="range" min="3" max="16" step="0.1" value="9.81">
+    </div>
+    <div class="field">
+      <div class="field-line"><label for="timeStep">Time step</label><output id="timeStepValue">8.0 ms</output></div>
+      <input id="timeStep" type="range" min="0.004" max="0.012" step="0.001" value="0.008">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Tank motion</div>
+    <div class="field">
+      <div class="field-line"><label for="tilt">Tilt</label><output id="tiltValue">0°</output></div>
+      <input id="tilt" type="range" min="-32" max="32" step="1" value="0">
+    </div>
+    <div class="field-line" style="color:#789aa9;font-size:9px;line-height:1.5">
+      <span>Arrow keys tilt front/back and side-to-side</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Solid object</div>
+    <div class="object-row">
+      <select id="objectShape" aria-label="Object shape">
+        <option value="ball">Floating ball</option>
+        <option value="crate">Buoyant crate</option>
+        <option value="duck">Rubber duck</option>
+      </select>
+      <button id="dropObject" class="primary">Drop</button>
+    </div>
+    <div class="field" style="margin-top:9px">
+      <div class="field-line"><label for="objectDensity">Object density</label><output id="objectDensityValue">0.65 ρ</output></div>
+      <input id="objectDensity" type="range" min="0.25" max="1.8" step="0.05" value="0.65">
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="button-grid">
+      <button id="pause" class="primary">Pause</button>
+      <button id="step">Step</button>
+      <button id="reset">Reset</button>
+      <button id="homeView" class="wide">Reset camera</button>
+      <button id="clearObject">Clear object</button>
+    </div>
+  </div>
+
+  <div class="section check-row">
+    <span class="label">Raw speed particles</span>
+    <label class="switch" aria-label="Show raw particles">
+      <input id="rawParticles" type="checkbox">
+      <span></span>
+    </label>
+  </div>
+</div>
+
+<div id="statsPanel" class="ui panel">
+  <div class="stats-top">
+    <div class="stats-title">SOLVER TELEMETRY</div>
+    <div class="support" id="supportBadge">● LIVE</div>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><span>FPS</span><strong id="fps">—</strong></div>
+    <div class="stat"><span>Sim / frame</span><strong id="simMs">—</strong></div>
+    <div class="stat"><span>Particles</span><strong id="particleStat">32,768</strong></div>
+    <div class="stat"><span>Sim time</span><strong id="simTime">0.00 s</strong></div>
+    <div class="stat"><span>Avg density</span><strong id="density">—</strong></div>
+    <div class="stat"><span>Density error</span><strong id="densityError">—</strong></div>
+  </div>
+  <div class="density-bar"><div id="densityBarFill"></div></div>
+</div>
+
+<button id="hideUi" class="ui panel">Hide UI · H</button>
+<button id="showUi" class="panel">Show UI</button>
+<div id="hint" class="ui panel">Drag water to stir · Drag outside water to orbit · Right-drag pans · Wheel zooms · H hides UI</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const $ = id => document.getElementById(id);
+
+function showFatal(error) {
+  console.error(error);
+  $('loading').classList.remove('hidden');
+  $('loading').classList.add('error');
+  $('loadingText').textContent = 'Unable to start WebGL 2: ' + (error?.message || error);
+}
+
+async function boot() {
+  const canvas = document.createElement('canvas');
+  $('viewport').appendChild(canvas);
+  const context = canvas.getContext('webgl2', {
+    antialias: true,
+    alpha: false,
+    depth: true,
+    stencil: false,
+    powerPreference: 'high-performance'
+  });
+  if (!context) throw new Error('This simulation requires a WebGL 2 capable browser and GPU.');
+
+  const renderer = new THREE.WebGLRenderer({ canvas, context, antialias: true, alpha: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.autoClear = true;
+
+  const gl = renderer.getContext();
+  const floatRenderable = !!gl.getExtension('EXT_color_buffer_float');
+  const useGPU = floatRenderable;
+  const W = 6.4, H = 4.2, D = 3.8;
+  const MIN = new THREE.Vector3(-W / 2, 0, -D / 2);
+  const MAX = new THREE.Vector3(W / 2, H, D / 2);
+  const H_SPH = 0.24;
+  const BIN = H_SPH * 0.5;
+  const GRID = new THREE.Vector3(Math.ceil(W / BIN), Math.ceil(H / BIN), Math.ceil(D / BIN));
+  const ATLAS_W = 2048, ATLAS_H = 40;
+  const MAX_PARTICLES = 65536, STATE_SIZE = 256;
+  const CPU_PARTICLES = 1400;
+
+  $('loadingText').textContent = 'Building the tank, lighting and solver…';
+  await new Promise(resolve => requestAnimationFrame(resolve));
+
+  const scene = new THREE.Scene();
+  const background = new THREE.Color(0x07121b);
+  scene.background = background;
+  scene.fog = new THREE.FogExp2(0x07121b, 0.024);
+
+  const camera = new THREE.PerspectiveCamera(43, innerWidth / innerHeight, 0.08, 100);
+  const homePosition = new THREE.Vector3(9.1, 6.6, 10.2);
+  const homeTarget = new THREE.Vector3(0, 1.85, 0);
+  camera.position.copy(homePosition);
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.target.copy(homeTarget);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.065;
+  controls.minDistance = 6.5;
+  controls.maxDistance = 23;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.panSpeed = 0.65;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const room = new RoomEnvironment();
+  const environmentTarget = pmrem.fromScene(room, 0.04);
+  scene.environment = environmentTarget.texture;
+  room.dispose();
+  pmrem.dispose();
+
+  function createEnvironmentCube() {
+    const faces = [];
+    for (let f = 0; f < 6; f++) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 128;
+      const g = c.getContext('2d');
+      const grad = g.createLinearGradient(0, 0, 128, 128);
+      grad.addColorStop(0, f === 2 ? '#d8f4ff' : '#17384b');
+      grad.addColorStop(.48, f === 2 ? '#ffffff' : '#0a1824');
+      grad.addColorStop(1, '#02080d');
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 128, 128);
+      g.fillStyle = f === 2 ? 'rgba(255,255,255,.75)' : 'rgba(80,218,255,.24)';
+      g.fillRect(16 + (f * 13) % 72, 12, 10, 70);
+      g.fillRect(80, 36 + f * 4, 32, 7);
+      faces.push(c);
+    }
+    const cube = new THREE.CubeTexture(faces);
+    cube.colorSpace = THREE.SRGBColorSpace;
+    cube.needsUpdate = true;
+    return cube;
+  }
+  const environmentCube = createEnvironmentCube();
+
+  const tankGroup = new THREE.Group();
+  scene.add(tankGroup);
+
+  const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x101b23, roughness: .54, metalness: .32 });
+  const table = new THREE.Mesh(new RoundedBoxGeometry(18, .52, 12, 8, .2), tableMaterial);
+  table.position.y = -.48;
+  table.receiveShadow = true;
+  scene.add(table);
+
+  const tableInset = new THREE.Mesh(
+    new RoundedBoxGeometry(10.8, .035, 7.5, 6, .15),
+    new THREE.MeshStandardMaterial({ color: 0x162833, roughness: .35, metalness: .52 })
+  );
+  tableInset.position.y = -.205;
+  tableInset.receiveShadow = true;
+  scene.add(tableInset);
+
+  for (const x of [-6.7, 6.7]) {
+    for (const z of [-3.9, 3.9]) {
+      const foot = new THREE.Mesh(new THREE.CylinderGeometry(.19, .25, .32, 20), new THREE.MeshStandardMaterial({ color: 0x1c2b35, metalness: .72, roughness: .3 }));
+      foot.position.set(x, -.78, z);
+      foot.castShadow = true;
+      scene.add(foot);
+    }
+  }
+
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(6.25, .025, 8, 100),
+    new THREE.MeshStandardMaterial({ color: 0x2a91ad, emissive: 0x0b3543, emissiveIntensity: .8, roughness: .3, metalness: .8 })
+  );
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = -.185;
+  scene.add(rim);
+
+  const innerFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x12303b, roughness: .26, metalness: .38 });
+  const innerFloor = new THREE.Mesh(new RoundedBoxGeometry(W - .06, .08, D - .06, 4, .025), innerFloorMaterial);
+  innerFloor.position.y = -.025;
+  innerFloor.receiveShadow = true;
+  tankGroup.add(innerFloor);
+
+  const causticMaterial = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0x43dcff) } },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+      uniform float uTime;
+      uniform vec3 uColor;
+      varying vec2 vUv;
+      void main() {
+        vec2 p = (vUv - .5) * vec2(6.4, 3.8);
+        float a = sin(p.x * 4.1 + sin(p.y * 3.2 + uTime * 1.7));
+        float b = sin(p.y * 5.3 - sin(p.x * 2.2 - uTime * 1.25));
+        float c = pow(max(0.0, .5 + .5 * (a + b) * .5), 10.0);
+        float edge = smoothstep(.0, .18, vUv.x) * smoothstep(.0, .18, vUv.y) * smoothstep(.0, .18, 1.0-vUv.x) * smoothstep(.0, .18, 1.0-vUv.y);
+        gl_FragColor = vec4(uColor * c * .22, c * edge * .19);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const caustics = new THREE.Mesh(new THREE.PlaneGeometry(W - .1, D - .1), causticMaterial);
+  caustics.rotation.x = -Math.PI / 2;
+  caustics.position.y = .021;
+  caustics.renderOrder = 1;
+  tankGroup.add(caustics);
+
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    color: 0xb8efff,
+    roughness: .07,
+    metalness: .04,
+    transparent: true,
+    opacity: .19,
+    clearcoat: 1,
+    clearcoatRoughness: .08,
+    ior: 1.46,
+    envMap: environmentCube,
+    envMapIntensity: 1.15,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x17323e, roughness: .24, metalness: .86 });
+  const glassMeshes = [];
+
+  function addGlass(geometry, position) {
+    const mesh = new THREE.Mesh(geometry, glassMaterial);
+    mesh.position.copy(position);
+    mesh.layers.set(2);
+    mesh.renderOrder = 4;
+    glassMeshes.push(mesh);
+    tankGroup.add(mesh);
+    return mesh;
+  }
+  function addCylinder(parent, radius, length, position, rotation) {
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 16), frameMaterial);
+    mesh.position.copy(position);
+    if (rotation) mesh.rotation.set(rotation.x || 0, rotation.y || 0, rotation.z || 0);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+    return mesh;
+  }
+
+  addGlass(new RoundedBoxGeometry(W + .16, .12, D + .16, 4, .035), new THREE.Vector3(0, -.065, 0));
+  addGlass(new RoundedBoxGeometry(W + .14, H + .08, .055, 4, .025), new THREE.Vector3(0, H / 2, D / 2));
+  addGlass(new RoundedBoxGeometry(W + .14, H + .08, .055, 4, .025), new THREE.Vector3(0, H / 2, -D / 2));
+  addGlass(new RoundedBoxGeometry(.055, H + .08, D, 4, .025), new THREE.Vector3(-W / 2, H / 2, 0));
+
+  const rightWall = new THREE.Group();
+  rightWall.position.x = W / 2;
+  tankGroup.add(rightWall);
+  const rightPanel = new THREE.Mesh(new RoundedBoxGeometry(.055, H + .08, D, 4, .025), glassMaterial);
+  rightPanel.position.y = H / 2;
+  rightPanel.layers.set(2);
+  rightPanel.renderOrder = 4;
+  glassMeshes.push(rightPanel);
+  rightWall.add(rightPanel);
+
+  for (const y of [.015, H]) {
+    addCylinder(tankGroup, .034, W + .15, new THREE.Vector3(0, y, -D / 2), new THREE.Vector3(0, 0, Math.PI / 2));
+    addCylinder(tankGroup, .034, W + .15, new THREE.Vector3(0, y, D / 2), new THREE.Vector3(0, 0, Math.PI / 2));
+    addCylinder(tankGroup, .034, D, new THREE.Vector3(-W / 2, y, 0), new THREE.Vector3(Math.PI / 2, 0, 0));
+    addCylinder(rightWall, .034, D, new THREE.Vector3(0, y, 0), new THREE.Vector3(Math.PI / 2, 0, 0));
+  }
+  for (const x of [-W / 2, W / 2]) {
+    for (const z of [-D / 2, D / 2]) {
+      const parent = x > 0 ? rightWall : tankGroup;
+      addCylinder(parent, .035, H, new THREE.Vector3(x, H / 2, z));
+    }
+  }
+
+  const tickPoints = [];
+  for (let i = 0; i <= 16; i++) {
+    const y = i * H / 16;
+    const len = i % 4 === 0 ? .18 : .1;
+    tickPoints.push(new THREE.Vector3(-W / 2 + .13, y, D / 2 + .033));
+    tickPoints.push(new THREE.Vector3(-W / 2 + .13 + len, y, D / 2 + .033));
+  }
+  const tickGeometry = new THREE.BufferGeometry().setFromPoints(tickPoints);
+  const ticks = new THREE.LineSegments(tickGeometry, new THREE.LineBasicMaterial({ color: 0x8cecff, transparent: true, opacity: .45 }));
+  ticks.layers.set(2);
+  tankGroup.add(ticks);
+
+  const hemi = new THREE.HemisphereLight(0xbdeaff, 0x071018, 1.65);
+  scene.add(hemi);
+  const keyLight = new THREE.DirectionalLight(0xdff6ff, 3.3);
+  keyLight.position.set(-4.5, 9, 5.5);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.camera.left = -8;
+  keyLight.shadow.camera.right = 8;
+  keyLight.shadow.camera.top = 8;
+  keyLight.shadow.camera.bottom = -8;
+  keyLight.shadow.bias = -.0004;
+  scene.add(keyLight);
+  const rimLight = new THREE.PointLight(0x28cfff, 24, 14, 2);
+  rimLight.position.set(5, 4, -4);
+  scene.add(rimLight);
+  const warmLight = new THREE.PointLight(0xffb66b, 14, 10, 2);
+  warmLight.position.set(-4, 2, 3);
+  scene.add(warmLight);
+
+  const opaqueTarget = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType,
+    format: THREE.RGBAFormat,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    depthBuffer: true,
+    stencilBuffer: false,
+    generateMipmaps: false
+  });
+  opaqueTarget.texture.colorSpace = THREE.NoColorSpace;
+
+  const renderUniforms = {
+    uPositions: { value: null },
+    uVelocities: { value: null },
+    uStateSize: { value: STATE_SIZE },
+    uPointScale: { value: 600 },
+    uPointRadius: { value: .19 },
+    uViewport: { value: new THREE.Vector2(1, 1) },
+    uScene: { value: opaqueTarget.texture },
+    uEnvironment: { value: environmentCube }
+  };
+
+  const particleVertex = `
+    precision highp float;
+    uniform sampler2D uPositions;
+    uniform sampler2D uVelocities;
+    uniform float uStateSize;
+    uniform float uPointScale;
+    uniform float uPointRadius;
+    out vec3 vViewCenter;
+    out float vRadius;
+    out float vSpeed;
+    out float vFoam;
+    void main() {
+      int id = gl_VertexID;
+      ivec2 pixel = ivec2(id % int(uStateSize), id / int(uStateSize));
+      vec4 state = texelFetch(uPositions, pixel, 0);
+      vec4 velocity = texelFetch(uVelocities, pixel, 0);
+      vec4 world = modelMatrix * vec4(state.xyz, 1.0);
+      vec4 view = viewMatrix * world;
+      vViewCenter = view.xyz;
+      vSpeed = length(velocity.xyz);
+      vFoam = state.w;
+      #ifdef RAW
+        vRadius = uPointRadius;
+      #else
+        vRadius = uPointRadius * (1.0 + smoothstep(2.2, 6.0, vSpeed) * .36 + state.w * .12);
+      #endif
+      gl_PointSize = clamp(uPointScale * vRadius * 2.0 / max(.2, -view.z), 2.0, 86.0);
+      gl_Position = projectionMatrix * view;
+    }
+  `;
+
+  const liquidFragment = `
+    precision highp float;
+    uniform sampler2D uScene;
+    uniform samplerCube uEnvironment;
+    uniform vec2 uViewport;
+    in vec3 vViewCenter;
+    in float vRadius;
+    in float vSpeed;
+    in float vFoam;
+    out vec4 outColor;
+    vec3 aces(vec3 x) {
+      return clamp((x * (2.51 * x + .03)) / (x * (2.43 * x + .59) + .14), 0.0, 1.0);
+    }
+    vec3 toSRGB(vec3 c) {
+      c = max(c, vec3(0.0));
+      return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - .055, step(vec3(.0031308), c));
+    }
+    void main() {
+      vec2 q = gl_PointCoord * 2.0 - 1.0;
+      float r2 = dot(q, q);
+      if (r2 > 1.0) discard;
+      float nz = sqrt(max(0.0, 1.0 - r2));
+      vec3 viewPos = vViewCenter + vec3(q * vRadius, nz * vRadius);
+      vec4 clip = projectionMatrix * vec4(viewPos, 1.0);
+      gl_FragDepth = clip.z / clip.w * .5 + .5;
+
+      vec3 nView = normalize(vec3(q, nz));
+      vec3 nWorld = normalize(mat3(cameraMatrixWorld) * nView);
+      vec3 viewDir = normalize(cameraPosition - (inverse(viewMatrix) * vec4(viewPos, 1.0)).xyz);
+      float facing = clamp(dot(nWorld, viewDir), 0.0, 1.0);
+      float fresnel = pow(1.0 - facing, 4.0);
+      vec2 screenUv = gl_FragCoord.xy / uViewport;
+      vec2 refractionOffset = nView.xy * (.006 + fresnel * .008);
+      vec3 behind = texture(uScene, clamp(screenUv + refractionOffset, vec2(.002), vec2(.998))).rgb;
+      vec3 reflected = texture(uEnvironment, reflect(-viewDir, nWorld)).rgb;
+      float thickness = vRadius * (1.7 - nz) * 7.0;
+      vec3 absorption = exp(-thickness * vec3(.34, .075, .025));
+      vec3 water = behind * mix(vec3(.75, .96, 1.02), absorption, .38);
+      vec3 lightDir = normalize(vec3(-.42, .78, .33));
+      float spec = pow(max(dot(reflect(-lightDir, nWorld), viewDir), 0.0), 86.0);
+      float foam = smoothstep(2.7, 5.8, vSpeed) * .8 + vFoam * .45;
+      vec3 color = mix(water, reflected * vec3(.73, .94, 1.08), fresnel * .78);
+      color += spec * vec3(.78, .95, 1.0) * 1.45;
+      color = mix(color, vec3(.82, .98, 1.0), clamp(foam, 0.0, .82));
+      float coverage = 1.0 - smoothstep(.55, 1.0, r2);
+      float alpha = mix(.12, .48, coverage) + fresnel * .1 + foam * .1;
+      outColor = vec4(toSRGB(aces(color * 1.22)), clamp(alpha, 0.0, .86));
+    }
+  `;
+
+  const rawFragment = `
+    precision highp float;
+    in vec3 vViewCenter;
+    in float vRadius;
+    in float vSpeed;
+    in float vFoam;
+    out vec4 outColor;
+    vec3 toSRGB(vec3 c) {
+      c = max(c, vec3(0.0));
+      return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - .055, step(vec3(.0031308), c));
+    }
+    void main() {
+      vec2 q = gl_PointCoord * 2.0 - 1.0;
+      float r = dot(q, q);
+      if (r > 1.0) discard;
+      float speed = clamp(vSpeed / 6.0, 0.0, 1.0);
+      vec3 slow = vec3(.035, .32, .72);
+      vec3 fast = vec3(.25, 1.0, .95);
+      vec3 c = mix(slow, fast, speed);
+      c = mix(c, vec3(1.0), vFoam * .7);
+      float alpha = smoothstep(1.0, .18, r) * .88;
+      outColor = vec4(toSRGB(c), alpha);
+    }
+  `;
+
+  function particleMaterial(raw) {
+    const defines = raw ? { RAW: '' } : {};
+    return new THREE.ShaderMaterial({
+      defines,
+      uniforms: renderUniforms,
+      vertexShader: particleVertex,
+      fragmentShader: raw ? rawFragment : liquidFragment,
+      glslVersion: THREE.GLSL3,
+      transparent: true,
+      depthTest: true,
+      depthWrite: !raw,
+      blending: THREE.NormalBlending,
+      toneMapped: false
+    });
+  }
+  const liquidParticleMaterial = particleMaterial(false);
+  const rawParticleMaterial = particleMaterial(true);
+
+  const maxPositions = new Float32Array(MAX_PARTICLES * 3);
+  const particleGeometry = new THREE.BufferGeometry();
+  particleGeometry.setAttribute('position', new THREE.BufferAttribute(maxPositions, 3));
+  particleGeometry.setDrawRange(0, 32768);
+  const gpuParticles = new THREE.Points(particleGeometry, liquidParticleMaterial);
+  gpuParticles.frustumCulled = false;
+  gpuParticles.layers.set(1);
+  tankGroup.add(gpuParticles);
+
+  const cpuGeometry = new THREE.BufferGeometry();
+  const cpuPositionAttribute = new THREE.BufferAttribute(new Float32Array(CPU_PARTICLES * 3), 3).setUsage(THREE.DynamicDrawUsage);
+  const cpuSpeedAttribute = new THREE.BufferAttribute(new Float32Array(CPU_PARTICLES), 1).setUsage(THREE.DynamicDrawUsage);
+  const cpuFoamAttribute = new THREE.BufferAttribute(new Float32Array(CPU_PARTICLES), 1).setUsage(THREE.DynamicDrawUsage);
+  cpuGeometry.setAttribute('position', cpuPositionAttribute);
+  cpuGeometry.setAttribute('aSpeed', cpuSpeedAttribute);
+  cpuGeometry.setAttribute('aFoam', cpuFoamAttribute);
+  const cpuVertex = `
+    precision highp float;
+    attribute float aSpeed;
+    attribute float aFoam;
+    uniform float uPointScale;
+    uniform float uPointRadius;
+    out vec3 vViewCenter;
+    out float vRadius;
+    out float vSpeed;
+    out float vFoam;
+    void main() {
+      vec4 view = modelViewMatrix * vec4(position, 1.0);
+      vViewCenter = view.xyz;
+      vSpeed = aSpeed;
+      vFoam = aFoam;
+      #ifdef RAW
+        vRadius = uPointRadius;
+      #else
+        vRadius = uPointRadius * (1.0 + smoothstep(2.2, 6.0, aSpeed) * .36 + aFoam * .12);
+      #endif
+      gl_PointSize = clamp(uPointScale * vRadius * 2.0 / max(.2, -view.z), 2.0, 86.0);
+      gl_Position = projectionMatrix * view;
+    }
+  `;
+  function cpuParticleMaterial(raw) {
+    return new THREE.ShaderMaterial({
+      defines: raw ? { RAW: '' } : {},
+      uniforms: renderUniforms,
+      vertexShader: cpuVertex,
+      fragmentShader: raw ? rawFragment : liquidFragment,
+      glslVersion: THREE.GLSL3,
+      transparent: true,
+      depthTest: true,
+      depthWrite: !raw,
+      toneMapped: false
+    });
+  }
+  const cpuLiquidMaterial = cpuParticleMaterial(false);
+  const cpuRawMaterial = cpuParticleMaterial(true);
+  const cpuParticles = new THREE.Points(cpuGeometry, cpuLiquidMaterial);
+  cpuParticles.frustumCulled = false;
+  cpuParticles.layers.set(1);
+  cpuParticles.visible = false;
+  tankGroup.add(cpuParticles);
+
+  const fullscreenVertex = `
+    precision highp float;
+    in vec3 position;
+    in vec2 uv;
+    out vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position.xy, 0.0, 1.0);
+    }
+  `;
+
+  const fullscreenCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const passScene = new THREE.Scene();
+  const passQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial());
+  passScene.add(passQuad);
+
+  function makePass(fragmentShader, keys) {
+    const uniforms = {};
+    for (const key of keys) uniforms[key] = U[key];
+    return new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: fullscreenVertex,
+      fragmentShader,
+      glslVersion: THREE.GLSL3,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false
+    });
+  }
+  function renderPass(material, target) {
+    passQuad.material = material;
+    renderer.setRenderTarget(target);
+    renderer.render(passScene, fullscreenCamera);
+  }
+
+  const posDataArray = new Float32Array(MAX_PARTICLES * 4);
+  const velDataArray = new Float32Array(MAX_PARTICLES * 4);
+  const posDataTexture = new THREE.DataTexture(posDataArray, STATE_SIZE, STATE_SIZE, THREE.RGBAFormat, THREE.FloatType);
+  const velDataTexture = new THREE.DataTexture(velDataArray, STATE_SIZE, STATE_SIZE, THREE.RGBAFormat, THREE.FloatType);
+  for (const texture of [posDataTexture, velDataTexture]) {
+    texture.minFilter = texture.magFilter = THREE.NearestFilter;
+    texture.generateMipmaps = false;
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.needsUpdate = true;
+  }
+
+  const U = {
+    uPositions: { value: posDataTexture },
+    uVelocities: { value: velDataTexture },
+    uDensity: { value: null },
+    uGridPositions: { value: null },
+    uGridVelocities: { value: null },
+    uGridSize: { value: GRID },
+    uAtlas: { value: new THREE.Vector2(ATLAS_W, ATLAS_H) },
+    uMin: { value: MIN },
+    uMax: { value: MAX },
+    uH: { value: H_SPH },
+    uBin: { value: BIN },
+    uCount: { value: 32768 },
+    uDt: { value: .008 },
+    uTime: { value: 0 },
+    uRestDensity: { value: 850 },
+    uViscosity: { value: .024 },
+    uGravity: { value: new THREE.Vector3(0, -9.81, 0) },
+    uAngularAccel: { value: new THREE.Vector3() },
+    uAngularVelocity: { value: new THREE.Vector3() },
+    uStirCenter: { value: new THREE.Vector3(0, 1.5, 0) },
+    uStirVelocity: { value: new THREE.Vector3() },
+    uStirRadius: { value: .5 },
+    uStirStrength: { value: 0 },
+    uObjectCenter: { value: new THREE.Vector3(0, -10, 0) },
+    uObjectVelocity: { value: new THREE.Vector3() },
+    uObjectRadius: { value: .52 },
+    uObjectDensity: { value: .65 },
+    uWallX: { value: W / 2 },
+    uWallVelocity: { value: 0 },
+    uScenario: { value: 0 },
+    uWaterLevel: { value: 1.5 },
+    uEmitFraction: { value: 0 }
+  };
+
+  function makeSimulationTarget(width, height, type = THREE.HalfFloatType) {
+    const target = new THREE.WebGLRenderTarget(width, height, {
+      type,
+      format: THREE.RGBAFormat,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      depthBuffer: false,
+      stencilBuffer: false,
+      generateMipmaps: false
+    });
+    target.texture.colorSpace = THREE.NoColorSpace;
+    return target;
+  }
+
+  const gridPositionTarget = makeSimulationTarget(ATLAS_W, ATLAS_H);
+  const gridVelocityTarget = makeSimulationTarget(ATLAS_W, ATLAS_H);
+  const densityTarget = makeSimulationTarget(STATE_SIZE, STATE_SIZE);
+  const positionTargets = [makeSimulationTarget(STATE_SIZE, STATE_SIZE), makeSimulationTarget(STATE_SIZE, STATE_SIZE)];
+  const velocityTargets = [makeSimulationTarget(STATE_SIZE, STATE_SIZE), makeSimulationTarget(STATE_SIZE, STATE_SIZE)];
+  U.uDensity.value = densityTarget.texture;
+  U.uGridPositions.value = gridPositionTarget.texture;
+  U.uGridVelocities.value = gridVelocityTarget.texture;
+
+  const depositGeometry = new THREE.BufferGeometry();
+  depositGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_PARTICLES * 3), 3));
+  depositGeometry.setDrawRange(0, 32768);
+  const depositScene = new THREE.Scene();
+
+  const gridVertex = `
+    precision highp float;
+    uniform sampler2D uPositions;
+    uniform float uStateSize;
+    uniform vec3 uMin;
+    uniform vec3 uMax;
+    uniform float uBin;
+    uniform vec3 uGridSize;
+    uniform vec2 uAtlas;
+    out vec3 vParticle;
+    void main() {
+      int id = gl_VertexID;
+      ivec2 pixel = ivec2(id % int(uStateSize), id / int(uStateSize));
+      vec3 p = texelFetch(uPositions, pixel, 0).xyz;
+      vec3 cellF = floor((p - uMin) / uBin);
+      ivec3 cell = ivec3(clamp(cellF, vec3(0.0), uGridSize - vec3(1.0)));
+      int atlasX = cell.z * int(uGridSize.x) + cell.x;
+      vec2 ndc = vec2(
+        (float(atlasX) + .5) / uAtlas.x * 2.0 - 1.0,
+        (float(cell.y) + .5) / uAtlas.y * 2.0 - 1.0
+      );
+      vParticle = p;
+      gl_PointSize = 1.0;
+      gl_Position = vec4(ndc, 0.0, 1.0);
+    }
+  `;
+  function gridMaterial(withVelocity) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uPositions: U.uPositions,
+        uVelocities: U.uVelocities,
+        uStateSize: { value: STATE_SIZE },
+        uMin: U.uMin,
+        uMax: U.uMax,
+        uBin: U.uBin,
+        uGridSize: U.uGridSize,
+        uAtlas: U.uAtlas
+      },
+      vertexShader: gridVertex,
+      fragmentShader: `
+        precision highp float;
+        in vec3 vParticle;
+        out vec4 outColor;
+        void main() { outColor = vec4(1.0, vParticle); }
+      `,
+      glslVersion: THREE.GLSL3,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false
+    });
+  }
+  const gridPositionMaterial = gridMaterial(false);
+  const gridVelocityMaterial = gridMaterial(true);
+  const depositPoints = new THREE.Points(depositGeometry, gridPositionMaterial);
+  depositPoints.frustumCulled = false;
+  depositScene.add(depositPoints);
+
+  const commonCellFunctions = `
+    uniform sampler2D uGridPositions;
+    uniform sampler2D uGridVelocities;
+    uniform vec3 uGridSize;
+    uniform vec3 uMin;
+    uniform float uBin;
+    uniform float uH;
+    ivec3 ownCell(ivec2 pixel) {
+      vec3 p = texelFetch(uPositions, pixel, 0).xyz;
+      return ivec3(clamp(floor((p-uMin)/uBin), vec3(0.0), uGridSize-vec3(1.0)));
+    }
+    ivec2 atlasPixel(ivec3 c) {
+      return ivec2(c.z * int(uGridSize.x) + c.x, c.y);
+    }
+    vec3 centroid(ivec3 c) {
+      return texture(uGridPositions, vec2(atlasPixel(c))).gba;
+    }
+    vec3 centroidVelocity(ivec3 c) {
+      return texture(uGridVelocities, vec2(atlasPixel(c))).gba;
+    }
+  `;
+
+  const densityMaterial = makePass(`
+    precision highp float;
+    uniform sampler2D uPositions;
+    uniform sampler2D uVelocities;
+    uniform int uCount;
+    uniform float uRestDensity;
+    ${commonCellFunctions}
+    in vec2 vUv;
+    out vec4 outColor;
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * .1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
+    }
+    void main() {
+      ivec2 pixel = ivec2(gl_FragCoord.xy);
+      int id = pixel.y * 256 + pixel.x;
+      if (id >= uCount) discard;
+      vec3 p = texelFetch(uPositions, pixel, 0).xyz;
+      vec3 v = texelFetch(uVelocities, pixel, 0).xyz;
+      ivec3 own = ownCell(pixel);
+      float density = 0.0;
+      float h2 = uH*uH;
+      float h6 = h2*h2*h2;
+      for (int z=-2; z<=2; z++) {
+        for (int y=-2; y<=2; y++) {
+          for (int x=-2; x<=2; x++) {
+            ivec3 c = own + ivec3(x,y,z);
+            if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, ivec3(uGridSize)))) continue;
+            vec4 grid = texture(uGridPositions, vec2(atlasPixel(c)));
+            if (grid.r < .5) continue;
+            vec3 delta = p - grid.gba;
+            float r2 = dot(delta,delta);
+            if (r2 >= h2) continue;
+            float kernel = 315.0 / (64.0 * 3.14159265359 * h6) * pow(h2-r2, 3.0);
+            density += grid.r * kernel;
+          }
+        }
+      }
+      density = clamp(density, 0.0, 6000.0);
+      float pressure = max(0.0, .62 * (density - uRestDensity));
+      pressure = min(pressure, 1900.0);
+      outColor = vec4(density, pressure, length(v), hash12(vec2(pixel)));
+    }
+  `, ['uPositions','uVelocities','uCount','uRestDensity','uGridPositions','uGridVelocities','uGridSize','uMin','uBin','uH']);
+
+  const forceMaterial = makePass(`
+    precision highp float;
+    uniform sampler2D uPositions;
+    uniform sampler2D uVelocities;
+    uniform sampler2D uDensity;
+    uniform int uCount;
+    uniform float uDt;
+    uniform float uViscosity;
+    uniform float uRestDensity;
+    uniform vec3 uGravity;
+    uniform vec3 uAngularAccel;
+    uniform vec3 uAngularVelocity;
+    uniform vec3 uStirCenter;
+    uniform vec3 uStirVelocity;
+    uniform float uStirRadius;
+    uniform float uStirStrength;
+    uniform vec3 uObjectCenter;
+    uniform vec3 uObjectVelocity;
+    uniform float uObjectRadius;
+    uniform float uObjectDensity;
+    uniform float uWallX;
+    uniform float uWallVelocity;
+    uniform int uScenario;
+    uniform float uWaterLevel;
+    uniform float uEmitFraction;
+    uniform vec3 uMax;
+    ${commonCellFunctions}
+    in vec2 vUv;
+    out vec4 outColor;
+    float hash1(float n) { return fract(sin(n*12.9898)*43758.5453); }
+    bool recycleSelected(vec3 p, int id) {
+      return uScenario == 3 && p.y > uWaterLevel-.13 && p.y < uWaterLevel+.13 && hash1(float(id)+2.0) < uEmitFraction;
+    }
+    void main() {
+      ivec2 pixel = ivec2(gl_FragCoord.xy);
+      int id = pixel.y * 256 + pixel.x;
+      if (id >= uCount) discard;
+      vec4 state = texelFetch(uPositions, pixel, 0);
+      vec3 p = state.xyz;
+      vec3 v = texelFetch(uVelocities, pixel, 0).xyz;
+      vec4 densityState = texelFetch(uDensity, pixel, 0);
+      float rho = max(1.0, densityState.r);
+      float pressure = densityState.g;
+      float foam = state.w;
+      ivec3 own = ownCell(pixel);
+      vec3 force = vec3(0.0);
+      float h2 = uH*uH;
+      float h6 = h2*h2*h2;
+      for (int z=-2; z<=2; z++) {
+        for (int y=-2; y<=2; y++) {
+          for (int x=-2; x<=2; x++) {
+            ivec3 c = own + ivec3(x,y,z);
+            if (any(lessThan(c, ivec3(0))) || any(greaterThanEqual(c, ivec3(uGridSize)))) continue;
+            vec4 gp = texture(uGridPositions, vec2(atlasPixel(c)));
+            if (gp.r < .5) continue;
+            float count = gp.r - (c == own ? 1.0 : 0.0);
+            if (count < .25) continue;
+            vec3 delta = p - gp.gba;
+            float r2 = dot(delta,delta);
+            if (r2 >= h2 || r2 < 1e-8) continue;
+            float r = sqrt(r2);
+            vec3 direction = delta / r;
+            float q = uH-r;
+            float gradMag = 45.0/(3.14159265359*h6)*q*q/max(r,.001);
+            vec3 gradient = -gradMag * direction;
+            vec3 averageV = centroidVelocity(c);
+            float rhoJ = max(1.0, densityState.r * .96);
+            force -= count * (pressure/(rho*rho) + pressure/(rhoJ*rhoJ)) * gradient;
+            float viscosityLap = 45.0/(3.14159265359*h6)*q;
+            force += count * uViscosity * viscosityLap * (averageV-v) / max(8.0, rho);
+          }
+        }
+      }
+      force += uGravity;
+      force -= cross(uAngularAccel, p) * .32;
+      force -= cross(uAngularVelocity, cross(uAngularVelocity, p)) * .12;
+      if (length(force) > 150.0) force = normalize(force)*150.0;
+      v += force * uDt;
+      v *= exp(-.035*uDt);
+
+      float objectD = distance(p, uObjectCenter);
+      if (objectD < uObjectRadius && objectD > .0001) {
+        vec3 n = (p-uObjectCenter)/objectD;
+        v += n * 40.0 * (1.0-objectD/uObjectRadius) * uDt;
+        vec3 relative = v-uObjectVelocity;
+        if (dot(relative,n)<0.0) v -= relative*n*(1.18 + .18*uObjectDensity);
+        v *= 1.0-.04*(1.0-objectD/uObjectRadius);
+      }
+
+      float stirD = distance(p, uStirCenter);
+      if (uStirStrength > .01 && stirD < uStirRadius && stirD > .0001) {
+        vec3 n = (p-uStirCenter)/stirD;
+        float falloff = 1.0-stirD/uStirRadius;
+        v += (n*uStirStrength + uStirVelocity*8.0) * falloff * uDt;
+      }
+
+      vec3 predicted = p + v*uDt;
+      float r = .055;
+      if (predicted.x < uMin.x+r) { predicted.x=uMin.x+r; if(v.x<0.0)v.x*=-.08; v.z*=.985; }
+      if (predicted.x > uWallX-r) {
+        predicted.x=uWallX-r;
+        v.x = min(v.x*.08, uWallVelocity);
+        v.x += uWallVelocity*.18;
+        v.z*=.985;
+      }
+      if (predicted.z < uMin.z+r) { predicted.z=uMin.z+r; if(v.z<0.0)v.z*=-.08; v.x*=.985; }
+      if (predicted.z > uMax.z-r) { predicted.z=uMax.z-r; if(v.z>0.0)v.z*=-.08; v.x*=.985; }
+      if (predicted.y < uMin.y+r) { predicted.y=uMin.y+r; if(v.y<0.0)v.y*=-.06; v.xz*=.975; }
+      if (predicted.y > uMax.y-r) { predicted.y=uMax.y-r; if(v.y>0.0)v.y*=-.12; }
+
+      if (recycleSelected(p,id)) {
+        predicted = vec3(sin(float(id)*.73+uTime*.6)*.24, uMax.y-.12, sin(float(id)*1.17)*.24);
+        v = vec3(sin(float(id)*.73+uTime*.6)*.12, -2.35, 0.0);
+        foam = 1.0;
+      }
+      if (length(v)>10.0) v=normalize(v)*10.0;
+      float speed = length(v);
+      foam = max(foam*exp(-1.7*uDt), smoothstep(2.7,6.0,speed)*.85);
+      outColor = vec4(v, foam);
+    }
+  `, ['uPositions','uVelocities','uDensity','uCount','uDt','uViscosity','uGravity','uAngularAccel','uAngularVelocity','uStirCenter','uStirVelocity','uStirRadius','uStirStrength','uObjectCenter','uObjectVelocity','uObjectRadius','uObjectDensity','uWallX','uWallVelocity','uScenario','uWaterLevel','uEmitFraction','uMax','uGridPositions','uGridVelocities','uGridSize','uMin','uBin','uH']);
+
+  const positionMaterial = makePass(`
+    precision highp float;
+    uniform sampler2D uPositions;
+    uniform sampler2D uVelocities;
+    uniform int uCount;
+    uniform float uDt;
+    uniform float uWallX;
+    uniform vec3 uMax;
+    uniform vec3 uMin;
+    uniform vec3 uObjectCenter;
+    uniform float uObjectRadius;
+    uniform vec3 uStirCenter;
+    uniform float uStirRadius;
+    uniform float uStirStrength;
+    uniform int uScenario;
+    uniform float uWaterLevel;
+    uniform float uEmitFraction;
+    in vec2 vUv;
+    out vec4 outColor;
+    float hash1(float n) { return fract(sin(n*12.9898)*43758.5453); }
+    void main() {
+      ivec2 pixel=ivec2(gl_FragCoord.xy);
+      int id=pixel.y*256+pixel.x;
+      if(id>=uCount) discard;
+      vec4 state=texelFetch(uPositions,pixel,0);
+      vec3 p=state.xyz;
+      vec3 v=texelFetch(uVelocities,pixel,0).xyz;
+      float r=.055;
+      float od=distance(p,uObjectCenter);
+      if(od<uObjectRadius && od>.0001) p += (p-uObjectCenter)/od*(uObjectRadius-od);
+      float sd=distance(p,uStirCenter);
+      if(uStirStrength>.01 && sd<uStirRadius && sd>.0001) p += (p-uStirCenter)/sd*(uStirRadius-sd);
+      p += v*uDt;
+      p.x=clamp(p.x,uMin.x+r,uWallX-r);
+      p.y=clamp(p.y,uMin.y+r,uMax.y-r);
+      p.z=clamp(p.z,uMin.z+r,uMax.z-r);
+      if(uScenario==3 && state.y>uWaterLevel-.13 && state.y<uWaterLevel+.13 && hash1(float(id)+2.0)<uEmitFraction) {
+        p=vec3(sin(float(id)*.73+uTime*.6)*.24,uMax.y-.12,sin(float(id)*1.17)*.24);
+        state.w=1.0;
+      }
+      outColor=vec4(p,state.w);
+    }
+  `, ['uPositions','uVelocities','uCount','uDt','uWallX','uMax','uMin','uObjectCenter','uObjectRadius','uStirCenter','uStirRadius','uStirStrength','uScenario','uWaterLevel','uEmitFraction']);
+
+  const reductionTargets = [
+    makeSimulationTarget(64, 64, THREE.FloatType),
+    makeSimulationTarget(16, 16, THREE.FloatType),
+    makeSimulationTarget(1, 1, THREE.FloatType)
+  ];
+  function reductionMaterial(source, rest) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uSource: { value: source },
+        uCount: U.uCount,
+        uRestDensity: { value: rest }
+      },
+      vertexShader: fullscreenVertex,
+      fragmentShader: `
+        precision highp float;
+        uniform sampler2D uSource;
+        uniform int uCount;
+        uniform float uRestDensity;
+        in vec2 vUv;
+        out vec4 outColor;
+        void main() {
+          ivec2 base=ivec2(gl_FragCoord.xy)*4;
+          float sum=0.0;
+          float maxError=0.0;
+          float valid=0.0;
+          for(int y=0;y<4;y++) {
+            for(int x=0;x<4;x++) {
+              ivec2 p=base+ivec2(x,y);
+              int id=p.y*256+p.x;
+              if(id<uCount) {
+                float density=texelFetch(uSource,p,0).r;
+                sum+=density;
+                maxError=max(maxError,abs(density-uRestDensity));
+                valid+=1.0;
+              }
+            }
+          }
+          outColor=vec4(sum/max(valid,1.0),maxError,valid,1.0);
+        }
+      `,
+      glslVersion: THREE.GLSL3,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false
+    });
+  }
+
+  function mulberry32(seed) {
+    return function() {
+      let t = seed += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function sampleBox(positions, start, count, min, max, random) {
+    const sx = Math.max(.001, max.x - min.x);
+    const sy = Math.max(.001, max.y - min.y);
+    const sz = Math.max(.001, max.z - min.z);
+    const spacing = Math.cbrt(sx * sy * sz / Math.max(1, count)) * .985;
+    const nx = Math.max(1, Math.ceil(sx / spacing));
+    const ny = Math.max(1, Math.ceil(sy / spacing));
+    const nz = Math.max(1, Math.ceil(sz / spacing));
+    const slots = nx * ny * nz;
+    for (let i = 0; i < count; i++) {
+      let slot = Math.floor(random() * slots);
+      if (slot >= slots) slot = slots - 1;
+      const x = slot % nx;
+      const y = Math.floor(slot / nx) % ny;
+      const z = Math.floor(slot / (nx * ny));
+      const j = (start + i) * 4;
+      positions[j] = min.x + (x + .22 + random() * .56) * sx / nx;
+      positions[j + 1] = min.y + (y + .22 + random() * .56) * sy / ny;
+      positions[j + 2] = min.z + (z + .22 + random() * .56) * sz / nz;
+      positions[j + 3] = 0;
+    }
+  }
+
+  function sampleSphere(positions, start, count, center, radius, random) {
+    const min = new THREE.Vector3(center.x-radius, center.y-radius, center.z-radius);
+    const max = new THREE.Vector3(center.x+radius, center.y+radius, center.z+radius);
+    let written = 0, attempts = 0;
+    while (written < count && attempts < count * 20) {
+      attempts++;
+      const j = (start + written) * 4;
+      positions[j] = min.x + random() * (max.x-min.x);
+      positions[j+1] = min.y + random() * (max.y-min.y);
+      positions[j+2] = min.z + random() * (max.z-min.z);
+      const dx=positions[j]-center.x, dy=positions[j+1]-center.y, dz=positions[j+2]-center.z;
+      if (dx*dx+dy*dy+dz*dz < radius*radius*.985) {
+        positions[j+3] = 0;
+        written++;
+      }
+    }
+    while (written < count) {
+      const j=(start+written)*4;
+      const y=1-2*(written+.5)/count;
+      const r=Math.sqrt(1-y*y);
+      const a=written*2.399963229728653;
+      positions[j]=center.x+Math.cos(a)*r*radius*.96;
+      positions[j+1]=center.y+y*radius*.96;
+      positions[j+2]=center.z+Math.sin(a)*r*radius*.96;
+      positions[j+3]=0;
+      written++;
+    }
+  }
+
+  function generateScenario(n, scenario) {
+    const p = new Float32Array(n*4);
+    const v = new Float32Array(n*4);
+    const random = mulberry32(1729 + scenario*911 + n);
+    let volume = 36;
+    let level = 1.5;
+    let emitFraction = 0;
+    if (scenario === 0) {
+      sampleBox(p,0,n,new THREE.Vector3(-2.95,.06,-1.67),new THREE.Vector3(.55,3.23,1.67),random);
+      volume=3.5*3.17*3.34;
+    } else if (scenario === 1) {
+      const half=Math.floor(n/2);
+      sampleBox(p,0,half,new THREE.Vector3(-2.96,.06,-1.6),new THREE.Vector3(-1.02,3.68,1.6),random);
+      sampleBox(p,half,n-half,new THREE.Vector3(1.02,.06,-1.6),new THREE.Vector3(2.96,3.68,1.6),random);
+      volume=2*1.94*3.62*3.2;
+      level=1.72;
+    } else if (scenario === 2) {
+      const pool=Math.floor(n*.55);
+      const poolVolume=19.0;
+      const depth=poolVolume/((W-.22)*(D-.22));
+      sampleBox(p,0,pool,new THREE.Vector3(-3.08,.06,-1.68),new THREE.Vector3(3.08,depth,1.68),random);
+      const sphereVolume=volume-poolVolume;
+      const radius=Math.cbrt(3*sphereVolume/(4*Math.PI));
+      sampleSphere(p,pool,n-pool,new THREE.Vector3(0,depth+radius+.15,0),radius,random);
+      level=depth;
+    } else if (scenario === 3) {
+      const pool=Math.floor(n*.9);
+      const depth=29.5/((W-.2)*(D-.2));
+      sampleBox(p,0,pool,new THREE.Vector3(-3.1,.06,-1.7),new THREE.Vector3(3.1,depth,1.7),random);
+      sampleBox(p,pool,n-pool,new THREE.Vector3(-.31,depth,-.31),new THREE.Vector3(.31,H-.12,.31),random);
+      level=depth;
+      const surfaceCount=Math.max(100,pool/40);
+      emitFraction=Math.min(.12,18/surfaceCount);
+      volume=31.4;
+    } else {
+      const depth=31/((W-.18)*(D-.18));
+      sampleBox(p,0,n,new THREE.Vector3(-3.1,.06,-1.7),new THREE.Vector3(3.1,depth,1.7),random);
+      level=depth;
+      volume=31;
+    }
+    for (let i=0;i<n;i++) {
+      const j=i*4;
+      v[j]=(random()-.5)*.025;
+      v[j+1]=(random()-.5)*.025;
+      v[j+2]=(random()-.5)*.025;
+      v[j+3]=0;
+    }
+    return { positions:p, velocities:v, restDensity:n/volume, waterLevel:level, emitFraction };
+  }
+
+  let particleCount = 32768;
+  let scenario = 0;
+  let restDensity = 850;
+  let waterLevel = 1.5;
+  let posCurrent = posDataTexture;
+  let velCurrent = velDataTexture;
+  let positionWriteIndex = 0;
+  let velocityWriteIndex = 0;
+  let densityMaterials = [];
+  let densityReadPending = false;
+  let averageDensity = 0;
+  let densityError = 0;
+  let simulationTime = 0;
+  let paused = false;
+  let rawMode = false;
+
+  const cpuPositions = new Float32Array(CPU_PARTICLES*3);
+  const cpuVelocities = new Float32Array(CPU_PARTICLES*3);
+  const cpuFoam = new Float32Array(CPU_PARTICLES);
+  const cpuDensities = new Float32Array(CPU_PARTICLES);
+  const cpuPressures = new Float32Array(CPU_PARTICLES);
+  let cpuActiveCount = CPU_PARTICLES;
+
+  function updateParticleVisibility() {
+    gpuParticles.visible = useGPU;
+    cpuParticles.visible = !useGPU;
+    gpuParticles.material = rawMode ? rawParticleMaterial : liquidParticleMaterial;
+    cpuParticles.material = rawMode ? cpuRawMaterial : cpuLiquidMaterial;
+  }
+
+  function setScenarioState(id) {
+    scenario = id;
+    particleCount = useGPU ? Number($('particleCount').value) : CPU_PARTICLES;
+    const data=generateScenario(particleCount,scenario);
+    restDensity=data.restDensity;
+    waterLevel=data.waterLevel;
+    U.uRestDensity.value=restDensity;
+    U.uWaterLevel.value=waterLevel;
+    U.uEmitFraction.value=data.emitFraction;
+    U.uScenario.value=scenario;
+    simulationTime=0;
+    U.uTime.value=0;
+    averageDensity=restDensity;
+    densityError=0;
+    if (useGPU) {
+      posDataArray.fill(0);
+      velDataArray.fill(0);
+      posDataArray.set(data.positions);
+      velDataArray.set(data.velocities);
+      posDataTexture.needsUpdate=true;
+      velDataTexture.needsUpdate=true;
+      posCurrent=posDataTexture;
+      velCurrent=velDataTexture;
+      positionWriteIndex=0;
+      velocityWriteIndex=0;
+      U.uPositions.value=posCurrent;
+      U.uVelocities.value=velCurrent;
+      renderUniforms.uPositions.value=posCurrent;
+      renderUniforms.uVelocities.value=velCurrent;
+      particleGeometry.setDrawRange(0,particleCount);
+      depositGeometry.setDrawRange(0,particleCount);
+      U.uCount.value=particleCount;
+      reductionTargets.forEach(t=>t.dispose());
+      reductionTargets[0]=makeSimulationTarget(64,64,THREE.FloatType);
+      reductionTargets[1]=makeSimulationTarget(16,16,THREE.FloatType);
+      reductionTargets[2]=makeSimulationTarget(1,1,THREE.FloatType);
+      densityMaterials=[
+        reductionMaterial(densityTarget.texture,restDensity),
+        reductionMaterial(reductionTargets[0].texture,restDensity),
+        reductionMaterial(reductionTargets[1].texture,restDensity)
+      ];
+    } else {
+      cpuActiveCount=data.positions.length/4;
+      for(let i=0;i<cpuActiveCount;i++) {
+        cpuPositions[i*3]=data.positions[i*4];
+        cpuPositions[i*3+1]=data.positions[i*4+1];
+        cpuPositions[i*3+2]=data.positions[i*4+2];
+        cpuVelocities[i*3]=data.velocities[i*4];
+        cpuVelocities[i*3+1]=data.velocities[i*4+1];
+        cpuVelocities[i*3+2]=data.velocities[i*4+2];
+        cpuFoam[i]=0;
+      }
+      cpuGeometry.setDrawRange(0,cpuActiveCount);
+    }
+    waveOffset=0;
+    rightWall.position.x=W/2;
+    U.uWallX.value=W/2;
+    U.uWallVelocity.value=0;
+    removeObject();
+    updateParticleVisibility();
+    $('particleStat').textContent=particleCount.toLocaleString();
+  }
+
+  function reduceDensity() {
+    if (!useGPU || densityReadPending) return;
+    densityReadPending=true;
+    for(let i=0;i<3;i++) renderPass(densityMaterials[i],reductionTargets[i]);
+    renderer.setRenderTarget(null);
+    const output=new Float32Array(4);
+    const finish=()=>{
+      averageDensity=output[0];
+      densityError=Math.abs(output[0]-restDensity)/Math.max(1,restDensity)*100;
+      densityReadPending=false;
+    };
+    if (renderer.readRenderTargetPixelsAsync) {
+      renderer.readRenderTargetPixelsAsync(reductionTargets[2],0,0,1,1,output).then(finish).catch(()=>{densityReadPending=false;});
+    } else {
+      renderer.readRenderTargetPixels(reductionTargets[2],0,0,1,1,output);
+      finish();
+    }
+  }
+
+  function gpuStep(dt) {
+    U.uDt.value=dt;
+    U.uTime.value=simulationTime;
+    U.uCount.value=particleCount;
+    U.uPositions.value=posCurrent;
+    U.uVelocities.value=velCurrent;
+    U.uGridPositions.value=gridPositionTarget.texture;
+    U.uGridVelocities.value=gridVelocityTarget.texture;
+    U.uDensity.value=densityTarget.texture;
+    depositGeometry.setDrawRange(0,particleCount);
+    depositPoints.material=gridPositionMaterial;
+    renderer.setRenderTarget(gridPositionTarget);
+    renderer.setClearColor(0x000000,0);
+    renderer.render(depositScene,fullscreenCamera);
+    depositPoints.material=gridVelocityMaterial;
+    renderer.setRenderTarget(gridVelocityTarget);
+    renderer.render(depositScene,fullscreenCamera);
+    renderPass(densityMaterial,densityTarget);
+    renderPass(forceMaterial,velocityTargets[velocityWriteIndex]);
+    renderPass(positionMaterial,positionTargets[positionWriteIndex]);
+    velCurrent=velocityTargets[velocityWriteIndex].texture;
+    posCurrent=positionTargets[positionWriteIndex].texture;
+    velocityWriteIndex=1-velocityWriteIndex;
+    positionWriteIndex=1-positionWriteIndex;
+    U.uPositions.value=posCurrent;
+    U.uVelocities.value=velCurrent;
+    renderUniforms.uPositions.value=posCurrent;
+    renderUniforms.uVelocities.value=velCurrent;
+    renderer.setClearColor(background,1);
+  }
+
+  function updateCpuGeometry() {
+    const p=cpuGeometry.attributes.position.array;
+    const s=cpuGeometry.attributes.aSpeed.array;
+    const f=cpuGeometry.attributes.aFoam.array;
+    for(let i=0;i<cpuActiveCount;i++) {
+      p[i*3]=cpuPositions[i*3];
+      p[i*3+1]=cpuPositions[i*3+1];
+      p[i*3+2]=cpuPositions[i*3+2];
+      s[i]=Math.hypot(cpuVelocities[i*3],cpuVelocities[i*3+1],cpuVelocities[i*3+2]);
+      f[i]=cpuFoam[i];
+    }
+    cpuGeometry.attributes.position.needsUpdate=true;
+    cpuGeometry.attributes.aSpeed.needsUpdate=true;
+    cpuGeometry.attributes.aFoam.needsUpdate=true;
+  }
+
+  function hashGrid(x,y,z) { return x+y*64+z*4096; }
+  function cpuStep(dt) {
+    const map=new Map();
+    for(let i=0;i<cpuActiveCount;i++) {
+      const x=Math.floor((cpuPositions[i*3]-MIN.x)/BIN);
+      const y=Math.floor((cpuPositions[i*3+1]-MIN.y)/BIN);
+      const z=Math.floor((cpuPositions[i*3+2]-MIN.z)/BIN);
+      const key=hashGrid(x,y,z);
+      let bucket=map.get(key);
+      if(!bucket){bucket=[];map.set(key,bucket);}
+      bucket.push(i);
+    }
+    const h2=H_SPH*H_SPH, h6=h2*h2*h2;
+    let sumDensity=0;
+    for(let i=0;i<cpuActiveCount;i++) {
+      const px=cpuPositions[i*3],py=cpuPositions[i*3+1],pz=cpuPositions[i*3+2];
+      const cx=Math.floor((px-MIN.x)/BIN),cy=Math.floor((py-MIN.y)/BIN),cz=Math.floor((pz-MIN.z)/BIN);
+      let rho=0;
+      for(let z=cz-2;z<=cz+2;z++) for(let y=cy-2;y<=cy+2;y++) for(let x=cx-2;x<=cx+2;x++) {
+        const bucket=map.get(hashGrid(x,y,z));
+        if(!bucket)continue;
+        for(const j of bucket) {
+          if(j===i)continue;
+          const dx=px-cpuPositions[j*3],dy=py-cpuPositions[j*3+1],dz=pz-cpuPositions[j*3+2];
+          const r2=dx*dx+dy*dy+dz*dz;
+          if(r2<h2)rho+=315/(64*Math.PI*h6)*Math.pow(h2-r2,3);
+        }
+      }
+      cpuDensities[i]=rho;
+      cpuPressures[i]=Math.min(1900,Math.max(0,.52*(rho-restDensity)));
+      sumDensity+=rho;
+    }
+    for(let i=0;i<cpuActiveCount;i++) {
+      const px=cpuPositions[i*3],py=cpuPositions[i*3+1],pz=cpuPositions[i*3+2];
+      const vx=cpuVelocities[i*3],vy=cpuVelocities[i*3+1],vz=cpuVelocities[i*3+2];
+      const cx=Math.floor((px-MIN.x)/BIN),cy=Math.floor((py-MIN.y)/BIN),cz=Math.floor((pz-MIN.z)/BIN);
+      let ax=U.uGravity.value.x,ay=U.uGravity.value.y,az=U.uGravity.value.z;
+      for(let z=cz-2;z<=cz+2;z++) for(let y=cy-2;y<=cy+2;y++) for(let x=cx-2;x<=cx+2;x++) {
+        const bucket=map.get(hashGrid(x,y,z));
+        if(!bucket)continue;
+        for(const j of bucket) {
+          if(j===i)continue;
+          const dx=px-cpuPositions[j*3],dy=py-cpuPositions[j*3+1],dz=pz-cpuPositions[j*3+2];
+          const r2=dx*dx+dy*dy+dz*dz;
+          if(r2>=h2||r2<1e-8)continue;
+          const r=Math.sqrt(r2),q=H_SPH-r;
+          const g=45/(Math.PI*h6)*q*q/r;
+          const pressureTerm=cpuPressures[i]/(cpuDensities[i]*cpuDensities[i])+cpuPressures[j]/(Math.max(1,cpuDensities[j])**2);
+          ax+=g*pressureTerm*dx/r;
+          ay+=g*pressureTerm*dy/r;
+          az+=g*pressureTerm*dz/r;
+          const lap=45/(Math.PI*h6)*q;
+          const f=U.uViscosity.value*lap/Math.max(8,cpuDensities[j]);
+          ax+=f*(cpuVelocities[j*3]-vx);
+          ay+=f*(cpuVelocities[j*3+1]-vy);
+          az+=f*(cpuVelocities[j*3+2]-vz);
+        }
+      }
+      ax-=U.uAngularAccel.value.y*pz*.32+U.uAngularAccel.value.z*py*.32;
+      ay+=U.uAngularAccel.value.x*pz*.32;
+      az-=U.uAngularAccel.value.x*py*.32;
+      let nvx=vx+ax*dt,nvy=vy+ay*dt,nvz=vz+az*dt;
+      let nx=px+nvx*dt,ny=py+nvy*dt,nz=pz+nvz*dt;
+      const obj=U.uObjectCenter.value;
+      const dx=nx-obj.x,dy=ny-obj.y,dz=nz-obj.z,od=Math.hypot(dx,dy,dz),orad=U.uObjectRadius.value;
+      if(od<orad&&od>.0001){
+        nx=obj.x+dx/od*orad;ny=obj.y+dy/od*orad;nz=obj.z+dz/od*orad;
+        const dot=((nvx-U.uObjectVelocity.value.x)*dx+(nvy-U.uObjectVelocity.value.y)*dy+(nvz-U.uObjectVelocity.value.z)*dz)/Math.max(od,.001);
+        if(dot<0){nvx-=dx/od*dot*1.25;nvy-=dy/od*dot*1.25;nvz-=dz/od*dot*1.25;}
+      }
+      if(nx<MIN.x+.055){nx=MIN.x+.055;nvx=Math.abs(nvx)*.08;}
+      if(nx>U.uWallX.value-.055){nx=U.uWallX.value-.055;nvx=Math.min(-nvx*.08,U.uWallVelocity.value);}
+      if(nz<MIN.z+.055){nz=MIN.z+.055;nvz=Math.abs(nvz)*.08;}
+      if(nz>MAX.z-.055){nz=MAX.z-.055;nvz=-Math.abs(nvz)*.08;}
+      if(ny<MIN.y+.055){ny=MIN.y+.055;nvy=Math.abs(nvy)*.06;}
+      if(ny>MAX.y-.055){ny=MAX.y-.055;nvy=-Math.abs(nvy)*.12;}
+      if(scenario===3&&py>waterLevel-.13&&py<waterLevel+.13&&((i*97)%101)/101<U.uEmitFraction.value){
+        nx=Math.sin(i*.73+simulationTime*.6)*.24;ny=H-.12;nz=Math.sin(i*1.17)*.24;
+        nvx=0;nvy=-2.35;nvz=0;cpuFoam[i]=1;
+      }
+      const speed=Math.hypot(nvx,nvy,nvz);
+      if(speed>10){const scale=10/speed;nvx*=scale;nvy*=scale;nvz*=scale;}
+      cpuFoam[i]=Math.max(cpuFoam[i]*Math.exp(-1.7*dt),Math.min(1,Math.max(0,(speed-2.7)/3.3)*.85));
+      cpuPositions[i*3]=nx;cpuPositions[i*3+1]=ny;cpuPositions[i*3+2]=nz;
+      cpuVelocities[i*3]=nvx;cpuVelocities[i*3+1]=nvy;cpuVelocities[i*3+2]=nvz;
+    }
+    averageDensity=sumDensity/cpuActiveCount;
+    densityError=Math.abs(averageDensity-restDensity)/restDensity*100;
+    updateCpuGeometry();
+  }
+
+  const stirMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(.5,24,16),
+    new THREE.MeshBasicMaterial({ color: 0x64e6ff, wireframe: true, transparent: true, opacity: .36, depthWrite: false })
+  );
+  stirMesh.visible=false;
+  tankGroup.add(stirMesh);
+
+  function createWoodTexture() {
+    const c=document.createElement('canvas');
+    c.width=c.height=256;
+    const g=c.getContext('2d');
+    g.fillStyle='#9a6336';g.fillRect(0,0,256,256);
+    for(let i=0;i<256;i+=8){
+      g.fillStyle=i%16===0?'rgba(54,27,12,.28)':'rgba(255,197,111,.10)';
+      g.fillRect(0,i,256,3);
+    }
+    g.strokeStyle='rgba(48,25,13,.8)';g.lineWidth=10;g.strokeRect(5,5,246,246);
+    g.beginPath();g.moveTo(128,5);g.lineTo(128,251);g.stroke();
+    const texture=new THREE.CanvasTexture(c);
+    texture.colorSpace=THREE.SRGBColorSpace;
+    texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+    return texture;
+  }
+  const woodTexture=createWoodTexture();
+
+  function makeObject(shape) {
+    const group=new THREE.Group();
+    if(shape==='ball') {
+      const ball=new THREE.Mesh(new THREE.SphereGeometry(.48,48,32),new THREE.MeshPhysicalMaterial({
+        color:0xff784f,roughness:.19,metalness:.08,clearcoat:1,clearcoatRoughness:.08
+      }));
+      ball.castShadow=true;ball.receiveShadow=true;group.add(ball);
+      const band=new THREE.Mesh(new THREE.TorusGeometry(.478,.025,10,64),new THREE.MeshStandardMaterial({color:0xffe4b3,roughness:.45}));
+      band.rotation.x=Math.PI/2;group.add(band);
+    } else if(shape==='crate') {
+      const crate=new THREE.Mesh(new RoundedBoxGeometry(.78,.78,.78,5,.07),new THREE.MeshStandardMaterial({map:woodTexture,roughness:.72,metalness:0}));
+      crate.castShadow=true;crate.receiveShadow=true;group.add(crate);
+      for(const axis of ['x','y']) for(const sign of [-1,1]){
+        const strap=new THREE.Mesh(new RoundedBoxGeometry(axis==='x'?.1:.81,axis==='x'?.81:.1,.82,3,.015),new THREE.MeshStandardMaterial({color:0x304756,metalness:.55,roughness:.4}));
+        strap.position[axis]=sign*.29;group.add(strap);
+      }
+    } else {
+      const yellow=new THREE.MeshPhysicalMaterial({color:0xffd638,roughness:.22,clearcoat:.8,clearcoatRoughness:.12});
+      const body=new THREE.Mesh(new THREE.SphereGeometry(.44,36,24),yellow);
+      body.scale.set(1.18,.78,1);body.position.y=-.06;body.castShadow=true;group.add(body);
+      const neck=new THREE.Mesh(new THREE.SphereGeometry(.27,28,20),yellow);
+      neck.scale.set(.82,1.22,.82);neck.position.set(.22,.35,0);neck.castShadow=true;group.add(neck);
+      const head=new THREE.Mesh(new THREE.SphereGeometry(.24,28,20),yellow);
+      head.position.set(.38,.62,0);head.castShadow=true;group.add(head);
+      const beak=new THREE.Mesh(new THREE.ConeGeometry(.14,.31,18),new THREE.MeshStandardMaterial({color:0xff7c2d,roughness:.5}));
+      beak.rotation.z=-Math.PI/2;beak.position.set(.63,.59,0);group.add(beak);
+      for(const z of [-.13,.13]){
+        const eye=new THREE.Mesh(new THREE.SphereGeometry(.033,16,12),new THREE.MeshStandardMaterial({color:0x071018,roughness:.18}));
+        eye.position.set(.5,.69,z);group.add(eye);
+      }
+      const tail=new THREE.Mesh(new THREE.ConeGeometry(.17,.38,18),yellow);
+      tail.rotation.z=Math.PI/2.5;tail.position.set(-.43,.12,0);group.add(tail);
+    }
+    return group;
+  }
+
+  let objectMesh=null;
+  const objectPosition=new THREE.Vector3(0,-10,0);
+  const objectVelocity=new THREE.Vector3();
+  const objectPrevious=new THREE.Vector3();
+  let objectActive=false;
+  let objectRotation=0;
+
+  function removeObject() {
+    if(objectMesh){tankGroup.remove(objectMesh);objectMesh=null;}
+    objectActive=false;
+    objectPosition.set(0,-10,0);
+    objectVelocity.set(0,0,0);
+    U.uObjectCenter.value.copy(objectPosition);
+    U.uObjectVelocity.value.set(0,0,0);
+    U.uObjectStrength?.set?.(0);
+  }
+  function dropObject() {
+    removeObject();
+    objectMesh=makeObject($('objectShape').value);
+    objectPosition.set((Math.random()-.5)*.6,H+.85,(Math.random()-.5)*.35);
+    objectVelocity.set(0,-.3,0);
+    objectActive=true;
+    tankGroup.add(objectMesh);
+  }
+  function updateObject(dt) {
+    if(!objectActive||!objectMesh)return;
+    objectPrevious.copy(objectPosition);
+    const radius=$('objectShape').value==='ball'?.51:.55;
+    let surface=waterLevel;
+    if(scenario===4)surface+=.075*Math.sin(simulationTime*3.1);
+    const submerged=THREE.MathUtils.clamp((surface+radius-objectPosition.y)/(2*radius),0,1);
+    const density=Number($('objectDensity').value);
+    const accel=U.uGravity.value.clone();
+    accel.y+=Math.abs(U.uGravity.value.y)*submerged/Math.max(.2,density);
+    accel.addScaledVector(objectVelocity,-2.8*submerged);
+    if(submerged>0&&scenario===4)accel.x+=Math.sin(simulationTime*3.1+z)*.7*submerged;
+    objectVelocity.addScaledVector(accel,dt);
+    const speed=objectVelocity.length();
+    if(speed>7)objectVelocity.multiplyScalar(7/speed);
+    objectPosition.addScaledVector(objectVelocity,dt);
+    const wall=U.uWallX.value;
+    if(objectPosition.x<-W/2+radius){objectPosition.x=-W/2+radius;objectVelocity.x=Math.abs(objectVelocity.x)*.12;}
+    if(objectPosition.x>wall-radius){objectPosition.x=wall-radius;objectVelocity.x=-Math.abs(objectVelocity.x)*.12;}
+    if(objectPosition.z<-D/2+radius){objectPosition.z=-D/2+radius;objectVelocity.z=Math.abs(objectVelocity.z)*.12;}
+    if(objectPosition.z>D/2-radius){objectPosition.z=D/2-radius;objectVelocity.z=-Math.abs(objectVelocity.z)*.12;}
+    if(objectPosition.y<radius){objectPosition.y=radius;objectVelocity.y=Math.abs(objectVelocity.y)*.08;objectVelocity.multiplyScalar(.8);}
+    if(objectPosition.y>H+2.4)objectPosition.y=H+2.4;
+    objectMesh.position.copy(objectPosition);
+    objectRotation+=objectVelocity.length()*dt*.65;
+    objectMesh.rotation.z=objectRotation;
+    objectMesh.rotation.x=Math.sin(simulationTime*1.7)*.08;
+    U.uObjectRadius.value=radius;
+    U.uObjectDensity.value=density;
+    U.uObjectCenter.value.copy(objectPosition);
+    U.uObjectVelocity.value.copy(objectVelocity).sub(objectPrevious).multiplyScalar(1/Math.max(dt,.001));
+  }
+
+  let rollTarget=0,pitchTarget=0,roll=0,pitch=0;
+  let rollVelocity=0,pitchVelocity=0,previousRollVelocity=0,previousPitchVelocity=0;
+  const tankQuaternion=new THREE.Quaternion();
+  const tankInverse=new THREE.Quaternion();
+  const tankEuler=new THREE.Euler(0,0,0,'XYZ');
+  let waveOffset=0,previousWaveOffset=0;
+
+  function updateTank(realDt) {
+    const blend=1-Math.exp(-realDt*8);
+    roll+=(rollTarget-roll)*blend;
+    pitch+=(pitchTarget-pitch)*blend;
+    previousRollVelocity=rollVelocity;
+    previousPitchVelocity=pitchVelocity;
+    rollVelocity=(roll-(roll-(rollTarget-roll)*blend))/Math.max(realDt,.001);
+    pitchVelocity=(pitch-(pitch-(pitchTarget-pitch)*blend))/Math.max(realDt,.001);
+    tankEuler.set(pitch,0,roll);
+    tankQuaternion.setFromEuler(tankEuler);
+    tankGroup.quaternion.copy(tankQuaternion);
+    tankInverse.copy(tankQuaternion).invert();
+    U.uGravity.value.set(0,-Number($('gravity').value),0).applyQuaternion(tankInverse);
+    U.uAngularAccel.value.set(
+      (pitchVelocity-previousPitchVelocity)/Math.max(realDt,.001),
+      0,
+      (rollVelocity-previousRollVelocity)/Math.max(realDt,.001)
+    );
+    U.uAngularVelocity.value.set(pitchVelocity,0,rollVelocity);
+    previousWaveOffset=waveOffset;
+    waveOffset=scenario===4?Math.sin(simulationTime*2.15)*.31:0;
+    const wallVelocity=realDt>0?(waveOffset-previousWaveOffset)/realDt:0;
+    rightWall.position.x=W/2+waveOffset;
+    U.uWallX.value=W/2+waveOffset;
+    U.uWallVelocity.value=wallVelocity;
+  }
+
+  const raycaster=new THREE.Raycaster();
+  const pointer=new THREE.Vector2();
+  const inverseTank=new THREE.Matrix4();
+  const localRay=new THREE.Ray();
+  const localBox=new THREE.Box3(new THREE.Vector3(-W/2,0,-D/2),new THREE.Vector3(W/2,Math.max(2.8,waterLevel+.3),D/2));
+  const stirPoint=new THREE.Vector3();
+  const previousStirPoint=new THREE.Vector3();
+  const stirPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-waterLevel);
+  let stirring=false;
+
+  function setPointerRay(event) {
+    const rect=canvas.getBoundingClientRect();
+    pointer.set((event.clientX-rect.left)/rect.width*2-1,-(event.clientY-rect.top)/rect.height*2+1);
+    raycaster.setFromCamera(pointer,camera);
+  }
+  function findStirPoint(event) {
+    setPointerRay(event);
+    tankGroup.updateWorldMatrix(true,false);
+    inverseTank.copy(tankGroup.matrixWorld).invert();
+    localRay.copy(raycaster.ray).applyMatrix4(inverseTank);
+    const point=new THREE.Vector3();
+    if(localRay.intersectBox(localBox,point)&&point.y<=Math.max(2.8,waterLevel+.25))return point;
+    localPlaneHit(point);
+    return point;
+  }
+  function localPlaneHit(target) {
+    stirPlane.constant=-waterLevel;
+    const hit=localRay.intersectPlane(stirPlane,target);
+    if(!hit)return target.set(0,waterLevel,0);
+    target.x=THREE.MathUtils.clamp(target.x,-W/2+.5,W/2-.5);
+    target.y=THREE.MathUtils.clamp(target.y,.1,H-.15);
+    target.z=THREE.MathUtils.clamp(target.z,-D/2+.5,D/2-.5);
+    return target;
+  }
+
+  canvas.addEventListener('pointerdown',event=>{
+    if(event.button!==0)return;
+    const point=findStirPoint(event);
+    if(!point)return;
+    stirring=true;
+    controls.enabled=false;
+    U.uStirCenter.value.copy(point);
+    previousStirPoint.copy(point);
+    stirMesh.position.copy(point);
+    stirMesh.visible=true;
+    canvas.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  },true);
+  canvas.addEventListener('pointermove',event=>{
+    if(!stirring)return;
+    setPointerRay(event);
+    tankGroup.updateWorldMatrix(true,false);
+    inverseTank.copy(tankGroup.matrixWorld).invert();
+    localRay.copy(raycaster.ray).applyMatrix4(inverseTank);
+    localPlaneHit(stirPoint);
+    U.uStirCenter.value.lerp(stirPoint,.72);
+    stirMesh.position.copy(U.uStirCenter.value);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  },true);
+  function endStir(event) {
+    if(!stirring)return;
+    stirring=false;
+    U.uStirStrength.value=0;
+    stirMesh.visible=false;
+    controls.enabled=true;
+    if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+  canvas.addEventListener('pointerup',endStir,true);
+  canvas.addEventListener('pointercancel',endStir,true);
+
+  function updateStir(realDt) {
+    if(stirring){
+      U.uStirVelocity.value.copy(U.uStirCenter.value).sub(previousStirPoint).multiplyScalar(1/Math.max(realDt,.001)).clampLength(0,6);
+      U.uStirStrength.value=THREE.MathUtils.lerp(U.uStirStrength.value,48,1-Math.exp(-realDt*12));
+      previousStirPoint.copy(U.uStirCenter.value);
+    } else {
+      U.uStirVelocity.value.multiplyScalar(Math.exp(-realDt*7));
+      U.uStirStrength.value*=Math.exp(-realDt*9);
+    }
+  }
+
+  function bindRange(id, outputId, formatter) {
+    const input=$(id), output=$(outputId);
+    const update=()=>output.textContent=formatter(Number(input.value));
+    input.addEventListener('input',update);
+    update();
+  }
+  bindRange('viscosity','viscosityValue',v=>v.toFixed(3));
+  bindRange('gravity','gravityValue',v=>v.toFixed(2)+' m/s²');
+  bindRange('timeStep','timeStepValue',v=>(v*1000).toFixed(1)+' ms');
+  bindRange('objectDensity','objectDensityValue',v=>v.toFixed(2)+' ρ');
+  bindRange('tilt','tiltValue',v=>v.toFixed(0)+'°');
+  $('tilt').addEventListener('input',()=>rollTarget=THREE.MathUtils.degToRad(Number($('tilt').value)));
+  $('viscosity').addEventListener('input',()=>U.uViscosity.value=Number($('viscosity').value));
+  $('gravity').addEventListener('input',()=>U.uGravity.value.set(0,-Number($('gravity').value),0));
+  $('timeStep').addEventListener('input',()=>U.uDt.value=Number($('timeStep').value));
+  $('scenario').addEventListener('change',()=>{localBox.max.y=Math.max(2.8,waterLevel+.3);setScenarioState(Number($('scenario').value));});
+  $('particleCount').addEventListener('change',()=>{
+    $('countValue').textContent=Number($('particleCount').value).toLocaleString();
+    setScenarioState(scenario);
+  });
+  $('dropObject').addEventListener('click',dropObject);
+  $('clearObject').addEventListener('click',removeObject);
+  $('homeView').addEventListener('click',()=>{
+    camera.position.copy(homePosition);
+    controls.target.copy(homeTarget);
+    controls.update();
+  });
+  $('rawParticles').addEventListener('change',()=>{rawMode=$('rawParticles').checked;renderUniforms.uPointRadius.value=rawMode?.065:.19;updateParticleVisibility();});
+  $('pause').addEventListener('click',()=>{paused=!paused;$('pause').textContent=paused?'Resume':'Pause';});
+  $('step').addEventListener('click',()=>advance(Number($('timeStep').value)));
+  $('reset').addEventListener('click',()=>setScenarioState(scenario));
+  function toggleUI(){document.body.classList.toggle('ui-hidden');}
+  $('hideUi').addEventListener('click',toggleUI);
+  $('showUi').addEventListener('click',toggleUI);
+  window.addEventListener('keydown',event=>{
+    if(event.target instanceof HTMLInputElement||event.target instanceof HTMLSelectElement)return;
+    if(event.key.toLowerCase()==='h'){toggleUI();return;}
+    if(event.key==='ArrowLeft'){rollTarget=THREE.MathUtils.clamp(rollTarget-.07,-.56,.56);$('tilt').value=Math.round(THREE.MathUtils.radToDeg(rollTarget));$('tiltValue').textContent=Math.round(THREE.MathUtils.radToDeg(rollTarget))+'°';event.preventDefault();}
+    if(event.key==='ArrowRight'){rollTarget=THREE.MathUtils.clamp(rollTarget+.07,-.56,.56);$('tilt').value=Math.round(THREE.MathUtils.radToDeg(rollTarget));$('tiltValue').textContent=Math.round(THREE.MathUtils.radToDeg(rollTarget))+'°';event.preventDefault();}
+    if(event.key==='ArrowUp'){pitchTarget=THREE.MathUtils.clamp(pitchTarget-.055,-.35,.35);event.preventDefault();}
+    if(event.key==='ArrowDown'){pitchTarget=THREE.MathUtils.clamp(pitchTarget+.055,-.35,.35);event.preventDefault();}
+  });
+
+  function resize() {
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
+    renderer.setSize(innerWidth,innerHeight,false);
+    camera.aspect=innerWidth/innerHeight;
+    camera.updateProjectionMatrix();
+    const size=renderer.getDrawingBufferSize(new THREE.Vector2());
+    opaqueTarget.setSize(Math.max(1,size.x),Math.max(1,size.y));
+    renderUniforms.uViewport.value.copy(size);
+    renderUniforms.uPointScale.value=size.y/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov*.5)));
+  }
+  window.addEventListener('resize',resize);
+  resize();
+
+  if(useGPU) {
+    $('methodName').textContent='GPU SPH · 3D';
+    $('backendName').textContent='WEBGL2 FLOAT';
+    $('supportBadge').textContent='● GPU LIVE';
+    $('supportBadge').style.color='var(--good)';
+  } else {
+    $('methodName').textContent='CPU SPH · FALLBACK';
+    $('backendName').textContent='REDUCED COUNT';
+    $('supportBadge').textContent='● CPU';
+    $('supportBadge').style.color='var(--warn)';
+    $('particleCount').disabled=true;
+    $('countValue').textContent='1,400 fallback';
+  }
+
+  setScenarioState(0);
+  updateTank(1/60);
+  if(!useGPU)updateCpuGeometry();
+  $('loading').classList.add('hidden');
+
+  let previousTime=performance.now();
+  let fpsSmoothed=60,lastStatTime=previousTime,frameNumber=0;
+  function advance(dt) {
+    updateObject(dt);
+    U.uTime.value=simulationTime;
+    U.uDt.value=dt;
+    if(useGPU)gpuStep(dt);else cpuStep(dt);
+    simulationTime+=dt;
+    U.uTime.value=simulationTime;
+  }
+
+  function animate(now) {
+    try {
+      const realDt=Math.min(.034,Math.max(.001,(now-previousTime)/1000));
+      previousTime=now;
+      fpsSmoothed=fpsSmoothed*.93+(1/realDt)*.07;
+      updateTank(realDt);
+      updateStir(realDt);
+      const simStart=performance.now();
+      if(!paused)advance(Number($('timeStep').value));
+      const simDuration=performance.now()-simStart;
+      causticMaterial.uniforms.uTime.value=simulationTime;
+      controls.update();
+
+      gpuParticles.visible=useGPU&&!rawMode?true:useGPU;
+      cpuParticles.visible=!useGPU;
+      if(!useGPU){
+        cpuParticles.material=rawMode?cpuRawMaterial:cpuLiquidMaterial;
+        cpuParticles.visible=true;
+      } else {
+        gpuParticles.material=rawMode?rawParticleMaterial:liquidParticleMaterial;
+      }
+      glassMeshes.forEach(mesh=>mesh.visible=false);
+      gpuParticles.visible=false;
+      cpuParticles.visible=false;
+      renderer.setRenderTarget(opaqueTarget);
+      renderer.setClearColor(background,1);
+      renderer.render(scene,camera);
+      renderer.setRenderTarget(null);
+      renderUniforms.uScene.value=opaqueTarget.texture;
+      glassMeshes.forEach(mesh=>mesh.visible=true);
+      gpuParticles.visible=useGPU;
+      cpuParticles.visible=!useGPU;
+      scene.overrideMaterial=null;
+      renderer.render(scene,camera);
+
+      frameNumber++;
+      if(frameNumber%110===0)reduceDensity();
+      if(now-lastStatTime>220) {
+        $('fps').textContent=Math.round(fpsSmoothed);
+        $('simMs').textContent=simDuration.toFixed(2)+' ms';
+        $('simTime').textContent=simulationTime.toFixed(2)+' s';
+        $('density').textContent=(averageDensity/1000).toFixed(2)+'k';
+        $('densityError').textContent=densityError.toFixed(1)+'%';
+        $('densityError').style.color=densityError<12?'var(--good)':densityError<25?'var(--warn)':'#ff9b9b';
+        $('densityBarFill').style.width=THREE.MathUtils.clamp(100-densityError*2,8,100)+'%';
+        lastStatTime=now;
+      }
+    } catch(error) {
+      renderer.setAnimationLoop(null);
+      showFatal(error);
+      return;
+    }
+  }
+  renderer.setAnimationLoop(animate);
+}
+
+boot().catch(showFatal);
+</script>
+</body>
+</html>
