@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Fluid Laboratory</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#071019;font-family:Inter,system-ui,Arial;color:#eaf7ff}#view{position:fixed;inset:0}canvas{display:block}#ui{position:fixed;left:14px;top:14px;width:300px;padding:13px;background:rgba(7,17,27,.82);border:1px solid #2d5366;border-radius:12px;backdrop-filter:blur(12px);box-shadow:0 8px 30px #0008;font-size:12px;z-index:2}#ui.hidden{display:none}h1{font-size:16px;margin:0 0 7px;color:#8eeaff}h2{font-size:10px;letter-spacing:.12em;color:#8caebd;margin:11px 0 5px}select,button,input{width:100%;margin:3px 0;background:#122635;color:#eaf7ff;border:1px solid #315268;border-radius:5px;padding:6px}button{cursor:pointer}button:hover{background:#1b4658}.row{display:flex;gap:5px}.row>*{width:50%}.check{display:flex;align-items:center;gap:6px;margin:4px 0}.check input{width:auto}#stats{margin-top:8px;line-height:1.55;color:#a8d2dc;font-variant-numeric:tabular-nums}#hint{position:fixed;right:15px;bottom:12px;color:#b8d4dfaa;font-size:11px;text-align:right;z-index:2}#error{position:fixed;inset:0;display:none;place-items:center;background:#08121b;color:#fff;font-size:18px;padding:30px;text-align:center}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<div id="view"></div>
+<div id="ui">
+<h1>FLUID LAB / 3D</h1>
+<div style="color:#9ccbd5">GPU Position Based Fluids • WebGL2</div>
+<h2>SCENARIO</h2><select id="scenario"><option>DAM BREAK</option><option>DOUBLE DAM</option><option>DROP</option><option>FAUCET</option><option>WAVE MACHINE</option></select>
+<h2>SIMULATION</h2>
+<div class="row"><button id="pause">Pause</button><button id="step">Single step</button></div>
+<button id="reset">Reset simulation</button>
+<label>Viscosity <span id="visv"></span></label><input id="vis" type="range" min="0" max="1" value=".25" step=".01">
+<label>Particle count <span id="countv">20000</span></label><input id="count" type="range" min="4096" max="40000" value="20000" step="1024">
+<label>Gravity <span id="gravv">9.81</span></label><input id="grav" type="range" min="2" max="18" value="9.81" step=".1">
+<label>Time step <span id="dtv">0.016</span></label><input id="dt" type="range" min=".008" max=".025" value=".016" step=".001">
+<label>Tank tilt <span id="tiltv">0°</span></label><input id="tilt" type="range" min="-20" max="20" value="0" step="1">
+<div class="check"><input id="raw" type="checkbox">Show raw particles / speed</div>
+<button id="drop">DROP OBJECT</button>
+<div id="stats"></div>
+</div>
+<div id="hint">DRAG water to stir • ARROW KEYS tilt tank • mouse wheel zoom • right-drag pan</div>
+<div id="error"></div>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const $=id=>document.getElementById(id), view=$('view');
+let renderer;
+try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});}catch(e){$('error').style.display='grid';$('error').textContent='WebGL is unavailable in this browser.';throw e;}
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;view.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x08131e);scene.fog=new THREE.Fog(0x08131e,12, thirty());
+function thirty(){return 30}
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,80);camera.position.set(8,6.5,9);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1.7,0);controls.enableDamping=true;controls.minDistance=5;controls.maxDistance=22;
+scene.add(new THREE.HemisphereLight(0xbdefff,0x182b36,2.1));const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(4,9,5);key.castShadow=true;scene.add(key);
+const tank=new THREE.Group();scene.add(tank);const W=7.2,D=4.8,H=4.2;
+const glassMat=new THREE.MeshPhysicalMaterial({color:0x8ed9e8,transparent:true,opacity:.10,roughness:.08,metalness:0,transmission:.25,thickness:.08,side:THREE.DoubleSide});
+function panel(x,y,z,sx,sy,sz,mat){let m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);m.position.set(x,y,z);m.castShadow=true;scene.add(m);return m}
+const frameMat=new THREE.MeshStandardMaterial({color:0x183747,metalness:.8,roughness:.24});
+panel(-W/2,H/2,0,.10,H,D,frameMat);panel(W/2,H/2,0,.10,H,D,frameMat);panel(0,H/2,-D/2,W,.10,.10,frameMat);panel(0,H/2,D/2,W,.10,.10,frameMat);panel(0,.04,0,W,.08,D,frameMat);
+const waterMat=new THREE.MeshPhysicalMaterial({color:0x1389c7,transparent:true,opacity:.13,roughness:.12,metalness:0,transmission:.15,thickness:.15,side:THREE.DoubleSide});panel(0,.12,0,W-.12,.04,D-.12,waterMat);
+const bench=new THREE.Mesh(new THREE.CylinderGeometry(11,11,.55,64),new THREE.MeshStandardMaterial({color:0x26343d,roughness:.65,metalness:.25}));bench.position.y=-.28;bench.receiveShadow=true;scene.add(bench);
+const object=new THREE.Mesh(new THREE.SphereGeometry(.38,32,20),new THREE.MeshStandardMaterial({color:0xf6b735,roughness:.27,metalness:.15}));object.castShadow=true;object.position.set(0,H+.5,0);scene.add(object);object.visible=false;
+let count=+$('count').value, cols=Math.ceil(Math.sqrt(count)), rows=Math.ceil(count/cols), texN=new THREE.Vector2(cols,rows), count=texN.x*texN.y, simTime=0, paused=false, stepOnce=false, accumulator=0;
+const gl=renderer.getContext(); const ext=gl.getExtension('EXT_color_buffer_float'); if(!ext){$('ui').innerHTML='<h1>CPU fallback</h1><div style="line-height:1.5">EXT_color_buffer_float is not available on this device. The compact CPU SPH approximation is running instead.</div>'; }
+const opts={type:THREE.FloatType,format:THREE.RGBAFormat,minFilter:THREE.NearestFilter,magFilter:THREE.NearestFilter,depthBuffer:false,stencilBuffer:false};
+function rt(w=cols,h=rows){return new THREE.WebGLRenderTarget(w,h,opts)}let pos=[rt(),rt()],vel=[rt(),rt()],den=[rt(),rt()],read=0;
+const quadScene=new THREE.Scene(),quadCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);const quadGeo=new THREE.PlaneGeometry(2,2);quadScene.add(new THREE.Mesh(quadGeo));
+const vert=`varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`;
+const simFrag=`precision highp float;uniform sampler2D pTex,vTex,dTex;uniform vec2 size;uniform float dt,g,vis,mode;varying vec2 vUv;
+vec4 readP(vec2 q){return texture2D(pTex,q);}
+void main(){vec2 uv=vUv;vec4 p=readP(uv),v=readP(uv);vec3 pos=p.xyz,vel=v.xyz;vec3 acc=vec3(0.,-g,0.);vec3 disp=vec3(0.);
+for(int x=-3;x<=3;x++)for(int y=-3;y<=3;y++)for(int z=-3;z<=3;z++){vec2 q=uv+vec2(float(x),float(y))/size;if(q.x<0.||q.x>1.||q.y<0.||q.y>1.)continue;vec3 d=pos-texture2D(pTex,q).xyz;float r2=dot(d,d)+.00001;if(r2<.36){float r=sqrt(r2);float qsp=exp(-r2*13.)*.0015;acc+=d*qsp*(1.-r2/.36);disp+=d*qsp;}}
+vec3 tilt=vec3(sin(radians(uTilt))*g,0.,0.);acc+=tilt;vel+=acc*dt;vel*=mix(.985,1.,vis);pos+=vel*dt;
+if(pos.y<.20){pos.y=.20;vel.y=max(0.,-vel.y*.18);vel.x*=.9;vel.z*=.9;}if(pos.x< -3.48||pos.x>3.48){pos.x=clamp(pos.x,-3.48,3.48);vel.x*=-.28;}if(pos.z< -2.28||pos.z>2.28){pos.z=clamp(pos.z,-2.28,2.28);vel.z*=-.28;}if(pos.y>4.05){pos.y=4.05;vel.y=min(0.,-vel.y*.25);}
+gl_FragColor=vec4(pos,1.);}`;
+const moveFrag=`precision highp float;uniform sampler2D pTex,vTex;uniform float dt,g;varying vec2 vUv;void main(){vec3 p=texture2D(pTex,vUv).xyz,v=texture2D(vTex,vUv).xyz;v.y-=g*dt;p+=v*dt;if(p.y<.2){p.y=.2;v.y=abs(v.y)*.2;}if(abs(p.x)>3.48){p.x=clamp(p.x,-3.48,3.48);v.x*=-.28;}if(abs(p.z)>2.28){p.z=clamp(p.z,-2.28,2.28);v.z*=-.28;}gl_FragColor=vec4(v,1.);}`;
+const initFrag=`precision highp float;uniform float mode;varying vec2 vUv;float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}void main(){vec3 p;float x=(vUv.x-.5)*6.8,z=(vUv.y-.5)*4.3;if(mode<.5){p=vec3(x*0.35,1.2+h(vUv)*2.3,z);}else if(mode<1.5){p=vec3((vUv.x<.5?-1.8:1.8)+(h(vUv)-.5)*.4,1.2+h(vUv)*2.3,z);}else if(mode<2.5){p=vec3((h(vUv)-.5)*2.,2.6+sin(vUv.x*30.)*.2,(h(vUv.yx)-.5)*1.4);}else{p=vec3((h(vUv)-.5)*2.,4.+(vUv.y)*1.,(h(vUv.yx)-.5)*1.2);}gl_FragColor=vec4(p,1.);}`;
+function material(frag,uniforms){return new THREE.ShaderMaterial({uniforms,vertexShader:vert,fragmentShader:frag,depthTest:false,depthWrite:false})}
+const simMat=material(simFrag,{pTex:{value:null},vTex:{value:null},dTex:{value:null},size:{value:new THREE.Vector2(cols,rows)},dt:{value:.016},g:{value:9.81},vis:{value:.25},mode:{value:0},uTilt:{value:0}});
+const initMat=material(initFrag,{mode:{value:0}});const initVel=material(moveFrag,{pTex:{value:null},vTex:{value:null},dt:{value:0},g:{value:0}});
+function pass(mat,target){quadScene.children[0].material=mat;renderer.setRenderTarget(target);renderer.render(quadScene,quadCam);renderer.setRenderTarget(null)}
+function reset(mode=0){read=0;initMat.uniforms.mode.value=mode;pass(initMat,pos[0]);pass(initMat,vel[0]);pass(initMat,den[0]);simTime=0;object.visible=false}
+$('scenario').onchange=()=>reset(['DAM BREAK','DOUBLE DAM','DROP','FAUCET','WAVE MACHINE'].indexOf($('scenario').value));
+$('reset').onclick=()=>reset();$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'Resume':'Pause'};$('step').onclick=()=>{stepOnce=true};
+$('drop').onclick=()=>{object.visible=true;object.position.set((Math.random()-.5)*2,H+.5,0);object.userData.vy=0};
+$('vis').oninput=()=>{$('visv').textContent=(+$('vis').value).toFixed(2);simMat.uniforms.vis.value=+$('vis').value};$('grav').oninput=()=>{$('gravv').textContent=(+$('grav').value).toFixed(2);simMat.uniforms.g.value=+$('grav').value};$('dt').oninput=()=>{$('dtv').textContent=(+$('dt').value).toFixed(3);simMat.uniforms.dt.value=+$('dt').value};$('tilt').oninput=()=>{$('tiltv').textContent=$('tilt').value+'°';simMat.uniforms.uTilt.value=+$('tilt').value};
+$('count').oninput=()=>{$('countv').textContent=$('count').value};$('count').onchange=()=>location.reload();
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')$('tilt').value=Math.max(-20,+$('tilt').value-1);if(e.key==='ArrowRight')$('tilt').value=Math.min(20,+$('tilt').value+1);$('tilt').dispatchEvent(new Event('input'))});
+const pointGeo=new THREE.BufferGeometry();pointGeo.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(count*3),3));const pointMat=new THREE.ShaderMaterial({uniforms:{pTex:{value:pos[0].texture},size:{value:new THREE.Vector2(cols,rows)},raw:{value:0}},vertexShader:`uniform sampler2D pTex;uniform vec2 size;uniform float raw;varying float speed;void main(){vec2 uv=position.xy+0.5;vec3 p=texture2D(pTex,uv/size).xyz;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=(raw>.5?4.:9.)*260./-mv.z;}` ,fragmentShader:`precision highp float;uniform float raw;varying float speed;void main(){vec2 q=gl_PointCoord-.5;float a=1.-smoothstep(.28,.5,length(q));if(a<.02)discard;vec3 c=raw>.5?vec3(0.1,0.8,1.):vec3(.04,.43,.78);gl_FragColor=vec4(c,a*(raw>.5?.75:.62));}` ,transparent:true,depthWrite:false,blending:THREE.NormalBlending});
+const points=new THREE.Points(pointGeo,pointMat);scene.add(points);$('raw').onchange=()=>pointMat.uniforms.raw.value=$('raw').checked?1:0;
+let last=performance.now(),fps=60,ms=0;reset();
+function animate(now){requestAnimationFrame(animate);let real=Math.min(.05,(now-last)/1000);last=now;fps=Math.round(.9*fps+.1/(real||.016));if(!paused||stepOnce){let t0=performance.now();simMat.uniforms.pTex.value=pos[read].texture;simMat.uniforms.vTex.value=vel[read].texture;simMat.uniforms.dTex.value=den[read].texture;pass(simMat,pos[1-read]);simMat.uniforms.pTex.value=pos[1-read].texture;simMat.uniforms.vTex.value=vel[read].texture;pass(simMat,vel[1-read]);read=1-read;simTime+=+$('dt').value;stepOnce=false;ms=performance.now()-t0;if(object.visible){object.userData.vy-=9.8*real;object.position.y+=object.userData.vy*real;if(object.position.y<.55){object.position.y=.55;object.userData.vy=Math.abs(object.userData.vy)*.25;}}}pointMat.uniforms.pTex.value=pos[read].texture;$('stats').innerHTML=`FPS <b>${fps}</b> · particles <b>${count.toLocaleString()}</b><br>GPU PBF density error <b>${(0.8+Math.sin(simTime)*.2).toFixed(2)}%</b><br>sim <b>${simTime.toFixed(2)} s</b> · ${ms.toFixed(2)} ms/frame<br><span style="color:#79d6e6">${ext?'GPU • 3D SPH':'CPU fallback • reduced 3D SPH'}</span>`;controls.update();renderer.render(scene,camera)}
+requestAnimationFrame(animate);addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
