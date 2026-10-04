@@ -359,6 +359,26 @@ async function settleCanvas(page) {
 const shootEngine = settleCanvas;
 const shootServerRack = settleCanvas;
 
+// The newer scene tests have no scene-specific setup: every page is a
+// model's own, so it is shot once it has drawn and had time to settle.
+const shootCanvasScene = settleCanvas;
+
+async function shootSvgScene(page) {
+  // World Timeline pages are SVG by rule, never canvas: wait for an svg with
+  // something drawn in it, then let the opening chapter animate in.
+  step(0.2, 'waiting for the svg');
+  await page.waitForFunction(
+    `[...document.querySelectorAll('svg')].some((s) => s.querySelectorAll('path,circle,ellipse,rect,polygon').length > 5)`,
+    { timeout: 90000, polling: 500 },
+  );
+  step(0.5, 'letting it animate');
+  await sleep(8000);
+}
+
+const SCENE_KINDS = ['engine', 'pc', 'cathedral', 'keyboard', 'cruise_ship', 'server_rack',
+  'sports_car', 'train_world', 'world_timeline', 'fluid_sim', 'galaxy', 'cruise_port'];
+const CANVAS_SCENE_KINDS = new Set(['sports_car', 'train_world', 'fluid_sim', 'galaxy', 'cruise_port']);
+
 async function shootKeyboard(page) {
   step(0.2, 'waiting for the page');
   // Keyboard scenes are drawn every which way — canvas, SVG, or plain CSS
@@ -590,10 +610,7 @@ async function main() {
   const manifest = readManifest([override, root].filter(Boolean));
   const kindOf = (id) =>
     manifest.benchmarks.find((x) => x.id === id)?.kind ??
-    (id.startsWith('engine_') ? 'engine' : id.startsWith('pc_') ? 'pc' :
-      id.startsWith('cathedral_') ? 'cathedral' : id.startsWith('keyboard_') ? 'keyboard' :
-        id.startsWith('cruise_ship_') ? 'cruise_ship' :
-          id.startsWith('server_rack_') ? 'server_rack' : 'pagoda');
+    (SCENE_KINDS.find((k) => id.startsWith(`${k}_`)) ?? 'pagoda');
   const sceneExtension = (id) => (kindOf(id) === 'cathedral' ? 'glb' : 'html');
   const sceneFile = (id) => {
     const ext = sceneExtension(id);
@@ -776,6 +793,8 @@ async function main() {
         else if (kind === 'server_rack') await shootServerRack(page);
         else if (kind === 'keyboard') await shootKeyboard(page);
         else if (kind === 'cruise_ship') await shootCruiseShip(page);
+        else if (kind === 'world_timeline') await shootSvgScene(page);
+        else if (CANVAS_SCENE_KINDS.has(kind)) await shootCanvasScene(page);
         else await shootPc(page);
         if (framing) note(`framing: ${(await applyFraming(page, framing)).camera}`);
       }

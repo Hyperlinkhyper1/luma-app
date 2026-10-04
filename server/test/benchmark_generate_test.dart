@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:luma_sync_server/ai_benchmark_store.dart';
 import 'package:luma_sync_server/ai_mode_routing.dart';
 import 'package:luma_sync_server/benchmark_generate.dart';
@@ -133,6 +136,59 @@ void main() {
         final p = benchmarkPromptFor(kind);
         expect(p, contains('<!DOCTYPE html>'));
         expect(p.trimRight(), endsWith('breaks it.'));
+      }
+    });
+
+    test('the exported prompt files match the prompts', () {
+      final dir = Directory('benchmarks/prompts');
+      final files = benchmarkPromptFiles();
+      expect(
+          files.keys, containsAll(kBenchmarkPrompts.keys.map((k) => '$k.md')));
+      for (final e in files.entries) {
+        final file = File('${dir.path}/${e.key}');
+        expect(file.existsSync(), isTrue,
+            reason: 'run `dart run tool/export_benchmark_prompts.dart`');
+        expect(file.readAsStringSync().replaceAll('\r\n', '\n'), e.value,
+            reason: '${e.key} is stale: run '
+                '`dart run tool/export_benchmark_prompts.dart`');
+      }
+    });
+
+    test('the SVG timeline is the one scene test that may not use a canvas',
+        () {
+      expect(benchmarkPromptFor('world_timeline'),
+          contains('Do NOT use <canvas>'));
+      expect(
+        () => AiBenchmarkStore.validateUpload(
+          kind: 'world_timeline',
+          id: 'world_timeline_demo',
+          model: 'Demo',
+          vendor: '',
+          description: '',
+          bytes: utf8.encode('<!doctype html><svg><path d="M0 0"/></svg>'),
+        ),
+        returnsNormally,
+      );
+      for (final kind in [
+        'sports_car',
+        'train_world',
+        'fluid_sim',
+        'galaxy',
+        'cruise_port'
+      ]) {
+        expect(benchmarkPromptFor(kind), contains('three@0.160.0'));
+        expect(
+          () => AiBenchmarkStore.validateUpload(
+            kind: kind,
+            id: '${kind}_demo',
+            model: 'Demo',
+            vendor: '',
+            description: '',
+            bytes: utf8.encode('<!doctype html><p>No scene</p>'),
+          ),
+          throwsArgumentError,
+          reason: kind,
+        );
       }
     });
 

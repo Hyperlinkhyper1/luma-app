@@ -13,6 +13,7 @@ import 'hero_tile.dart';
 import 'keyboard_test_page.dart';
 import 'pagoda_test_page.dart';
 import 'pc_test_page.dart';
+import 'scene_test_page.dart';
 import 'server_rack_test_page.dart';
 
 /// The plugin's **Tests** section: a board of hero tiles, one per experiment,
@@ -197,5 +198,18 @@ class _TestsTabState extends State<TestsTab> {
             MaterialPageRoute<void>(builder: (_) => const CruiseShipTestPage()),
           ),
         ),
+        for (final test in kSceneTests)
+          LumaHeroTile(
+            title: test.title,
+            subtitle: 'New · Open the test screen',
+            imageFile: _tileArt(repo, test.kind),
+            fallbackIcon: test.icon,
+            width: width,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SceneTestPage(test: test),
+              ),
+            ),
+          ),
       ];
 }

@@ -102,6 +102,12 @@ class AiBenchmarkStore {
     'keyboard',
     'cruise_ship',
     'server_rack',
+    'sports_car',
+    'train_world',
+    'world_timeline',
+    'fluid_sim',
+    'galaxy',
+    'cruise_port',
   ];
 
   static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');
@@ -286,7 +292,17 @@ class AiBenchmarkStore {
   /// Tests whose scenes are always WebGL. The banner renderer waits for
   /// their canvas, so a page without one (a CSS keyboard filed under the
   /// wrong test) can only ever fail there.
-  static const _canvasKinds = {'pagoda', 'engine', 'pc', 'cruise_ship'};
+  static const _canvasKinds = {
+    'pagoda',
+    'engine',
+    'pc',
+    'cruise_ship',
+    'sports_car',
+    'train_world',
+    'fluid_sim',
+    'galaxy',
+    'cruise_port',
+  };
 
   static final RegExp _drawsOnCanvas = RegExp(
       r'''<canvas|getcontext\(|webgl|three(\.module)?(\.min)?\.js|["']three["']''',
