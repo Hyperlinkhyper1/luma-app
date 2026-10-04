@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Procedural Cross-Plane V8</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --panel: rgba(12, 16, 20, .86);
+    --line: rgba(255,255,255,.13);
+    --text: #e8edf1;
+    --muted: #8f9aa4;
+    --accent: #ff9d35;
+    --blue: #68c7ff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; margin: 0; overflow: hidden;
+    background: #0b0e11; color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  .panel {
+    pointer-events: auto;
+    background: linear-gradient(145deg, rgba(23,29,35,.93), rgba(9,12,15,.9));
+    border: 1px solid var(--line);
+    box-shadow: 0 12px 35px rgba(0,0,0,.35), inset 0 1px rgba(255,255,255,.035);
+    backdrop-filter: blur(12px);
+    border-radius: 10px;
+  }
+  #controls {
+    position: absolute; left: 14px; top: 14px; width: 288px;
+    padding: 12px 13px 11px;
+  }
+  .title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .title { font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+  .sub { color: var(--muted); font-size: 10px; letter-spacing: .08em; }
+  .rpm-readout { display: flex; align-items: baseline; gap: 6px; margin: 9px 0 3px; }
+  #rpmValue { font: 700 29px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #fff; }
+  .unit { font-size: 10px; color: var(--accent); letter-spacing: .14em; }
+  #rpm { width: 100%; accent-color: var(--accent); margin: 7px 0 9px; }
+  .row { display: flex; gap: 5px; flex-wrap: wrap; }
+  button, .file-button {
+    appearance: none; border: 1px solid rgba(255,255,255,.13); color: #cbd3d9;
+    background: rgba(255,255,255,.045); border-radius: 5px;
+    padding: 5px 8px; font: 600 10px/1.1 inherit; cursor: pointer;
+    transition: .15s ease;
+  }
+  button:hover, .file-button:hover { background: rgba(255,255,255,.1); color: white; border-color: rgba(255,255,255,.28); }
+  button.active { color: #111; background: var(--accent); border-color: var(--accent); }
+  .divider { height: 1px; background: var(--line); margin: 10px 0; }
+  .control-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; font-size: 10px; color: #aeb8c1; }
+  .control-line input[type="range"] { flex: 1; accent-color: var(--blue); }
+  input[type="checkbox"] { accent-color: var(--accent); }
+  #visibility { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; font-size: 10px; color: #aeb8c1; }
+  #visibility label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  #inspection {
+    position: absolute; right: 14px; top: 14px; width: 225px; padding: 13px;
+  }
+  #inspection .eyebrow { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: .16em; }
+  #cylName { font-size: 20px; font-weight: 760; margin: 5px 0 2px; }
+  #stroke { font-size: 12px; font-weight: 800; letter-spacing: .1em; }
+  #cycleValue { margin-top: 7px; color: #aeb8c1; font: 11px ui-monospace, monospace; }
+  .cycle-track { height: 5px; background: rgba(255,255,255,.08); border-radius: 5px; margin-top: 8px; overflow: hidden; }
+  #cycleFill { height: 100%; width: 0; background: linear-gradient(90deg,#51b9ff,#b277ff 33%,#ff613e 62%,#ffb13b 100%); }
+  .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin-top: 10px; font-size: 10px; color: #8e9aa4; }
+  .mini-grid b { color: #dce3e8; font-family: ui-monospace, monospace; }
+  #viewbar {
+    position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; gap: 5px; padding: 7px;
+  }
+  #viewbar button { min-width: 52px; }
+  #status {
+    position: absolute; left: 15px; bottom: 16px; color: #7f8992;
+    font: 9px/1.4 ui-monospace, monospace; letter-spacing: .08em;
+  }
+  #labels { position: absolute; inset: 0; }
+  .engine-label {
+    position: absolute; transform: translate(-50%,-50%); padding: 3px 6px;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 3px;
+    color: rgba(225,233,238,.72); background: rgba(5,8,10,.55);
+    font: 8px ui-monospace, monospace; letter-spacing: .08em;
+    pointer-events: none; opacity: .65;
+  }
+  @media (max-width: 700px) {
+    #controls { left: 7px; top: 7px; width: 245px; transform: scale(.88); transform-origin: top left; }
+    #inspection { right: 7px; top: 7px; width: 185px; transform: scale(.88); transform-origin: top right; }
+    #viewbar { bottom: 7px; }
+    .engine-label { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <section id="controls" class="panel">
+    <div class="title-row">
+      <div class="title">Cross-Plane V8</div>
+      <div class="sub">90° · 5.7 L</div>
+    </div>
+    <div class="rpm-readout"><span id="rpmValue">700</span><span class="unit">RPM</span></div>
+    <input id="rpm" aria-label="Engine RPM" type="range" min="0" max="8000" step="10" value="700">
+    <div class="row">
+      <button id="stop">STOP</button>
+      <button id="idle" class="active">IDLE</button>
+      <button data-rpm="2000">2000</button>
+      <button data-rpm="4000">4000</button>
+      <button data-rpm="6000">6000</button>
+      <button data-rpm="8000">8000</button>
+    </div>
+    <div class="divider"></div>
+    <div class="row">
+      <button id="pause">PAUSE</button>
+      <button data-time="1" class="active">1×</button>
+      <button data-time="0.25">0.25×</button>
+      <button data-time="0.05">0.05×</button>
+    </div>
+    <div class="control-line">
+      <label><input id="manualMode" type="checkbox"> MANUAL CRANK</label>
+      <span id="crankReadout">0°</span>
+    </div>
+    <input id="manualCrank" aria-label="Manual crank angle" type="range" min="0" max="720" step="0.1" value="0" style="width:100%;accent-color:#b277ff">
+    <div class="control-line"><span>EXPLODED VIEW</span><span id="explodeValue">0%</span></div>
+    <input id="explode" aria-label="Exploded view" type="range" min="0" max="100" step="1" value="0" style="width:100%;accent-color:#68c7ff">
+    <div class="divider"></div>
+    <div id="visibility">
+      <label><input data-vis="block" type="checkbox" checked>Block / bores</label>
+      <label><input data-vis="pistons" type="checkbox" checked>Pistons</label>
+      <label><input data-vis="crankshaft" type="checkbox" checked>Crankshaft</label>
+      <label><input data-vis="rods" type="checkbox" checked>Rods</label>
+      <label><input data-vis="valves" type="checkbox" checked>Valve train</label>
+      <label><input data-vis="intake" type="checkbox" checked>Intake</label>
+      <label><input data-vis="exhaust" type="checkbox" checked>Exhaust</label>
+      <label><input data-vis="timing" type="checkbox" checked>Timing drive</label>
+    </div>
+  </section>
+
+  <section id="inspection" class="panel">
+    <div class="eyebrow">CYLINDER INSPECTION</div>
+    <div id="cylName">CYLINDER 1</div>
+    <div id="stroke">POWER</div>
+    <div id="cycleValue">CYCLE 360.0° / 720°</div>
+    <div class="cycle-track"><div id="cycleFill"></div></div>
+    <div class="mini-grid">
+      <span>PISTON <b id="pistonValue">2.78</b></span>
+      <span>ROD <b>4.35</b></span>
+      <span>IN LIFT <b id="inLift">0.00</b></span>
+      <span>EX LIFT <b id="exLift">0.00</b></span>
+      <span>CRANK <b>0.0°</b></span>
+      <span>CAM <b>0.0°</b></span>
+    </div>
+    <div class="divider"></div>
+    <div class="row">
+      <button data-cyl="1" class="active">1</button><button data-cyl="2">2</button>
+      <button data-cyl="3">3</button><button data-cyl="4">4</button>
+      <button data-cyl="5">5</button><button data-cyl="6">6</button>
+      <button data-cyl="7">7</button><button data-cyl="8">8</button>
+    </div>
+  </section>
+
+  <nav id="viewbar" class="panel">
+    <button data-view="hero" class="active">HERO</button>
+    <button data-view="front">FRONT</button>
+    <button data-view="side">SIDE</button>
+    <button data-view="top">TOP</button>
+    <button data-view="internal">INTERNAL</button>
+  </nav>
+  <div id="labels">
+    <span class="engine-label" id="label-cam">DOHC CAMSHAFTS · ½ CRANK SPEED</span>
+    <span class="engine-label" id="label-crank">CROSS-PLANE CRANK</span>
+    <span class="engine-label" id="label-fire">7 → 1 → 8 → 4 → 3 → 6 → 5 → 7</span>
+  </div>
+  <div id="status">PROCEDURAL ASSEMBLY · SLIDER-CRANK KINEMATICS · 720° FOUR-STROKE CYCLE</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const TAU = Math.PI * 2;
+const DEG = Math.PI / 180;
+const mod = (n, m) => ((n % m) + m) % m;
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0e11);
+scene.fog = new THREE.FogExp2(0x0b0e11, 0.026);
+
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 120);
+camera.position.set(10.8, 7.2, 11.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.prepend(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.065;
+controls.target.set(0, 2.15, 0);
+controls.minDistance = 6;
+controls.maxDistance = 32;
+controls.maxPolarAngle = Math.PI * 0.91;
+
+scene.add(new THREE.HemisphereLight(0xc8dded, 0x19130e, 1.45));
+const key = new THREE.DirectionalLight(0xfff0d9, 4.0);
+key.position.set(7, 12, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -9;
+key.shadow.camera.right = 9;
+key.shadow.camera.top = 9;
+key.shadow.camera.bottom = -9;
+key.shadow.camera.near = 1;
+key.shadow.camera.far = 35;
+key.shadow.bias = -0.00015;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0x78a9d6, 2.2);
+fill.position.set(-8, 5, 4);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xff7d37, 3.0);
+rim.position.set(3, 7, -10);
+scene.add(rim);
+const under = new THREE.PointLight(0x417ca8, 18, 13, 2);
+under.position.set(0, 0.5, 2.5);
+scene.add(under);
+
+const floor = new THREE.Mesh(
+  new THREE.CircleGeometry(28, 96),
+  new THREE.MeshStandardMaterial({ color: 0x11161a, roughness: 0.88, metalness: 0.08 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -1.25;
+floor.receiveShadow = true;
+scene.add(floor);
+const grid = new THREE.GridHelper(32, 32, 0x39434a, 0x20272c);
+grid.position.y = -1.235;
+grid.material.transparent = true;
+grid.material.opacity = 0.28;
+scene.add(grid);
+
+const materials = {
+  block: new THREE.MeshStandardMaterial({ color: 0x252b30, metalness: 0.72, roughness: 0.72 }),
+  blockEdge: new THREE.MeshStandardMaterial({ color: 0x353d43, metalness: 0.78, roughness: 0.55 }),
+  bore: new THREE.MeshPhysicalMaterial({ color: 0x56636c, metalness: 0.6, roughness: 0.36, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false }),
+  piston: new THREE.MeshStandardMaterial({ color: 0xc5cdd1, metalness: 0.94, roughness: 0.25 }),
+  pistonDark: new THREE.MeshStandardMaterial({ color: 0x858f96, metalness: 0.95, roughness: 0.34 }),
+  rod: new THREE.MeshStandardMaterial({ color: 0x687681, metalness: 1.0, roughness: 0.28 }),
+  crank: new THREE.MeshStandardMaterial({ color: 0x414b52, metalness: 1.0, roughness: 0.22 }),
+  crankDark: new THREE.MeshStandardMaterial({ color: 0x22292e, metalness: 0.95, roughness: 0.34 }),
+  cam: new THREE.MeshStandardMaterial({ color: 0xb8a36a, metalness: 0.92, roughness: 0.25 }),
+  valve: new THREE.MeshStandardMaterial({ color: 0xa7afb3, metalness: 1.0, roughness: 0.2 }),
+  spring: new THREE.MeshStandardMaterial({ color: 0x303941, metalness: 0.92, roughness: 0.32 }),
+  aluminum: new THREE.MeshStandardMaterial({ color: 0x718087, metalness: 0.82, roughness: 0.34 }),
+  intake: new THREE.MeshStandardMaterial({ color: 0x65777d, metalness: 0.84, roughness: 0.32 }),
+  exhaust: new THREE.MeshStandardMaterial({ color: 0x654235, metalness: 0.82, roughness: 0.48 }),
+  hotExhaust: new THREE.MeshStandardMaterial({ color: 0x6e382a, emissive: 0x190603, emissiveIntensity: 0.32, metalness: 0.78, roughness: 0.4 }),
+  steel: new THREE.MeshStandardMaterial({ color: 0x929ca2, metalness: 0.98, roughness: 0.2 }),
+  black: new THREE.MeshStandardMaterial({ color: 0x111518, metalness: 0.75, roughness: 0.5 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xd2a443, metalness: 0.9, roughness: 0.27 }),
+  ceramic: new THREE.MeshStandardMaterial({ color: 0xd4c9ad, metalness: 0.18, roughness: 0.46 }),
+  red: new THREE.MeshStandardMaterial({ color: 0xbf2d1e, metalness: 0.65, roughness: 0.38 })
+};
+
+const shared = {
+  bolt: new THREE.CylinderGeometry(0.075, 0.075, 0.07, 6),
+  ring: new THREE.TorusGeometry(0.61, 0.045, 8, 40),
+  box: new THREE.BoxGeometry(1, 1, 1),
+  pin: new THREE.CylinderGeometry(0.13, 0.13, 1.25, 20),
+  mainJournal: new THREE.CylinderGeometry(0.27, 0.27, 0.82, 32),
+  web: new THREE.CylinderGeometry(0.66, 0.66, 0.16, 36)
+};
+
+function mesh(geometry, material, parent, pos = null) {
+  const m = new THREE.Mesh(geometry, material);
+  if (pos) m.position.set(...pos);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  if (parent) parent.add(m);
+  return m;
+}
+function box(parent, w, h, d, material, x = 0, y = 0, z = 0) {
+  const m = mesh(shared.box, material, parent, [x,y,z]);
+  m.scale.set(w,h,d);
+  return m;
+}
+function cylinderY(parent, r, h, material, x=0, y=0, z=0, seg=32, open=false) {
+  return mesh(new THREE.CylinderGeometry(r,r,h,seg,1,open), material, parent, [x,y,z]);
+}
+function cylinderZ(parent, r, h, material, x=0, y=0, z=0, seg=32) {
+  const m = mesh(new THREE.CylinderGeometry(r,r,h,seg), material, parent, [x,y,z]);
+  m.rotation.x = Math.PI / 2;
+  return m;
+}
+function torus(parent, r, tube, material, x=0, y=0, z=0, axis='Y') {
+  const m = mesh(new THREE.TorusGeometry(r,tube,8,40), material, parent, [x,y,z]);
+  if (axis === 'Y') m.rotation.x = Math.PI / 2;
+  if (axis === 'X') m.rotation.y = Math.PI / 2;
+  return m;
+}
+function bolt(parent, x, y, z, material=materials.steel, axis='Y') {
+  const m = mesh(shared.bolt, material, parent, [x,y,z]);
+  if (axis === 'Z') m.rotation.x = Math.PI / 2;
+  if (axis === 'X') m.rotation.z = Math.PI / 2;
+  return m;
+}
+function tube(parent, points, radius, material, segments=48, closed=false) {
+  const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)), closed, 'catmullrom', 0.35);
+  return mesh(new THREE.TubeGeometry(curve, segments, radius, 9, closed), material, parent);
+}
+function sectorGeometry(inner, outer, start, length, depth) {
+  const shape = new THREE.Shape();
+  shape.moveTo(Math.cos(start)*outer, Math.sin(start)*outer);
+  for (let i=1; i<=32; i++) {
+    const a=start+length*i/32;
+    shape.lineTo(Math.cos(a)*outer, Math.sin(a)*outer);
+  }
+  for (let i=32; i>=0; i--) {
+    const a=start+length*i/32;
+    shape.lineTo(Math.cos(a)*inner, Math.sin(a)*inner);
+  }
+  shape.closePath();
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelSize: .025, bevelThickness: .025, bevelSegments: 2, steps: 1 });
+  g.translate(0,0,-depth/2);
+  return g;
+}
+function camGeometry() {
+  const shape = new THREE.Shape();
+  for (let i=0; i<=64; i++) {
+    const a=i/64*TAU;
+    const lobe=.5+.5*Math.cos(a-Math.PI/2);
+    const r=.165+.14*Math.pow(lobe, 2.1);
+    const x=Math.cos(a)*r, y=Math.sin(a)*r;
+    if (i===0) shape.moveTo(x,y); else shape.lineTo(x,y);
+  }
+  const g=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSize:.014,bevelThickness:.014,bevelSegments:2,steps:1});
+  g.translate(0,0,-.08);
+  return g;
+}
+function gear(parent, radius, width, material, teeth=24) {
+  const g=new THREE.Group(); parent.add(g);
+  cylinderZ(g, radius*.86, width, material);
+  cylinderZ(g, radius*.30, width+.12, materials.steel);
+  const toothGeo=new THREE.BoxGeometry(radius*.13,radius*.13,width+.055);
+  for(let i=0;i<teeth;i++){
+    const a=i/teeth*TAU;
+    const t=mesh(toothGeo,material,g,[Math.cos(a)*radius,Math.sin(a)*radius,0]);
+    t.rotation.z=a;
+  }
+  for(let i=0;i<6;i++){
+    const a=i/6*TAU;
+    bolt(g,Math.cos(a)*radius*.43,Math.sin(a)*radius*.43,width*.58,axis='Z');
+  }
+  return g;
+}
+
+const engine = new THREE.Group();
+scene.add(engine);
+const blockGroup = new THREE.Group();
+const pistonGroup = new THREE.Group();
+const rodGroup = new THREE.Group();
+const crankGroup = new THREE.Group();
+const intakeGroup = new THREE.Group();
+const timingGroup = new THREE.Group();
+engine.add(blockGroup,pistonGroup,rodGroup,crankGroup,intakeGroup,timingGroup);
+
+const bankAngleFor = cyl => ((cyl - 1) % 2 === 0 ? 45 : 135) * DEG;
+const fireAngle = {1:0, 8:90, 4:180, 3:270, 6:360, 5:450, 7:540, 2:630};
+const bankFiring = {0:[0,90,180,270],1:[630,360,180,90]};
+const cylinderZFor = cyl => (Math.floor((cyl-1)/2)-1.5)*1.72;
+
+class CrankThrow {
+  constructor(cyl, bankAngle, z) {
+    this.group=new THREE.Group();
+    crankGroup.add(this.group);
+    this.group.position.z=z;
+    this.base=bankAngle-fireAngle[cyl]*DEG;
+    this.group.rotation.z=this.base;
+
+    const hub=mesh(shared.web,materials.crankDark,this.group);
+    hub.scale.z=.72;
+    box(this.group,.21,.79,.28,materials.crank,0,.40,.18);
+    box(this.group,.36,.23,.38,materials.crank,0,.14,.18);
+    cylinderZ(this.group,.18,.62,materials.crank,0,.79,0,24);
+    cylinderZ(this.group,.225,.12,materials.steel,0,.79,-.29,24);
+    cylinderZ(this.group,.225,.12,materials.steel,0,.79,.29,24);
+    const cw=mesh(sectorGeometry(.31,.77,Math.PI*1.13,Math.PI*.74,.30),materials.crankDark,this.group,[0,0,.02]);
+    cw.castShadow=true;
+  }
+}
+
+class Piston {
+  constructor(parent, cyl) {
+    this.cyl=cyl;
+    this.group=new THREE.Group();
+    parent.add(this.group);
+    this.material=materials.piston.clone();
+    this.group.add(mesh(new THREE.CylinderGeometry(.61,.61,.72,40),this.material,[0,-.15,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.625,.625,.18,40),this.material,[0,.31,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.60,.61,.11,40),materials.pistonDark,[0,.43,0]));
+    for(const y of [.27,.14,.02]) torus(this.group,.607,.024,materials.black,0,y,0,'Y');
+    const pin=mesh(new THREE.CylinderGeometry(.115,.115,1.36,24),materials.steel,this.group);
+    pin.rotation.x=Math.PI/2;
+    for(const s of [-1,1]){
+      const boss=mesh(new THREE.CylinderGeometry(.18,.18,.16,24),this.material,this.group,[0,0,s*.69]);
+      boss.rotation.x=Math.PI/2;
+    }
+    box(this.group,.23,.18,.74,materials.pistonDark,0,-.48,0);
+  }
+}
+
+class ConnectingRod {
+  constructor(parent, length) {
+    this.length=length;
+    this.group=new THREE.Group();
+    this.material=materials.rod.clone();
+    parent.add(this.group);
+    box(this.group,.14,length-.38,.24,this.material,0,0,0);
+    box(this.group,.29,length-.55,.10,this.material,0,0,-.075);
+    box(this.group,.29,length-.55,.10,this.material,0,0,.075);
+    torus(this.group,.25,.105,this.material,0,length/2,0,'Z');
+    torus(this.group,.30,.13,this.material,0,-length/2,0,'Z');
+    for(const s of [-1,1]) box(this.group,.15,.22,.16,materials.steel,s*.25,-length/2-.10,0);
+    box(this.group,.46,.12,.34,this.material,0,-length/2-.18,0);
+  }
+  setEnds(a,b) {
+    this.group.position.copy(a).add(b).multiplyScalar(.5);
+    const d=new THREE.Vector3().subVectors(b,a);
+    const len=d.length();
+    if(len>1e-6) this.group.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.multiplyScalar(1/len));
+  }
+}
+
+class HelicalSpring {
+  constructor(parent, x, z) {
+    this.group=new THREE.Group();
+    parent.add(this.group);
+    this.group.position.set(x,4.27,z);
+    const pts=[];
+    for(let i=0;i<=100;i++){
+      const u=i/100, a=u*TAU*9;
+      pts.push(new THREE.Vector3(Math.cos(a)*.12,u,Math.sin(a)*.12));
+    }
+    this.mesh=mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),120,.027,6,false),materials.spring,this.group);
+  }
+  update(topY) { this.group.scale.y=Math.max(.25,topY-4.27); }
+}
+
+class Valve {
+  constructor(parent, x, z, isIntake) {
+    this.isIntake=isIntake;
+    this.baseY=3.91;
+    this.group=new THREE.Group();
+    parent.add(this.group);
+    this.group.position.set(x,this.baseY,z);
+    this.group.add(mesh(new THREE.CylinderGeometry(.205,.225,.095,28),materials.valve,[0,0,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.19,.205,.09,28),materials.valve,[0,.10,0]));
+    cylinderY(this.group,.038,1.23,materials.valve,0,.66,0,18);
+    cylinderY(this.group,.115,.075,materials.spring,0,1.19,0,22);
+    cylinderY(this.group,.07,.12,materials.steel,0,1.28,0,16);
+    this.spring=new HelicalSpring(parent,x,z);
+  }
+  update(lift) {
+    const travel=lift*.43;
+    this.group.position.y=this.baseY-travel;
+    this.spring.update(5.10-travel);
+  }
+}
+
+class CylinderUnit {
+  constructor(cyl, bankRoot, bankIndex) {
+    this.cyl=cyl;
+    this.bankRoot=bankRoot;
+    this.bankIndex=bankIndex;
+    this.bankAngle=bankAngleFor(cyl);
+    this.z=cylinderZFor(cyl);
+    this.fire=fireAngle[cyl];
+    this.r=.78;
+    this.l=4.35;
+    this.piston=new Piston(bankRoot,cyl);
+    this.rod=new ConnectingRod(bankRoot,this.l);
+    this.piston.group.position.z=this.z;
+    this.rod.group.position.z=this.z;
+
+    this.train=new THREE.Group();
+    bankRoot.head.add(this.train);
+    const exhaustSide=bankIndex===0?-1:1;
+    this.intakeX=-exhaustSide*.31;
+    this.exhaustX=exhaustSide*.31;
+    this.intakeValve=new Valve(this.train,this.intakeX,this.z,true);
+    this.exhaustValve=new Valve(this.train,this.exhaustX,this.z,false);
+
+    this.intakeCam=mesh(camGeometry(),materials.cam,this.train,[this.intakeX,5.43,this.z]);
+    this.exhaustCam=mesh(camGeometry(),materials.cam,this.train,[this.exhaustX,5.43,this.z]);
+    this.intakeCam.rotation.x=Math.PI/2;
+    this.exhaustCam.rotation.x=Math.PI/2;
+    // Re-orient extruded cam lobes around the cylinder-bank Z axis.
+    this.intakeCam.rotation.set(0,0,0);
+    this.exhaustCam.rotation.set(0,0,0);
+    this.intakeBase=0;
+    this.exhaustBase=0;
+    cylinderY(this.train,.115,.25,materials.steel,this.intakeX,5.15,this.z,18);
+    cylinderY(this.train,.115,.25,materials.steel,this.exhaustX,5.15,this.z,18);
+
+    this.flashMaterial=new THREE.MeshBasicMaterial({color:0xff7a20,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+    this.flash=mesh(new THREE.SphereGeometry(.47,20,14),this.flashMaterial,bankRoot,[0,3.49,this.z]);
+    this.flash.castShadow=false;
+    this.flash.renderOrder=3;
+    this.chamberRing=torus(bankRoot,.48,.035,materials.blockEdge,0,3.48,this.z,'Y');
+    this.selectRing=torus(bankRoot,.70,.025,new THREE.MeshBasicMaterial({color:0xffa43a,transparent:true,opacity:.8}),0,1.20,this.z,'Y');
+    this.selectRing.visible=cyl===1;
+    this.phase=0;
+    this.pistonY=0;
+  }
+  update(crankDegrees,camAngle) {
+    this.phase=mod(360+crankDegrees-this.fire,720);
+    const harmonic=mod(crankDegrees-this.fire,720);
+    const h=harmonic*DEG;
+    const under=this.l*this.l-this.r*this.r*Math.sin(h)*Math.sin(h);
+    const wrist=this.r*Math.cos(h)+Math.sqrt(Math.max(0,under));
+    this.pistonY=wrist;
+    this.piston.group.position.set(0,wrist+.08,this.z);
+    this.rod.setEnds(new THREE.Vector3(0,this.r,this.z),new THREE.Vector3(0,wrist,this.z));
+
+    const inLift=pulse(this.phase,0,150);
+    const exLift=pulse(this.phase,540,142);
+    this.intakeValve.update(inLift);
+    this.exhaustValve.update(exLift);
+    this.inLift=inLift;
+    this.exLift=exLift;
+
+    const intakeCamAt=(this.fire+360)%720*DEG/2;
+    const exhaustCamAt=(this.fire+180)%720*DEG/2;
+    this.intakeBase=Math.PI-intakeCamAt;
+    this.exhaustBase=Math.PI-exhaustCamAt;
+    this.intakeCam.rotation.z=this.intakeBase+camAngle;
+    this.exhaustCam.rotation.z=this.exhaustBase+camAngle;
+
+    let power=0;
+    if(this.phase>=360 && this.phase<425) power=Math.sin((this.phase-360)/65*Math.PI);
+    this.flashMaterial.opacity=power*.72;
+    this.flash.scale.setScalar(.75+power*.45);
+  }
+}
+
+function pulse(phase,center,halfWidth) {
+  let d=Math.abs(mod(phase-center+360,720)-360);
+  if(d>=halfWidth) return 0;
+  return .5*(1+Math.cos(Math.PI*d/halfWidth));
+}
+
+class Camshaft {
+  constructor(bank, x, train) {
+    this.group=new THREE.Group();
+    bank.add(this.group);
+    this.group.position.x=x;
+    this.shaft=cylinderZ(this.group,.115,7.25,materials.cam,0,5.43,0,28);
+    for(const z of [-3.55,-1.76,0,1.76,3.55]){
+      box(this.group,.38,.35,.22,materials.blockEdge,0,5.43,z);
+      torus(this.group,.145,.028,materials.steel,0,5.43,z,'Z');
+    }
+    this.shaft.userData.isCam=true;
+  }
+  update(angle) { this.group.rotation.z=angle; }
+}
+
+class Bank {
+  constructor(index) {
+    this.index=index;
+    this.angle=(index===0?45:135)*DEG;
+    this.root=new THREE.Group();
+    this.root.rotation.z=this.angle;
+    engine.add(this.root);
+    this.block=new THREE.Group();
+    this.root.add(this.block);
+    this.head=new THREE.Group();
+    this.root.add(this.head);
+    this.valves=new THREE.Group();
+    this.head.add(this.valves);
+    this.exhaustGroup=new THREE.Group();
+    this.root.add(this.exhaustGroup);
+    this.cams=[new Camshaft(this.root,-.31,this.valves),new Camshaft(this.root,.31,this.valves)];
+
+    this.buildBlock();
+    this.buildHead();
+  }
+  buildBlock() {
+    const s=this.index===0?-1:1;
+    box(this.block,.20,3.75,7.38,materials.block,s*.77,1.38,0);
+    box(this.block,.28,.35,7.48,materials.blockEdge,s*.73,-.63,0);
+    for(const z of [-3.62,-1.81,0,1.81,3.62]){
+      box(this.block,1.82,.18,.28,materials.block,0,-.55,z);
+      for(const x of [-.65,.65]) bolt(this.block,x,-.64,z);
+    }
+    for(let j=0;j<4;j++){
+      const z=cylinderZFor(j*2+1+this.index);
+      const sleeve=mesh(new THREE.CylinderGeometry(.72,.72,2.38,40,1,true,.28*Math.PI,1.55*Math.PI),materials.bore,this.block,[0,2.32,z]);
+      sleeve.material=materials.bore;
+      torus(this.block,.70,.045,materials.blockEdge,0,3.52,z,'Y');
+      torus(this.block,.70,.045,materials.blockEdge,0,1.10,z,'Y');
+      for(const side of [-1,1]) box(this.block,.11,2.42,.11,materials.blockEdge,side*.70,2.32,z);
+    }
+    for(let j=0;j<9;j++) box(this.block,.13,.12,6.8,materials.blockEdge,s*.88,-.15+j*.36,0);
+  }
+  buildHead() {
+    const zList=[-2.58,-.86,.86,2.58];
+    for(const z of zList){
+      box(this.head,1.45,.30,.58,materials.blockEdge,0,3.67,z);
+      box(this.head,1.10,.16,.42,materials.aluminum,0,3.85,z);
+      for(const x of [-.62,.62]) for(const dz of [-.18,.18]) bolt(this.head,x,3.94,z+dz);
+    }
+    box(this.head,.16,.25,7.0,materials.blockEdge,-.69,4.14,0);
+    box(this.head,.16,.25,7.0,materials.blockEdge,.69,4.14,0);
+    this.cover=new THREE.Group();
+    this.head.add(this.cover);
+    for(const x of [-.35,.35]) box(this.cover,.58,.18,7.20,materials.block,x,5.79,0);
+    for(const z of zList) box(this.cover,1.42,.13,.35,materials.blockEdge,0,5.87,z);
+    for(const z of zList) for(const x of [-.57,.57]) bolt(this.cover,x,5.95,z,axis='Y');
+    this.cover.userData.baseY=0;
+  }
+  update(camAngle,explode) {
+    this.head.position.y=explode*1.55;
+    this.cover.position.y=explode*.35;
+    this.cams.forEach(c=>c.update(camAngle));
+    this.exhaustGroup.position.x=(this.index===0?-1:1)*explode*1.35;
+    this.exhaustGroup.position.y=-explode*.22;
+  }
+}
+
+const banks=[new Bank(0),new Bank(1)];
+const units=[];
+for(let cyl=1;cyl<=8;cyl++){
+  const bi=(cyl-1)%2;
+  units.push(new CylinderUnit(cyl,banks[bi].root,bi));
+}
+
+function buildCrankcase() {
+  for(const z of [-3.63,-1.82,0,1.82,3.63]){
+    const journal=mesh(shared.mainJournal,materials.crank,crankGroup,[0,0,z]);
+    journal.rotation.x=Math.PI/2;
+    const web=mesh(shared.web,materials.crankDark,crankGroup,[0,0,z]);
+    web.rotation.x=Math.PI/2;
+    box(blockGroup,1.92,.28,.30,materials.block,0,-.78,z);
+    box(blockGroup,.35,.70,.30,materials.blockEdge,-.74,-.47,z);
+    box(blockGroup,.35,.70,.30,materials.blockEdge,.74,-.47,z);
+    for(const x of [-.78,.78]) bolt(blockGroup,x,-.77,z);
+    const cap=mesh(new THREE.TorusGeometry(.35,.105,10,28,Math.PI),materials.blockEdge,blockGroup,[0,-.02,z]);
+    cap.rotation.z=Math.PI;
+  }
+  cylinderZ(crankGroup,.19,9.0,materials.crank,0,0,-.12,28);
+  for(const s of [-1,1]) box(blockGroup,.15,1.20,8.15,materials.block,s*.97,-.04,0);
+  box(blockGroup,2.2,.18,1.20,materials.block,0,-1.00,-3.8);
+  box(blockGroup,2.2,.18,1.20,materials.block,0,-1.00,3.8);
+}
+buildCrankcase();
+
+for(let cyl=1;cyl<=8;cyl++) new CrankThrow(cyl,bankAngleFor(cyl),cylinderZFor(cyl));
+
+function buildFlywheel() {
+  const fly=new THREE.Group();
+  fly.position.z=4.22;
+  crankGroup.add(fly);
+  torus(fly,1.20,.20,materials.steel,0,0,0,'Z');
+  cylinderZ(fly,.34,.42,materials.crank,0,0,.08,36);
+  cylinderZ(fly,.72,.13,materials.crank,0,0,0,48);
+  for(let i=0;i<8;i++){
+    const a=i/8*TAU;
+    const spoke=box(fly,.72,.17,.23,materials.steel,Math.cos(a)*.68,Math.sin(a)*.68,0);
+    spoke.rotation.z=a;
+  }
+  for(let i=0;i<64;i++){
+    const a=i/64*TAU;
+    const tooth=box(fly,.12,.10,.23,materials.steel,Math.cos(a)*1.42,Math.sin(a)*1.42,0);
+    tooth.rotation.z=a;
+  }
+  for(let i=0;i<8;i++){
+    const a=i/8*TAU;
+    bolt(fly,Math.cos(a)*.28,Math.sin(a)*.28,.22,axis='Z');
+  }
+  const timingMark=box(fly,.08,.38,.03,materials.gold,1.18,0,.18);
+  timingMark.rotation.z=.1;
+
+  const pulley=new THREE.Group();
+  pulley.position.z=-4.20;
+  crankGroup.add(pulley);
+  cylinderZ(pulley,.28,.48,materials.crank,0,0,0,32);
+  for(const z of [-.20,-.07,.07,.20]) torus(pulley,.55,.055,materials.black,0,0,z,'Z');
+  for(let i=0;i<6;i++){
+    const a=i/6*TAU;
+    const spoke=box(pulley,.55,.10,.12,materials.steel,Math.cos(a)*.27,Math.sin(a)*.27,0);
+    spoke.rotation.z=a;
+  }
+  bolt(pulley,0,0,.27,materials.gold,axis='Z');
+}
+buildFlywheel();
+
+function buildPlenum() {
+  const plenum=cylinderZ(intakeGroup,.56,7.35,materials.intake,0,4.65,0,48);
+  for(const z of [-2.65,0,2.65]){
+    torus(intakeGroup,.565,.045,materials.aluminum,0,4.65,z,'Z');
+    box(intakeGroup,.75,.20,.25,materials.intake,0,4.65,z);
+  }
+  cylinderZ(intakeGroup,.68,.62,materials.intake,0,4.65,-4.10,40);
+  cylinderZ(intakeGroup,.47,.12,materials.black,0,4.65,-4.44,40);
+  const butterfly=cylinderZ(intakeGroup,.43,.035,materials.steel,0,4.65,-4.48,40);
+  butterfly.rotation.y=.55;
+  for(const z of [-3.6,3.6]){
+    torus(intakeGroup,.56,.06,materials.aluminum,0,4.65,z,'Z');
+  }
+  for(const z of [-2.8,0,2.8]) bolt(intakeGroup,0,5.25,z);
+}
+buildPlenum();
+
+for(const bank of banks){
+  const cyls=bank.index===0?[1,3,5,7]:[2,4,6,8];
+  const worldTargetSign=bank.index===0?-1:1;
+  for(const cyl of cyls){
+    const z=cylinderZFor(cyl);
+    const intakeLocal=units[cyl-1].intakeX;
+    const targetWorld=new THREE.Vector3(worldTargetSign*.43,4.65,z);
+    const targetLocal=targetWorld.clone().applyAxisAngle(new THREE.Vector3(0,0,1),-bank.angle);
+    tube(bank.root,[
+      [intakeLocal,3.76,z],
+      [intakeLocal-Math.sign(intakeLocal)*.25,4.10,z],
+      [targetLocal.x*.68,4.55,z],
+      [targetLocal.x,4.65,z]
+    ],.145,materials.intake,32);
+    torus(bank.root,.19,.035,materials.aluminum,intakeLocal,3.75,z,'Y');
+  }
+  const out=bank.index===0?-1:1;
+  for(const cyl of cyls){
+    const z=cylinderZFor(cyl);
+    const ex=units[cyl-1].exhaustX;
+    const collectorZ=3.7+ (cyl%3)*.12;
+    tube(bank.exhaustGroup,[
+      [ex,3.74,z],
+      [out*.80,3.55,z],
+      [out*1.48,3.05,z],
+      [out*1.78,2.10,z],
+      [out*1.55,1.20,lerp(z,collectorZ,.62)],
+      [out*1.23,.87,collectorZ]
+    ],.155,bank.index===0?materials.hotExhaust:materials.exhaust,46);
+    torus(bank.exhaustGroup,.21,.04,materials.steel,ex,3.74,z,'Y');
+    box(bank.exhaustGroup,.34,.18,.18,materials.hotExhaust,ex,3.70,z);
+  }
+  tube(bank.exhaustGroup,[[out*1.23,.87,3.6],[out*1.32,.67,4.7],[out*1.8,.40,4.9]],.31,materials.hotExhaust,28);
+  torus(bank.exhaustGroup,.32,.045,materials.steel,out*1.8,.40,4.92,'Z');
+}
+intakeGroup.userData.baseY=0;
+
+class TimingSystem {
+  constructor() {
+    this.crankGear=gear(timingGroup,.61,.22,materials.steel,28);
+    this.crankGear.position.z=-4.43;
+    box(timingGroup,.14,1.5,3.65,materials.blockEdge,-.84,.60,-4.25);
+    box(timingGroup,.14,1.5,3.65,materials.blockEdge,.84,.60,-4.25);
+    this.camGears=[];
+    for(const bi of [0,1]){
+      const bank=banks[bi];
+      const localX=bi===0?-.31:.31;
+      const center=bank.root.localToWorld(new THREE.Vector3(localX,5.43,0));
+      const g=gear(timingGroup,1.20,.20,materials.gold,30);
+      g.position.set(center.x,center.y,-4.43);
+      const mark=box(g,.12,.48,.025,materials.red,0,1.18,.13);
+      this.camGears.push(g);
+    }
+    this.buildBelt();
+    this.alternator=gear(timingGroup,.47,.19,materials.blockEdge,20);
+    this.alternator.position.set(2.18,1.05,-4.20);
+    this.tensioner=gear(timingGroup,.30,.17,materials.steel,18);
+    this.tensioner.position.set(1.65,3.15,-4.22);
+    tube(timingGroup,[[.48,0,-4.31],[1.42,.25,-4.31],[2.18,.65,-4.31],[2.65,1.12,-4.31],[1.65,3.15,-4.31],[.42,1.3,-4.31],[-.35,.58,-4.31]],.045,materials.black,90,true);
+    tube(timingGroup,[[.45,0,-4.49],[1.42,.25,-4.49],[2.18,.65,-4.49],[2.65,1.12,-4.49],[1.65,3.15,-4.49],[.42,1.3,-4.49],[-.35,.58,-4.49]],.032,materials.black,90,true);
+  }
+  buildBelt() {
+    const p=[new THREE.Vector3(-.48,0,0),new THREE.Vector3(0,-.52,0),new THREE.Vector3(.48,0,0),
+      new THREE.Vector3(.55,1.0,0),new THREE.Vector3(.10,2.6,0),new THREE.Vector3(-.15,3.35,0),
+      new THREE.Vector3(-.45,4.25,0)];
+    for(const bank of banks){
+      const gx=bank.index===0?-.31:.31;
+      const c=bank.root.localToWorld(new THREE.Vector3(gx,5.43,0));
+      p.push(new THREE.Vector3(c.x-.8,c.y-.3,0),new THREE.Vector3(c.x-.5,c.y-1.03,0),new THREE.Vector3(c.x+.55,c.y-.95,0),new THREE.Vector3(c.x+1.08,c.y-.1,0));
+    }
+    p.push(new THREE.Vector3(.48,0,0));
+    for(const z of [-4.34,-4.52]){
+      const points=p.map(v=>new THREE.Vector3(v.x,v.y,z));
+      const curve=new THREE.CatmullRomCurve3(points,true,'catmullrom',.15);
+      mesh(new THREE.TubeGeometry(curve,180,.042,7,true),materials.black,timingGroup);
+    }
+  }
+  update(crank,cam) {
+    this.crankGear.rotation.z=crank;
+    this.camGears.forEach(g=>g.rotation.z=cam);
+    this.alternator.rotation.z=-crank*2.65;
+    this.tensioner.rotation.z=-crank*1.75;
+    timingGroup.position.z=-explosion*1.45;
+  }
+}
+let explosion=0;
+const timing=new TimingSystem();
+
+class ParticleEffects {
+  constructor(parent,count=220) {
+    this.count=count;
+    this.positions=new Float32Array(count*3);
+    this.colors=new Float32Array(count*3);
+    this.velocities=Array.from({length:count},()=>new THREE.Vector3());
+    this.life=new Float32Array(count);
+    this.maxLife=new Float32Array(count);
+    this.next=0;
+    for(let i=0;i<count;i++) this.positions[i*3+1]=-100;
+    this.geometry=new THREE.BufferGeometry();
+    this.geometry.setAttribute('position',new THREE.BufferAttribute(this.positions,3));
+    this.geometry.setAttribute('color',new THREE.BufferAttribute(this.colors,3));
+    this.points=new THREE.Points(this.geometry,new THREE.PointsMaterial({
+      size:.09,vertexColors:true,transparent:true,opacity:.9,depthWrite:false,blending:THREE.AdditiveBlending
+    }));
+    this.points.frustumCulled=false;
+    parent.add(this.points);
+    this.flowAccumulator=0;
+  }
+  spawn(unit,kind,count) {
+    for(let j=0;j<count;j++){
+      const i=this.next++%this.count,k=i*3;
+      const local=new THREE.Vector3((Math.random()-.5)*.35,3.48,(Math.random()-.5)*.35);
+      if(kind==='flow') local.set(unit.exhaustValve.group.position.x,3.82,unit.z);
+      const p=unit.bankRoot.localToWorld(local.clone());
+      this.positions[k]=p.x; this.positions[k+1]=p.y; this.positions[k+2]=p.z;
+      const v=new THREE.Vector3((Math.random()-.5)*.65,Math.random()*.9+.25,(Math.random()-.5)*.65);
+      if(kind==='flow') v.multiplyScalar(.35);
+      this.velocities[i].copy(v);
+      this.life[i]=this.maxLife[i]=kind==='combustion'?.35+Math.random()*.3:.75+Math.random()*.5;
+      const c=kind==='combustion'?new THREE.Color().setHSL(.055+Math.random()*.055,.95,1):new THREE.Color(0x3a82a5);
+      this.colors[k]=c.r; this.colors[k+1]=c.g; this.colors[k+2]=c.b;
+    }
+  }
+  update(dt) {
+    for(let i=0;i<this.count;i++){
+      if(this.life[i]<=0) continue;
+      this.life[i]-=dt;
+      const k=i*3;
+      if(this.life[i]<=0){this.positions[k+1]=-100;continue;}
+      const v=this.velocities[i];
+      v.y-=dt*1.5; v.multiplyScalar(1-dt*.35);
+      this.positions[k]+=v.x*dt; this.positions[k+1]+=v.y*dt; this.positions[k+2]+=v.z*dt;
+      const fade=clamp(this.life[i]/this.maxLife[i],0,1);
+      this.colors[k]*=.985; this.colors[k+1]*=.977; this.colors[k+2]*=.969;
+    }
+    this.geometry.attributes.position.needsUpdate=true;
+    this.geometry.attributes.color.needsUpdate=true;
+  }
+}
+const effects=new ParticleEffects(scene);
+
+class Engine {
+  constructor() {
+    this.crankDegrees=0;
+    this.previousCrank=0;
+    this.rpm=700;
+    this.paused=false;
+    this.manual=false;
+    this.timeScale=1;
+    this.selected=1;
+    this.explosion=0;
+  }
+  crossFiring(previous,current) {
+    for(const [cylString,f] of Object.entries(fireAngle)){
+      const f0=Number(f);
+      const hit=previous<=current ? (f0>previous && f0<=current) : (f0>previous || f0<=current);
+      if(hit) effects.spawn(units[Number(cylString)-1],'combustion',rpm<1800?18:8);
+    }
+  }
+  update(dt) {
+    const prev=this.crankDegrees;
+    if(this.manual){
+      this.crankDegrees=Number(manualCrank.value);
+    } else if(!this.paused){
+      const delta=this.rpm*6*dt*this.timeScale;
+      this.crankDegrees=mod(this.crankDegrees+delta,720);
+    }
+    this.previousCrank=prev;
+    if(this.manual || (!this.paused && this.rpm>0)) this.crossFiring(prev,this.crankDegrees);
+    const visualCrank=this.crankDegrees*DEG%TAU;
+    const camAngle=this.crankDegrees*.5*DEG;
+    crankGroup.rotation.z=visualCrank;
+    for(const unit of units) unit.update(this.crankDegrees,camAngle);
+    for(const bank of banks) bank.update(camAngle,this.explosion);
+    timing.update(visualCrank,camAngle);
+    intakeGroup.position.y=this.explosion*1.7;
+    intakeGroup.position.z=this.explosion*.45;
+
+    this.flowAccumulator=(this.flowAccumulator||0)+dt;
+    if(this.flowAccumulator>.065 && !this.paused && !this.manual){
+      this.flowAccumulator=0;
+      for(const u of units){
+        if(u.phase>0 && u.phase<180 && Math.random()<.28) effects.spawn(u,'flow',1);
+        if(u.phase>500 && u.phase<650 && u.exLift>.05 && Math.random()<.25) effects.spawn(u,'flow',1);
+      }
+    }
+    effects.update(dt);
+    this.updateInspection();
+  }
+  updateInspection() {
+    const u=units[this.selected-1];
+    const p=this.crankDegrees;
+    const c=this.crankDegrees*.5;
+    cycleValue.textContent=`CYCLE ${u.phase.toFixed(1)}° / 720°`;
+    cycleFill.style.width=`${u.phase/720*100}%`;
+    const stroke=u.phase<180?'INTAKE':u.phase<360?'COMPRESSION':u.phase<540?'POWER':'EXHAUST';
+    strokeEl.textContent=stroke;
+    strokeEl.style.color=u.phase>=360&&u.phase<540?'#ff6a32':u.phase<180?'#68c7ff':'#d9e0e5';
+    pistonValue.textContent=u.pistonY.toFixed(2);
+    inLift.textContent=(u.inLift*.43).toFixed(2);
+    exLift.textContent=(u.exLift*.43).toFixed(2);
+    document.querySelector('.mini-grid b:last-child').textContent=`${c.toFixed(1)}°`;
+    crankReadout.textContent=`${p.toFixed(1)}°`;
+  }
+  select(n) {
+    this.selected=n;
+    units.forEach(u=>{
+      const selected=u.cyl===n;
+      u.selectRing.visible=selected;
+      u.piston.material.emissive.setHex(selected?0x5b2500:0x000000);
+      u.piston.material.emissiveIntensity=selected?.65:0;
+      u.rod.material.emissive.setHex(selected?0x4f2100:0x000000);
+      u.rod.material.emissiveIntensity=selected?.8:0;
+    });
+    for(const b of document.querySelectorAll('[data-cyl]')) b.classList.toggle('active',Number(b.dataset.cyl)===n);
+    cylName.textContent=`CYLINDER ${n}`;
+  }
+  visibility(key,value) {
+    if(key==='block') blockGroup.visible=value;
+    if(key==='pistons') pistonGroup.visible=value;
+    if(key==='crankshaft') crankGroup.visible=value;
+    if(key==='rods') rodGroup.visible=value;
+    if(key==='valves') banks.forEach(b=>b.valves.visible=value);
+    if(key==='intake') intakeGroup.visible=value;
+    if(key==='exhaust') banks.forEach(b=>b.exhaustGroup.visible=value);
+    if(key==='timing') timingGroup.visible=value;
+  }
+}
+const app=new Engine();
+
+const rpm=document.getElementById('rpm');
+const rpmValue=document.getElementById('rpmValue');
+const pauseButton=document.getElementById('pause');
+const idleButton=document.getElementById('idle');
+const manualMode=document.getElementById('manualMode');
+const manualCrank=document.getElementById('manualCrank');
+const crankReadout=document.getElementById('crankReadout');
+const explode=document.getElementById('explode');
+const explodeValue=document.getElementById('explodeValue');
+const cycleValue=document.getElementById('cycleValue');
+const cycleFill=document.getElementById('cycleFill');
+const strokeEl=document.getElementById('stroke');
+const cylName=document.getElementById('cylName');
+const pistonValue=document.getElementById('pistonValue');
+const inLift=document.getElementById('inLift');
+const exLift=document.getElementById('exLift');
+
+function setRPM(value) {
+  app.rpm=value;
+  rpm.value=value;
+  rpmValue.textContent=Math.round(value);
+  idleButton.classList.toggle('active',Math.abs(value-700)<1);
+  document.querySelectorAll('[data-rpm]').forEach(b=>b.classList.toggle('active',Number(b.dataset.rpm)===value));
+}
+rpm.addEventListener('input',()=>setRPM(Number(rpm.value)));
+document.getElementById('stop').addEventListener('click',()=>setRPM(0));
+idleButton.addEventListener('click',()=>setRPM(700));
+document.querySelectorAll('[data-rpm]').forEach(b=>b.addEventListener('click',()=>setRPM(Number(b.dataset.rpm))));
+pauseButton.addEventListener('click',()=>{
+  app.paused=!app.paused;
+  pauseButton.textContent=app.paused?'RESUME':'PAUSE';
+  pauseButton.classList.toggle('active',app.paused);
+});
+document.querySelectorAll('[data-time]').forEach(b=>b.addEventListener('click',()=>{
+  app.timeScale=Number(b.dataset.time);
+  document.querySelectorAll('[data-time]').forEach(x=>x.classList.toggle('active',x===b));
+}));
+manualMode.addEventListener('change',()=>{
+  app.manual=manualMode.checked;
+  manualCrank.disabled=!app.manual;
+  if(app.manual) app.paused=false;
+});
+manualCrank.addEventListener('input',()=>{app.crankDegrees=Number(manualCrank.value);});
+explode.addEventListener('input',()=>{
+  app.explosion=Number(explode.value)/100;
+  explodeValue.textContent=`${explode.value}%`;
+});
+document.querySelectorAll('[data-vis]').forEach(el=>el.addEventListener('change',()=>app.visibility(el.dataset.vis,el.checked)));
+document.querySelectorAll('[data-cyl]').forEach(b=>b.addEventListener('click',()=>app.select(Number(b.dataset.cyl))));
+
+let cameraTween=null;
+const views={
+  hero:{p:new THREE.Vector3(10.8,7.2,11.8),t:new THREE.Vector3(0,2.15,0)},
+  front:{p:new THREE.Vector3(0,3.0,-16),t:new THREE.Vector3(0,2.4,-1)},
+  side:{p:new THREE.Vector3(15,4.0,0),t:new THREE.Vector3(0,2.3,0)},
+  top:{p:new THREE.Vector3(.01,16,.2),t:new THREE.Vector3(0,1.4,0)},
+  internal:{p:new THREE.Vector3(7.8,4.5,7.1),t:new THREE.Vector3(0,2.25,.2)}
+};
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+  const v=views[b.dataset.view];
+  cameraTween={p:v.p.clone(),t:v.t.clone(),u:0};
+  document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x===b));
+}));
+
+function positionLabel(el,obj,offset=new THREE.Vector3()) {
+  const p=obj.getWorldPosition(new THREE.Vector3()).add(offset).project(camera);
+  el.style.left=`${(p.x*.5+.5)*innerWidth}px`;
+  el.style.top=`${(-p.y*.5+.5)*innerHeight}px`;
+  el.style.opacity=p.z<1?'.65':'0';
+}
+const camLabelObj=banks[0].cams[0].shaft;
+const crankLabelObj=crankGroup;
+const fireLabelObj=units[0].flash;
+engine.updateMatrixWorld(true);
+
+let last=performance.now();
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt=Math.min((now-last)/1000,.05);
+  last=now;
+  app.update(dt);
+  if(cameraTween){
+    cameraTween.u=Math.min(1,cameraTween.u+dt*2.8);
+    const u=1-Math.pow(1-cameraTween.u,3);
+    camera.position.lerp(cameraTween.p,u);
+    controls.target.lerp(cameraTween.t,u);
+    if(cameraTween.u>=1) cameraTween=null;
+  }
+  controls.update();
+  positionLabel(document.getElementById('label-cam'),camLabelObj,new THREE.Vector3(0,.5,0));
+  positionLabel(document.getElementById('label-crank'),crankLabelObj,new THREE.Vector3(0,-.9,0));
+  positionLabel(document.getElementById('label-fire'),fireLabelObj,new THREE.Vector3(0,.75,0));
+  renderer.render(scene,camera);
+}
+app.select(1);
+requestAnimationFrame(animate);
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+});
+</script>
+</body>
+</html>
