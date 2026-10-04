@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Server Architecture Lab</title>
+<style>
+:root{--bg:#091015;--panel:rgba(12,20,26,.92);--line:#263640;--text:#dce8ed;--muted:#82949d;--cyan:#55c8db;--green:#64d7a1;--amber:#f3b65d;--red:#ff6969;--blue:#6a9cff}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,select{font:inherit}button{color:var(--text);background:#17242c;border:1px solid #334751;padding:7px 9px;border-radius:5px;cursor:pointer;transition:.16s;white-space:nowrap}button:hover{background:#253640;border-color:#60808c}button.active{color:#071417;background:var(--cyan);border-color:var(--cyan);font-weight:700}button.danger{color:#ffd0d0}button:disabled{opacity:.4;cursor:default}
+#app{position:relative;width:100%;height:100%}#viewport{position:absolute;inset:0}canvas{display:block}#top{height:54px;position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:18px;padding:0 18px;background:linear-gradient(#0c151cf5,#0c151ccc);border-bottom:1px solid var(--line);z-index:10}#brand{font-size:17px;letter-spacing:2.5px;font-weight:750;white-space:nowrap}#brand small{display:block;color:var(--muted);font-size:8px;letter-spacing:3px;font-weight:500;margin-top:2px}#perf{margin-left:auto;display:flex;gap:14px;font:10px ui-monospace,monospace;color:#9fb2bb;background:#101b22;border:1px solid #263740;border-radius:5px;padding:7px 10px}#perf b{color:var(--cyan);font-weight:500}
+.panel{position:absolute;top:66px;width:285px;bottom:72px;background:linear-gradient(135deg,#101a21ef,#0b1319ed);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 35px #0008;z-index:8;overflow:auto;scrollbar-width:thin;scrollbar-color:#40545f transparent}.left{left:12px}.right{right:12px;width:320px}.section{padding:12px;border-bottom:1px solid #26343d}.section h2{font-size:10px;letter-spacing:1.8px;color:#8fa6b0;margin:0 0 10px;font-weight:650}.section h3{font-size:12px;margin:0 0 6px}.muted{color:var(--muted)}.small{font-size:10px;line-height:1.45}.kicker{font-size:9px;letter-spacing:1.6px;color:var(--cyan);margin-bottom:5px}.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0}.row span{font-size:10px;color:#a8bac2}.row b{font-size:10px;color:#edf6f8;text-align:right}.server-list{display:flex;flex-direction:column;gap:5px}.server-item{text-align:left;padding:8px;display:grid;grid-template-columns:35px 1fr;gap:7px;align-items:center;background:#111e26}.server-item.active{border-color:var(--cyan);background:#18313a}.server-item .u{font:9px ui-monospace,monospace;color:#6f8792}.server-item .n{font-size:10px;font-weight:650;letter-spacing:.3px}.server-item .m{font-size:8px;color:#7f929b;margin-top:2px}.mini-actions{display:flex;gap:5px;margin-top:8px}.mini-actions button{flex:1;font-size:9px;padding:7px 4px}.tag{display:inline-block;padding:3px 6px;margin:2px;border:1px solid #354953;border-radius:3px;font-size:8px;color:#a7bac2}.presets{display:grid;grid-template-columns:1fr 1fr;gap:5px}.presets button{font-size:8px;padding:7px 3px}
+#health{display:grid;grid-template-columns:1fr 1fr;gap:7px}.metric{background:#0b141a;border:1px solid #263841;padding:7px;border-radius:4px}.metric .label{font-size:8px;color:#788d96;letter-spacing:.7px}.metric .value{font:13px ui-monospace,monospace;margin-top:3px}.metric .value.warn{color:var(--amber)}.metric .value.bad{color:var(--red)}#failure select{width:100%;color:#dce8ed;background:#111e26;border:1px solid #334751;border-radius:4px;padding:7px;margin:5px 0 8px;font-size:10px}#status{padding:7px;border-left:2px solid var(--green);background:#0d1a1d;color:#a8ddc0;font-size:9px;line-height:1.4}#status.warn{border-color:var(--amber);color:#f1cb91;background:#211b12}#status.bad{border-color:var(--red);color:#ffc0c0;background:#241416}#component{min-height:67px}.component-name{font-size:12px;color:#fff;font-weight:650}.component-desc{font-size:9px;line-height:1.45;color:#9eb1b9;margin-top:4px}
+#bottom{position:absolute;left:12px;right:12px;bottom:10px;height:53px;display:flex;align-items:center;gap:5px;padding:8px;background:#0d171eea;border:1px solid #2b3b44;border-radius:8px;z-index:12;overflow-x:auto}.tool-label{font-size:8px;color:#687f8a;letter-spacing:1px;margin:0 5px 0 2px;white-space:nowrap}#bottom button{font-size:9px;letter-spacing:.35px;padding:10px 11px}.divider{height:28px;width:1px;background:#2c3c45;margin:0 3px}#sliceNav{display:none;align-items:center;gap:5px}#sliceLabel{font:9px ui-monospace,monospace;color:#8ca2ac;margin:0 6px}.view-presets{display:none;align-items:center;gap:4px}.view-presets button{font-size:8px;padding:8px}.mode-tab{font-weight:800;letter-spacing:1px}
+#transition{position:absolute;left:50%;top:58px;transform:translateX(-50%);padding:7px 14px;border-radius:0 0 6px 6px;background:#10212ae8;border:1px solid #2c4653;border-top:0;color:#b5e8f0;font:9px ui-monospace,monospace;letter-spacing:1.3px;z-index:20;display:none;pointer-events:none}#toast{position:absolute;left:50%;bottom:76px;transform:translateX(-50%) translateY(10px);padding:9px 14px;background:#17262ef5;border:1px solid #43606d;border-radius:5px;font-size:10px;opacity:0;transition:.2s;pointer-events:none;z-index:30}#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#modal{position:absolute;inset:0;background:#02080cbb;z-index:40;display:none;align-items:center;justify-content:center;backdrop-filter:blur(5px)}#modal.show{display:flex}.modal-card{width:min(1000px,92vw);height:min(720px,88vh);background:#0d171e;border:1px solid #38505c;border-radius:10px;box-shadow:0 25px 90px #000;display:flex;flex-direction:column;overflow:hidden}.modal-head{padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2a3c46}.modal-head h2{font-size:15px;letter-spacing:1.4px;margin:0}.modal-body{padding:18px;overflow:auto}.matrix{width:100%;border-collapse:collapse;font-size:10px}.matrix th,.matrix td{padding:9px 8px;border-bottom:1px solid #263943;text-align:center}.matrix th:first-child,.matrix td:first-child{text-align:left;min-width:170px}.matrix th{font-size:8px;color:#8ba2ad;letter-spacing:.7px}.bar{display:block;height:6px;background:#203039;border-radius:3px;overflow:hidden;margin-bottom:4px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#397f9a,var(--cyan))}.matrix td small{color:#728993;font-size:7px}.note{margin-top:16px;padding:12px;border:1px solid #31505b;background:#101f27;color:#9fb7c0;font-size:10px;line-height:1.5}#heatGauge{height:7px;background:#253139;margin:6px 0;border-radius:4px;overflow:hidden}#heatGauge i{display:block;height:100%;background:linear-gradient(90deg,#4fb8ca,#f0a857,#f05a5a);width:78%}#axis{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);z-index:6;background:#0c171dbb;border:1px solid #293a43;border-radius:5px;padding:6px 10px;color:#6e8792;font:8px ui-monospace,monospace;pointer-events:none}.hidden{display:none!important}
+@media(max-width:1000px){.panel{width:235px}.right{width:255px}#brand{font-size:13px;letter-spacing:1px}#perf span:nth-child(3){display:none}#bottom button{padding:9px 7px}.section{padding:9px}}@media(max-width:760px){.left{display:none}.right{width:220px;right:6px;top:62px}#brand{font-size:10px}.tool-label,.divider{display:none}#bottom{left:5px;right:5px}#perf{font-size:8px;gap:6px}}
+</style>
+</head>
+<body>
+<div id="app">
+<div id="viewport"></div>
+<header id="top"><div id="brand">SERVER ARCHITECTURE LAB<small>ENTERPRISE HARDWARE VISUALIZATION</small></div><div id="perf"><span>FPS <b id="fps">--</b></span><span>DRAW <b id="draw">--</b></span><span>TRIS <b id="tris">--</b></span></div></header>
+<div id="transition">ISOLATING SERVER / RESTORING COMPONENT DETAIL</div>
+<aside class="panel left">
+<div class="section"><div class="kicker">FACILITY 01 · HALL B</div><h2>RACK OVERVIEW</h2><div class="row"><span>Envelope</span><b>42U · 800 × 1200 mm class</b></div><div class="row"><span>Rack ID</span><b>DC-B07</b></div><div class="row"><span>Installed</span><b id="rackUsed">26U / 42U</b></div><div class="row"><span>Estimated IT load</span><b id="rackPowerTop">12.7 kW</b></div><div id="heatGauge"><i></i></div><div class="small muted">Estimated heat ≈ IT power. Redundant A/B power and rear cable channels preserve serviceability.</div></div>
+<div class="section"><h2>RACK CAMERA</h2><div class="presets"><button data-rackcam="front">FULL RACK FRONT</button><button data-rackcam="three">FULL RACK 3/4</button><button data-rackcam="side">FULL RACK SIDE</button><button data-rackcam="rear">FULL RACK REAR</button></div></div>
+<div class="section"><h2>INSTALLED SERVERS</h2><div class="server-list" id="serverList"></div></div>
+<div class="section"><h2>RACK POWER</h2><div id="powerList"></div></div>
+<button style="margin:10px;width:calc(100% - 20px)" id="compare">COMPARE ARCHETYPES</button>
+</aside>
+<aside class="panel right">
+<div class="section"><div class="kicker" id="archKicker">SELECTED SYSTEM</div><h2 id="selName">AI COMPUTE NODE</h2><div class="small muted" id="selPosition">U42–U39 · 4U</div><div style="margin-top:8px" id="selTags"></div><button style="width:100%;margin-top:9px" id="inspect">INSPECT SLICE</button><div class="small muted" id="sliceStatus" style="margin-top:6px">Select a chassis in the rack, then isolate it for component inspection.</div></div>
+<div class="section"><h2>ARCHITECTURE SUMMARY</h2><div id="archSummary"></div></div>
+<div class="section"><h2>SELECTED COMPONENT</h2><div id="component"><div class="component-name">No component selected</div><div class="component-desc">Hover for highlight. Click a CPU, DIMM, accelerator, drive, fan, PSU, NIC or controller.</div></div></div>
+<div class="section"><h2>LIVE HEALTH</h2><div id="health"></div><div id="status" style="margin-top:9px">NOMINAL · All monitored subsystems within operating range.</div></div>
+<div class="section"><h2>FAILURE SIMULATION</h2><div id="failure"><select id="failureType"><option value="">Select injected failure…</option><option>FAN FAILURE</option><option>PSU FAILURE</option><option>DRIVE FAILURE</option><option>GPU OVERHEAT</option><option>NETWORK LINK FAILURE</option></select><button id="inject" class="danger" style="width:100%">SIMULATE FAILURE</button></div><div class="small muted" style="margin-top:7px">Educational redundancy model. Metrics are simulated and intentionally slow.</div></div>
+</aside>
+<div id="axis">X FRONT/REAR&nbsp;&nbsp; Y HEIGHT&nbsp;&nbsp; Z RACK WIDTH</div>
+<div id="bottom">
+<button class="mode-tab active" id="rackBtn">RACK VIEW</button><button class="mode-tab" id="sliceBtn">SLICE VIEW</button><div class="divider"></div><span class="tool-label">SERVICE</span><button id="coverBtn">OPEN COVER</button><button id="cutawayBtn">CHASSIS CUTAWAY</button><button id="explodeBtn">EXPLODED VIEW</button><div class="divider"></div><span class="tool-label">FLOW</span><button id="airBtn">AIRFLOW</button><button id="powerBtn">POWER PATH</button><button id="dataBtn">DATA PATHS</button><div class="view-presets" id="viewPresets"><span class="tool-label">VIEW</span><button data-view="whole">WHOLE SLICE</button><button data-view="top">TOP DOWN</button><button data-view="engineering">3/4 ENGINEERING</button><button data-view="front">FRONT INTERNALS</button><button data-view="rear">REAR INTERNALS</button><button data-view="cpu">CPU + MEMORY</button><button data-view="gpu" id="gpuView">GPU AREA</button><button data-view="storage">STORAGE AREA</button></div><div id="sliceNav"><button id="prev">◀ PREVIOUS</button><span id="sliceLabel">03 / 08</span><button id="next">NEXT ▶</button></div><div class="divider"></div><button id="failuresBtn">FAILURES</button><button id="reset">RESET</button>
+</div>
+<div id="toast"></div>
+<div id="modal"><div class="modal-card"><div class="modal-head"><div><div class="kicker">CONCEPTUAL ARCHITECTURAL PROFILE</div><h2>ARCHETYPE COMPARISON</h2></div><button id="closeModal">CLOSE ✕</button></div><div class="modal-body"><table class="matrix" id="matrix"></table><div class="note"><b>Interpretation:</b> These normalized indicators describe relative design emphasis, not measured benchmarks. GPU systems emphasize acceleration, power and airflow; storage systems emphasize drive density and backplane I/O; database systems prioritize CPU, memory bandwidth and low-latency fabric.</div></div></div></div>
+</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const U=.238, scene=new THREE.Scene(); scene.background=new THREE.Color(0x091015); scene.fog=new THREE.Fog(0x091015,18,34);
+const camera=new THREE.PerspectiveCamera(39,innerWidth/innerHeight,.08,80); camera.position.set(8.8,7.2,11.8);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'}); renderer.setPixelRatio(Math.min(devicePixelRatio,1.7)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.22; $('#viewport').appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.dampingFactor=.075; controls.minDistance=2.2; controls.maxDistance=28; controls.target.set(0,5.1,0); controls.maxPolarAngle=Math.PI*.49;
+scene.add(new THREE.HemisphereLight(0xc8e6f2,0x18232a,2.1));
+const key=new THREE.DirectionalLight(0xffffff,3.4); key.position.set(7,12,8); key.castShadow=true; key.shadow.mapSize.set(2048,2048); Object.assign(key.shadow.camera,{left:-8,right:8,top:10,bottom:-5,near:.5,far:30}); key.shadow.bias=-.0004; scene.add(key);
+const fill=new THREE.DirectionalLight(0x67b4d1,1.5); fill.position.set(-7,6,-5); scene.add(fill); const rim=new THREE.DirectionalLight(0x8bbdff,2); rim.position.set(4,7,-8); scene.add(rim);
+const rackGroup=new THREE.Group(), sliceGroup=new THREE.Group(), overlayGroup=new THREE.Group(); scene.add(rackGroup,sliceGroup,overlayGroup); sliceGroup.visible=false; overlayGroup.visible=false;
+const raycaster=new THREE.Raycaster(), mouse=new THREE.Vector2(); let hovered=null, mode='rack', selectedIndex=0, coverOpen=false, coverRemoved=false, cutaway=false, exploded=false, airOn=false,powerOn=false,dataOn=false, failure=null, activeServer=null, coverTween=null, explodeTween=0, transitioning=false;
+let flowParticles=[], flowSystems=[]; let pointerDown=false;
+
+const M={black:mat(0x11171a,0.72,.42), dark:mat(0x1b252b,0.75,.3), steel:mat(0x66747b,0.38,.72), silver:mat(0x9ba7ad,0.35,.78), pcb:mat(0x123e32,0.65,.3), pcb2:mat(0x183a48,0.6,.35), copper:mat(0xa86a36,0.5,.4), gold:mat(0xc7a044,0.42,.45), chip:mat(0x090c0e,0.8,.2), white:mat(0xc3cacc,0.4,.55), greenLED:new THREE.MeshBasicMaterial({color:0x64ffb2}), cyanLED:new THREE.MeshBasicMaterial({color:0x4cc9ff}), amberLED:new THREE.MeshBasicMaterial({color:0xffa83d}), redLED:new THREE.MeshBasicMaterial({color:0xff4444}), flow:new THREE.MeshBasicMaterial({color:0x45d5e5,transparent:true,opacity:.48,depthWrite:false}), power:new THREE.MeshBasicMaterial({color:0xffb449,transparent:true,opacity:.8,depthWrite:false}), data:new THREE.MeshBasicMaterial({color:0x68a0ff,transparent:true,opacity:.8,depthWrite:false})};
+function mat(c,metal=.3,rough=.6){return new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough})}
+const boxGeo=new THREE.BoxGeometry(1,1,1); const cylGeo=new THREE.CylinderGeometry(1,1,1,12); const smallGeo=new THREE.SphereGeometry(1,6,4);
+function box(parent,x,y,z,w,h,d,material=M.dark){let o=new THREE.Mesh(boxGeo,material);o.position.set(x,y,z);o.scale.set(w,h,d);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function cyl(parent,x,y,z,r,h,material=M.silver,axis='y'){let o=new THREE.Mesh(cylGeo,material);o.position.set(x,y,z);o.scale.set(r,h,r);if(axis==='x')o.rotation.z=Math.PI/2;if(axis==='z')o.rotation.x=Math.PI/2;o.castShadow=true;parent.add(o);return o}
+function led(parent,x,y,z,color=M.greenLED){let o=new THREE.Mesh(smallGeo,color);o.position.set(x,y,z);o.scale.set(.022,.012,.022);parent.add(o);return o}
+function label(parent,text,x,y,z,w=1,h=.2,color='#b8c8ce',bg='#17242b'){let c=document.createElement('canvas');c.width=512;c.height=96;let q=c.getContext('2d');q.fillStyle=bg;q.fillRect(0,0,512,96);q.strokeStyle='#53636b';q.strokeRect(2,2,508,92);q.fillStyle=color;q.font='bold 34px monospace';q.textAlign='center';q.textBaseline='middle';q.fillText(text,256,49);let tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;let m=new THREE.MeshBasicMaterial({map:tex});let o=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m);o.position.set(x,y,z);parent.add(o);return o}
+function line(parent,points,color=0x394a53,opacity=1){let g=new THREE.BufferGeometry().setFromPoints(points.map(p=>new THREE.Vector3(...p)));let m=new THREE.LineBasicMaterial({color,transparent:opacity<1,opacity});let l=new THREE.Line(g,m);parent.add(l);return l}
+function edgeBox(parent,w,h,d,color=0x42545d){let o=new THREE.Mesh(boxGeo,new THREE.MeshBasicMaterial({color,wireframe:true,transparent:true,opacity:.5}));o.scale.set(w,h,d);parent.add(o);return o}
+function screw(parent,x,z,y=.19){cyl(parent,x,y,z,.026,.018,M.silver)}
+
+const servers=[
+{name:'AI COMPUTE NODE',arch:'GPU / AI',u:39,h:4,power:7.2,cpus:2,gpus:8,ram:1024,storage:'8 × NVMe',network:'2 × 200G',psus:4,desc:'Machine learning training, inference, scientific computing and rendering. Accelerator thermal density drives front-to-rear airflow, short power distribution and a large NUMA-aware PCIe fabric.'},
+{name:'VIRTUALIZATION SERVER',arch:'VIRTUALIZATION',u:37,h:2,power:1.1,cpus:2,gpus:0,ram:768,storage:'8 × 2.5" NVMe/SAS',network:'2 × 25G + OCP',psus:2,desc:'Private-cloud hypervisors consolidate many workloads. Dense ECC memory, balanced CPU channels, a PCIe riser zone and redundant NIC paths favor flexibility and predictable tail latency.'},
+{name:'COMPUTE NODE 01',arch:'GENERAL PURPOSE',u:36,h:1,power:.7,cpus:2,gpus:0,ram:256,storage:'4 × 2.5"',network:'4 × 10G',psus:2,desc:'A balanced web, API and application platform. Moderate CPU, memory, storage and networking avoids over-specialization while retaining hot-service and redundant power options.'},
+{name:'COMPUTE NODE 02',arch:'GENERAL PURPOSE',u:35,h:1,power:.7,cpus:2,gpus:0,ram:256,storage:'4 × 2.5"',network:'4 × 10G',psus:2,desc:'A balanced general-purpose service node. Front hot-swap media and an internal fan wall provide a conventional serviceable enterprise layout with dual power and management.'},
+{name:'STORAGE SERVER',arch:'STORAGE',u:31,h:4,power:1.0,cpus:2,gpus:0,ram:128,storage:'36 × 3.5" SAS',network:'2 × 25G + HBA',psus:2,desc:'Capacity-oriented backup and object storage. Thirty-six front-accessible drive carriers feed a vertical backplane; fan modules and controllers sit behind the media so every path remains serviceable.'},
+{name:'CORE NETWORK APPLIANCE',arch:'NETWORK',u:30,h:1,power:.4,cpus:1,gpus:0,ram:96,storage:'2 × M.2 boot',network:'8 × QSFP + 8 × SFP+',psus:2,desc:'Layer-3 routing, firewall and traffic shaping. A high-port-count rear I/O, compact network processor and two independent power supplies prioritize forwarding capacity over local storage.'},
+{name:'DATABASE / HIGH-MEMORY',arch:'DATABASE',u:28,h:2,power:1.6,cpus:2,gpus:0,ram:1536,storage:'16 × NVMe',network:'2 × 100G',psus:2,desc:'Transactional databases and large in-memory analytics. Nearly every memory channel is populated; dual high-core CPUs, low-latency NVMe and dual 100G networking share CPU and memory bandwidth.'},
+{name:'STORAGE CACHE NODE',arch:'STORAGE',u:27,h:1,power:.8,cpus:2,gpus:0,ram:512,storage:'12 × NVMe',network:'2 × 100G',psus:2,desc:'All-flash performance tier. A shallow front NVMe bank, active fan wall and dual high-speed fabrics make this node suitable for caching, high-IOPS services and latency-sensitive storage.'}
+];
+const cache=new Map();
+
+function addServerList(){ $('#serverList').innerHTML=servers.map((s,i)=>`<button class="server-item" data-server="${i}"><div class="u">U${s.u}<br>↓${s.h}U</div><div><div class="n">${s.name}</div><div class="m">${s.arch} · ${s.power.toFixed(1)} kW</div></div></button>`).join('');$$('[data-server]').forEach(e=>e.onclick=()=>selectServer(+e.dataset.server));$('#powerList').innerHTML=servers.map(s=>`<div class="row"><span>${s.name}</span><b>${s.power.toFixed(1)} kW</b></div>`).join('')+`<div class="row" style="border-top:1px solid #334650;padding-top:8px"><span>EST. HEAT OUTPUT</span><b style="color:#f0ad67">12.7 kW</b></div>` }
+
+const floor=box(scene,0,-.16,0,60,.15,60,mat(0x111a20,.15,.92)); floor.receiveShadow=true;
+const grid=new THREE.GridHelper(40,40,0x29414b,0x17252d);grid.position.y=-.075;scene.add(grid);
+function buildRack(){
+ let H=42*U,W=2.32,D=3.55,y0=.23;
+ let frame=new THREE.Group();rackGroup.add(frame);
+ // casters and feet
+ for(let x of [-.92,.92])for(let z of [-1.42,1.42]){cyl(frame,x,.11,z,.12,.18,M.black);let wheel=cyl(frame,x,.065,z,.14,.09,M.black,'x')}
+ // structural posts
+ for(let x of [-W/2,W/2])for(let z of [-D/2,D/2]){
+  box(frame,x,y0+H/2,z,.09,H+.16,.09,M.black);
+  box(frame,x*.96,y0+H+.03,z*.92,.18,.12,.18,M.steel);
+ }
+ for(let z of [-D/2,D/2]){box(frame,0,y0,z,W+.1,.11,.1,M.steel);box(frame,0,y0+H,z,W+.1,.11,.1,M.steel);box(frame,0,y0+H*.64,z,.05,H*.32,.025,M.dark)}
+ for(let x of [-W/2,W/2]){box(frame,x,y0+H/2,0,.1,.1,D,M.steel);box(frame,x,y0,0,.1,.1,D,M.steel)}
+ // rails, unit separators and holes (instanced)
+ const railMat=M.steel; for(let x of [-.93,.93])for(let z of [-1.58,1.58])box(frame,x,y0+H/2,z,.075,H-.25,.075,railMat);
+ const holes=new THREE.InstancedMesh(smallGeo,M.black,42*4*3);let n=0,dummy=new THREE.Object3D();
+ for(let u=1;u<=42;u++)for(let x of [-.93,.93])for(let z of [-1.625,1.625])for(let dz=0;dz<3;dz++){dummy.position.set(x,y0+(u-.5)*U,z+dz*.021);dummy.scale.set(.012,.009,.012);dummy.updateMatrix();holes.setMatrixAt(n++,dummy.matrix)}holes.count=n;frame.add(holes);
+ for(let u=0;u<42;u+=2){label(frame,String(u+1),-1.12,y0+(u+.5)*U,1.66,.095,.12,'#8fa4ad','#121a1f');label(frame,String(u+1),1.12,y0+(u+.5)*U,-1.66,.095,.12,'#8fa4ad','#121a1f')}
+ // side panels and partial door
+ box(frame,-1.13,5.1,0,.055,9.1,3.28,M.dark);box(frame,1.13,5.1,0,.055,9.1,3.28,M.dark);
+ const door=new THREE.Group();frame.add(door); for(let x of [-1.09,1.09])box(door,x,5.2,1.73,.05,9.55,.06,M.steel);box(door,0,9.96,1.73,2.2,.08,.08,M.steel);box(door,0,.45,1.73,2.2,.08,.08,M.steel);
+ // perforated impression panels using instanced slots
+ const slots=new THREE.InstancedMesh(boxGeo,new THREE.MeshBasicMaterial({color:0x070a0c}),42*4);n=0;for(let u=0;u<42;u++)for(let x of [-.62,-.21,.21,.62]){dummy.position.set(x,y0+(u+.5)*U,1.735);dummy.scale.set(.18,U*.33,.012);dummy.updateMatrix();slots.setMatrixAt(n++,dummy.matrix)}frame.add(slots);
+ // vertical PDUs and cable channels
+ for(let side of [-1,1]){box(frame,side*1.03,5.1,-1.18,.18,9.3,.22,M.black);for(let u=3;u<40;u+=2){for(let k=0;k<6;k++){let o=box(frame,side*1.13,y0+u*U,-1.18+k*.03,.025,.07,.012,M.dark)}}}
+ // blanking panels
+ for(let u=0;u<42;u++){let occupied=servers.some(s=>u>=s.u-s.h+1&&u<=s.u);if(!occupied&&[0,1,7,8,10,13,16,19,22,25,28,31,34,37,40,41].includes(u))box(frame,0,y0+(u+.5)*U,1.52,2.05,U*.9,.035,mat(0x20292e,.5,.5))}
+ // equipment
+ servers.forEach((s,i)=>rackGroup.add(buildRackServer(s,i)));
+ // rear cables
+ addCables();
+ // room datum
+ line(frame,[[-1.3,0,1.95],[1.3,0,1.95]],0x40555f);
+}
+function buildRackServer(s,index){
+ let g=new THREE.Group();g.userData={serverIndex:index,type:'server'};g.position.y=.23+(s.u-s.h+1)*U;g.userData.baseY=g.position.y;
+ let H=s.h*U-.018,D=3.18,W=2.13;
+ box(g,0,H/2,0,W,H,D,M.black);
+ box(g,0,H/2,1.60,W-.08,H-.06,.035,M.dark);
+ // chassis lip and handles
+ for(let x of [-.97,.97])box(g,x,H/2,1.64,.055,H-.08,.08,M.silver);
+ if(s.arch==='STORAGE'&&s.h>2){
+  for(let row=0;row<6;row++)for(let col=0;col<6;col++){let x=(col-2.5)*.335, y=.08+row*(H-.14)/6;box(g,x,y,1.635,.315,(H-.14)/6-.018,.028,M.silver);box(g,x+.08,y,1.654,.12,.025,.012,M.black);led(g,x-.1,y,1.66)}
+ }else if(s.arch==='GPU / AI'){
+  for(let i=0;i<8;i++){let x=(i%4-1.5)*.49,y=.12+Math.floor(i/4)*(H-.2)/2;box(g,x,y,1.64,.45,(H-.2)/2-.03,.03,M.dark);box(g,x-.12,y,1.663,.11,.025,.012,M.black);led(g,x+.14,y,1.67)}
+ }else{
+  for(let i=0;i<4;i++){let x=(i-1.5)*.49;box(g,x,H*.52,1.64,.455,H*.76,.028,M.silver);box(g,x-.09,H*.52,1.66,.15,.12,.012,M.black);led(g,x+.12,H*.65,1.67)}
+ }
+ // rear detailed face
+ box(g,0,H/2,-1.603,W-.04,H-.05,.03,M.dark);
+ let psuN=s.psus,step=Math.min(.45,1.4/psuN);for(let i=0;i<psuN;i++){let x=(i-(psuN-1)/2)*step;box(g,x,H*.48,-1.635,step*.86,H*.65,.06,M.silver);for(let k=0;k<6;k++)box(g,x-step*.29+k*step*.115,H*.48,-1.671,.025,H*.45,.012,M.black);led(g,x,H*.7,-1.682)}
+ for(let i=0;i<6;i++)box(g,-.5+i*.16,H*.72,-1.64,.11,.095,.035,M.black);
+ box(g,.7,H*.3,-1.64,.18,.14,.035,M.silver);led(g,.76,H*.3,-1.67);
+ // rail telescope
+ for(let x of [-.9,.9]){box(g,x,H*.5,-1.1,.055,H*.9,2.9,M.steel);box(g,x*1.02,H*.5,.9,.025,H*.8,1.7,M.silver)}
+ // rack LED bar
+ led(g,-1.015,H*.75,1.68,failure&&failure.type==='NETWORK LINK FAILURE'?M.redLED:M.cyanLED);
+ // modest rear cabling from alternate PDUs
+ if(index<7){let curve=new THREE.CatmullRomCurve3([new THREE.Vector3((index%2?-.8:.8),g.position.y+H*.55,-1.7),new THREE.Vector3(index%2?-.88:.88,g.position.y+.5,-1.92),new THREE.Vector3(index%2?-.9:.9,2,-1.78)]);let cable=new THREE.Mesh(new THREE.TubeGeometry(curve,14,.018,5,false),index%2?M.chip:M.chip);g.add(cable)}
+ return g;
+}
+function addCables(){
+ const paths=[];
+ for(let i=0;i<6;i++){let yy=2.3+i*.65;paths.push([[-.9,yy,-1.55],[-.82,yy+.2,-1.82],[-1.02,yy+.3,-1.95],[-1.02,yy+1.0,-1.1]]);paths.push([[.9,yy+.3,-1.55],[.85,yy+.42,-1.83],[1.02,yy+.5,-1.96],[1.02,yy+1.1,-1.1]])}
+ for(let p of paths){let c=new THREE.CatmullRomCurve3(p.map(v=>new THREE.Vector3(...v)));rackGroup.add(new THREE.Mesh(new THREE.TubeGeometry(c,18,.017,5,false),i%2?M.chip:mat(0x24333a,.2,.8)))}
+}
+
+function cpu(g,x,z,idx,scale=1){
+ let gr=new THREE.Group();gr.position.set(x,.16,z);gr.userData={component:{name:`CPU ${idx}`,type:'Server CPU',role:idx===1?'Primary general processing and NUMA domain A':'General processing and NUMA domain B',socket:`CPU ${idx}`,power:idx===1?'280 W':'260 W',cooling:'Passive fin-stack heatsink using front-to-rear chassis pressure',archetype:null}};g.add(gr);box(gr,0,.012,0,.43*scale,.025,.43*scale,M.white);box(gr,0,.035,0,.34*scale,.025,.34*scale,M.chip);
+ for(let i=0;i<7;i++)box(gr,(i-3)*.046*scale,.12*scale,0,.018*scale,.15*scale,.38*scale,M.silver);
+ for(let i=0;i<4;i++)cyl(gr,(i<2?-.2:.2)*scale,.09,(i%2?-.2:.2)*scale,.022*scale,.1,M.steel);
+ // VRM banks
+ for(let side of [-1,1])for(let i=0;i<6;i++){box(gr,side*(.28+i*.035),.035,0,.025,.05,.13,M.chip);cyl(gr,side*.285,.085,.075,.018,.07,M.copper)}
+ gr.userData.component.archetype=activeServer; return gr;
+}
+function dimmBank(g,cx,cz,count,side,pop=.75){
+ for(let i=0;i<count;i++){
+  let x=cx+(i-(count-1)/2)*.105,z=cz+side*(.34+i%2*.01);
+  box(g,x,.155,z,.082,.045,.32,M.chip);
+  if(i<Math.ceil(count*pop)){box(g,x,.18,z,.014,.015,.29,M.pcb2);for(let j=0;j<6;j++)box(g,x,.19,z-.115+j*.045,.032,.012,.024,M.chip)}
+  else box(g,x,.16,z,.08,.025,.3,M.dark);
+  for(let zz of [-.17,.17])box(g,x,.15,z+zz,.1,.04,.025,M.gold)
+ }
+}
+function fans(g,x,z,count,size=.19){
+ for(let i=0;i<count;i++){let xx=x+(i-(count-1)/2)*size*1.18;let gr=new THREE.Group();gr.position.set(xx,.25,z);gr.userData={component:{name:`FAN MODULE ${i+1}`,type:'Hot-swap DC fan',role:'Moves front intake through high-pressure cooling zones',power:'18–32 W',cooling:'Variable-speed counter-rotating airflow',archetype:activeServer}};g.add(gr);box(gr,0,0,0,size,.17,size,M.black);let ring=new THREE.Mesh(new THREE.TorusGeometry(size*.32,.014,6,18),M.dark);ring.rotation.x=Math.PI/2;gr.add(ring);for(let b=0;b<7;b++){let a=b*Math.PI*2/7;let blade=box(gr,Math.cos(a)*size*.13,.03,Math.sin(a)*size*.13,size*.3,.015,size*.08,M.silver);blade.rotation.y=-a+.5}cyl(gr,0,.08,0,size*.09,.08,M.chip);led(gr,0,.09,size*.43)}
+}
+function psu(g,x,z,idx,w=.42){
+ let p=new THREE.Group();p.position.set(x,.23,z);p.userData={component:{name:`PSU ${idx+1}`,type:'Hot-swap AC/DC power supply',role:'Converts redundant AC feed to regulated 12 V and auxiliary rails',input:idx%2?'PDU B':'PDU A',power:idx%2?'FAILED / OFFLINE':'ONLINE',cooling:'Rear-exhaust fan',archetype:activeServer}};g.add(p);box(p,0,0,0,w,.24,.72,M.silver);for(let i=0;i<9;i++)box(p,(i-4)*w*.09,.125,0,w*.045,.012,.52,M.black);box(p,0,-.04,.375,.16,.07,.025,M.black);led(p,-w*.3,.1,-.37,M.greenLED);return p;
+}
+function drive(g,x,y,z,size3=false,idx=0){
+ let w=size3?.39:.30,h=size3?1.36:.34,d=size3?1.02:.62,gr=new THREE.Group();gr.position.set(x,y,z);gr.userData={component:{name:`DRIVE ${String(idx+1).padStart(2,'0')}`,type:size3?'3.5-inch hot-swap SAS/SATA':'2.5-inch enterprise NVMe/SAS',role:size3?'Capacity member; connected to rear backplane':'Low-latency data or boot media',interface:size3?'6G SAS / SATA':'PCIe NVMe / SAS',capacity:size3?'18 TB':'3.84 TB',cooling:'Front-to-rear airflow through carrier and drive enclosure',archetype:activeServer}};g.add(gr);box(gr,0,0,0,w,h,d,M.silver);box(gr,0,0,d/2+.01,w*.86,h*.8,.025,M.dark);box(gr,-w*.26,0,d/2+.03,w*.17,h*.35,.03,M.black);for(let i=0;i<4;i++)box(gr,w*.22,h*.25-i*.08,d/2+.035,w*.18,.018,.015,M.black);led(gr,w*.31,h*.28,d/2+.05,failure?.type==='DRIVE FAILURE'&&idx===3?M.redLED:M.greenLED);return gr;
+}
+function nic(g,x,z,labelText='PORT'){let gr=new THREE.Group();gr.position.set(x,.18,z);gr.userData={component:{name:labelText,type:'Enterprise network interface',role:'Dual 100 GbE or 25/50G PCIe fabric port',power:'18 W typical',cooling:'PCIe slot airflow',archetype:activeServer}};g.add(gr);box(gr,0,.055,0,.34,.08,.42,M.pcb);box(gr,.1,.115,-.18,.24,.11,.035,M.silver);for(let i=0;i<2;i++)box(gr,.04+i*.12,.12,-.204,.09,.055,.018,M.black);led(gr,-.08,.12,-.208);return gr}
+function part(g,y,zone,explodeVec){g.userData.base=g.position.clone();g.userData.explode=explodeVec;g.userData.zone=zone;return g}
+
+function buildSlice(s,index){
+ if(cache.has(index))return cache.get(index);
+ activeServer=s;let g=new THREE.Group();g.userData.serverIndex=index;let H=Math.max(.9,s.h*U-.035),D=3.25,W=2.18,baseY=-H/2;
+ // normalize all built detail to top-open chassis with base y = -H/2
+ g.position.y=0;
+ let base=part(new THREE.Group(),0,'base',new THREE.Vector3(0,-.5,0));g.add(base);
+ box(base,0,-H/2+.05,0,W,.1,D,M.black);
+ for(let x of [-W/2+.04,W/2-.04])box(base,x,0,0,.07,H,D,M.dark);
+ box(base,0,0,-D/2+.04,W,H,.07,M.dark);
+ // front fascia with real intake opening zones
+ let front=part(new THREE.Group(),0,'front',new THREE.Vector3(0,0,.6));g.add(front);box(front,0,0,D/2-.035,W,H,.07,M.black);
+ if(s.arch==='GPU / AI'){
+  for(let row=0;row<2;row++)for(let col=0;col<4;col++){let x=(col-1.5)*.5;box(front,x,(row-.5)*.42,D/2+.012,.45,.38,.035,M.silver);for(let k=0;k<5;k++)box(front,x-.12+k*.06,(row-.5)*.42,D/2+.035,.018,.2,.012,M.black);led(front,x+.14,(row-.5)*.42+.11,D/2+.04)}
+ }else if(s.arch==='STORAGE'&&s.h>2){
+  for(let r=0;r<6;r++)for(let c=0;c<6;c++){let x=(c-2.5)*.35;box(front,x,(r-2.5)*.14,D/2+.012,.325,.126,.03,M.silver);box(front,x-.08,(r-2.5)*.14,D/2+.034,.11,.035,.025,M.black);led(front,x+.1,(r-2.5)*.14,D/2+.04)}
+ }else if(s.arch==='NETWORK'){
+  for(let x of [-.45,0,.45])for(let i=0;i<3;i++)box(front,x,(i-1)*.16,D/2+.025,.34,.09,.035,M.silver)
+ }else{
+  let count=s.h===1?4:8;for(let i=0;i<count;i++){let x=(i-(count-1)/2)*.245;box(front,x,0,D/2+.012,.225,H*.62,.025,M.silver);box(front,x-.045,0,D/2+.03,.07,H*.38,.012,M.black);led(front,x+.065,H*.17,D/2+.04)}
+ }
+ // PCB motherboard and trace language
+ let board=part(new THREE.Group(),0,'board',new THREE.Vector3(0,-.8,0));g.add(board);
+ const boardW=s.arch==='STORAGE'?.92:1.92, boardZ=s.arch==='STORAGE'?-.3:-.12;
+ box(board,0,-H/2+.115,boardZ,boardW,.055,2.7,M.pcb);box(board,0,-H/2+.146,boardZ,boardW-.04,.01,2.64,mat(0x174b3b,.5,.45));
+ for(let i=0;i<15;i++)line(board,[[-boardW/2+i*.13,-H/2+.153,1.2],[-.2+i*.02,-H/2+.153,.45],[.6,-H/2+.153,-.8],[boardW/2,-H/2+.153,-1.25]],0x2b6c56,.45);
+ // chipset/BMC
+ for(let [x,z,w,d] of [[0,.15,.28,.28],[s.arch==='NETWORK'?.55:-.62,.05,.25,.25]]){box(board,x,-H/2+.18,z,w,.055,d,M.chip);for(let q=0;q<7;q++)cyl(board,x-w*.45+q*w*.15,-H/2+.16,z+d*.55,.014,.045,M.copper)}
+ label(board,'BMC / SECURITY',s.arch==='NETWORK'?.55:-.62,-H/2+.155,.33,.45,.12);
+ // fan wall (different density)
+ let fanCount=s.arch==='GPU / AI'?12:s.arch==='STORAGE'?10:s.h===1?5:8;
+ fans(board,0,.83,fanCount,s.arch==='GPU / AI'?.17:.18);
+ // CPUs and DIMMs
+ let cpuPositions=s.arch==='STORAGE'?[[-.29,-.35],[.29,-.35]]:s.arch==='NETWORK'?[[0,-.12]]:[[-.46,-.12],[.46,-.12]];
+ cpuPositions.forEach((p,i)=>cpu(board,p[0],p[1],i+1,s.arch==='GPU / AI'?1.12:1));
+ cpuPositions.forEach((p,i)=>dimmBank(board,p[0],p[1],s.arch==='VIRTUALIZATION'||s.arch==='DATABASE'?12:s.arch==='GPU / AI'?10:8,i+1,1));
+ // PCIe slots and risers
+ let riser=part(new THREE.Group(),0,'riser',new THREE.Vector3(0,.9,-.5));g.add(riser);
+ for(let i=0;i<5;i++)box(riser,0,-H/2+.24+i*.012,.45,.08,.025,.52,M.chip);
+ if(s.arch!=='STORAGE'&&s.arch!=='GPU / AI'){for(let i=0;i<3;i++)box(riser,0,-H/2+.25+i*.02,.25+i*.35,.055,.12,1.15,M.pcb2)}
+ nic(riser,-.18,-.55,'OCP / PRIMARY NIC');nic(riser,.18,-.55,'SECONDARY NIC');
+ // GPU section
+ if(s.arch==='GPU / AI'){
+  let gpu=part(new THREE.Group(),0,'gpu',new THREE.Vector3(0,1.5,-.5));g.add(gpu);
+  for(let row=0;row<2;row++)for(let col=0;col<4;col++){let x=(col-1.5)*.46,z=-.45+row*.55,gr=new THREE.Group();gr.position.set(x,0,z);gr.userData={component:{name:`GPU ACCELERATOR #${row*4+col+1}`,type:'Data-center double-width accelerator',role:'Tensor / matrix and parallel compute acceleration',connection:'PCIe Gen5 + accelerator interconnect fabric',power:'600 W',cooling:'High-pressure front-to-rear chassis airflow through fin-stack cooler',archetype:s}};gpu.add(gr);box(gr,0,-H/2+.24,0,.4,.13,.65,M.chip);box(gr,0,-H/2+.34,0,.35,.07,.58,M.silver);for(let i=0;i<9;i++)box(gr,0,-H/2+.4,-.24+i*.06,.3,.015,.016,M.silver);box(gr,.19,-H/2+.29,.25,.02,.2,.13,M.copper);led(gr,-.16,-H/2+.33,-.29,failure?.type==='GPU OVERHEAT'&&row===1&&col===2?M.redLED:M.greenLED)}
+  // NVMe and interconnect
+  for(let i=0;i<8;i++)box(gpu,(i-3.5)*.23,-H/2+.18,1.02,.21,.055,.32,M.pcb2);
+  fans(gpu,0,1.24,10,.15);
+ }
+ // Storage layout
+ if(s.arch==='STORAGE'&&s.h>2){
+  let cage=part(new THREE.Group(),0,'storage',new THREE.Vector3(0,.6,1.2));g.add(cage);let idx=0;for(let c=0;c<6;c++)for(let r=0;r<6;r++)drive(cage,(c-2.5)*.35,-H/2+.1+r*.14,1.18,true,idx++);
+  box(cage,0,-H/2+.25,.55,1.85,.06,.08,M.pcb2);label(cage,'DRIVE BACKPLANE / EXPANDER',0,-H/2+.22,.49,1.4,.12);
+  let hba=part(new THREE.Group(),0,'controller',new THREE.Vector3(0,1,-.65));g.add(hba);box(hba,.12,-H/2+.25,-.8,.55,.1,.45,M.pcb2);for(let i=0;i<4;i++)box(hba,-.1+i*.14,-H/2+.32,-.8,.08,.08,.22,M.chip);label(hba,'HBA / SAS EXPANDER',.12,-H/2+.31,-.55,.6,.12);
+ }else if(s.arch==='NETWORK'){
+  for(let i=0;i<2;i++)box(board,-.45+i*.9,-H/2+.19,-.65,.38,.07,.38,M.pcb2);
+  // rear connectors represented in roof-level detail
+  for(let i=0;i<8;i++)box(board,(i-3.5)*.11,-H/2+.21,-1.42,.08,.06,.13,M.silver);
+ }else{
+  let n=s.arch==='DATABASE'?16:s.arch==='VIRTUALIZATION'?12:8;for(let i=0;i<n;i++)drive(board,-.82+(i%(n>8?8:n))*.23,-H/2+.21,1.16,false,i);
+ }
+ // rear I/O and power system
+ let power=part(new THREE.Group(),0,'power',new THREE.Vector3(0,.8,-.8));g.add(power);
+ for(let i=0;i<s.psus;i++){let x=(i-(s.psus-1)/2)*.48;psu(power,x,-1.28,i,.4);line(power,[[x,-H/2+.31,-1.18],[x*.7,-H/2+.18,-.65],[0,-H/2+.16,-.3]],0xd88b38,.7)}
+ if(s.arch!=='GPU / AI'){for(let i=0;i<6;i++)box(power,-.6+i*.21,-H/2+.25,-1.47,.13,.1,.05,M.silver);let mg=new THREE.Group();mg.position.set(.72,-H/2+.22,-1.45);power.add(mg);box(mg,0,0,0,.28,.12,.04,M.silver);for(let i=0;i<2;i++)box(mg,-.06+i*.12,.015,.025,.08,.055,.015,M.black)}
+ // rear wall and service rails
+ box(base,0,0,-D/2-.015,W,H,.05,M.dark);
+ for(let x of [-.96,.96]){box(base,x,-H/2+.12,.95,.055,.08,2.15,M.silver);box(base,x,-H/2+.11,-.65,.055,.08,1.2,M.steel)}
+ // cover
+ let cover=part(new THREE.Group(),0,'cover',new THREE.Vector3(0,1.5,-1.2));g.add(cover);let coverMesh=box(cover,0,H/2+.03,0,W+.05,.055,D+.04,M.dark);edgeBox(cover,W+.05,.055,D+.04,0x52636a);for(let i=0;i<8;i++)box(cover,0,H/2+.065,-1.1+i*.25,.7,.008,.08,M.black);cover.visible=true;cover.userData.cover=true;
+ // details screws/headers
+ for(let x of [-.88,.88])for(let z of [-1.25,1.25])screw(board,x,z,-H/2+.16);
+ for(let i=0;i<6;i++)box(board,-.8+i*.32,-H/2+.18,-.25,.17,.07,.18,M.white);
+ cache.set(index,g);return g;
+}
+function addSlice(animate=true){
+ transitioning=true;$('#transition').style.display='block';coverTween={v:0,target:1};coverOpen=true;coverRemoved=false;$('#coverBtn').textContent='CLOSE COVER';sliceGroup.clear();let g=buildSlice(servers[selectedIndex],selectedIndex);g.traverse(o=>{if(o.isMesh)o.userData.serverIndex=selectedIndex});sliceGroup.add(g);sliceGroup.visible=true;activeServer=servers[selectedIndex];rackGroup.visible=true;sliceGroup.scale.setScalar(.8);sliceGroup.position.set(0,-.3,1.4);
+ setTimeout(()=>{rackGroup.visible=false;sliceGroup.scale.setScalar(1);sliceGroup.position.set(0,0,0);setView('whole',true);$('#transition').style.display='none';transitioning=false},650);
+ updateUI();
+}
+function enterSlice(){mode='slice';$('#rackBtn').classList.remove('active');$('#sliceBtn').classList.add('active');$('#viewPresets').style.display='flex';$('#sliceNav').style.display='flex';$('#axis').classList.add('hidden');addSlice()}
+function returnRack(modeChange=true){
+ if(modeChange){mode='rack';$('#rackBtn').classList.add('active');$('#sliceBtn').classList.remove('active');$('#viewPresets').style.display='none';$('#sliceNav').style.display='none';$('#axis').classList.remove('hidden')}
+ exploded=false;explodeTween=0;applyExplode();setExplodeButton();coverRemoved=false;coverOpen=true;coverTween={v:1,target:0};clearOverlays();transitioning=true;$('#transition').style.display='block';sliceGroup.visible=false;rackGroup.visible=true;transitioning=false;$('#transition').style.display='none';setRackView('three');updateUI();
+}
+function selectServer(i){selectedIndex=i;clearOverlays();failure=null;$('#failureType').value='';if(mode==='slice'){sliceGroup.clear();let g=buildSlice(servers[i],i);if(cache.has(i))g=cache.get(i);sliceGroup.add(g);applyCover();applyExplode();setView('whole',true);failure=null;updateFailureMaterials()}updateUI();highlightRack();}
+function highlightRack(){rackGroup.children.forEach(g=>{if(g.userData.serverIndex!==undefined){let on=g.userData.serverIndex===selectedIndex;g.traverse(o=>{if(o.isMesh&&o.material?.color){if(!o.userData.baseColor)o.userData.baseColor=o.material.color.clone();o.material=o.material.clone();o.material.color.copy(o.userData.baseColor);if(on)o.material.color.lerp(new THREE.Color(0x327a89),.22)}})}})}
+function setRackView(v){let target=new THREE.Vector3(0,5.1,0),p;if(v==='front')p=new THREE.Vector3(0,5.2,12.8);if(v==='three')p=new THREE.Vector3(8.8,7.2,11.8);if(v==='side')p=new THREE.Vector3(12.6,5.7,.4);if(v==='rear')p=new THREE.Vector3(0,5.2,-12.8);tweenCam(p,target,700)}
+function setView(v,immediate=false){
+ if(mode!=='slice')return;let p,t=new THREE.Vector3(0,0,0);let H=Math.max(.9,servers[selectedIndex].h*U-.035);
+ if(v==='whole'){p=new THREE.Vector3(4.8,H*.5+4.2,5.4);t=new THREE.Vector3(0,0,0)}
+ if(v==='top'){p=new THREE.Vector3(.01,8.4,.01);t.set(0,0,0)}
+ if(v==='engineering'){p=new THREE.Vector3(4.2,3.4,4.8);t.set(0,-.1,0)}
+ if(v==='front'){p=new THREE.Vector3(1.1,2.0,6.2);t.set(0,-.15,.65)}
+ if(v==='rear'){p=new THREE.Vector3(2.8,2.1,-5.2);t.set(0,-.15,-.9)}
+ if(v==='cpu'){p=new THREE.Vector3(2.5,3.0,2.6);t.set(0,-.22,-.05)}
+ if(v==='gpu'){p=new THREE.Vector3(2.8,2.8,2.4);t.set(0,-.12,-.25)}
+ if(v==='storage'){p=new THREE.Vector3(1.8,2.4,3.6);t.set(0,-.15,.72)}
+ if(activeServer.arch!=='GPU / AI')$('#gpuView').style.display='none';else $('#gpuView').style.display='block'; immediate?tweenCam(p,t,1):tweenCam(p,t,650);
+}
+let camTween=null;function tweenCam(p,t,d=600){camTween={p1:camera.position.clone(),p2:p,t1:controls.target.clone(),t2:t,start:performance.now(),dur:d}}
+function applyCover(){sliceGroup.traverse(o=>{if(o.userData.cover){o.visible=coverRemoved||coverTween?.v<.05;if(coverTween)o.position.copy(o.userData.base).addScaledVector(o.userData.explode,coverTween.v);o.position.add(new THREE.Vector3(0,coverTween?.v*1.3||0,coverTween?.v*-.65||0));}})}
+function applyExplode(){sliceGroup.traverse(o=>{if(o.userData.base&&o.userData.zone!=='cover'&&o.userData.zone!=='base'){let f=exploded?1:0;o.position.copy(o.userData.base).addScaledVector(o.userData.explode,f)}})}
+function setExplodeButton(){$('#explodeBtn').classList.toggle('active',exploded);$('#explodeBtn').textContent=exploded?'ASSEMBLE VIEW':'EXPLODED VIEW'}
+function clearOverlays(){overlayGroup.clear();flowParticles=[];flowSystems=[];airOn=powerOn=dataOn=false;$('#airBtn').classList.remove('active');$('#powerBtn').classList.remove('active');$('#dataBtn').classList.remove('active');overlayGroup.visible=false}
+function makePath(points,material,animated,kind){let c=new THREE.CatmullRomCurve3(points.map(v=>new THREE.Vector3(...v))),geo=new THREE.TubeGeometry(c,42,.018,5,false);let tube=new THREE.Mesh(geo,material);tube.userData.path={c,t:.3,speed:kind==='air'?.18:.12};overlayGroup.add(tube);if(animated){for(let i=0;i<6;i++){let p=new THREE.Mesh(smallGeo,material);p.scale.setScalar(kind==='air'?.04:.025);p.userData.path={c,t:i/6,speed:kind==='air'?.18:.12};overlayGroup.add(p);flowParticles.push(p)}}flowSystems.push(c)}
+function overlays(type){
+ clearOverlays();overlayGroup.visible=true;let H=Math.max(.9,servers[selectedIndex].h*U-.035),Y=-H/2+.27;if(type==='air'){airOn=true;$('#airBtn').classList.add('active');let lanes=servers[selectedIndex].arch==='GPU / AI'?12:6;for(let i=0;i<lanes;i++){let x=(i-(lanes-1)/2)*(1.75/lanes);let pts=servers[selectedIndex].arch==='STORAGE'?[[x,Y,1.55],[x,Y,1.0],[x,Y,.55],[x,Y,-.45],[x,Y,-1.2],[x,Y,-1.65]]:servers[selectedIndex].arch==='GPU / AI'?[[x,Y,1.45],[x,Y,.88],[x,Y,.25],[x,Y,-.5],[x,Y,-1.2],[x,Y,-1.7]]:[[x,Y,1.5],[x,Y,.85],[x,Y,.05],[x,Y,-.8],[x,Y,-1.7]];makePath(pts,M.flow,true,'air')}}
+ if(type==='power'){powerOn=true;$('#powerBtn').classList.add('active');for(let i=0;i<servers[selectedIndex].psus;i++){let x=(i-(servers[selectedIndex].psus-1)/2)*.48;makePath([[x,Y,-1.55],[x,Y,-1.0],[x*.5,Y,-.35],[0,Y+.02,-.2],[0,Y+.02,.25],[0,Y+.02,.85]],M.power,true,'power')}makePath([[0,Y+.02,.25],[-.45,Y+.05,-.05],[-.45,Y+.05,-.55]],M.power,true,'power');makePath([[0,Y+.02,.25],[.45,Y+.05,-.05],[.45,Y+.05,-.55]],M.power,true,'power')}
+ if(type==='data'){dataOn=true;$('#dataBtn').classList.add('active');let a=servers[selectedIndex].arch;if(a==='GPU / AI'){makePath([[-.8,Y,1.1],[-.8,Y,.2],[-.45,Y,-.15],[-.45,Y,-.55]],M.data,true,'data');makePath([[-.45,Y,-.1],[.45,Y,-.1],[.45,Y,-.55]],M.data,true,'data');for(let x of [-.7,0,.7])makePath([[0,Y,-.1],[x,Y,-.55]],M.data,true,'data');makePath([[.45,Y,-.1],[.7,Y,-.55],[.7,Y,-1.3]],M.data,true,'data')}else if(a==='STORAGE'){makePath([[0,Y,1.1],[0,Y,.55],[.1,Y,-.65],[-.4,Y,-.1],[-.8,Y,-1.2]],M.data,true,'data')}else{makePath([[-.7,Y,1.1],[-.7,Y,.2],[-.45,Y,-.1],[-.45,Y,-.55]],M.data,true,'data');makePath([[-.45,Y,-.1],[.45,Y,-.1],[.45,Y,-1.2]],M.data,true,'data')}}
+}
+function updateUI(){
+ let s=servers[selectedIndex];$('#selName').textContent=s.name;$('#selPosition').textContent=`U${s.u}–U${s.u-s.h+1} · ${s.h}U`;$('#archKicker').textContent=s.arch+' SYSTEM';$('#selTags').innerHTML=`<span class="tag">${s.cpus} SOCKET${s.cpus>1?'S':''}</span><span class="tag">${s.gpus||'NO'} ACCELERATOR${s.gpus===1?'':'S'}</span><span class="tag">${s.ram} GB ECC</span><span class="tag">${s.psus} PSU</span>`;
+ $('#archSummary').innerHTML=`<div class="row"><span>Purpose</span><b>${s.arch==='GPU / AI'?'Accelerated compute':s.arch==='STORAGE'?'Capacity & data services':s.arch==='DATABASE'?'Memory & low latency':s.arch==='VIRTUALIZATION'?'Consolidated workloads':s.arch==='NETWORK'?'Traffic processing':'Balanced services'}</b></div><div class="row"><span>Storage</span><b>${s.storage}</b></div><div class="row"><span>Network</span><b>${s.network}</b></div><div class="row"><span>Nominal IT load</span><b>${s.power.toFixed(1)} kW</b></div><div class="small muted" style="margin-top:8px">${s.desc}</div>`;
+ $('#sliceLabel').textContent=`${String(selectedIndex+1).padStart(2,'0')} / 08 · ${s.arch}`;$$('[data-server]').forEach(e=>e.classList.toggle('active',+e.dataset.server===selectedIndex));
+ $('#component').innerHTML=`<div class="component-name">${s.name}</div><div class="component-desc">${mode==='slice'?'Click visible hardware for detailed role, connection, power and cooling information.':'Select this server in the rack or click its chassis. Use INSPECT SLICE to isolate and expose internals.'}</div>`;updateHealth();
+}
+let healthTime=0;function updateHealth(){
+ let s=servers[selectedIndex],f=failure,scale=1+Math.sin(healthTime*.37)*.018,c1=Math.round(66*scale+(f?.type==='FAN FAILURE'?28:0)),c2=Math.round(64*scale+(f?.type==='FAN FAILURE'?25:0)),gpu=f?.type==='GPU OVERHEAT'?96+Math.round(5*Math.sin(healthTime)):Math.round(71*scale),ram=Math.round(s.ram*(.36+.035*Math.sin(healthTime*.22))),fan=f?.type==='FAN FAILURE'?12400:Math.round((s.arch==='GPU / AI'?14600:10800)*scale),power=s.power*scale*(f?.type==='PSU FAILURE'?1.34:1),net=Math.max(0,s.arch==='GPU / AI'?184:s.arch==='DATABASE'?141:62+(Math.sin(healthTime*.3)*8));
+ $('#health').innerHTML=[['CPU 1',c1+' °C',c1>88],['CPU 2',c2+' °C',c2>88],['GPU AVG',gpu+' °C',gpu>88],['MEMORY',ram+' / '+s.ram+' GB',false],['STORAGE','23% / healthy',f?.type==='DRIVE FAILURE'],['FANS',fan.toLocaleString()+' RPM',f?.type==='FAN FAILURE'],['POWER',power.toFixed(1)+' kW',f?.type==='PSU FAILURE'],['NETWORK',net.toFixed(0)+' Gb/s',f?.type==='NETWORK LINK FAILURE']].map(x=>`<div class="metric"><div class="label">${x[0]}</div><div class="value ${x[2]?'bad':''}">${x[1]}</div></div>`).join('');
+ if(f){$('#status').className='bad';$('#status').textContent='FAULT INJECTED · '+f.type+' · Redundant systems remain available; operator intervention required.'}else{$('#status').className='';$('#status').textContent='NOMINAL · All monitored subsystems within operating range.'}
+}
+function injectFailure(){let type=$('#failureType').value;if(!type){toast('Choose a failure type first.');return}failure={type,age:0};if(mode==='slice'){updateFailureMaterials();buildOverlaysIfOn()}updateHealth();toast(type+' injected. Observe redundant response and telemetry.');}
+function updateFailureMaterials(){sliceGroup.traverse(o=>{if(o.userData.component){let c=o.userData.component,n=c.name;if(failure?.type==='FAN FAILURE'&&n.includes('FAN'))c.power='STOPPED / FAULT';if(failure?.type==='PSU FAILURE'&&n==='PSU 2')c.power='FAILED / OFFLINE — PSU 1 carries load';if(failure?.type==='DRIVE FAILURE'&&n==='DRIVE 04')c.status='FAILED — array DEGRADED; rebuild/capacity online';if(failure?.type==='GPU OVERHEAT'&&n.includes('#7'))c.temperature='96–101 °C — thermal throttling active';if(failure?.type==='NETWORK LINK FAILURE'&&(n.includes('NIC')||n==='PORT'))c.status='LINK DOWN — failover active';}})
+function buildOverlaysIfOn(){if(airOn)overlays('air');else if(powerOn)overlays('power');else if(dataOn)overlays('data')}
+function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(window.toastT);window.toastT=setTimeout(()=>$('#toast').classList.remove('show'),2800)}
+function reset(){failure=null;$('#failureType').value='';exploded=false;applyExplode();setExplodeButton();cutaway=false;sliceGroup.traverse(o=>{if(o.userData.zone===='base'){o.children.forEach(c=>{if(c.geometry?.attributes?.position?.count===24&&c.scale.y>.7)c.visible=true})}});$('#cutawayBtn').classList.remove('active');coverOpen=true;coverRemoved=false;coverTween={v:0,target:1};applyCover();clearOverlays();updateFailureMaterials();if(mode==='slice')setView('whole');else setRackView('three');toast('Simulation reset. Views, cover, paths and failure state restored.');}
+function selectComponent(c){
+ c.archetype=c.archetype||servers[selectedIndex];let fields=[['Type',c.type],['Role',c.role],['Connection / Path',c.connection],['Socket / Location',c.socket],['Capacity / Fabric',c.capacity],['Approx. power',c.power],['Input / status',c.input||c.status],['Cooling',c.cooling],['Archetype',c.archetype.arch+' / '+c.archetype.h+'U']];$('#component').innerHTML=`<div class="component-name">${c.name}</div><div class="component-desc">${fields.filter(x=>x[1]).map(x=>`<div class="row"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>`;
+}
+function setHover(o){if(hovered===o)return;if(hovered&&hovered.isMesh){if(hovered.userData.baseColor&&hovered.material.color)hovered.material.color.copy(hovered.userData.baseColor);if(hovered.userData.baseEmissive&&hovered.material.emissive)hovered.material.emissive.copy(hovered.userData.baseEmissive)}hovered=o;if(o?.isMesh){o.userData.baseColor=o.material.color.clone();if(o.material.emissive){o.userData.baseEmissive=o.material.emissive.clone();o.material.emissive.setHex(0x123844)}}renderer.domElement.style.cursor=o?'pointer':'grab'}
+function pick(ev){let r=renderer.domElement.getBoundingClientRect();mouse.x=(ev.clientX-r.left)/r.width*2-1;mouse.y=-(ev.clientY-r.top)/r.height*2+1;raycaster.setFromCamera(mouse,camera);let root=mode==='slice'?sliceGroup:rackGroup;let hits=raycaster.intersectObjects(root.children,true);return hits.find(h=>{let o=h.object;while(o){if(!o.visible)return false;o=o.parent}return true})?.object}
+renderer.domElement.addEventListener('pointermove',e=>{if(pointerDown)return;setHover(pick(e))});renderer.domElement.addEventListener('pointerdown',()=>pointerDown=true);renderer.domElement.addEventListener('pointerup',e=>{pointerDown=false;let o=pick(e);if(!o)return;let n=o;while(n){if(n.userData.component){selectComponent(n.userData.component);return}if(n.userData.serverIndex!==undefined){let i=n.userData.serverIndex;if(mode==='rack'&&i!==selectedIndex)selectServer(i);return}n=n.parent}});renderer.domElement.addEventListener('pointerleave',()=>setHover(null));
+
+$('#inspect').onclick=enterSlice;$('#sliceBtn').onclick=()=>{if(mode==='rack')enterSlice()};$('#rackBtn').onclick=returnRack;$('#prev').onclick=()=>selectServer((selectedIndex+7)%8);$('#next').onclick=()=>selectServer((selectedIndex+1)%8);
+$('#coverBtn').onclick=()=>{if(mode!=='slice')return;coverOpen=!coverOpen;coverRemoved=false;coverTween={v:coverOpen?0:1,target:coverOpen?1:0};$('#coverBtn').textContent=coverOpen?'CLOSE COVER':'OPEN COVER'};
+$('#cutawayBtn').onclick=()=>{if(mode!=='slice')return;cutaway=!cutaway;$('#cutawayBtn').classList.toggle('active',cutaway);sliceGroup.traverse(o=>{if(o.userData.zone==='base')o.children.forEach(c=>{if(c.geometry===boxGeo)c.visible=!cutaway||c.position.x===0&&c.position.z<0||Math.abs(c.position.x)>1.05})})};
+$('#explodeBtn').onclick=()=>{if(mode!=='slice')return;exploded=!exploded;applyExplode();setExplodeButton();if(!exploded)coverTween={v:coverTween?.v||0,target:1}};
+$('#airBtn').onclick=()=>mode==='slice'&&(airOn?clearOverlays():overlays('air'));$('#powerBtn').onclick=()=>mode==='slice'&&(powerOn?clearOverlays():overlays('power'));$('#dataBtn').onclick=()=>mode==='slice'&&(dataOn?clearOverlays():overlays('data'));
+$$('[data-rackcam]').forEach(b=>b.onclick=()=>{if(mode==='rack')setRackView(b.dataset.rackcam)});$$('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));
+$('#reset').onclick=reset;$('#inject').onclick=injectFailure;$('#failureType').onchange=()=>{if(failure){failure=null;updateFailureMaterials();buildOverlaysIfOn();updateHealth()}};
+$('#failuresBtn').onclick=()=>{$('.right').scrollTo({top:9999,behavior:'smooth'});$('#failureType').focus();toast('Select a failure, then press SIMULATE FAILURE.')};
+$('#compare').onclick=()=>{$('#modal').classList.add('show');buildMatrix()};$('#closeModal').onclick=()=>$('#modal').classList.remove('show');$('#modal').onclick=e=>{if(e.target.id==='modal')$('#modal').classList.remove('show')};
+function buildMatrix(){let keys=['CPU','GPU','MEM','STORAGE','NETWORK','POWER','COOLING','COMPLEXITY'],data={GENERAL:[.55,0,.45,.4,.45,.4,.4,.45],VIRTUALIZATION:[.85,0,.9,.55,.7,.65,.65,.7],'GPU / AI':[.7,1,.75,.45,.95,1,1,1],STORAGE:[.45,0,.3,1,.55,.5,.65,.65],DATABASE:[.9,0,1,.7,.8,.75,.7,.8]};$('#matrix').innerHTML=`<tr><th>DESIGN EMPHASIS</th>${Object.keys(data).map(k=>`<th>${k}</th>`).join('')}</tr>`+keys.map((k,i)=>`<tr><td><b>${k}</b><br><small>relative architectural emphasis</small></td>${Object.entries(data).map(([a,v])=>`<td><span class="bar"><i style="width:${v[i]*100}%"></i></span><small>${v[i]===0?'NOT PRIMARY':'MODERATE'}</small></td>`).join('')}</tr>`).join('')}
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+buildRack();addServerList();updateUI();highlightRack();setRackView('three');
+
+let last=performance.now(),frames=0,lastStat=0;
+function animate(t){requestAnimationFrame(animate);let dt=Math.min(.05,(t-last)/1000);last=t;healthTime+=dt;if(failure)failure.age+=dt;
+ if(camTween){let p=Math.min(1,(t-camTween.start)/camTween.dur),e=p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;camera.position.lerpVectors(camTween.p1,camTween.p2,e);controls.target.lerpVectors(camTween.t1,camTween.t2,e);if(p===1)camTween=null}
+ if(coverTween&&mode==='slice'){coverTween.v=THREE.MathUtils.damp(coverTween.v,coverTween.target,5,dt);applyCover();if(Math.abs(coverTween.v-coverTween.target)<.015){coverTween.v=coverTween.target;applyCover();if(coverTween.target===0){coverRemoved=true}coverTween=null}}
+ if(mode==='slice'){if(exploded)sliceGroup.traverse(o=>{if(o.userData.base&&o.userData.zone!=='cover')o.position.copy(o.userData.base).addScaledVector(o.userData.explode,1)});
+  overlayGroup.children.forEach(o=>{if(o.userData.path){o.userData.path.t=(o.userData.path.t+dt*o.userData.path.speed)%1;let q=o.userData.path.c.getPointAt(o.userData.path.t);o.position.copy(q);if(o.isMesh&&o.geometry===smallGeo){let pulse=.8+Math.sin(t*.01+o.userData.path.t*30)*.2;o.scale.setScalar(.035*pulse)}}});sliceGroup.traverse(o=>{if(o.userData.component?.name?.startsWith('FAN')){o.rotation.y+=dt*(failure?.type==='FAN FAILURE'&&o.userData.component.name.endsWith('1')?0:9)}})}
+ controls.update();renderer.render(scene,camera);frames++;if(t-lastStat>700){$('#fps').textContent=Math.round(frames*1000/(t-lastStat));$('#draw').textContent=renderer.info.render.calls;$('#tris').textContent=(renderer.info.render.triangles/1000).toFixed(0)+'k';frames=0;lastStat=t;if(t-healthTime*1000>0)updateHealth()}
+}
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
