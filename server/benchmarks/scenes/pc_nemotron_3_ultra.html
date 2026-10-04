@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURAL FRAME // 3D PC BUILD</title>
+<style>
+:root{--bg:#0a0a0f;--fg:#e8e8f0;--muted:#6b6b8a;--acc:#00f5d4;--acc2:#b84bff;--warn:#ff6b35;--panel:rgba(12,12,22,0.92);--panel-b:rgba(0,245,212,0.18);--glass:rgba(18,18,32,0.85);--glass-b:rgba(0,245,212,0.12)}
+*,*:before,*:after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;width:100%;overflow:hidden;background:var(--bg);font-family:'Space Grotesk',system-ui,sans-serif;color:var(--fg);touch-action:none}
+#app{width:100%;height:100%;position:relative}
+canvas{display:block;width:100%;height:100%}
+@font-face{font-family:'Space Grotesk';src:url('https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/files/space-grotesk-latin-400-normal.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'Space Grotesk';src:url('https://cdn.jsdelivr.net/npm/@fontsource/space-grotesk@5.0.0/files/space-grotesk-latin-600-normal.woff2') format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'JetBrains Mono';src:url('https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.0/files/jetbrains-mono-latin-400-normal.woff2') format('woff2');font-weight:400;font-display:swap}
+
+.hud{position:fixed;right:16px;bottom:16px;z-index:100;display:flex;flex-direction:column;gap:10px;pointer-events:auto}
+.hud-panel{background:var(--panel);border:1px solid var(--panel-b);border-radius:14px;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.03);overflow:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .3s,box-shadow .3s}
+.hud-panel.minimized{transform:translateX(calc(100% + 20px));opacity:0.3;pointer-events:none}
+.hud-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--panel-b);background:linear-gradient(180deg,rgba(0,245,212,0.08),transparent)}
+.hud-title{font-weight:600;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--acc);font-family:'Space Grotesk',sans-serif}
+.hud-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'Space Grotesk',sans-serif;transition:all .15s}
+.hud-btn:hover{color:var(--fg);background:rgba(255,255,255,0.05)}
+.hud-btn.primary{background:linear-gradient(135deg,var(--acc),#00c9aa);color:#001a16;font-weight:600;padding:8px 20px}
+.hud-btn.primary:hover{box-shadow:0 0 20px rgba(0,245,212,0.4);transform:scale(1.02)}
+.hud-btn.primary:active{transform:scale(0.98)}
+.hud-btn.primary.off{background:linear-gradient(135deg,#2a2a3e,#1a1a2e);color:var(--muted)}
+.hud-btn.primary.off:hover{background:linear-gradient(135deg,#3a3a4e,#2a2a3e);box-shadow:0 0 20px rgba(255,107,53,0.3);color:var(--warn)}
+.hud-content{padding:16px;max-height:60vh;overflow-y:auto}
+.hud-section{margin-bottom:20px}
+.hud-section:last-child{margin-bottom:0}
+.hud-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-family:'Space Grotesk',sans-serif}
+.color-picker-wrap{position:relative;width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid var(--panel-b);background:linear-gradient(45deg,#1a1a2e 25%,transparent 25%),linear-gradient(-45deg,#1a1a2e 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a1a2e 75%),linear-gradient(-45deg,transparent 75%,#1a1a2e 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
+.color-canvas{width:100%;height:100%;cursor:crosshair;display:block}
+.color-cursor{position:absolute;width:22px;height:22px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 2px #000,0 0 8px rgba(0,0,0,0.5);pointer-events:none;transform:translate(-50%,-50%);transition:transform .05s linear}
+.color-preview{display:flex;align-items:center;gap:10px;margin-top:10px}
+.color-swatch{width:40px;height:40px;border-radius:8px;border:1px solid var(--panel-b);box-shadow:inset 0 0 10px rgba(0,0,0,0.5)}
+.color-hex{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--acc);background:rgba(0,0,0,0.3);padding:6px 12px;border-radius:6px;border:1px solid var(--panel-b);min-width:90px;text-align:center}
+.preset-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.preset-btn{width:28px;height:28px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:all .15s;position:relative}
+.preset-btn:hover{transform:scale(1.15);border-color:var(--acc);box-shadow:0 0 12px currentColor}
+.preset-btn.active{border-color:var(--acc);box-shadow:0 0 0 2px var(--bg),0 0 12px currentColor}
+
+.slider-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.slider-label{min-width:50px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.slider-wrap{flex:1;position:relative;height:6px}
+.slider-track{width:100%;height:100%;border-radius:3px;background:rgba(0,0,0,0.4);border:1px solid var(--panel-b);position:relative;overflow:hidden}
+.slider-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--acc),var(--acc2));position:absolute;top:0;left:0}
+.slider-handle{position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--fg);border:2px solid var(--acc);transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,0.4);cursor:ew-resize;transition:box-shadow .15s,transform .15s}
+.slider-handle:hover{box-shadow:0 0 16px var(--acc);transform:translate(-50%,-50%) scale(1.2)}
+.slider-value{min-width:36px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--acc)}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info{display:flex;flex-direction:column;gap:2px}
+.toggle-name{font-size:12px;font-weight:500}
+.toggle-desc{font-size:10px;color:var(--muted)}
+.toggle-switch{position:relative;width:44px;height:24px;background:rgba(0,0,0,0.4);border:1px solid var(--panel-b);border-radius:12px;cursor:pointer;transition:all .2s}
+.toggle-switch.active{background:linear-gradient(135deg,var(--acc),#00c9aa);border-color:var(--acc);box-shadow:0 0 12px rgba(0,245,212,0.3)}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.toggle-switch.active::after{transform:translateX(20px)}
+
+.status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.status-item{background:rgba(0,0,0,0.3);border:1px solid var(--panel-b);border-radius:8px;padding:10px;transition:all .2s}
+.status-item:hover{border-color:rgba(0,245,212,0.3);background:rgba(0,245,212,0.03)}
+.status-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;font-family:'Space Grotesk',sans-serif}
+.status-value{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--acc)}
+.status-value.warn{color:var(--warn)}
+.status-value.critical{color:#ff2d55;animation:pulse 1s infinite}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+
+.profile-row{display:flex;gap:8px;margin-bottom:8px}
+.profile-btn{flex:1;padding:10px;border-radius:8px;border:1px solid var(--panel-b);background:rgba(0,0,0,0.3);color:var(--fg);font-size:11px;font-weight:500;font-family:'Space Grotesk',sans-serif;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
+.profile-btn:hover{border-color:var(--acc);background:rgba(0,245,212,0.1)}
+.profile-btn.active{background:linear-gradient(135deg,rgba(0,245,212,0.2),rgba(184,75,255,0.1));border-color:var(--acc);color:var(--acc);box-shadow:0 0 20px rgba(0,245,212,0.15)}
+
+.fan-curve{height:80px;background:rgba(0,0,0,0.3);border:1px solid var(--panel-b);border-radius:8px;position:relative;cursor:crosshair}
+.fan-curve-grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);opacity:0.1}
+.fan-curve-grid::before,.fan-curve-grid::after{content:'';position:absolute;background:rgba(255,255,255,0.05)}
+.fan-curve-canvas{width:100%;height:100%;touch-action:none}
+.fan-point{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--acc);border:2px solid var(--bg);box-shadow:0 0 12px var(--acc);cursor:ns-resize;transform:translate(-50%,-50%);transition:box-shadow .15s,transform .15s;z-index:2}
+.fan-point:hover{box-shadow:0 0 20px var(--acc);transform:translate(-50%,-50%) scale(1.3)}
+
+.boot-log{font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.8;color:var(--muted);max-height:150px;overflow-y:auto;background:rgba(0,0,0,0.3);border:1px solid var(--panel-b);border-radius:8px;padding:10px}
+.boot-log .log-line{opacity:0;transform:translateX(-10px);animation:logIn .3s forwards}
+.boot-log .log-line.ok{color:var(--acc)}
+.boot-log .log-line.warn{color:var(--warn)}
+.boot-log .log-line.err{color:#ff2d55}
+.boot-log .log-line.info{color:var(--acc2)}
+@keyframes logIn{to{opacity:1;transform:translateX(0)}}
+
+.mini-toggle{position:fixed;right:16px;bottom:16px;width:56px;height:56px;border-radius:16px;background:var(--panel);border:1px solid var(--panel-b);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:99;transition:all .3s cubic-bezier(.2,.8,.2,1);opacity:0;pointer-events:none;backdrop-filter:blur(20px)}
+.mini-toggle.visible{opacity:1;pointer-events:auto}
+.mini-toggle svg{width:24px;height:24px;stroke:var(--acc);transition:stroke .2s}
+.mini-toggle:hover svg{stroke:var(--fg)}
+
+.startup-overlay{position:fixed;inset:0;background:#000;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:1;transition:opacity 1s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.startup-overlay.hidden{opacity:0;pointer-events:none}
+.startup-logo{font-family:'Space Grotesk',sans-serif;font-size:clamp(32px,6vw,72px);font-weight:600;letter-spacing:8px;background:linear-gradient(135deg,var(--acc),var(--acc2),var(--acc));background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shimmer 3s linear infinite;text-transform:uppercase}
+.startup-tag{font-size:12px;letter-spacing:6px;color:var(--muted);margin-top:12px;text-transform:uppercase;font-family:'Space Grotesk',sans-serif}
+.startup-bar{width:300px;height:3px;background:rgba(255,255,255,0.1);border-radius:3px;margin-top:30px;overflow:hidden}
+.startup-progress{width:0%;height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:3px;transition:width .3s ease-out}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+.toast{position:fixed;bottom:90px;right:16px;background:var(--panel);border:1px solid var(--panel-b);border-radius:10px;padding:12px 16px;backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.5);transform:translateX(120%);opacity:0;transition:all .3s cubic-bezier(.2,.8,.2,1);z-index:150;font-size:12px;max-width:280px}
+.toast.show{transform:translateX(0);opacity:1}
+.toast.success{border-left:3px solid var(--acc)}
+.toast.warn{border-left:3px solid var(--warn)}
+.toast.err{border-left:3px solid #ff2d55}
+
+@media (max-width:768px){
+.hud{right:8px;bottom:8px;left:8px}
+.hud-panel{minimized}{transform:translateY(calc(100% + 20px))}
+.hud-content{max-height:40vh}
+.startup-logo{letter-spacing:4px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="startup-overlay" id="startupOverlay">
+<div class="startup-logo">NEURAL FRAME</div>
+<div class="startup-tag">NEURAL PROCESSING UNIT v3.7</div>
+<div class="startup-bar"><div class="startup-progress" id="startupProgress"></div></div>
+</div>
+
+<div class="hud" id="hud">
+<div class="hud-panel" id="mainPanel">
+<div class="hud-header">
+<span class="hud-title">NEURAL FRAME CONTROL</span>
+<button class="hud-btn" id="minimizeBtn" aria-label="Minimize">−</button>
+</div>
+<div class="hud-content">
+<div class="hud-section">
+<div class="hud-label">Power Control</div>
+<button class="hud-btn primary" id="powerBtn" aria-label="Power">POWER ON</button>
+<div class="boot-log" id="bootLog" style="margin-top:12px;display:none"></div>
+</div>
+
+<div class="hud-section">
+<div class="hud-label">RGB Lighting</div>
+<div class="color-picker-wrap">
+<canvas class="color-canvas" id="colorCanvas" width="200" height="200" aria-label="Color picker"></canvas>
+<div class="color-cursor" id="colorCursor"></div>
+</div>
+<div class="color-preview">
+<div class="color-swatch" id="colorSwatch"></div>
+<div class="color-hex" id="colorHex">#00F5D4</div>
+</div>
+<div class="preset-row" id="presetRow"></div>
+</div>
+
+<div class="hud-section">
+<div class="hud-label">Lighting Profile</div>
+<div class="profile-row" id="profileRow"></div>
+</div>
+
+<div class="hud-section">
+<div class="hud-label">Fan Curve</div>
+<div class="fan-curve" id="fanCurve">
+<div class="fan-curve-grid"></div>
+<canvas class="fan-curve-canvas" id="fanCurveCanvas" width="300" height="80"></canvas>
+<div class="fan-point" id="fanPoint1" style="left:10%;bottom:20%"></div>
+<div class="fan-point" id="fanPoint2" style="left:35%;bottom:35%"></div>
+<div class="fan-point" id="fanPoint3" style="left:60%;bottom:60%"></div>
+<div class="fan-point" id="fanPoint4" style="left:85%;bottom:85%"></div>
+</div>
+<div style="display:flex;gap:12px;margin-top:8px;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">
+<span>Temp: <span id="fanTemp">32</span>°C</span>
+<span>RPM: <span id="fanRpm">800</span></span>
+<span>Target: <span id="fanTarget">45</span>%</span>
+</div>
+</div>
+
+<div class="hud-section">
+<div class="hud-label">System Status</div>
+<div class="status-grid" id="statusGrid"></div>
+</div>
+
+<div class="hud-section">
+<div class="hud-label">Component Control</div>
+<div class="toggle-row">
+<div class="toggle-info"><span class="toggle-name">GPU Backplate</span><span class="toggle-desc">Thermal visualization</span></div>
+<div class="toggle-switch" id="toggleGpu" data-component="gpuBackplate"></div>
+</div>
+<div class="toggle-row">
+<div class="toggle-info"><span class="toggle-name">Memory Traces</span><span class="toggle-desc">Data flow animation</span></div>
+<div class="toggle-switch active" id="toggleRam" data-component="ramTraces"></div>
+</div>
+<div class="toggle-row">
+<div class="toggle-info"><span class="toggle-name">Holo Projector</span><span class="toggle-desc">Floating display</span></div>
+<div class="toggle-switch active" id="toggleHolo" data-component="holoProjector"></div>
+</div>
+<div class="toggle-row">
+<div class="toggle-info"><span class="toggle-name">Coolant Flow</span><span class="toggle-desc">Liquid animation</span></div>
+<div class="toggle-switch active" id="toggleCoolant" data-component="coolantFlow"></div>
+</div>
+<div class="toggle-row">
+<div class="toggle-info"><span class="toggle-name">Ambient Particles</span><span class="toggle-desc">Dust / ion drift</span></div>
+<div class="toggle-switch active" id="toggleParticles" data-component="particles"></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="mini-toggle" id="miniToggle" aria-label="Open control panel">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M6 12h12M12 6v12"/></svg>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="importmap">
+{
+"imports": {
+"three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+}
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURATION & STATE
+// ═══════════════════════════════════════════════════════════════════
+const CONFIG = {
+case: { w: 22, h: 42, d: 48, thickness: 1.2, cornerRadius: 2.5 },
+gpu: { len: 30, h: 12, thick: 3.5 },
+mb: { w: 20, h: 38, thick: 0.8 },
+ram: { count: 4, h: 32, w: 1.8, d: 5.5, spacing: 1.5 },
+fan: { radius: 6.5, bladeCount: 9, thickness: 1.5 },
+psu: { w: 18, h: 8, d: 16 },
+rad: { w: 3, h: 38, d: 28, finCount: 38 },
+tube: { outerR: 0.7, innerR: 0.45 },
+rgbDefault: new THREE.Color(0x00f5d4),
+rgbPresets: [
+{ name: 'NEURAL', color: 0x00f5d4 },
+{ name: 'VOID', color: 0x0a0a1a },
+{ name: 'SYNTH', color: 0xb84bff },
+{ name: 'ALERT', color: 0xff6b35 },
+{ name: 'ICE', color: 0x40e0ff },
+{ name: 'GOLD', color: 0xffd700 }
+],
+fanCurve: [
+{ temp: 30, speed: 0.25 },
+{ temp: 45, speed: 0.45 },
+{ temp: 60, speed: 0.7 },
+{ temp: 80, speed: 1.0 }
+],
+bootSequence: [
+{ id: 'psu', label: 'PSU INIT', delay: 200, duration: 600 },
+{ id: 'mb', label: 'MOTHERBOARD POST', delay: 400, duration: 800 },
+{ id: 'ram', label: 'MEMORY TRAINING', delay: 600, duration: 1000 },
+{ id: 'gpu', label: 'GPU HANDSHAKE', delay: 800, duration: 800 },
+{ id: 'storage', label: 'NVMe ENUMERATION', delay: 1000, duration: 500 },
+{ id: 'cooling', label: 'COOLING SYSTEM', delay: 1100, duration: 700 },
+{ id: 'lighting', label: 'RGB CONTROLLER', delay: 1200, duration: 600 },
+{ id: 'holo', label: 'HOLO INTERFACE', delay: 1300, duration: 500 },
+{ id: 'ready', label: 'SYSTEM READY', delay: 1500, duration: 400 }
+]
+};
+
+const state = {
+powered: false,
+booting: false,
+bootStep: 0,
+rgbColor: CONFIG.rgbDefault.clone(),
+lightingProfile: 'breathing',
+fanCurvePoints: CONFIG.fanCurve.map(p => ({ temp: p.temp, speed: p.speed })),
+componentEnabled: {
+gpuBackplate: true,
+ramTraces: true,
+holoProjector: true,
+coolantFlow: true,
+particles: true
+},
+temps: { cpu: 32, gpu: 35, coolant: 28, ambient: 24 },
+fanRpm: 800,
+targetFanSpeed: 0.25,
+time: 0,
+deltaTime: 0,
+frame: 0
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// THREE.JS SETUP
+// ═══════════════════════════════════════════════════════════════════
+const container = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.useLegacyLights = false;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050508);
+scene.fog = new THREE.FogExp2(0x050508, 0.0035);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(65, 28, 65);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enablePan = true;
+controls.minDistance = 35;
+controls.maxDistance = 180;
+controls.maxPolarAngle = Math.PI * 0.92;
+controls.minPolarAngle = 0.15;
+controls.target.set(0, 8, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.3;
+
+// Post-processing
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.6, 0.4, 0.85);
+bloomPass.threshold = 0.15;
+bloomPass.strength = 0.5;
+bloomPass.radius = 0.6;
+composer.addPass(bloomPass);
+
+// Chromatic aberration + vignette + film grain
+const filmShader = {
+uniforms: {
+tDiffuse: { value: null },
+time: { value: 0 },
+resolution: { value: new THREE.Vector2() },
+intensity: { value: 0.03 }
+},
+vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+fragmentShader: `
+uniform sampler2D tDiffuse; uniform float time; uniform vec2 resolution; uniform float intensity;
+varying vec2 vUv;
+float rand(vec2 co){return fract(sin(dot(co.xy,vec2(12.9898,78.233)))*43758.5453);}
+void main(){
+vec2 uv=vUv;
+float r=texture2D(tDiffuse,uv+vec2(0.0015,0.0)*intensity).r;
+float g=texture2D(tDiffuse,uv).g;
+float b=texture2D(tDiffuse,uv-vec2(0.0015,0.0)*intensity).b;
+vec3 color=vec3(r,g,b);
+float vig=1.0-0.35*length(uv-0.5)*1.5;
+color*=vig;
+color+=vec3(rand(uv+time*10.0))*0.008*intensity;
+gl_FragColor=vec4(color,1.0);
+}`
+};
+const filmPass = new ShaderPass(filmShader);
+composer.addPass(filmPass);
+composer.addPass(new OutputPass());
+
+// ═══════════════════════════════════════════════════════════════════
+// MATERIALS FACTORY
+// ═══════════════════════════════════════════════════════════════════
+const materials = {};
+function createMaterials() {
+const rgb = state.rgbColor;
+
+materials.glass = new THREE.MeshPhysicalMaterial({
+color: 0x080812, metalness: 0.05, roughness: 0.05,
+transmission: 0.92, thickness: 2.4, clearcoat: 1.0, clearcoatRoughness: 0.03,
+ior: 1.45, envMapIntensity: 1.2, side: THREE.DoubleSide
+});
+
+materials.glassDark = new THREE.MeshPhysicalMaterial({
+color: 0x040408, metalness: 0.02, roughness: 0.03,
+transmission: 0.88, thickness: 3.0, clearcoat: 1.0, clearcoatRoughness: 0.02,
+ior: 1.5, envMapIntensity: 1.3, side: THREE.DoubleSide
+});
+
+materials.metalDark = new THREE.MeshStandardMaterial({
+color: 0x14141c, metalness: 0.92, roughness: 0.18, envMapIntensity: 1.1
+});
+
+materials.metalMid = new THREE.MeshStandardMaterial({
+color: 0x1e1e2a, metalness: 0.85, roughness: 0.22, envMapIntensity: 1.0
+});
+
+materials.metalBright = new THREE.MeshStandardMaterial({
+color: 0x2a2a3a, metalness: 0.75, roughness: 0.28, envMapIntensity: 0.9
+});
+
+materials.carbon = new THREE.MeshStandardMaterial({
+color: 0x0d0d12, metalness: 0.15, roughness: 0.65, envMapIntensity: 0.5
+});
+
+materials.rgbEmit = (intensity = 1.5) => new THREE.MeshBasicMaterial({
+color: rgb.clone(), transparent: true, opacity: 0.9,
+depthWrite: false, blending: THREE.AdditiveBlending
+});
+
+materials.rgbGlass = (intensity = 1.0) => new THREE.MeshPhysicalMaterial({
+color: rgb.clone(), metalness: 0.0, roughness: 0.0,
+transmission: 0.95, thickness: 1.5, clearcoat: 1.0, clearcoatRoughness: 0.0,
+emissive: rgb.clone(), emissiveIntensity: intensity * 0.8,
+envMapIntensity: 1.5, side: THREE.DoubleSide
+});
+
+materials.rgbMetal = (intensity = 1.0) => new THREE.MeshStandardMaterial({
+color: rgb.clone(), metalness: 0.9, roughness: 0.1,
+emissive: rgb.clone(), emissiveIntensity: intensity * 0.6,
+envMapIntensity: 1.2
+});
+
+materials.holo = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0.35,
+depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+});
+
+materials.coolant = new THREE.MeshPhysicalMaterial({
+color: 0x00f5d4, metalness: 0.0, roughness: 0.05,
+transmission: 0.98, thickness: 0.5, clearcoat: 1.0, clearcoatRoughness: 0.0,
+emissive: 0x00f5d4, emissiveIntensity: 0.4, envMapIntensity: 1.5, side: THREE.DoubleSide
+});
+
+materials.coolantTube = new THREE.MeshPhysicalMaterial({
+color: 0x1a1a2e, metalness: 0.1, roughness: 0.35,
+transmission: 0.3, thickness: 0.8, clearcoat: 1.0, clearcoatRoughness: 0.1,
+envMapIntensity: 1.0, side: THREE.DoubleSide
+});
+
+materials.blackPlastic = new THREE.MeshStandardMaterial({
+color: 0x08080c, metalness: 0.05, roughness: 0.55, envMapIntensity: 0.4
+});
+
+materials.gold = new THREE.MeshStandardMaterial({
+color: 0xffd700, metalness: 1.0, roughness: 0.15, envMapIntensity: 1.3
+});
+
+materials.pcb = new THREE.MeshStandardMaterial({
+color: 0x0a1a0a, metalness: 0.05, roughness: 0.45, envMapIntensity: 0.6
+});
+
+materials.traceOn = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0.8,
+blending: THREE.AdditiveBlending, depthWrite: false
+});
+
+materials.traceOff = new THREE.MeshBasicMaterial({
+color: 0x0a3a2a, transparent: true, opacity: 0.3,
+blending: THREE.AdditiveBlending, depthWrite: false
+});
+}
+createMaterials();
+
+// ═══════════════════════════════════════════════════════════════════
+// PROCEDURAL GEOMETRY HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function roundBox(w, h, d, r, seg = 8) {
+const shape = new THREE.Shape();
+const r2 = r * 2;
+shape.moveTo(-w/2 + r, -h/2);
+shape.lineTo(w/2 - r, -h/2);
+shape.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + r);
+shape.lineTo(w/2, h/2 - r);
+shape.quadraticCurveTo(w/2, h/2, w/2 - r, h/2);
+shape.lineTo(-w/2 + r, h/2);
+shape.quadraticCurveTo(-w/2, h/2, -w/2, h/2 - r);
+shape.lineTo(-w/2, -h/2 + r);
+shape.quadraticCurveTo(-w/2, -h/2, -w/2 + r, -h/2);
+const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+geo.center();
+return geo;
+}
+
+function roundBoxGeom(w, h, d, r) {
+const geo = new THREE.BoxGeometry(w - r*2, h - r*2, d - r*2, 1, 1, 1);
+const positions = geo.attributes.position;
+const newPos = new Float32Array(positions.count * 3);
+for (let i = 0; i < positions.count; i++) {
+let x = positions.getX(i), y = positions.getY(i), z = positions.getZ(i);
+const sx = Math.sign(x), sy = Math.sign(y), sz = Math.sign(z);
+x = sx * Math.max(Math.abs(x) - r, 0) + sx * r * Math.sin(Math.acos(Math.min(1, Math.abs(x) / (w/2 - r))) * 0.5);
+y = sy * Math.max(Math.abs(y) - r, 0) + sy * r * Math.sin(Math.acos(Math.min(1, Math.abs(y) / (h/2 - r))) * 0.5);
+z = sz * Math.max(Math.abs(z) - r, 0) + sz * r * Math.sin(Math.acos(Math.min(1, Math.abs(z) / (d/2 - r))) * 0.5);
+newPos[i*3] = x; newPos[i*3+1] = y; newPos[i*3+2] = z;
+}
+geo.setAttribute('position', new THREE.BufferAttribute(newPos, 3));
+geo.computeVertexNormals();
+return geo;
+}
+
+function createTorusKnotTube(path, radius, tubularSegments = 16, radialSegments = 8, closed = false) {
+return new THREE.TubeGeometry(path, tubularSegments, radius, radialSegments, closed);
+}
+
+function latheShape(points, segments = 32) {
+return new THREE.LatheGeometry(points, segments);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENVIRONMENT & LIGHTING
+// ═══════════════════════════════════════════════════════════════════
+function setupEnvironment() {
+// HDRI-like environment using procedural cubemap
+const pmremGenerator = new THREE.PMREMRenderer(renderer);
+pmremGenerator.compileEquirectangularShader();
+
+const envScene = new THREE.Scene();
+const envGeo = new THREE.SphereGeometry(500, 32, 16);
+// Gradient sky
+const skyMat = new THREE.ShaderMaterial({
+uniforms: {
+topColor: { value: new THREE.Color(0x0a0a1a) },
+bottomColor: { value: new THREE.Color(0x030305) },
+horizonColor: { value: new THREE.Color(0x00f5d4) }
+},
+vertexShader: `varying vec3 vWorldPosition; void main(){vec4 worldPosition=modelMatrix*vec4(position,1.0);vWorldPosition=worldPosition.xyz;gl_Position=projectionMatrix*viewMatrix*worldPosition;}`,
+fragmentShader: `
+uniform vec3 topColor; uniform vec3 bottomColor; uniform vec3 horizonColor;
+varying vec3 vWorldPosition;
+void main(){float h=normalize(vWorldPosition).y;vec3 c=mix(bottomColor,horizonColor,smoothstep(-0.1,0.2,h));c=mix(c,topColor,smoothstep(0.2,1.0,h));gl_FragColor=vec4(c,1.0);}`,
+side: THREE.BackSide
+});
+envScene.add(new THREE.Mesh(envGeo, skyMat));
+
+// Add accent lights to env
+const lightGeo = new THREE.SphereGeometry(80, 16, 16);
+const lightMat1 = new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.02, side: THREE.BackSide });
+const lightMat2 = new THREE.MeshBasicMaterial({ color: 0xb84bff, transparent: true, opacity: 0.015, side: THREE.BackSide });
+envScene.add(new THREE.Mesh(lightGeo, lightMat1)).position.set(-200, 100, -200);
+envScene.add(new THREE.Mesh(lightGeo, lightMat2)).position.set(200, 50, 200);
+
+const envMap = pmremGenerator.fromScene(envScene).texture;
+scene.environment = envMap;
+scene.background = envMap;
+
+pmremGenerator.dispose();
+}
+
+setupEnvironment();
+
+// Main lights
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+keyLight.position.set(40, 60, 30);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 10;
+keyLight.shadow.camera.far = 150;
+keyLight.shadow.camera.left = -40;
+keyLight.shadow.camera.right = 40;
+keyLight.shadow.camera.top = 40;
+keyLight.shadow.camera.bottom = -40;
+keyLight.shadow.bias = -0.0005;
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x40e0ff, 0.8);
+fillLight.position.set(-30, 20, -40);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xb84bff, 0.6);
+rimLight.position.set(20, -10, -50);
+scene.add(rimLight);
+
+const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.6);
+scene.add(ambientLight);
+
+// RGB accent lights (dynamic)
+const rgbLights = [];
+for (let i = 0; i < 6; i++) {
+const l = new THREE.PointLight(state.rgbColor, 0, 40, 2);
+l.castShadow = false;
+scene.add(l);
+rgbLights.push(l);
+}
+
+// Ground
+const groundGeo = new THREE.CircleGeometry(200, 64);
+const groundMat = new THREE.MeshStandardMaterial({
+color: 0x080812, metalness: 0.2, roughness: 0.7,
+envMapIntensity: 0.5
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -CONFIG.case.h / 2 - CONFIG.case.thickness;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Subtle grid lines on ground
+const gridGeo = new THREE.BufferGeometry();
+const gridCount = 40;
+const gridPositions = new Float32Array(gridCount * gridCount * 2 * 3);
+let gi = 0;
+for (let x = -100; x <= 100; x += 5) {
+for (let z = -100; z <= 100; z += 5) {
+gridPositions[gi++] = x; gridPositions[gi++] = -CONFIG.case.h/2 - CONFIG.case.thickness + 0.02; gridPositions[gi++] = z;
+gridPositions[gi++] = x + 5; gridPositions[gi++] = -CONFIG.case.h/2 - CONFIG.case.thickness + 0.02; gridPositions[gi++] = z;
+}
+}
+gridGeo.setAttribute('position', new THREE.BufferAttribute(gridPositions, 3));
+const gridMat = new THREE.LineBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.03 });
+scene.add(new THREE.LineSegments(gridGeo, gridMat));
+
+// ═══════════════════════════════════════════════════════════════════
+// PC COMPONENTS - NEURAL FRAME ARCHITECTURE
+// ═══════════════════════════════════════════════════════════════════
+const pc = new THREE.Group();
+pc.position.y = 0;
+scene.add(pc);
+
+const components = {};
+
+// ---- CASE ----
+function buildCase() {
+const group = new THREE.Group();
+const c = CONFIG.case;
+
+// Outer shell (aluminum unibody with cutouts)
+const outerGeo = roundBoxGeom(c.w, c.h, c.d, c.cornerRadius);
+const outer = new THREE.Mesh(outerGeo, materials.metalDark);
+outer.castShadow = true;
+outer.receiveShadow = true;
+group.add(outer);
+
+// Inner cavity
+const innerGeo = roundBoxGeom(c.w - c.thickness*2, c.h - c.thickness*2, c.d - c.thickness*2, c.cornerRadius - 0.3);
+const inner = new THREE.Mesh(innerGeo, materials.carbon);
+inner.position.y = c.thickness;
+group.add(inner);
+
+// Tempered glass side panel (right side)
+const glassGeo = new THREE.BoxGeometry(c.thickness * 0.3, c.h - c.thickness*2 - 4, c.d - c.thickness*2 - 4, 1, 1, 1);
+const glass = new THREE.Mesh(glassGeo, materials.glass);
+glass.position.set(c.w/2 - c.thickness*0.15, c.thickness - 2, 0);
+glass.castShadow = true;
+group.add(glass);
+components.sideGlass = glass;
+
+// Front panel - angled mesh intake
+const frontGeo = new THREE.BoxGeometry(c.w - 2, c.h - 4, 0.4, 1, 1, 1);
+const frontMesh = new THREE.Mesh(frontGeo, materials.metalMid);
+frontMesh.position.z = c.d/2 - 0.2;
+frontMesh.castShadow = true;
+group.add(frontMesh);
+
+// Front intake pattern (hexagonal)
+const hexGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.5, 6);
+const hexMat = materials.metalBright.clone();
+for (let y = -c.h/2 + 3; y < c.h/2 - 3; y += 2.2) {
+for (let x = -c.w/2 + 3; x < c.w/2 - 3; x += 2.0) {
+const h = new THREE.Mesh(hexGeo, hexMat);
+h.rotation.x = Math.PI/2;
+h.position.set(x, y, c.d/2 - 0.1);
+group.add(h);
+}
+}
+
+// Top panel - magnetic dust filter
+const topGeo = new THREE.BoxGeometry(c.w - 1, 0.6, c.d - 2);
+const top = new THREE.Mesh(topGeo, materials.metalMid);
+top.position.y = c.h/2 - 0.3;
+top.castShadow = true;
+group.add(top);
+
+// Top exhaust pattern
+for (let x = -c.w/2 + 4; x < c.w/2 - 4; x += 3) {
+for (let z = -c.d/2 + 4; z < c.d/2 - 4; z += 3) {
+const hole = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 12), materials.metalDark);
+hole.rotation.x = Math.PI/2;
+hole.position.set(x, c.h/2 - 0.4, z);
+group.add(hole);
+}
+}
+
+// Rear I/O shield
+const ioGeo = new THREE.BoxGeometry(c.w - 4, 8, 0.3);
+const io = new THREE.Mesh(ioGeo, materials.metalDark);
+io.position.set(0, c.h/2 - 10, -c.d/2 + 0.15);
+io.castShadow = true;
+group.add(io);
+
+// Rear fan mount
+const rearFanMount = new THREE.Mesh(new THREE.BoxGeometry(14, 14, 1), materials.metalDark);
+rearFanMount.position.set(0, 2, -c.d/2 + 0.5);
+group.add(rearFanMount);
+
+// Bottom feet
+for (let x of [-c.w/2 + 2, c.w/2 - 2]) {
+for (let z of [-c.d/2 + 2, c.d/2 - 2]) {
+const foot = new THREE.Mesh(
+new THREE.CylinderGeometry(1.2, 1.0, 1.5, 16),
+materials.blackPlastic
+);
+foot.position.set(x, -c.h/2 + 0.75, z);
+foot.castShadow = true;
+group.add(foot);
+}
+}
+
+// RGB strips on case edges
+const stripGeo = new THREE.BoxGeometry(c.w - 4, 0.3, 0.3);
+for (let z of [-c.d/2 + 1.5, c.d/2 - 1.5]) {
+const strip = new THREE.Mesh(stripGeo, materials.rgbEmit(0.8));
+strip.position.set(0, -c.h/2 + 2, z);
+strip.userData = { type: 'rgbStrip', zone: 'caseBottom' };
+group.add(strip);
+components[`caseStrip_${z>0?'front':'rear'}`] = strip;
+}
+
+// Vertical RGB strips
+const vStripGeo = new THREE.BoxGeometry(0.3, c.h - 8, 0.3);
+for (let x of [-c.w/2 + 1.5, c.w/2 - 1.5]) {
+for (let z of [-c.d/2 + 1.5, c.d/2 - 1.5]) {
+const strip = new THREE.Mesh(vStripGeo, materials.rgbEmit(0.6));
+strip.position.set(x, 0, z);
+strip.userData = { type: 'rgbStrip', zone: 'caseVertical' };
+group.add(strip);
+}
+}
+
+pc.add(buildCase());
+
+// ---- MOTHERBOARD ----
+function buildMotherboard() {
+const group = new THREE.Group();
+const m = CONFIG.mb;
+
+// PCB base
+const pcbGeo = roundBoxGeom(m.w, 0.6, m.h, 1.5);
+const pcb = new THREE.Mesh(pcbGeo, materials.pcb);
+pcb.position.y = -c.h/2 + c.thickness + 2;
+pcb.castShadow = true;
+pcb.receiveShadow = true;
+group.add(pcb);
+components.motherboard = pcb;
+
+// PCB layers visible at edge
+const edgeGeo = new THREE.BoxGeometry(m.w, 0.6, 0.15);
+const edgeMat = new THREE.MeshStandardMaterial({ color: 0x0a1a0a, metalness: 0.1, roughness: 0.4 });
+for (let z of [-m.h/2, m.h/2]) {
+const e = new THREE.Mesh(edgeGeo, edgeMat);
+e.position.set(0, -c.h/2 + c.thickness + 2, z);
+group.add(e);
+}
+
+// Chipset heatsink (custom angular design)
+const chipsetGeo = new THREE.BoxGeometry(6, 1.8, 6);
+const chipset = new THREE.Mesh(chipsetGeo, materials.metalMid);
+chipset.position.set(-5, -c.h/2 + c.thickness + 3.5, -m.h/2 + 8);
+chipset.castShadow = true;
+group.add(chipset);
+
+// Chipset fins
+const finGeo = new THREE.BoxGeometry(5.5, 0.15, 5.5);
+for (let i = 0; i < 8; i++) {
+const fin = new THREE.Mesh(finGeo, materials.metalMid);
+fin.position.set(-5, -c.h/2 + c.thickness + 3.5 + i * 0.22, -m.h/2 + 8);
+group.add(fin);
+}
+
+// Chipset RGB ring
+const ringGeo = new THREE.TorusGeometry(3.2, 0.25, 8, 32);
+const chipsetRing = new THREE.Mesh(ringGeo, materials.rgbEmit(1.0));
+chipsetRing.rotation.x = Math.PI/2;
+chipsetRing.position.set(-5, -c.h/2 + c.thickness + 3.2, -m.h/2 + 8);
+chipsetRing.userData = { type: 'rgbRing', zone: 'chipset' };
+group.add(chipsetRing);
+components.chipsetRing = chipsetRing;
+
+// CPU Socket area
+const socketGeo = new THREE.BoxGeometry(5.5, 0.3, 5.5);
+const socket = new THREE.Mesh(socketGeo, materials.metalDark);
+socket.position.set(0, -c.h/2 + c.thickness + 2.2, 2);
+group.add(socket);
+
+// CPU IHS
+const ihsGeo = new THREE.BoxGeometry(4.2, 0.25, 4.2);
+const ihs = new THREE.Mesh(ihsGeo, materials.metalBright);
+ihs.position.set(0, -c.h/2 + c.thickness + 2.45, 2);
+ihs.castShadow = true;
+group.add(ihs);
+components.cpuIhs = ihs;
+
+// CPU Cooler - Custom AIO block
+const blockGeo = roundBoxGeom(6, 3.5, 6, 1);
+const cpuBlock = new THREE.Mesh(blockGeo, materials.metalDark);
+cpuBlock.position.set(0, -c.h/2 + c.thickness + 5.5, 2);
+cpuBlock.castShadow = true;
+group.add(cpuBlock);
+components.cpuBlock = cpuBlock;
+
+// CPU Block RGB ring
+const cpuRingGeo = new THREE.TorusGeometry(3.5, 0.3, 10, 32);
+const cpuRing = new THREE.Mesh(cpuRingGeo, materials.rgbEmit(1.2));
+cpuRing.rotation.x = Math.PI/2;
+cpuRing.position.set(0, -c.h/2 + c.thickness + 4.2, 2);
+cpuRing.userData = { type: 'rgbRing', zone: 'cpu' };
+group.add(cpuRing);
+components.cpuRing = cpuRing;
+
+// CPU Block display (simulated)
+const dispGeo = new THREE.BoxGeometry(4.5, 0.15, 2.5);
+const dispMat = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0.9,
+blending: THREE.AdditiveBlending, depthWrite: false
+});
+const cpuDisp = new THREE.Mesh(dispGeo, dispMat);
+cpuDisp.position.set(0, -c.h/2 + c.thickness + 4.0, 4.5);
+group.add(cpuDisp);
+components.cpuDisplay = cpuDisp;
+
+// Tubes from CPU block
+const tubePath1 = new THREE.CatmullRomCurve3([
+new THREE.Vector3(0, -c.h/2 + c.thickness + 7.2, 2),
+new THREE.Vector3(0, -c.h/2 + c.thickness + 12, 2),
+new THREE.Vector3(-8, -c.h/2 + c.thickness + 18, 2),
+new THREE.Vector3(-10, -c.h/2 + c.thickness + 24, -5)
+]);
+const tubeGeo1 = createTorusKnotTube(tubePath1, CONFIG.tube.outerR, 40, 8);
+const tube1 = new THREE.Mesh(tubeGeo1, materials.coolantTube);
+group.add(tube1);
+components.tube1 = tube1;
+
+const coolantGeo1 = createTorusKnotTube(tubePath1, CONFIG.tube.innerR, 40, 8);
+const coolant1 = new THREE.Mesh(coolantGeo1, materials.coolant);
+group.add(coolant1);
+components.coolant1 = coolant1;
+
+// Return tube
+const tubePath2 = new THREE.CatmullRomCurve3([
+new THREE.Vector3(-10, -c.h/2 + c.thickness + 24, -8),
+new THREE.Vector3(-8, -c.h/2 + c.thickness + 18, -2),
+new THREE.Vector3(0, -c.h/2 + c.thickness + 12, 5),
+new THREE.Vector3(0, -c.h/2 + c.thickness + 7.2, 5)
+]);
+const tubeGeo2 = createTorusKnotTube(tubePath2, CONFIG.tube.outerR, 40, 8);
+const tube2 = new THREE.Mesh(tubeGeo2, materials.coolantTube);
+group.add(tube2);
+components.tube2 = tube2;
+
+const coolantGeo2 = createTorusKnotTube(tubePath2, CONFIG.tube.innerR, 40, 8);
+const coolant2 = new THREE.Mesh(coolantGeo2, materials.coolant);
+group.add(coolant2);
+components.coolant2 = coolant2;
+
+// Motherboard trace lines (animated)
+const traceGroup = new THREE.Group();
+group.add(traceGroup);
+components.traceGroup = traceGroup;
+
+for (let i = 0; i < 120; i++) {
+const len = 2 + Math.random() * 8;
+const thick = 0.06 + Math.random() * 0.1;
+const traceGeo = new THREE.BoxGeometry(thick, 0.05, len);
+const trace = new THREE.Mesh(traceGeo, materials.traceOff);
+trace.position.set(
+(Math.random() - 0.5) * (m.w - 4),
+-c.h/2 + c.thickness + 0.35,
+(Math.random() - 0.5) * (m.h - 4)
+);
+trace.rotation.y = Math.random() * Math.PI * 2;
+trace.userData = { baseMat: materials.traceOff, activeMat: materials.traceOn, phase: Math.random() * Math.PI * 2, speed: 0.5 + Math.random() * 1.5 };
+traceGroup.add(trace);
+}
+
+// VRM heatsinks
+const vrmGeo = new THREE.BoxGeometry(14, 1.5, 2.5);
+const vrm = new THREE.Mesh(vrmGeo, materials.metalMid);
+vrm.position.set(m.w/2 - 7.5, -c.h/2 + c.thickness + 3, m.h/2 - 3.5);
+vrm.castShadow = true;
+group.add(vrm);
+
+const vrmFinGeo = new THREE.BoxGeometry(13, 0.12, 2);
+for (let i = 0; i < 10; i++) {
+const fin = new THREE.Mesh(vrmFinGeo, materials.metalMid);
+fin.position.set(m.w/2 - 7, -c.h/2 + c.thickness + 2.4 + i * 0.15, m.h/2 - 3.5);
+group.add(fin);
+}
+
+// PCIe slots
+const pcieGeo = new THREE.BoxGeometry(0.8, 1.2, 12);
+const pcieMat = new THREE.MeshStandardMaterial({ color: 0x050508, metalness: 0.2, roughness: 0.3 });
+for (let i = 0; i < 4; i++) {
+const slot = new THREE.Mesh(pcieGeo, pcieMat);
+slot.position.set(m.w/2 - 0.5, -c.h/2 + c.thickness + 1.8, -m.h/2 + 6 + i * 8.5);
+group.add(slot);
+}
+
+// RAM slots
+const ramSlotGeo = new THREE.BoxGeometry(0.4, 0.6, 5.5);
+const ramSlotMat = new THREE.MeshStandardMaterial({ color: 0x030305, metalness: 0.3, roughness: 0.2 });
+for (let i = 0; i < 4; i++) {
+const slot = new THREE.Mesh(ramSlotGeo, ramSlotMat);
+slot.position.set(-m.w/2 + 2 + i * 5.2, -c.h/2 + c.thickness + 1.5, m.h/2 - 4);
+group.add(slot);
+}
+
+return group;
+}
+const c = CONFIG.case;
+pc.add(buildMotherboard());
+
+// ---- GPU ----
+function buildGPU() {
+const group = new THREE.Group();
+const g = CONFIG.gpu;
+
+// Main shroud
+const shroudGeo = roundBoxGeom(g.len, g.h, g.thick, 1.2);
+const shroud = new THREE.Mesh(shroudGeo, materials.metalDark);
+shroud.position.set(0, 6, -4);
+shroud.castShadow = true;
+shroud.receiveShadow = true;
+group.add(shroud);
+components.gpuShroud = shroud;
+
+// Backplate
+const bpGeo = roundBoxGeom(g.len - 1, g.h - 1, 0.5, 1);
+const backplate = new THREE.Mesh(bpGeo, materials.metalMid);
+backplate.position.set(0, 6, -4 - g.thick/2 - 0.25);
+backplate.castShadow = true;
+group.add(backplate);
+components.gpuBackplate = backplate;
+
+// Backplate thermal visualization (circuit pattern)
+const thermalGeo = new THREE.PlaneGeometry(g.len - 3, g.h - 3);
+const thermalMat = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0,
+blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+});
+const thermal = new THREE.Mesh(thermalGeo, thermalMat);
+thermal.position.set(0, 6, -4 - g.thick/2 - 0.26);
+thermal.rotation.y = Math.PI;
+group.add(thermal);
+components.gpuThermal = thermal;
+
+// Three fans on GPU
+const fanPositions = [
+{ x: -g.len/3, y: 6, z: -4 + g.thick/2 + 0.8 },
+{ x: 0, y: 6, z: -4 + g.thick/2 + 0.8 },
+{ x: g.len/3, y: 6, z: -4 + g.thick/2 + 0.8 }
+];
+const gpuFans = [];
+fanPositions.forEach((pos, i) => {
+const fan = buildFan(CONFIG.fan.radius, CONFIG.fan.bladeCount, CONFIG.fan.thickness, true);
+fan.position.set(pos.x, pos.y, pos.z);
+fan.rotation.x = Math.PI / 2;
+group.add(fan);
+gpuFans.push(fan);
+components[`gpuFan${i}`] = fan;
+});
+
+// GPU RGB strip along top edge
+const gpuStripGeo = new THREE.BoxGeometry(g.len - 4, 0.4, 0.4);
+const gpuStrip = new THREE.Mesh(gpuStripGeo, materials.rgbEmit(1.0));
+gpuStrip.position.set(0, 6 + g.h/2 - 0.5, -4);
+gpuStrip.userData = { type: 'rgbStrip', zone: 'gpu' };
+group.add(gpuStrip);
+components.gpuStrip = gpuStrip;
+
+// GPU Brand logo area
+const logoGeo = new THREE.BoxGeometry(8, 0.15, 2);
+const logoMat = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0,
+blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+});
+const logo = new THREE.Mesh(logoGeo, logoMat);
+logo.position.set(0, 6, -4 - g.thick/2 - 0.27);
+logo.userData = { type: 'logo' };
+group.add(logo);
+components.gpuLogo = logo;
+
+// Power connectors
+for (let x of [-2.5, 2.5]) {
+const conn = new THREE.Mesh(
+new THREE.BoxGeometry(2.5, 1.2, 1.5),
+materials.blackPlastic
+);
+conn.position.set(x, 6 - g.h/2 + 1.5, -4 - g.thick/2 - 0.8);
+group.add(conn);
+// Pins
+for (let px = -0.8; px <= 0.8; px += 0.8) {
+for (let pz = -0.5; pz <= 0.5; pz += 0.5) {
+const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.5, 6), materials.gold);
+pin.position.set(x + px, 6 - g.h/2 + 1.5, -4 - g.thick/2 - 1.0 + pz);
+group.add(pin);
+}
+}
+}
+
+// PCIe bracket
+const bracketGeo = new THREE.BoxGeometry(0.4, g.h - 1, 12);
+const bracket = new THREE.Mesh(bracketGeo, materials.metalDark);
+bracket.position.set(g.len/2 - 0.2, 6, -4 - g.thick/2 - 6);
+bracket.castShadow = true;
+group.add(bracket);
+
+// Ventilation slots on bracket
+for (let i = 0; i < 12; i++) {
+const vent = new THREE.Mesh(
+new THREE.BoxGeometry(0.5, 1.5, 0.1),
+materials.metalDark
+);
+vent.position.set(g.len/2 - 0.1, 6 - g.h/2 + 1.5 + i * 2.5, -4 - g.thick/2 - 6);
+group.add(vent);
+}
+
+return group;
+}
+pc.add(buildGPU());
+
+// ---- RAM ----
+function buildRAM() {
+const group = new THREE.Group();
+const r = CONFIG.ram;
+const startX = -(r.count - 1) * (r.w + r.spacing) / 2;
+
+for (let i = 0; i < r.count; i++) {
+const x = startX + i * (r.w + r.spacing);
+const stickGroup = new THREE.Group();
+
+// PCB
+const pcbGeo = new THREE.BoxGeometry(r.w, r.h, r.d);
+const pcb = new THREE.Mesh(pcbGeo, materials.pcb);
+pcb.position.y = r.h/2;
+pcb.castShadow = true;
+stickGroup.add(pcb);
+
+// Heatspreader
+const hsGeo = roundBoxGeom(r.w + 0.3, r.h + 0.5, r.d + 0.4, 0.6);
+const hs = new THREE.Mesh(hsGeo, materials.metalMid);
+hs.position.y = r.h/2;
+hs.castShadow = true;
+stickGroup.add(hs);
+
+// Top RGB bar
+const rgbBarGeo = new THREE.BoxGeometry(r.w + 0.5, 0.6, r.d + 0.6);
+const rgbBar = new THREE.Mesh(rgbBarGeo, materials.rgbEmit(1.5));
+rgbBar.position.y = r.h + 0.55;
+rgbBar.userData = { type: 'rgbRam', index: i, stick: stickGroup };
+stickGroup.add(rgbBar);
+components[`ramRgb${i}`] = rgbBar;
+
+// Side light pipes
+for (let side of [-1, 1]) {
+const pipeGeo = new THREE.BoxGeometry(0.25, r.h - 2, 0.4);
+const pipe = new THREE.Mesh(pipeGeo, materials.rgbGlass(0.5));
+pipe.position.set(side * (r.w/2 + 0.15), r.h/2, r.d/2 + 0.2);
+pipe.userData = { type: 'rgbRamPipe', index: i, side };
+stickGroup.add(pipe);
+components[`ramPipe${i}_${side}`] = pipe;
+}
+
+// Gold contacts
+const contactGeo = new THREE.BoxGeometry(r.w - 0.4, 0.15, 0.3);
+for (let ci = 0; ci < 2; ci++) {
+const contact = new THREE.Mesh(contactGeo, materials.gold);
+contact.position.set(0, 0.075, (ci === 0 ? -1 : 1) * (r.d/2 - 0.15));
+stickGroup.add(contact);
+}
+
+// Branding
+const brandGeo = new THREE.BoxGeometry(r.w - 1, 0.1, 1.5);
+const brandMat = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0,
+blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+});
+const brand = new THREE.Mesh(brandGeo, brandMat);
+brand.position.set(0, r.h/2 + 0.25, r.d/2 + 0.25);
+brand.userData = { type: 'ramBrand', index: i };
+stickGroup.add(brand);
+components[`ramBrand${i}`] = brand;
+
+stickGroup.position.set(x, -c.h/2 + c.thickness + 2.5, m.h/2 - 4);
+group.add(stickGroup);
+components[`ram${i}`] = stickGroup;
+}
+return group;
+}
+pc.add(buildRAM());
+
+// ---- RADIATOR & FANS (Top) ----
+function buildCooling() {
+const group = new THREE.Group();
+const r = CONFIG.rad;
+
+// Radiator core
+const radGeo = new THREE.BoxGeometry(r.w, r.h, r.d);
+const rad = new THREE.Mesh(radGeo, materials.metalMid);
+rad.position.set(0, c.h/2 - c.thickness - r.w/2 - 0.5, 0);
+rad.rotation.x = Math.PI/2;
+rad.castShadow = true;
+group.add(rad);
+components.radiator = rad;
+
+// Radiator fins
+const finGeo = new THREE.BoxGeometry(r.h, 0.08, r.d);
+for (let i = 0; i < r.finCount; i++) {
+const fin = new THREE.Mesh(finGeo, materials.metalBright);
+fin.position.set(0, c.h/2 - c.thickness - r.w/2 - 0.5 + (i - r.finCount/2) * (r.w/r.finCount), 0);
+fin.rotation.x = Math.PI/2;
+group.add(fin);
+}
+
+// Top fans (3x 120mm)
+const topFanPositions = [
+{ x: -13, z: 0 }, { x: 0, z: 0 }, { x: 13, z: 0 }
+];
+const topFans = [];
+topFanPositions.forEach((pos, i) => {
+const fan = buildFan(CONFIG.fan.radius, CONFIG.fan.bladeCount, CONFIG.fan.thickness, true);
+fan.position.set(pos.x, c.h/2 - c.thickness - 0.5, pos.z);
+fan.rotation.x = -Math.PI / 2;
+group.add(fan);
+topFans.push(fan);
+components[`topFan${i}`] = fan;
+});
+
+// Rear fan
+const rearFan = buildFan(CONFIG.fan.radius, CONFIG.fan.bladeCount, CONFIG.fan.thickness, true);
+rearFan.position.set(0, 2, -c.d/2 + CONFIG.fan.thickness/2 + 0.5);
+rearFan.rotation.x = 0;
+group.add(rearFan);
+components.rearFan = rearFan;
+
+// Radiator RGB
+const radRgbGeo = new THREE.BoxGeometry(r.h + 2, 0.3, 0.3);
+for (let z of [-r.d/2 - 1, r.d/2 + 1]) {
+const strip = new THREE.Mesh(radRgbGeo, materials.rgbEmit(0.7));
+strip.position.set(0, c.h/2 - c.thickness - r.w/2 - 0.5, z);
+strip.rotation.x = Math.PI/2;
+strip.userData = { type: 'rgbStrip', zone: 'radiator' };
+group.add(strip);
+components[`radStrip_${z>0?'front':'rear'}`] = strip;
+}
+
+// Coolant tubes to radiator
+const radInPath = new THREE.CatmullRomCurve3([
+new THREE.Vector3(-10, -c.h/2 + c.thickness + 24, -5),
+new THREE.Vector3(-10, -c.h/2 + c.thickness + 30, -5),
+new THREE.Vector3(-10, c.h/2 - c.thickness - r.w/2 - 1, -r.d/2 - 2)
+]);
+const radInTube = new THREE.Mesh(createTorusKnotTube(radInPath, CONFIG.tube.outerR, 30, 8), materials.coolantTube);
+const radInCoolant = new THREE.Mesh(createTorusKnotTube(radInPath, CONFIG.tube.innerR, 30, 8), materials.coolant);
+group.add(radInTube, radInCoolant);
+components.radInTube = radInTube; components.radInCoolant = radInCoolant;
+
+const radOutPath = new THREE.CatmullRomCurve3([
+new THREE.Vector3(10, c.h/2 - c.thickness - r.w/2 - 1, r.d/2 + 2),
+new THREE.Vector3(10, -c.h/2 + c.thickness + 30, 5),
+new THREE.Vector3(10, -c.h/2 + c.thickness + 24, 5)
+]);
+const radOutTube = new THREE.Mesh(createTorusKnotTube(radOutPath, CONFIG.tube.outerR, 30, 8), materials.coolantTube);
+const radOutCoolant = new THREE.Mesh(createTorusKnotTube(radOutPath, CONFIG.tube.innerR, 30, 8), materials.coolant);
+group.add(radOutTube, radOutCoolant);
+components.radOutTube = radOutTube; components.radOutCoolant = radOutCoolant;
+
+return group;
+}
+pc.add(buildCooling());
+
+// ---- PSU ----
+function buildPSU() {
+const group = new THREE.Group();
+const p = CONFIG.psu;
+
+const psuGeo = roundBoxGeom(p.w, p.h, p.d, 1);
+const psu = new THREE.Mesh(psuGeo, materials.metalDark);
+psu.position.set(0, -c.h/2 + p.h/2 + 2, -c.d/2 + p.d/2 + 2);
+psu.castShadow = true;
+group.add(psu);
+components.psu = psu;
+
+// PSU Fan
+const psuFan = buildFan(5, 7, 1.2, false);
+psuFan.position.set(0, -c.h/2 + p.h/2 + 2, -c.d/2 + p.d + 1.5);
+psuFan.rotation.x = Math.PI/2;
+group.add(psuFan);
+components.psuFan = psuFan;
+
+// PSU RGB
+const psuRgbGeo = new THREE.BoxGeometry(p.w - 2, 0.3, 0.3);
+const psuRgb = new THREE.Mesh(psuRgbGeo, materials.rgbEmit(0.6));
+psuRgb.position.set(0, -c.h/2 + p.h/2 + 2 - p.h/2 + 0.5, -c.d/2 + 1);
+psuRgb.userData = { type: 'rgbStrip', zone: 'psu' };
+group.add(psuRgb);
+components.psuRgb = psuRgb;
+
+// Power socket
+const socketGeo = new THREE.BoxGeometry(3, 2, 1.5);
+const socket = new THREE.Mesh(socketGeo, materials.blackPlastic);
+socket.position.set(p.w/2 - 1.5, -c.h/2 + p.h/2 + 2, -c.d/2 + p.d/2 + 0.75);
+group.add(socket);
+
+// Power switch
+const swGeo = new THREE.BoxGeometry(1.5, 1, 0.5);
+const sw = new THREE.Mesh(swGeo, materials.metalBright);
+sw.position.set(p.w/2 - 0.75, -c.h/2 + p.h/2 + 2 + p.h/2 - 0.5, -c.d/2 + p.d/2 + 1);
+group.add(sw);
+
+return group;
+}
+pc.add(buildPSU());
+
+// ---- STORAGE ----
+function buildStorage() {
+const group = new THREE.Group();
+
+// M.2 drives on motherboard
+for (let i = 0; i < 3; i++) {
+const m2Geo = new THREE.BoxGeometry(0.8, 0.15, 4.5);
+const m2 = new THREE.Mesh(m2Geo, materials.pcb);
+m2.position.set(CONFIG.mb.w/2 - 2, -c.h/2 + c.thickness + 2.3, CONFIG.mb.h/2 - 6 - i * 5.5);
+m2.castShadow = true;
+group.add(m2);
+
+// Heatsink
+const hsGeo = roundBoxGeom(1.2, 0.8, 5, 0.3);
+const hs = new THREE.Mesh(hsGeo, materials.metalMid);
+hs.position.set(CONFIG.mb.w/2 - 2, -c.h/2 + c.thickness + 2.7, CONFIG.mb.h/2 - 6 - i * 5.5);
+hs.castShadow = true;
+group.add(hs);
+
+// M.2 RGB
+const m2rgb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 4), materials.rgbEmit(0.5));
+m2rgb.position.set(CONFIG.mb.w/2 - 2, -c.h/2 + c.thickness + 2.9, CONFIG.mb.h/2 - 6 - i * 5.5);
+m2rgb.userData = { type: 'rgbStrip', zone: 'm2' };
+group.add(m2rgb);
+components[`m2rgb${i}`] = m2rgb;
+}
+
+// 2.5" SSD bay
+const bayGeo = roundBoxGeom(10, 5, 12, 0.5);
+const bay = new THREE.Mesh(bayGeo, materials.metalDark);
+bay.position.set(-CONFIG.case.w/2 + 7, -c.h/2 + 6, -c.d/2 + 8);
+bay.castShadow = true;
+group.add(bay);
+
+for (let i = 0; i < 2; i++) {
+const ssdGeo = new THREE.BoxGeometry(7, 0.7, 10);
+const ssd = new THREE.Mesh(ssdGeo, materials.metalMid);
+ssd.position.set(-CONFIG.case.w/2 + 7, -c.h/2 + 5 + i * 2.5, -c.d/2 + 8);
+ssd.castShadow = true;
+group.add(ssd);
+}
+
+return group;
+}
+pc.add(buildStorage());
+
+// ---- HOLOGRAPHIC PROJECTOR ----
+function buildHoloProjector() {
+const group = new THREE.Group();
+
+// Base unit
+const baseGeo = roundBoxGeom(8, 3, 8, 1);
+const base = new THREE.Mesh(baseGeo, materials.metalDark);
+base.position.set(-c.w/2 - 5, 10, -c.d/2 + 10);
+base.castShadow = true;
+group.add(base);
+
+// Emitter array
+const emitterGeo = new THREE.CylinderGeometry(3.5, 3.5, 0.3, 32);
+const emitter = new THREE.Mesh(emitterGeo, materials.metalBright);
+emitter.position.set(-c.w/2 - 5, 11.5, -c.d/2 + 10);
+group.add(emitter);
+
+// Hologram projection volume
+const holoGeo = new THREE.BoxGeometry(18, 22, 0.1);
+const holoMat = materials.holo.clone();
+const holo = new THREE.Mesh(holoGeo, holoMat);
+holo.position.set(-c.w/2 - 16, 12, -c.d/2 + 10);
+holo.rotation.y = Math.PI/6;
+group.add(holo);
+components.holoDisplay = holo;
+
+// Hologram content particles
+const holoParticles = new THREE.Group();
+group.add(holoParticles);
+components.holoParticles = holoParticles;
+
+for (let i = 0; i < 200; i++) {
+const pGeo = new THREE.OctahedronGeometry(0.08 + Math.random() * 0.12, 0);
+const pMat = new THREE.MeshBasicMaterial({
+color: new THREE.Color().setHSL(0.5 + Math.random() * 0.1, 1, 0.6),
+transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false
+});
+const p = new THREE.Mesh(pGeo, pMat);
+p.userData = {
+basePos: new THREE.Vector3(
+(Math.random() - 0.5) * 16,
+Math.random() * 20,
+(Math.random() - 0.5) * 0.5
+),
+speed: 0.2 + Math.random() * 0.5,
+phase: Math.random() * Math.PI * 2,
+axis: new THREE.Vector3(
+(Math.random() - 0.5) * 0.5,
+0.5 + Math.random() * 0.5,
+(Math.random() - 0.5) * 0.5
+).normalize()
+};
+holoParticles.add(p);
+}
+
+// Floating UI panels
+for (let i = 0; i < 3; i++) {
+const panelGeo = new THREE.PlaneGeometry(5, 2.5);
+const panelMat = new THREE.MeshBasicMaterial({
+color: 0x00f5d4, transparent: true, opacity: 0.25,
+blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+});
+const panel = new THREE.Mesh(panelGeo, panelMat);
+panel.position.set(
+-c.w/2 - 16 + (Math.random() - 0.5) * 8,
+12 + i * 6 - 5,
+-c.d/2 + 10 + (Math.random() - 0.5) * 2
+);
+panel.rotation.y = Math.PI/6 + (Math.random() - 0.5) * 0.3;
+panel.rotation.x = -0.2;
+panel.userData = { baseY: panel.position.y, speed: 0.3 + Math.random() * 0.2, phase: Math.random() * Math.PI * 2 };
+holoParticles.add(panel);
+components[`holoPanel${i}`] = panel;
+}
+
+return group;
+}
+pc.add(buildHoloProjector());
+
+// ---- CABLES (Physics-inspired curves) ----
+function buildCables() {
+const group = new THREE.Group();
+
+const cablePaths = [
+// 24-pin ATX
+{ from: new THREE.Vector3(CONFIG.mb.w/2 - 1, -c.h/2 + c.thickness + 2.5, CONFIG.mb.h/2 - 2),
+to: new THREE.Vector3(-CONFIG.case.w/2 + 4, -c.h/2 + CONFIG.psu.h/2 + 2, -c.d/2 + CONFIG.psu.d/2 + 2),
+ctrl1: new THREE.Vector3(CONFIG.mb.w/2 + 5, -c.h/2 + c.thickness + 2.5, CONFIG.mb.h/2 - 2),
+ctrl2: new THREE.Vector3(-CONFIG.case.w/2 + 4, -c.h/2 + 15, -c.d/2 + CONFIG.psu.d/2 + 2) },
+// CPU 8-pin
+{ from: new THREE.Vector3(-CONFIG.mb.w/2 + 5, -c.h/2 + c.thickness + 2.5, CONFIG.mb.h/2 - 2),
+to: new THREE.Vector3(-CONFIG.case.w/2 + 4, -c.h/2 + CONFIG.psu.h/2 + 2, -c.d/2 + CONFIG.psu.d/2 + 2),
+ctrl1: new THREE.Vector3(-CONFIG.mb.w/2 + 5, 10, CONFIG.mb.h/2 - 2),
+ctrl2: new THREE.Vector3(-CONFIG.case.w/2 + 4, 10, -c.d/2 + CONFIG.psu.d/2 + 2) },
+// GPU power (2x 8-pin)
+{ from: new THREE.Vector3(-2.5, 6 - CONFIG.gpu.h/2 + 1.5, -4 - CONFIG.gpu.thick/2 - 1.5),
+to: new THREE.Vector3(-CONFIG.case.w/2 + 4, -c.h/2 + CONFIG.psu.h/2 + 2, -c.d/2 + CONFIG.psu.d/2 + 2),
+ctrl1: new THREE.Vector3(-2.5, 0, -4 - CONFIG.gpu.thick/2 - 1.5),
+ctrl2: new THREE.Vector3(-CONFIG.case.w/2 + 4, 0, -c.d/2 + CONFIG.psu.d/2 + 2) },
+{ from: new THREE.Vector3(2.5, 6 - CONFIG.gpu.h/2 + 1.5, -4 - CONFIG.gpu.thick/2 - 1.5),
+to: new THREE.Vector3(-CONFIG.case.w/2 + 4, -c.h/2 + CONFIG.psu.h/2 + 2, -c.d/2 + CONFIG.psu.d/2 + 2),
+ctrl1: new THREE.Vector3(2.5, 0, -4 - CONFIG.gpu.thick/2 - 1.5),
+ctrl2: new THREE.Vector3(-CONFIG.case.w/2 + 4, -5, -c.d/2 + CONFIG.psu.d/2 + 2) }
+];
+
+cablePaths.forEach((path, idx) => {
+const curve = new THREE.CubicBezierCurve3(path.from, path.ctrl1, path.ctrl2, path.to);
+const tubeGeo = createTorusKnotTube(curve, 0.35, 32, 6);
+const tube = new THREE.Mesh(tubeGeo, materials.blackPlastic);
+tube.castShadow = true;
+group.add(tube);
+components[`cable${idx}`] = tube;
+
+// Sleeve accent
+const sleeveGeo = createTorusKnotTube(curve, 0.38, 32, 6);
+const sleeveMat = materials.metalMid.clone();
+sleeveMat.transparent = true; sleeveMat.opacity = 0.15;
+const sleeve = new THREE.Mesh(sleeveGeo, sleeveMat);
+group.add(sleeve);
+});
+return group;
+}
+pc.add(buildCables());
+
+// ---- AMBIENT PARTICLES ----
+function buildParticles() {
+const count = 800;
+const geo = new THREE.BufferGeometry();
+const positions = new Float32Array(count * 3);
+const velocities = new Float32Array(count * 3);
+const sizes = new Float32Array(count);
+const alphas = new Float32Array(count);
+const hues = new Float32Array(count);
+
+for (let i = 0; i < count; i++) {
+const r = 5 + Math.random() * 35;
+const theta = Math.random() * Math.PI * 2;
+const phi = Math.acos(2 * Math.random() - 1);
+positions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+positions[i*3+1] = r * Math.sin(phi) * Math.sin(theta) - 5;
+positions[i*3+2] = r * Math.cos(phi);
+velocities[i*3] = (Math.random() - 0.5) * 0.02;
+velocities[i*3+1] = (Math.random() - 0.5) * 0.01 + 0.005;
+velocities[i*3+2] = (Math.random() - 0.5) * 0.02;
+sizes[i] = 0.05 + Math.random() * 0.15;
+alphas[i] = 0.1 + Math.random() * 0.3;
+hues[i] = Math.random();
+}
+geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geo.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+geo.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+geo.setAttribute('hue', new THREE.BufferAttribute(hues, 1));
+
+const mat = new THREE.ShaderMaterial({
+uniforms: {
+uTime: { value: 0 },
+uColor: { value: state.rgbColor.clone() },
+uPowered: { value: 0 }
+},
+vertexShader: `
+attribute float size; attribute float alpha; attribute float hue; attribute vec3 velocity;
+uniform float uTime; uniform vec3 uColor; uniform float uPowered;
+varying float vAlpha; varying float vHue; varying float vSize;
+void main(){
+vAlpha = alpha * uPowered; vHue = hue; vSize = size;
+vec3 pos = position + velocity * uTime * 50.0;
+pos.y += sin(uTime * 0.5 + position.x * 0.1) * 0.3;
+vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+gl_PointSize = size * (300.0 / -mv.z);
+gl_Position = projectionMatrix * mv;
+}`,
+fragmentShader: `
+uniform vec3 uColor; varying float vAlpha; varying float vHue; varying float vSize;
+void main(){
+float dist = length(gl_PointCoord - 0.5);
+if(dist > 0.5) discard;
+float a = smoothstep(0.5, 0.0, dist) * vAlpha;
+vec3 c = mix(uColor, vec3(1.0), vHue * 0.3);
+gl_FragColor = vec4(c, a);
+}`,
+transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+});
+
+const particles = new THREE.Points(geo, mat);
+pc.add(particles);
+components.particles = particles;
+}
+
+// Build fan helper
+function buildFan(radius, blades, thickness, rgbRing) {
+const group = new THREE.Group();
+
+// Frame
+const frameGeo = new THREE.CylinderGeometry(radius + 0.3, radius + 0.3, thickness, 32);
+const frame = new THREE.Mesh(frameGeo, materials.metalDark);
+group.add(frame);
+
+// Center hub
+const hubGeo = new THREE.CylinderGeometry(radius * 0.18, radius * 0.18, thickness * 1.2, 16);
+const hub = new THREE.Mesh(hubGeo, materials.metalMid);
+group.add(hub);
+
+// Blades
+const bladeGeo = new THREE.BoxGeometry(radius * 0.9, thickness * 0.8, radius * 0.18);
+for (let i = 0; i < blades; i++) {
+const blade = new THREE.Mesh(bladeGeo, materials.metalMid);
+blade.position.y = 0;
+blade.position.x = radius * 0.45;
+blade.rotation.z = (i / blades) * Math.PI * 2;
+blade.castShadow = true;
+group.add(blade);
+group.userData = group.userData || {};
+group.userData.bladeGroup = group.userData.bladeGroup || new THREE.Group();
+group.userData.bladeGroup.add(blade);
+}
+if (group.userData.bladeGroup) group.add(group.userData.bladeGroup);
+
+// RGB ring on fan frame
+if (rgbRing) {
+const ringGeo = new THREE.TorusGeometry(radius + 0.25, 0.15, 8, 64);
+const ring = new THREE.Mesh(ringGeo, materials.rgbEmit(0.8));
+ring.rotation.x = Math.PI/2;
+ring.userData = { type: 'rgbFanRing' };
+group.add(ring);
+components[`fanRing_${components.fanRingCount || 0}`] = ring;
+components.fanRingCount = (components.fanRingCount || 0) + 1;
+}
+
+group.userData = { radius, blades, thickness, rotationSpeed: 0, targetSpeed: 0, angle: 0 };
+return group;
+}
+
+buildParticles();
+
+// ═══════════════════════════════════════════════════════════════════
+// RGB SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+const rgbElements = [];
+
+function registerRGB(element, config) {
+if (element && element.material) {
+rgbElements.push({ element, config });
+}
+}
+
+// Scan for RGB elements after build
+function scanRGBElements(obj) {
+obj.traverse(child => {
+if (child.userData && child.userData.type && child.userData.type.startsWith('rgb')) {
+rgbElements.push({ element: child, config: child.userData });
+}
+if (child.material && child.material.emissive) {
+rgbElements.push({ element: child, config: child.userData || {} });
+}
+});
+}
+scanRGBElements(pc);
+
+function updateRGB(color, intensity = 1.0) {
+const c = color.clone();
+rgbElements.forEach(({ element, config }) => {
+if (!element.material) return;
+const zone = config.zone || 'default';
+let mult = intensity;
+
+if (state.powered) {
+switch (state.lightingProfile) {
+case 'breathing': mult *= 0.5 + Math.sin(state.time * 1.5 + (config.phase || 0)) * 0.5; break;
+case 'wave': mult *= 0.3 + Math.sin(state.time * 2 + (element.position.x + element.position.z) * 0.1) * 0.7; break;
+case 'reactive': mult *= 0.2 + Math.random() * 0.8; break;
+case 'static': mult *= 1.0; break;
+case 'rainbow': c.setHSL((state.time * 0.05 + (config.phase || 0)) % 1, 1, 0.5); break;
+}
+} else {
+mult = 0;
+}
+
+if (element.material.emissive) {
+element.material.emissive.copy(c).multiplyScalar(mult);
+element.material.emissiveIntensity = mult;
+element.material.color.copy(c);
+}
+if (element.material instanceof THREE.MeshBasicMaterial) {
+element.material.color.copy(c);
+element.material.opacity = Math.max(0.1, mult);
+}
+});
+
+// Update RGB point lights
+rgbLights.forEach((light, i) => {
+if (state.powered) {
+light.color.copy(c);
+light.intensity = 15 * intensity * (0.5 + Math.sin(state.time * 1.2 + i) * 0.3);
+light.position.set(
+Math.sin(state.time * 0.3 + i) * 25,
+10 + Math.cos(state.time * 0.2 + i) * 5,
+Math.cos(state.time * 0.3 + i) * 25
+);
+} else {
+light.intensity = 0;
+}
+});
+
+// Update hologram color
+if (components.holoDisplay) {
+components.holoDisplay.material.color.copy(c);
+components.holoDisplay.material.opacity = state.powered ? 0.35 : 0;
+}
+if (components.holoParticles) {
+components.holoParticles.children.forEach(child => {
+if (child.material && child.material.color) {
+child.material.color.copy(c);
+child.material.opacity = state.powered ? 0.6 : 0;
+}
+});
+}
+
+// Update particles shader
+if (components.particles) {
+components.particles.material.uniforms.uColor.value.copy(c);
+components.particles.material.uniforms.uPowered.value = state.powered ? 1 : 0;
+}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════════════════
+const bootLog = document.getElementById('bootLog');
+const powerBtn = document.getElementById('powerBtn');
+const startupOverlay = document.getElementById('startupOverlay');
+const startupProgress = document.getElementById('startupProgress');
+
+async function powerOn() {
+if (state.powered || state.booting) return;
+state.booting = true;
+powerBtn.textContent = 'BOOTING...';
+powerBtn.disabled = true;
+bootLog.style.display = 'block';
+bootLog.innerHTML = '';
+
+startupOverlay.classList.remove('hidden');
+startupProgress.style.width = '0%';
+
+for (let i = 0; i < CONFIG.bootSequence.length; i++) {
+const step = CONFIG.bootSequence[i];
+state.bootStep = i;
+await new Promise(r => setTimeout(r, step.delay));
+
+const line = document.createElement('div');
+line.className = 'log-line';
+line.textContent = `[${(Date.now()%10000).toString().padStart(4,'0')}] ${step.label}`;
+bootLog.appendChild(line);
+bootLog.scrollTop = bootLog.scrollHeight;
+
+await new Promise(r => setTimeout(r, step.duration));
+line.classList.add('ok');
+startupProgress.style.width = `${((i+1)/CONFIG.bootSequence.length)*100}%`;
+}
+
+// Complete
+await new Promise(r => setTimeout(r, 300));
+state.powered = true;
+state.booting = false;
+powerBtn.textContent = 'POWER OFF';
+powerBtn.classList.remove('off');
+powerBtn.disabled = false;
+
+const readyLine = document.createElement('div');
+readyLine.className = 'log-line ok';
+readyLine.textContent = `[READY] NEURAL FRAME ONLINE — ALL SYSTEMS NOMINAL`;
+bootLog.appendChild(readyLine);
+bootLog.scrollTop = bootLog.scrollHeight;
+
+startupProgress.style.width = '100%';
+await new Promise(r => setTimeout(r, 500));
+startupOverlay.classList.add('hidden');
+
+showToast('System initialized', 'success');
+}
+
+function powerOff() {
+if (!state.powered) return;
+state.powered = false;
+powerBtn.textContent = 'POWER ON';
+powerBtn.classList.add('off');
+bootLog.style.display = 'none';
+controls.autoRotate = true;
+showToast('System powered down', 'warn');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FAN CURVE & THERMAL SIMULATION
+// ═══════════════════════════════════════════════════════════════════
+function getFanSpeedFromCurve(temp) {
+const pts = state.fanCurvePoints;
+for (let i = 0; i < pts.length - 1; i++) {
+if (temp >= pts[i].temp && temp <= pts[i+1].temp) {
+const t = (temp - pts[i].temp) / (pts[i+1].temp - pts[i].temp);
+return THREE.MathUtils.lerp(pts[i].speed, pts[i+1].speed, t);
+}
+}
+return pts[pts.length-1].speed;
+}
+
+function updateThermals(dt) {
+if (!state.powered) {
+state.temps.cpu = THREE.MathUtils.lerp(state.temps.cpu, state.temps.ambient, dt * 0.1);
+state.temps.gpu = THREE.MathUtils.lerp(state.temps.gpu, state.temps.ambient, dt * 0.1);
+state.temps.coolant = THREE.MathUtils.lerp(state.temps.coolant, state.temps.ambient, dt * 0.05);
+state.fanRpm = THREE.MathUtils.lerp(state.fanRpm, 0, dt * 0.5);
+return;
+}
+
+// Simulate load
+const loadFactor = 0.3 + Math.sin(state.time * 0.15) * 0.2 + Math.random() * 0.1;
+const targetCpu = state.temps.ambient + 45 * loadFactor;
+const targetGpu = state.temps.ambient + 55 * loadFactor;
+
+state.temps.cpu = THREE.MathUtils.lerp(state.temps.cpu, targetCpu, dt * 0.3);
+state.temps.gpu = THREE.MathUtils.lerp(state.temps.gpu, targetGpu, dt * 0.3);
+state.temps.coolant = THREE.MathUtils.lerp(state.temps.coolant, state.temps.ambient + 15 * loadFactor, dt * 0.2);
+
+state.targetFanSpeed = getFanSpeedFromCurve(Math.max(state.temps.cpu, state.temps.gpu));
+state.fanRpm = THREE.MathUtils.lerp(state.fanRpm, 600 + state.targetFanSpeed * 2400, dt * 1.5);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════════
+let lastTime = performance.now();
+
+function animate() {
+const now = performance.now();
+state.deltaTime = (now - lastTime) / 1000;
+state.time += state.deltaTime;
+state.frame++;
+lastTime = now;
+
+updateThermals(state.deltaTime);
+
+if (state.powered) {
+animateFans();
+animateCoolant();
+animateTraces();
+animateHolo();
+animateParticles();
+animateGPUBackplate();
+animateCPUIDisplay();
+animateCables();
+updateRGB(state.rgbColor, 1.0);
+} else {
+updateRGB(state.rgbColor, 0);
+}
+
+updateHUD();
+controls.update();
+composer.render();
+requestAnimationFrame(animate);
+}
+
+function animateFans() {
+const baseSpeed = state.targetFanSpeed;
+Object.values(components).forEach(comp => {
+if (comp && comp.userData && comp.userData.bladeGroup) {
+const ud = comp.userData;
+ud.targetSpeed = baseSpeed * (0.8 + ud.bladeGroup ? 0 : 0) * (1 + (Math.random()-0.5)*0.05);
+ud.rotationSpeed = THREE.MathUtils.lerp(ud.rotationSpeed, ud.targetSpeed, state.deltaTime * 3);
+ud.angle += ud.rotationSpeed * state.deltaTime * 20;
+ud.bladeGroup.rotation.z = ud.angle;
+}
+});
+}
+
+function animateCoolant() {
+if (!state.componentEnabled.coolantFlow) return;
+const flowSpeed = state.powered ? (0.5 + state.targetFanSpeed * 1.5) : 0;
+[components.coolant1, components.coolant2, components.radInCoolant, components.radOutCoolant].forEach(coolant => {
+if (coolant && coolant.geometry) {
+const pos = coolant.geometry.attributes.position;
+const count = pos.count;
+for (let i = 0; i < count; i++) {
+const y = pos.getY(i);
+pos.setY(i, y + flowSpeed * state.deltaTime * 0.1);
+}
+pos.needsUpdate = true;
+}
+});
+}
+
+function animateTraces() {
+if (!state.componentEnabled.ramTraces) return;
+if (components.traceGroup) {
+components.traceGroup.children.forEach(trace => {
+if (trace.userData) {
+const ud = trace.userData;
+const active = Math.sin(state.time * ud.speed + ud.phase) > 0.7;
+trace.material = active ? ud.activeMat : ud.baseMat;
+}
+});
+}
+}
+
+function animateHolo() {
+if (!state.componentEnabled.holoProjector) return;
+if (components.holoParticles) {
+components.holoParticles.children.forEach(child => {
+if (child.userData.basePos) {
+const ud = child.userData;
+child.position.copy(ud.basePos).add(
+new THREE.Vector3(
+Math.sin(state.time * ud.speed + ud.phase) * 0.5,
+Math.cos(state.time * ud.speed * 0.7 + ud.phase) * 0.3,
+Math.sin(state.time * ud.speed * 0.5 + ud.phase) * 0.2
+)
+);
+if (child.userData.baseY !== undefined) {
+child.position.y = ud.baseY + Math.sin(state.time * ud.speed + ud.phase) * 0.4;
+}
+child.rotation.y += state.deltaTime * 0.3;
+child.rotation.x += state.deltaTime * 0.2;
+}
+});
+}
+if (components.holoDisplay) {
+components.holoDisplay.material.opacity = state.powered ? (0.25 + Math.sin(state.time * 2) * 0.1) : 0;
+}
+}
+
+function animateParticles() {
+if (!state.componentEnabled.particles) return;
+if (components.particles) {
+components.particles.material.uniforms.uTime.value = state.time;
+const pos = components.particles.geometry.attributes.position;
+const vel = components.particles.geometry.attributes.velocity;
+const count = pos.count;
+for (let i = 0; i < count; i++) {
+let x = pos.getX(i) + vel.getX(i) * 50 * state.deltaTime;
+let y = pos.getY(i) + vel.getY(i) * 50 * state.deltaTime;
+let z = pos.getZ(i) + vel.getZ(i) * 50 * state.deltaTime;
+y += Math.sin(state.time * 0.5 + x * 0.1) * 0.02;
+
+// Bounds check
+const dist = Math.sqrt(x*x + (y+5)*(y+5) + z*z);
+if (dist > 45 || y > 30 || y < -25) {
+const r = 5 + Math.random() * 35;
+const theta = Math.random() * Math.PI * 2;
+const phi = Math.acos(2 * Math.random() - 1);
+x = r * Math.sin(phi) * Math.cos(theta);
+y = r * Math.sin(phi) * Math.sin(theta) - 5;
+z = r * Math.cos(phi);
+}
+pos.setXYZ(i, x, y, z);
+}
+pos.needsUpdate = true;
+}
+}
+}
+
+function animateGPUBackplate() {
+if (!state.componentEnabled.gpuBackplate) return;
+if (components.gpuThermal) {
+const intensity = state.powered ? (0.1 + Math.max(state.temps.gpu - 30, 0) / 80 * 0.6) : 0;
+components.gpuThermal.material.opacity = intensity;
+components.gpuThermal.material.color.setHSL(0.55 - Math.min(state.temps.gpu / 100, 0.55), 1, 0.5);
+}
+if (components.gpuLogo) {
+components.gpuLogo.material.opacity = state.powered ? (0.5 + Math.sin(state.time * 3) * 0.3) : 0;
+}
+}
+
+function animateCPUIDisplay() {
+if (components.cpuDisplay) {
+const temp = state.temps.cpu.toFixed(1);
+components.cpuDisplay.material.opacity = state.powered ? 0.9 : 0;
+// Could render actual text to texture, but keeping simple
+}
+}
+
+function animateCables() {
+Object.values(components).forEach(comp => {
+if (comp && comp.userData && comp.userData.isCable) {
+// Subtle sway
+}
+});
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HUD UPDATES
+// ═══════════════════════════════════════════════════════════════════
+function updateHUD() {
+document.getElementById('fanTemp').textContent = Math.round(Math.max(state.temps.cpu, state.temps.gpu));
+document.getElementById('fanRpm').textContent = Math.round(state.fanRpm);
+document.getElementById('fanTarget').textContent = Math.round(state.targetFanSpeed * 100);
+
+// Status grid
+const statusGrid = document.getElementById('statusGrid');
+if (statusGrid.children.length === 0) {
+const statuses = [
+{ key: 'cpu', label: 'CPU TEMP', value: () => `${Math.round(state.temps.cpu)}°C`, warn: 70, crit: 85 },
+{ key: 'gpu', label: 'GPU TEMP', value: () => `${Math.round(state.temps.gpu)}°C`, warn: 75, crit: 90 },
+{ key: 'coolant', label: 'COOLANT', value: () => `${Math.round(state.temps.coolant)}°C`, warn: 40, crit: 50 },
+{ key: 'fan', label: 'FAN RPM', value: () => `${Math.round(state.fanRpm)}`, warn: 2000, crit: 2800 },
+{ key: 'power', label: 'POWER', value: () => state.powered ? 'ONLINE' : 'OFFLINE', warn: null, crit: null },
+{ key: 'rgb', label: 'RGB SYNC', value: () => state.lightingProfile.toUpperCase(), warn: null, crit: null },
+{ key: 'uptime', label: 'UPTIME', value: () => `${Math.floor(state.time)}s`, warn: null, crit: null },
+{ key: 'fps', label: 'FPS', value: () => Math.round(1/state.deltaTime), warn: 30, crit: 20 }
+];
+statuses.forEach(s => {
+const div = document.createElement('div');
+div.className = 'status-item';
+div.innerHTML = `<div class="status-label">${s.label}</div><div class="status-value" id="status_${s.key}">${s.value()}</div>`;
+statusGrid.appendChild(div);
+});
+}
+
+statuses.forEach(s => {
+const el = document.getElementById(`status_${s.key}`);
+if (el) {
+el.textContent = s.value();
+el.className = 'status-value';
+if (s.warn !== null) {
+const num = parseFloat(s.value());
+if (num >= s.crit) el.classList.add('critical');
+else if (num >= s.warn) el.classList.add('warn');
+}
+}
+});
+}
+
+const statuses = [
+{ key: 'cpu', label: 'CPU TEMP', value: () => `${Math.round(state.temps.cpu)}°C`, warn: 70, crit: 85 },
+{ key: 'gpu', label: 'GPU TEMP', value: () => `${Math.round(state.temps.gpu)}°C`, warn: 75, crit: 90 },
+{ key: 'coolant', label: 'COOLANT', value: () => `${Math.round(state.temps.coolant)}°C`, warn: 40, crit: 50 },
+{ key: 'fan', label: 'FAN RPM', value: () => `${Math.round(state.fanRpm)}`, warn: 2000, crit: 2800 },
+{ key: 'power', label: 'POWER', value: () => state.powered ? 'ONLINE' : 'OFFLINE', warn: null, crit: null },
+{ key: 'rgb', label: 'RGB SYNC', value: () => state.lightingProfile.toUpperCase(), warn: null, crit: null },
+{ key: 'uptime', label: 'UPTIME', value: () => `${Math.floor(state.time)}s`, warn: null, crit: null },
+{ key: 'fps', label: 'FPS', value: () => Math.round(1/state.deltaTime), warn: 30, crit: 20 }
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// HUD INTERACTIONS
+// ═══════════════════════════════════════════════════════════════════
+const mainPanel = document.getElementById('mainPanel');
+const miniToggle = document.getElementById('miniToggle');
+const minimizeBtn = document.getElementById('minimizeBtn');
+
+minimizeBtn.addEventListener('click', () => {
+mainPanel.classList.add('minimized');
+miniToggle.classList.add('visible');
+});
+
+miniToggle.addEventListener('click', () => {
+mainPanel.classList.remove('minimized');
+miniToggle.classList.remove('visible');
+});
+
+powerBtn.addEventListener('click', () => {
+if (state.powered) powerOff();
+else powerOn();
+});
+
+// Color picker
+const colorCanvas = document.getElementById('colorCanvas');
+const colorCursor = document.getElementById('colorCursor');
+const colorSwatch = document.getElementById('colorSwatch');
+const colorHex = document.getElementById('colorHex');
+const ctx = colorCanvas.getContext('2d');
+
+function drawColorPicker() {
+const w = colorCanvas.width, h = colorCanvas.height;
+const gradient = ctx.createLinearGradient(0, 0, w, 0);
+gradient.addColorStop(0, 'rgb(255,0,0)');
+gradient.addColorStop(1/6, 'rgb(255,255,0)');
+gradient.addColorStop(2/6, 'rgb(0,255,0)');
+gradient.addColorStop(3/6, 'rgb(0,255,255)');
+gradient.addColorStop(4/6, 'rgb(0,0,255)');
+gradient.addColorStop(5/6, 'rgb(255,0,255)');
+gradient.addColorStop(1, 'rgb(255,0,0)');
+ctx.fillStyle = gradient;
+ctx.fillRect(0, 0, w, h);
+const gradient2 = ctx.createLinearGradient(0, 0, 0, h);
+gradient2.addColorStop(0, 'rgba(255,255,255,1)');
+gradient2.addColorStop(0.5, 'rgba(255,255,255,0)');
+gradient2.addColorStop(1, 'rgba(0,0,0,1)');
+ctx.fillStyle = gradient2;
+ctx.fillRect(0, 0, w, h);
+}
+drawColorPicker();
+
+function getColorAt(x, y) {
+const imgData = ctx.getImageData(x, y, 1, 1).data;
+return new THREE.Color(`rgb(${imgData[0]},${imgData[1]},${imgData[2]})`);
+}
+
+function updateColorPickerUI(color, x, y) {
+colorCursor.style.left = `${x}px`;
+colorCursor.style.top = `${y}px`;
+colorCursor.style.borderColor = color.getHexString() === '000000' ? '#fff' : '#000';
+colorSwatch.style.background = `#${color.getHexString()}`;
+colorHex.textContent = `#${color.getHexString().toUpperCase()}`;
+}
+
+colorCanvas.addEventListener('mousedown', e => {
+const rect = colorCanvas.getBoundingClientRect();
+const x = Math.max(0, Math.min(colorCanvas.width, e.clientX - rect.left));
+const y = Math.max(0, Math.min(colorCanvas.height, e.clientY - rect.top));
+const color = getColorAt(x, y);
+state.rgbColor.copy(color);
+updateColorPickerUI(color, x, y);
+updateRGB(color);
+colorCanvas.dataset.dragging = 'true';
+});
+
+window.addEventListener('mousemove', e => {
+if (colorCanvas.dataset.dragging) {
+const rect = colorCanvas.getBoundingClientRect();
+const x = Math.max(0, Math.min(colorCanvas.width, e.clientX - rect.left));
+const y = Math.max(0, Math.min(colorCanvas.height, e.clientY - rect.top));
+const color = getColorAt(x, y);
+state.rgbColor.copy(color);
+updateColorPickerUI(color, x, y);
+updateRGB(color);
+}
+});
+
+window.addEventListener('mouseup', () => {
+colorCanvas.dataset.dragging = 'false';
+});
+
+// Presets
+const presetRow = document.getElementById('presetRow');
+CONFIG.rgbPresets.forEach((preset, i) => {
+const btn = document.createElement('button');
+btn.className = 'preset-btn' + (i === 0 ? ' active' : '');
+btn.style.background = `#${preset.color.toString(16).padStart(6,'0')}`;
+btn.title = preset.name;
+btn.addEventListener('click', () => {
+state.rgbColor.setHex(preset.color);
+document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+updateColorPickerUI(state.rgbColor, colorCanvas.width * 0.5, colorCanvas.height * 0.5);
+updateRGB(state.rgbColor);
+showToast(`Preset: ${preset.name}`, 'success');
+});
+presetRow.appendChild(btn);
+});
+
+// Profiles
+const profiles = [
+{ id: 'static', name: 'STATIC', desc: 'Constant illumination' },
+{ id: 'breathing', name: 'BREATHING', desc: 'Pulsing rhythm' },
+{ id: 'wave', name: 'WAVE', desc: 'Traveling wave' },
+{ id: 'reactive', name: 'REACTIVE', desc: 'Temp responsive' },
+{ id: 'rainbow', name: 'PRISM', desc: 'Spectrum cycle' }
+];
+const profileRow = document.getElementById('profileRow');
+profiles.forEach(p => {
+const btn = document.createElement('button');
+btn.className = 'profile-btn' + (p.id === state.lightingProfile ? ' active' : '');
+btn.textContent = p.name;
+btn.title = p.desc;
+btn.addEventListener('click', () => {
+state.lightingProfile = p.id;
+document.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('active'));
+btn.classList.add('active');
+showToast(`Profile: ${p.name}`, 'success');
+});
+profileRow.appendChild(btn);
+});
+
+// Fan curve editor
+const fanCurveCanvas = document.getElementById('fanCurveCanvas');
+const fanCurveCtx = fanCurveCanvas.getContext('2d');
+const fanPoints = [
+document.getElementById('fanPoint1'),
+document.getElementById('fanPoint2'),
+document.getElementById('fanPoint3'),
+document.getElementById('fanPoint4')
+];
+
+function drawFanCurve() {
+const w = fanCurveCanvas.width, h = fanCurveCanvas.height;
+const ctx = fanCurveCtx;
+ctx.clearRect(0, 0, w, h);
+
+// Grid
+ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+ctx.lineWidth = 1;
+for (let i = 0; i <= 4; i++) {
+ctx.beginPath(); ctx.moveTo(0, i * h/4); ctx.lineTo(w, i * h/4); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(i * w/4, 0); ctx.lineTo(i * w/4, h); ctx.stroke();
+}
+
+// Curve
+const pts = state.fanCurvePoints;
+ctx.beginPath();
+ctx.strokeStyle = '#00f5d4';
+ctx.lineWidth = 2;
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+pts.forEach((p, i) => {
+const x = (i / (pts.length-1)) * w;
+const y = h - (p.speed) * h;
+if (i === 0) ctx.moveTo(x, y);
+else ctx.lineTo(x, y);
+});
+ctx.stroke();
+
+// Area fill
+ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
+const grad = ctx.createLinearGradient(0, 0, 0, h);
+grad.addColorStop(0, 'rgba(0,245,212,0.15)');
+grad.addColorStop(1, 'rgba(0,245,212,0)');
+ctx.fillStyle = grad;
+ctx.fill();
+}
+drawFanCurve();
+
+let draggingPoint = -1;
+fanPoints.forEach((point, i) => {
+point.addEventListener('mousedown', e => {
+draggingPoint = i;
+e.preventDefault();
+});
+});
+
+window.addEventListener('mousemove', e => {
+if (draggingPoint >= 0) {
+const rect = fanCurveCanvas.getBoundingClientRect();
+const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+const y = Math.max(0, Math.min(1, 1 - (e.clientY - rect.top) / rect.height));
+state.fanCurvePoints[draggingPoint].temp = 30 + x * 70;
+state.fanCurvePoints[draggingPoint].speed = y;
+drawFanCurve();
+}
+});
+window.addEventListener('mouseup', () => { draggingPoint = -1; });
+
+// Component toggles
+document.querySelectorAll('.toggle-switch').forEach(toggle => {
+toggle.addEventListener('click', () => {
+const key = toggle.dataset.component;
+state.componentEnabled[key] = !state.componentEnabled[key];
+toggle.classList.toggle('active', state.componentEnabled[key]);
+showToast(`${key}: ${state.componentEnabled[key] ? 'enabled' : 'disabled'}`, 'success');
+});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════
+function showToast(msg, type = 'success') {
+const toast = document.getElementById('toast');
+toast.textContent = msg;
+toast.className = `toast ${type} show`;
+setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// Resize
+window.addEventListener('resize', () => {
+camera.aspect = window.innerWidth / window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth, window.innerHeight);
+composer.setSize(window.innerWidth, window.innerHeight);
+filmPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+bloomPass.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Prevent context menu on canvas
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+// Keyboard shortcuts
+window.addEventListener('keydown', e => {
+if (e.code === 'Space') { e.preventDefault(); state.powered ? powerOff() : powerOn(); }
+if (e.code === 'KeyR') { state.rgbColor.setHSL(Math.random(), 1, 0.5); updateRGB(state.rgbColor); }
+if (e.code === 'KeyH') { mainPanel.classList.toggle('minimized'); miniToggle.classList.toggle('visible', mainPanel.classList.contains('minimized')); }
+});
+
+// Initial UI state
+updateColorPickerUI(state.rgbColor, 100, 100);
+
+// Start animation
+animate();
+
+// Cleanup on unload
+window.addEventListener('beforeunload', () => {
+renderer.dispose();
+composer.passes.forEach(p => { if (p.dispose) p.dispose(); });
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mechanical Keyboard Showcase</title>
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:#111; font-family: system-ui, sans-serif; }
+  #gl { display:block; width:100%; height:100%; }
+  #ui { position:fixed; top:12px; left:12px; z-index:10; display:flex; gap:8px; }
+  button { padding:8px 14px; background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; cursor:pointer; font-size:13px; transition:background 0.2s, border-color 0.2s; }
+  button:hover { background:#3a3a3a; border-color:#666; }
+  button:active { background:#222; }
+  #audio-hint { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:8px 16px; border-radius:4px; font-size:13px; pointer-events:none; opacity:0; transition:opacity 0.3s; white-space:nowrap; }
+  #audio-hint.visible { opacity:1; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="ui">
+  <button id="replay">Replay Assembly</button>
+  <button id="mute">Mute</button>
+</div>
+<div id="audio-hint">Click or press a key to enable sound</div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+// ----------------------------------------------------------
+// Configuration & Constants
+// ----------------------------------------------------------
+const UNIT = 1; // 1u = 1 three.js unit
+const KEY_GAP = 0.08;
+
+const PCB_THICKNESS = 0.1;
+const FOAM_THICKNESS = 0.02;
+const PLATE_THICKNESS = 0.02;
+const SWITCH_HOUSING_H = 0.5;
+const SWITCH_STEM_H = 0.3;
+const SWITCH_H = SWITCH_HOUSING_H + SWITCH_STEM_H; // 0.8
+const KEYCAP_H = 0.4;
+
+const PCB_TOP_Y = 0;
+const FOAM_BOTTOM_Y = PCB_TOP_Y;
+const FOAM_TOP_Y = FOAM_BOTTOM_Y + FOAM_THICKNESS;
+const PLATE_BOTTOM_Y = FOAM_TOP_Y;
+const PLATE_TOP_Y = PLATE_BOTTOM_Y + PLATE_THICKNESS;
+const SWITCH_BOTTOM_Y = PLATE_TOP_Y;
+const SWITCH_TOP_Y = SWITCH_BOTTOM_Y + SWITCH_H;
+const KEYCAP_BOTTOM_Y = SWITCH_TOP_Y;
+const KEYCAP_CENTER_Y = KEYCAP_BOTTOM_Y + KEYCAP_H * 0.5;
+
+// Animation timings (seconds)
+const PCB_DUR = 1.0;
+const FOAM_DUR = 1.0;
+const PLATE_DUR = 1.0;
+const SWITCH_DUR = 0.45;
+const SWITCH_STAGGER = 0.04;
+const KEYCAP_DUR = 0.45;
+const KEYCAP_STAGGER = 0.04;
+const PRESS_DOWN_DUR = 0.06;
+const PRESS_UP_DUR = 0.08;
+
+// Reduced motion
+const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const timeScale = prefersReduced ? 0.001 : 1;
+
+// ----------------------------------------------------------
+// Keyboard Layout Definition (60%)
+// ----------------------------------------------------------
+const layout = [
+  // Row 0
+  [
+    {w:1,   label:'Esc',   type:'mod'},
+    {w:1,   label:'1',     type:'alpha'},
+    {w:1,   label:'2',     type:'alpha'},
+    {w:1,   label:'3',     type:'alpha'},
+    {w:1,   label:'4',     type:'alpha'},
+    {w:1,   label:'5',     type:'alpha'},
+    {w:1,   label:'6',     type:'alpha'},
+    {w:1,   label:'7',     type:'alpha'},
+    {w:1,   label:'8',     type:'alpha'},
+    {w:1,   label:'9',     type:'alpha'},
+    {w:1,   label:'0',     type:'alpha'},
+    {w:1,   label:'-',     type:'alpha'},
+    {w:1,   label:'=',     type:'alpha'},
+    {w:1.5, label:'Backsp', type:'backspace'}
+  ],
+  // Row 1
+  [
+    {w:1.5, label:'Tab',   type:'mod'},
+    {w:1,   label:'Q',     type:'alpha'},
+    {w:1,   label:'W',     type:'alpha'},
+    {w:1,   label:'E',     type:'alpha'},
+    {w:1,   label:'R',     type:'alpha'},
+    {w:1,   label:'T',     type:'alpha'},
+    {w:1,   label:'Y',     type:'alpha'},
+    {w:1,   label:'U',     type:'alpha'},
+    {w:1,   label:'I',     type:'alpha'},
+    {w:1,   label:'O',     type:'alpha'},
+    {w:1,   label:'P',     type:'alpha'},
+    {w:1,   label:'[',     type:'alpha'},
+    {w:1,   label:']',     type:'alpha'},
+    {w:1.5, label:'\\',    type:'alpha'}
+  ],
+  // Row 2
+  [
+    {w:1.75, label:'Caps',  type:'mod'},
+    {w:1,   label:'A',     type:'alpha'},
+    {w:1,   label:'S',     type:'alpha'},
+    {w:1,   label:'D',     type:'alpha'},
+    {w:1,   label:'F',     type:'alpha'},
+    {w:1,   label:'G',     type:'alpha'},
+    {w:1,   label:'H',     type:'alpha'},
+    {w:1,   label:'J',     type:'alpha'},
+    {w:1,   label:'K',     type:'alpha'},
+    {w:1,   label:'L',     type:'alpha'},
+    {w:1,   label:';',     type:'alpha'},
+    {w:1,   label:'\'',    type:'alpha'},
+    {w:2.25, label:'Enter', type:'enter'}
+  ],
+  // Row 3
+  [
+    {w:2.25, label:'Shift', type:'shift'},
+    {w:1,   label:'Z',     type:'alpha'},
+    {w:1,   label:'X',     type:'alpha'},
+    {w:1,   label:'C',     type:'alpha'},
+    {w:1,   label:'V',     type:'alpha'},
+    {w:1,   label:'B',     type:'alpha'},
+    {w:1,   label:'N',     type:'alpha'},
+    {w:1,   label:'M',     type:'alpha'},
+    {w:1,   label:',',     type:'alpha'},
+    {w:1,   label:'.',     type:'alpha'},
+    {w:1,   label:'/',     type:'alpha'},
+    {w:2.75, label:'Shift', type:'shift'}
+  ],
+  // Row 4
+  [
+    {w:1.25, label:'Ctrl', type:'ctrl'},
+    {w:1.25, label:'Win',  type:'mod'},
+    {w:1.25, label:'Alt',  type:'alt'},
+    {w:6.25, label:'Space', type:'space'},
+    {w:1.25, label:'Alt',  type:'alt'},
+    {w:1.25, label:'Fn',   type:'fn'},
+    {w:1.25, label:'Ctrl', type:'ctrl'}
+  ]
+];
+
+// ----------------------------------------------------------
+// Three.js Setup
+// ----------------------------------------------------------
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x181818);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(0, 9, 14);
+camera.lookAt(0, 0.5, 0);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.enablePan = true;
+controls.minDistance = 5;
+controls.maxDistance = 30;
+controls.target.set(0, 0.5, 0);
+
+// Lights
+const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambient);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(5, 10, 7);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 30;
+dirLight.shadow.camera.left = -10;
+dirLight.shadow.camera.right = 10;
+dirLight.shadow.camera.top = 10;
+dirLight.shadow.camera.bottom = -10;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+fillLight.position.set(-5, 5, -5);
+scene.add(fillLight);
+
+// ----------------------------------------------------------
+// Materials
+// ----------------------------------------------------------
+const pcbMat = new THREE.MeshStandardMaterial({ color:0x003300, roughness:0.9, metalness:0.1 });
+const foamMat = new THREE.MeshStandardMaterial({ color:0xaaaaaa, roughness:0.95, metalness:0 });
+const plateMat = new THREE.MeshStandardMaterial({ color:0x888888, roughness:0.4, metalness:0.85 });
+const caseMat = new THREE.MeshStandardMaterial({ color:0x1a1a1a, roughness:0.7, metalness:0.2 });
+const switchHousingMat = new THREE.MeshStandardMaterial({ color:0x111111, roughness:0.3, metalness:0.6 });
+const switchStemMat = new THREE.MeshStandardMaterial({ color:0xcc2222, roughness:0.4, metalness:0.2 });
+const keycapAlphaMat = new THREE.MeshStandardMaterial({ color:0xf5f5f5, roughness:0.25, metalness:0.02 });
+const keycapModMat = new THREE.MeshStandardMaterial({ color:0x2a2a2a, roughness:0.3, metalness:0.05 });
+const keycapSpaceMat = new THREE.MeshStandardMaterial({ color:0x2a2a2a, roughness:0.3, metalness:0.05 });
+const keycapSpecialMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a, roughness:0.3, metalness:0.05 });
+
+function getKeycapMaterial(type) {
+  switch(type) {
+    case 'alpha': return keycapAlphaMat;
+    case 'mod': case 'ctrl': case 'alt': case 'fn': case 'shift': return keycapModMat;
+    case 'space': return keycapSpaceMat;
+    case 'enter': case 'backspace': return keycapSpecialMat;
+    default: return keycapAlphaMat;
+  }
+}
+
+// ----------------------------------------------------------
+// Build Keyboard Geometry
+// ----------------------------------------------------------
+// Compute keyboard bounds
+let maxRowWidth = 0;
+const rowsData = [];
+layout.forEach((row, rowIdx) => {
+  let x = 0;
+  const rowKeys = [];
+  row.forEach((keyDef, colIdx) => {
+    const cx = x + keyDef.w * 0.5;
+    const cz = rowIdx;
+    rowKeys.push({ ...keyDef, cx, cz, row:rowIdx, col:colIdx, index:rowsData.length });
+    x += keyDef.w;
+  });
+  maxRowWidth = Math.max(maxRowWidth, x);
+  rowsData.push(rowKeys);
+});
+const kbWidth = maxRowWidth;
+const kbDepth = layout.length;
+
+// Center offsets
+const centerX = -kbWidth * 0.5;
+const centerZ = -kbDepth * 0.5;
+
+// Adjust key positions to center
+const allKeys = [];
+rowsData.forEach(rowKeys => {
+  rowKeys.forEach(k => {
+    k.x = centerX + k.cx;
+    k.z = centerZ + k.cz;
+    allKeys.push(k);
+  });
+});
+
+// Sort for animation order (left-to-right, top-to-bottom)
+allKeys.sort((a,b) => a.row - b.row || a.col - b.col);
+
+// Create PCB, Foam, Plate, Case
+const pcbGeo = new THREE.BoxGeometry(kbWidth + 0.6, PCB_THICKNESS, kbDepth + 0.6);
+const pcbMesh = new THREE.Mesh(pcbGeo, pcbMat);
+pcbMesh.position.y = PCB_TOP_Y - PCB_THICKNESS * 0.5;
+pcbMesh.receiveShadow = true;
+scene.add(pcbMesh);
+
+const foamGeo = new THREE.BoxGeometry(kbWidth + 0.4, FOAM_THICKNESS, kbDepth + 0.4);
+const foamMesh = new THREE.Mesh(foamGeo, foamMat);
+foamMesh.position.y = FOAM_BOTTOM_Y + FOAM_THICKNESS * 0.5;
+foamMesh.receiveShadow = true;
+scene.add(foamMesh);
+
+const plateGeo = new THREE.BoxGeometry(kbWidth + 0.3, PLATE_THICKNESS, kbDepth + 0.3);
+const plateMesh = new THREE.Mesh(plateGeo, plateMat);
+plateMesh.position.y = PLATE_BOTTOM_Y + PLATE_THICKNESS * 0.5;
+plateMesh.receiveShadow = true;
+scene.add(plateMesh);
+
+// Case: bottom + 4 walls
+const caseBottomGeo = new THREE.BoxGeometry(kbWidth + 1.2, 0.6, kbDepth + 1.2);
+const caseBottom = new THREE.Mesh(caseBottomGeo, caseMat);
+caseBottom.position.y = -0.3 - PCB_THICKNESS * 0.5; // below PCB
+caseBottom.receiveShadow = true;
+scene.add(caseBottom);
+
+const wallThick = 0.15;
+const wallHeight = 1.4; // from bottom of case to above keycaps
+// Front wall (negative z)
+const frontWallGeo = new THREE.BoxGeometry(kbWidth + 1.2, wallHeight, wallThick);
+const frontWall = new THREE.Mesh(frontWallGeo, caseMat);
+frontWall.position.set(0, -0.3 + wallHeight*0.5 - PCB_THICKNESS*0.5, centerZ - kbDepth*0.5 - 0.6 - wallThick*0.5);
+frontWall.castShadow = true; frontWall.receiveShadow = true;
+scene.add(frontWall);
+// Back wall
+const backWall = new THREE.Mesh(frontWallGeo, caseMat);
+backWall.position.set(0, -0.3 + wallHeight*0.5 - PCB_THICKNESS*0.5, centerZ + kbDepth*0.5 + 0.6 + wallThick*0.5);
+backWall.castShadow = true; backWall.receiveShadow = true;
+scene.add(backWall);
+// Left wall
+const sideWallGeo = new THREE.BoxGeometry(wallThick, wallHeight, kbDepth + 1.2);
+const leftWall = new THREE.Mesh(sideWallGeo, caseMat);
+leftWall.position.set(centerX - kbWidth*0.5 - 0.6 - wallThick*0.5, -0.3 + wallHeight*0.5 - PCB_THICKNESS*0.5, 0);
+leftWall.castShadow = true; leftWall.receiveShadow = true;
+scene.add(leftWall);
+// Right wall
+const rightWall = new THREE.Mesh(sideWallGeo, caseMat);
+rightWall.position.set(centerX + kbWidth*0.5 + 0.6 + wallThick*0.5, -0.3 + wallHeight*0.5 - PCB_THICKNESS*0.5, 0);
+rightWall.castShadow = true; rightWall.receiveShadow = true;
+scene.add(rightWall);
+
+// ----------------------------------------------------------
+// Create Switches & Keycaps
+// ----------------------------------------------------------
+const switchHousingGeo = new THREE.BoxGeometry(0.7, SWITCH_HOUSING_H, 0.7);
+const switchStemGeo = new THREE.CylinderGeometry(0.2, 0.15, SWITCH_STEM_H, 8);
+
+// Keycap geometry per key (rounded box)
+function createKeycapMesh(key) {
+  const w = key.w - KEY_GAP;
+  const d = 1 - KEY_GAP; // depth always 1u
+  // Use RoundedBoxGeometry for nice edges
+  const geo = new RoundedBoxGeometry(w, KEYCAP_H, d, 4, 0.05);
+  const mat = getKeycapMaterial(key.type);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.userData = { key };
+  return mesh;
+}
+
+function createSwitchGroup() {
+  const group = new THREE.Group();
+  const housing = new THREE.Mesh(switchHousingGeo, switchHousingMat);
+  housing.position.y = SWITCH_HOUSING_H * 0.5;
+  housing.castShadow = true;
+  housing.receiveShadow = true;
+  group.add(housing);
+  const stem = new THREE.Mesh(switchStemGeo, switchStemMat);
+  stem.position.y = SWITCH_HOUSING_H + SWITCH_STEM_H * 0.5;
+  stem.castShadow = true;
+  group.add(stem);
+  // group's bottom is at y=0 (housing bottom)
+  return group;
+}
+
+const keyObjects = []; // each: { keyData, switchGroup, keycapMesh, switchFinalY, keycapFinalY, isPressed:false }
+
+allKeys.forEach(keyData => {
+  const switchGroup = createSwitchGroup();
+  switchGroup.position.set(keyData.x, SWITCH_BOTTOM_Y, keyData.z);
+  switchGroup.visible = false; // will be shown during animation
+  scene.add(switchGroup);
+
+  const keycapMesh = createKeycapMesh(keyData);
+  keycapMesh.position.set(keyData.x, KEYCAP_CENTER_Y, keyData.z);
+  keycapMesh.visible = false;
+  scene.add(keycapMesh);
+
+  keyObjects.push({
+    keyData,
+    switchGroup,
+    keycapMesh,
+    switchFinalY: SWITCH_BOTTOM_Y,
+    keycapFinalY: KEYCAP_CENTER_Y,
+    isPressed: false,
+    pressOffset: 0
+  });
+});
+
+// ----------------------------------------------------------
+// Animation System
+// ----------------------------------------------------------
+const animations = []; // each: { obj, prop, start, end, startTime, duration, easing, onComplete, done }
+let animationStartTime = 0;
+let assemblyComplete = false;
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) { const c1 = 1.70158; const c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+
+function addAnimation(obj, prop, start, end, startTime, duration, easing=easeOutCubic, onComplete) {
+  animations.push({
+    obj, prop, start, end,
+    startTime: startTime * timeScale,
+    duration: duration * timeScale,
+    easing,
+    onComplete,
+    done: false
+  });
+}
+
+function resetAssembly() {
+  // Reset meshes to initial positions
+  pcbMesh.position.y = -5;
+  foamMesh.position.y = -5;
+  plateMesh.position.y = 5;
+  keyObjects.forEach(o => {
+    o.switchGroup.position.y = 5;
+    o.switchGroup.visible = true;
+    o.keycapMesh.position.y = 5;
+    o.keycapMesh.visible = true;
+    o.isPressed = false;
+    o.pressOffset = 0;
+    o.keycapMesh.position.y = 5; // will be animated
+  });
+  // Clear animations
+  animations.length = 0;
+  assemblyComplete = false;
+
+  // Rebuild timeline
+  let t = 0;
+  // PCB
+  addAnimation(pcbMesh, 'position.y', -5, PCB_TOP_Y - PCB_THICKNESS*0.5, t, PCB_DUR);
+  t += PCB_DUR;
+  // Foam
+  addAnimation(foamMesh, 'position.y', -5, FOAM_BOTTOM_Y + FOAM_THICKNESS*0.5, t, FOAM_DUR);
+  t += FOAM_DUR;
+  // Plate
+  addAnimation(plateMesh, 'position.y', 5, PLATE_BOTTOM_Y + PLATE_THICKNESS*0.5, t, PLATE_DUR);
+  t += PLATE_DUR;
+  // Switches
+  keyObjects.forEach((o, i) => {
+    const st = t + i * SWITCH_STAGGER;
+    addAnimation(o.switchGroup, 'position.y', 5, o.switchFinalY, st, SWITCH_DUR, easeOutBack, () => {
+      o.switchGroup.visible = true;
+    });
+  });
+  t += (keyObjects.length - 1) * SWITCH_STAGGER + SWITCH_DUR;
+  // Keycaps
+  keyObjects.forEach((o, i) => {
+    const st = t + i * KEYCAP_STAGGER;
+    addAnimation(o.keycapMesh, 'position.y', 5, o.keycapFinalY, st, KEYCAP_DUR, easeOutBack, () => {
+      o.keycapMesh.visible = true;
+    });
+  });
+  t += (keyObjects.length - 1) * KEYCAP_STAGGER + KEYCAP_DUR;
+
+  // Mark assembly complete after last animation
+  const lastAnim = animations[animations.length - 1];
+  if (lastAnim) {
+    const origComplete = lastAnim.onComplete;
+    lastAnim.onComplete = () => {
+      if (origComplete) origComplete();
+      assemblyComplete = true;
+    };
+  }
+
+  animationStartTime = performance.now();
+}
+
+// Initial assembly start
+resetAssembly();
+
+// ----------------------------------------------------------
+// Press Animation System
+// ----------------------------------------------------------
+const pressAnimations = []; // { keyObj, targetOffset, startTime, duration, direction: 1 for down, -1 for up, done }
+
+function triggerPress(keyObj, down) {
+  if (down) {
+    if (keyObj.isPressed) return;
+    keyObj.isPressed = true;
+    const startOffset = keyObj.pressOffset;
+    const targetOffset = -0.15; // press down 0.15 units
+    pressAnimations.push({
+      keyObj, startOffset, targetOffset,
+      startTime: performance.now(),
+      duration: PRESS_DOWN_DUR * 1000 * timeScale,
+      done: false
+    });
+    playSound(keyObj.keyData.type);
+  } else {
+    if (!keyObj.isPressed) return;
+    keyObj.isPressed = false;
+    const startOffset = keyObj.pressOffset;
+    const targetOffset = 0;
+    pressAnimations.push({
+      keyObj, startOffset, targetOffset,
+      startTime: performance.now(),
+      duration: PRESS_UP_DUR * 1000 * timeScale,
+      done: false
+    });
+  }
+}
+
+function updatePressAnimations(now) {
+  for (let i = pressAnimations.length - 1; i >= 0; i--) {
+    const pa = pressAnimations[i];
+    const elapsed = now - pa.startTime;
+    if (elapsed >= pa.duration) {
+      pa.keyObj.pressOffset = pa.targetOffset;
+      pa.keyObj.keycapMesh.position.y = pa.keyObj.keycapFinalY + pa.keyObj.pressOffset;
+      pressAnimations.splice(i, 1);
+    } else {
+      const t = elapsed / pa.duration;
+      const eased = easeOutCubic(t);
+      pa.keyObj.pressOffset = pa.startOffset + (pa.targetOffset - pa.startOffset) * eased;
+      pa.keyObj.keycapMesh.position.y = pa.keyObj.keycapFinalY + pa.keyObj.pressOffset;
+    }
+  }
+}
+
+// ----------------------------------------------------------
+// Audio (Web Audio API)
+// ----------------------------------------------------------
+let audioCtx = null;
+let audioEnabled = false;
+const audioHint = document.getElementById('audio-hint');
+let muted = false;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioEnabled = true;
+  audioHint.classList.remove('visible');
+}
+
+function playSound(type) {
+  if (!audioEnabled || muted || !audioCtx) return;
+  // Ensure context running (browser policy)
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  // Configure per type
+  let freq = 200, detune = 0, wave = 'sine', attack = 0.005, decay = 0.05, gainVal = 0.15;
+  switch(type) {
+    case 'alpha': freq = 220; decay = 0.04; gainVal = 0.12; break;
+    case 'mod': freq = 180; decay = 0.05; gainVal = 0.1; wave = 'triangle'; break;
+    case 'shift': freq = 160; decay = 0.06; gainVal = 0.11; wave = 'triangle'; break;
+    case 'ctrl': freq = 150; decay = 0.07; gainVal = 0.1; wave = 'sawtooth'; break;
+    case 'alt': freq = 170; decay = 0.06; gainVal = 0.1; wave = 'sine'; break;
+    case 'fn': freq = 190; decay = 0.05; gainVal = 0.1; break;
+    case 'space': freq = 100; decay = 0.12; gainVal = 0.18; wave = 'square'; break;
+    case 'enter': freq = 200; decay = 0.08; gainVal = 0.14; wave = 'sine'; break;
+    case 'backspace': freq = 170; decay = 0.07; gainVal = 0.13; wave = 'triangle'; break;
+  }
+  osc.type = wave;
+  osc.frequency.value = freq;
+  osc.detune.value = detune;
+  gain.gain.setValueAtTime(0, now);
+  gain.gain.linearRampToValueAtTime(gainVal, now + attack);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+  osc.start(now);
+  osc.stop(now + decay + 0.02);
+}
+
+// ----------------------------------------------------------
+// Interaction: Raycasting & Keyboard
+// ----------------------------------------------------------
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const keycapMeshes = keyObjects.map(o => o.keycapMesh);
+
+function onPointerDown(event) {
+  if (!assemblyComplete) return;
+  initAudio();
+  audioHint.classList.remove('visible');
+  // Normalize pointer
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects(keycapMeshes, false);
+  if (intersects.length > 0) {
+    const mesh = intersects[0].object;
+    const keyObj = mesh.userData.key;
+    // find keyObj in keyObjects
+    const ko = keyObjects.find(o => o.keycapMesh === mesh);
+    if (ko) triggerPress(ko, true);
+  }
+}
+
+function onPointerUp(event) {
+  if (!assemblyComplete) return;
+  // Release any pressed key under pointer (or all)
+  const rect = canvas.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const intersects = raycaster.intersectObjects(keycapMeshes, false);
+  if (intersects.length > 0) {
+    const mesh = intersects[0].object;
+    const ko = keyObjects.find(o => o.keycapMesh === mesh);
+    if (ko) triggerPress(ko, false);
+  } else {
+    // Release all pressed keys (safety)
+    keyObjects.forEach(ko => { if (ko.isPressed) triggerPress(ko, false); });
+  }
+}
+
+canvas.addEventListener('pointerdown', onPointerDown);
+canvas.addEventListener('pointerup', onPointerUp);
+canvas.addEventListener('pointerleave', () => {
+  keyObjects.forEach(ko => { if (ko.isPressed) triggerPress(ko, false); });
+});
+
+// Keyboard mapping
+const codeToLabel = {
+  'Escape':'Esc', 'Digit1':'1', 'Digit2':'2', 'Digit3':'3', 'Digit4':'4', 'Digit5':'5',
+  'Digit6':'6', 'Digit7':'7', 'Digit8':'8', 'Digit9':'9', 'Digit0':'0',
+  'Minus':'-', 'Equal':'=', 'Backspace':'Backsp',
+  'Tab':'Tab', 'KeyQ':'Q', 'KeyW':'W', 'KeyE':'E', 'KeyR':'R', 'KeyT':'T',
+  'KeyY':'Y', 'KeyU':'U', 'KeyI':'I', 'KeyO':'O', 'KeyP':'P',
+  'BracketLeft':'[', 'BracketRight':']', 'Backslash':'\\',
+  'CapsLock':'Caps', 'KeyA':'A', 'KeyS':'S', 'KeyD':'D', 'KeyF':'F', 'KeyG':'G',
+  'KeyH':'H', 'KeyJ':'J', 'KeyK':'K', 'KeyL':'L',
+  'Semicolon':';', 'Quote':"'", 'Enter':'Enter',
+  'ShiftLeft':'Shift', 'ShiftRight':'Shift',
+  'KeyZ':'Z', 'KeyX':'X', 'KeyC':'C', 'KeyV':'V', 'KeyB':'B', 'KeyN':'N',
+  'KeyM':'M', 'Comma':',', 'Period':'.', 'Slash':'/',
+  'ControlLeft':'Ctrl', 'ControlRight':'Ctrl',
+  'MetaLeft':'Win', 'MetaRight':'Win',
+  'AltLeft':'Alt', 'AltRight':'Alt',
+  'Space':'Space',
+  'Fn':'Fn' // not standard, but for completeness
+};
+
+// Build label -> keyObjects map (first match per label, but for mods we may have multiple)
+const labelMap = {};
+keyObjects.forEach(ko => {
+  const lbl = ko.keyData.label;
+  if (!labelMap[lbl]) labelMap[lbl] = [];
+  labelMap[lbl].push(ko);
+});
+
+function handleKeydown(event) {
+  if (!assemblyComplete) return;
+  initAudio();
+  audioHint.classList.remove('visible');
+  const code = event.code;
+  const label = codeToLabel[code];
+  if (!label) return;
+  const candidates = labelMap[label];
+  if (!candidates) return;
+  // For modifier keys with duplicates (Shift, Ctrl, Alt), press the first one that matches type if possible
+  let target = candidates[0];
+  if (label === 'Shift') target = candidates.find(k => k.keyData.type === 'shift') || candidates[0];
+  else if (label === 'Ctrl') target = candidates.find(k => k.keyData.type === 'ctrl') || candidates[0];
+  else if (label === 'Alt') target = candidates.find(k => k.keyData.type === 'alt') || candidates[0];
+  if (target && !target.isPressed) triggerPress(target, true);
+  event.preventDefault(); // prevent typing in page
+}
+
+function handleKeyup(event) {
+  if (!assemblyComplete) return;
+  const code = event.code;
+  const label = codeToLabel[code];
+  if (!label) return;
+  const candidates = labelMap[label];
+  if (!candidates) return;
+  let target = candidates[0];
+  if (label === 'Shift') target = candidates.find(k => k.keyData.type === 'shift') || candidates[0];
+  else if (label === 'Ctrl') target = candidates.find(k => k.keyData.type === 'ctrl') || candidates[0];
+  else if (label === 'Alt') target = candidates.find(k => k.keyData.type === 'alt') || candidates[0];
+  if (target && target.isPressed) triggerPress(target, false);
+}
+
+window.addEventListener('keydown', handleKeydown);
+window.addEventListener('keyup', handleKeyup);
+
+// Show audio hint on first load (if not interacted)
+setTimeout(() => {
+  if (!audioEnabled) audioHint.classList.add('visible');
+}, 2000);
+
+// ----------------------------------------------------------
+// Controls: Replay & Mute
+// ----------------------------------------------------------
+document.getElementById('replay').addEventListener('click', () => {
+  initAudio();
+  resetAssembly();
+});
+document.getElementById('mute').addEventListener('click', (e) => {
+  muted = !muted;
+  e.target.textContent = muted ? 'Unmute' : 'Mute';
+});
+
+// ----------------------------------------------------------
+// Render Loop
+// ----------------------------------------------------------
+function animate() {
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const elapsed = (now - animationStartTime) / 1000; // seconds
+
+  // Update assembly animations
+  if (!assemblyComplete) {
+    animations.forEach(anim => {
+      if (anim.done) return;
+      if (elapsed < anim.startTime) return;
+      const localT = (elapsed - anim.startTime) / anim.duration;
+      if (localT >= 1) {
+        anim.obj[anim.prop] = anim.end;
+        anim.done = true;
+        if (anim.onComplete) anim.onComplete();
+      } else {
+        const eased = anim.easing(localT);
+        anim.obj[anim.prop] = anim.start + (anim.end - anim.start) * eased;
+      }
+    });
+  }
+
+  // Update press animations
+  updatePressAnimations(now);
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ----------------------------------------------------------
+// Resize Handler
+// ----------------------------------------------------------
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+});
+
+</script>
+</body>
+</html>
