@@ -409,12 +409,12 @@ for(const s of [-1,1]) addRail(-4,59,33.6,s*11.45);
 // Pool terrace and water feature
 box(25,.38,8.5,mats.white,10,32.7,0);
 box(20,.16,5.7,mats.pool,10,32.98,0);
-for(let i=0;i<4;i++) {
-  box(2.4,.18,1.15,mats.canvasMat,-3+i*5.4,32.96,s*3.1);
-  box(2.1,.65,.16,mats.white,-3+i*5.4,33.25,s*3.7);
-}
 for(const s of [-1,1]) {
-  cylinderBetween(new THREE.Vector3(-3,33, s*3.7),new THREE.Vector3(3,33,s*3.7),.08,mats.rail,8);
+  for(let i=0;i<4;i++) {
+    box(2.4,.18,1.15,mats.canvasMat,-3+i*5.4,32.96,s*3.1);
+    box(2.1,.65,.16,mats.white,-3+i*5.4,33.25,s*3.7);
+  }
+  cylinderBetween(new THREE.Vector3(-3,33,s*3.7),new THREE.Vector3(3,33,s*3.7),.08,mats.rail,8);
 }
 
 // Funnel and exhaust details
