@@ -1,0 +1,3191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERVER ARCHITECTURE LAB</title>
+<style>
+:root { --bg:#0d1117; --panel:#161b22; --panel-border:#30363d; --text:#e6edf3; --text-dim:#8b949e; --accent:#58a6ff; --accent-hover:#79b8ff; --warn:#d29922; --danger:#f85149; --ok:#3fb950; --metal:#2d333b; --metal-light:#3d444d; --pcb:#0d2818; --pcb-trace:#1a4a2a; --copper:#b87333; --gold:#d4a843; --silver:#c0c0c0; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'IBM Plex Mono',ui-monospace,SFMono,Menlo,Consolas,monospace; background:var(--bg); color:var(--text); overflow:hidden; height:100vh; display:flex; flex-direction:column; }
+#canvas { width:100%; height:100%; display:block; }
+#ui-root { position:fixed; inset:0; pointer-events:none; z-index:10; font-size:12px; line-height:1.4; }
+#ui-root * { pointer-events:auto; }
+.panel { background:var(--panel); border:1px solid var(--panel-border); border-radius:6px; padding:12px; color:var(--text); }
+.btn { background:var(--metal); border:1px solid var(--panel-border); color:var(--text); padding:6px 12px; border-radius:4px; cursor:pointer; font:inherit; font-size:11px; transition:all 0.15s; white-space:nowrap; }
+.btn:hover { background:var(--metal-light); border-color:var(--accent); }
+.btn.active { background:var(--accent); border-color:var(--accent); color:#000; }
+.btn.warn { border-color:var(--warn); color:var(--warn); }
+.btn.danger { border-color:var(--danger); color:var(--danger); }
+.btn.ok { border-color:var(--ok); color:var(--ok); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.col { display:flex; flex-direction:column; gap:8px; }
+.label { color:var(--text-dim); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+.value { color:var(--text); font-size:13px; font-weight:500; }
+.stat-row { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--panel-border); font-size:11px; }
+.stat-row:last-child { border:none; }
+.stat-label { color:var(--text-dim); }
+.stat-value { color:var(--text); font-variant-numeric:tabular-nums; }
+.section { margin-bottom:16px; }
+.section-title { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.divider { height:1px; background:var(--panel-border); margin:12px 0; }
+.badge { display:inline-block; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:500; }
+.badge-1u { background:#238636; color:#fff; }
+.badge-2u { background:#8957e5; color:#fff; }
+.badge-4u { background:#d29922; color:#000; }
+.toolbar { display:flex; gap:6px; flex-wrap:wrap; }
+.toolbar-group { display:flex; gap:4px; padding:0 8px; border-right:1px solid var(--panel-border); }
+.toolbar-group:last-child { border:none; }
+.top-bar { position:fixed; top:0; left:0; right:0; height:40px; background:rgba(13,17,23,0.95); border-bottom:1px solid var(--panel-border); display:flex; align-items:center; justify-content:space-between; padding:0 16px; z-index:20; backdrop-filter:blur(8px); }
+.top-bar-left { display:flex; align-items:center; gap:16px; }
+.top-bar-title { font-size:14px; font-weight:600; letter-spacing:0.5px; }
+.top-bar-stats { display:flex; gap:16px; font-size:11px; color:var(--text-dim); }
+.top-bar-right { display:flex; align-items:center; gap:12px; }
+.mode-indicator { padding:4px 10px; border-radius:4px; font-size:10px; font-weight:500; text-transform:uppercase; }
+.mode-rack { background:#238636; }
+.mode-slice { background:#8957e5; }
+.left-panel { position:fixed; top:40px; left:0; bottom:0; width:300px; overflow:auto; padding:16px; background:rgba(22,27,34,0.98); border-right:1px solid var(--panel-border); z-index:15; }
+.right-panel { position:fixed; top:40px; right:0; bottom:0; width:360px; overflow:auto; padding:16px; background:rgba(22,27,34,0.98); border-left:1px solid var(--panel-border); z-index:15; }
+.bottom-toolbar { position:fixed; bottom:0; left:0; right:0; height:56px; background:rgba(13,17,23,0.95); border-top:1px solid var(--panel-border); display:flex; align-items:center; justify-content:center; padding:0 16px; z-index:20; backdrop-filter:blur(8px); }
+.server-list-item { display:flex; align-items:center; gap:8px; padding:8px; border-radius:4px; cursor:pointer; transition:background 0.1s; }
+.server-list-item:hover { background:var(--metal); }
+.server-list-item.selected { background:var(--accent); color:#000; }
+.server-list-item .srv-info { flex:1; min-width:0; }
+.server-list-item .srv-name { font-weight:500; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.server-list-item .srv-meta { font-size:10px; color:var(--text-dim); }
+.server-list-item.selected .srv-meta { color:rgba(0,0,0,0.7); }
+.rack-visual { margin-top:8px; }
+.rack-unit { height:6px; border:1px solid var(--panel-border); margin-bottom:1px; position:relative; background:var(--bg); border-radius:2px; overflow:hidden; }
+.rack-unit.occupied { background:linear-gradient(90deg, var(--metal), var(--metal-light)); }
+.rack-unit.occupied::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; }
+.rack-unit.u42.occupied::before { background:#d29922; }
+.rack-unit.u39.occupied::before { background:#d29922; }
+.rack-unit.u38.occupied::before { background:#8957e5; }
+.rack-unit.u37.occupied::before { background:#8957e5; }
+.rack-unit.u36.occupied::before { background:#238636; }
+.rack-unit.u35.occupied::before { background:#238636; }
+.rack-unit.u34.occupied::before { background:#d29922; }
+.rack-unit.u31.occupied::before { background:#d29922; }
+.rack-unit.u30.occupied::before { background:#8957e5; }
+.rack-unit.u29.occupied::before { background:#d29922; }
+.rack-unit.u28.occupied::before { background:#d29922; }
+.rack-unit.selected { outline:2px solid var(--accent); outline-offset:-2px; }
+.rack-unit .unit-num { position:absolute; left:2px; top:0; bottom:0; width:18px; font-size:7px; color:var(--text-dim); display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.component-item { padding:6px 8px; border-radius:3px; cursor:pointer; font-size:11px; border:1px solid transparent; margin:2px 0; }
+.component-item:hover { background:var(--metal); border-color:var(--panel-border); }
+.component-item.selected { background:var(--accent); color:#000; border-color:var(--accent); }
+.health-metric { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--panel-border); }
+.health-metric:last-child { border:none; }
+.health-label { font-size:11px; color:var(--text-dim); }
+.health-value { font-size:11px; font-variant-numeric:tabular-nums; font-weight:500; }
+.health-value.warn { color:var(--warn); }
+.health-value.danger { color:var(--danger); }
+.health-value.ok { color:var(--ok); }
+.compare-bar { height:10px; background:var(--bg); border-radius:3px; overflow:hidden; margin:4px 0 8px; border:1px solid var(--panel-border); }
+.compare-bar-fill { height:100%; border-radius:2px; transition:width 0.3s; }
+.compare-row { margin-bottom:12px; }
+.compare-label { display:flex; justify-content:space-between; font-size:10px; margin-bottom:2px; }
+.archetype-card { padding:12px; background:var(--metal); border:1px solid var(--panel-border); border-radius:6px; margin-bottom:8px; cursor:pointer; transition:all 0.15s; }
+.archetype-card:hover { border-color:var(--accent); }
+.archetype-card.selected { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.archetype-name { font-weight:500; font-size:12px; margin-bottom:4px; }
+.archetype-desc { font-size:10px; color:var(--text-dim); line-height:1.5; }
+.tooltip { position:fixed; background:var(--panel); border:1px solid var(--panel-border); border-radius:4px; padding:8px 12px; font-size:11px; pointer-events:none; z-index:100; max-width:280px; box-shadow:0 8px 24px rgba(0,0,0,0.4); opacity:0; transform:translateY(4px); transition:opacity 0.15s, transform 0.15s; }
+.tooltip.visible { opacity:1; transform:translateY(0); }
+.tooltip-title { font-weight:500; margin-bottom:4px; color:var(--accent); }
+.tooltip-row { display:flex; justify-content:space-between; gap:16px; margin:2px 0; font-size:10px; }
+.tooltip-row .k { color:var(--text-dim); }
+.tooltip-row .v { color:var(--text); text-align:right; }
+.failure-btn { width:100%; text-align:left; padding:8px; margin:4px 0; background:var(--metal); border:1px solid var(--panel-border); border-radius:4px; color:var(--text); font:inherit; font-size:11px; cursor:pointer; }
+.failure-btn:hover { border-color:var(--danger); background:rgba(248,81,73,0.1); }
+.failure-btn.active { border-color:var(--danger); background:rgba(248,81,73,0.2); }
+.camera-preset-btn { width:100%; text-align:left; padding:6px 10px; margin:2px 0; background:transparent; border:1px solid var(--panel-border); border-radius:3px; color:var(--text); font:inherit; font-size:10px; cursor:pointer; }
+.camera-preset-btn:hover { background:var(--metal); border-color:var(--accent); }
+.selectable:hover { outline:2px solid var(--accent); outline-offset:2px; }
+@media (max-width:1200px) {
+  .left-panel { width:260px; }
+  .right-panel { width:320px; }
+}
+@font-face { font-family:'IBM Plex Mono'; src:local('IBM Plex Mono'), local('Menlo'), local('Consolas'), local('Monospace'); }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="ui-root">
+<div class="top-bar">
+<div class="top-bar-left">
+<div class="top-bar-title">SERVER ARCHITECTURE LAB</div>
+<div class="top-bar-stats">
+<span id="stat-fps">FPS: --</span>
+<span id="stat-draws">Draw: --</span>
+<span id="stat-tris">Tris: --</span>
+</div>
+</div>
+<div class="top-bar-right">
+<span class="mode-indicator mode-rack" id="mode-indicator">RACK VIEW</span>
+</div>
+</div>
+
+<div class="left-panel">
+<div class="panel">
+<div class="section-title">VIEW MODE</div>
+<div class="row" style="gap:6px;">
+<button class="btn" id="btn-rack-view" style="flex:1;">RACK VIEW</button>
+<button class="btn" id="btn-slice-view" style="flex:1;">SLICE VIEW</button>
+</div>
+</div>
+
+<div class="panel">
+<div class="section-title">RACK CAMERA PRESETS</div>
+<div class="col">
+<button class="camera-preset-btn" data-preset="rack-front">FULL RACK FRONT</button>
+<button class="camera-preset-btn" data-preset="rack-34">FULL RACK 3/4</button>
+<button class="camera-preset-btn" data-preset="rack-side">FULL RACK SIDE</button>
+<button class="camera-preset-btn" data-preset="rack-rear">FULL RACK REAR</button>
+</div>
+</div>
+
+<div class="panel">
+<div class="section-title">RACK OVERVIEW</div>
+<div class="rack-visual" id="rack-visual"></div>
+</div>
+
+<div class="panel">
+<div class="section-title">INSTALLED SERVERS</div>
+<div id="server-list"></div>
+</div>
+</div>
+
+<div class="right-panel">
+<div class="panel" id="server-info-panel">
+<div class="section-title">SELECT A SERVER</div>
+<div style="color:var(--text-dim); font-size:11px; text-align:center; padding:20px;">Click a server in the rack or list to inspect</div>
+</div>
+
+<div class="panel" id="component-info-panel" style="display:none;">
+<div class="section-title">COMPONENT DETAILS</div>
+<div id="component-detail"></div>
+</div>
+
+<div class="panel">
+<div class="section-title">SERVER HEALTH</div>
+<div id="health-panel">
+<div style="color:var(--text-dim); font-size:11px; text-align:center; padding:10px;">Select a server</div>
+</div>
+</div>
+
+<div class="panel">
+<div class="section-title">ARCHITECTURE REASONING</div>
+<div id="arch-reasoning" style="font-size:11px; color:var(--text-dim); line-height:1.6;">Select a server to see design rationale</div>
+</div>
+</div>
+
+<div class="bottom-toolbar">
+<div class="toolbar">
+<div class="toolbar-group">
+<button class="btn" id="btn-open-cover" title="Open/Close Top Cover">OPEN COVER</button>
+<button class="btn" id="btn-cutaway" title="Chassis Cutaway">CUTAWAY</button>
+<button class="btn" id="btn-explode" title="Exploded View">EXPLODE</button>
+</div>
+<div class="toolbar-group">
+<button class="btn" id="btn-airflow" title="Show Airflow">AIRFLOW</button>
+<button class="btn" id="btn-power" title="Show Power Paths">POWER</button>
+<button class="btn" id="btn-data" title="Show Data Paths">DATA PATHS</button>
+</div>
+<div class="toolbar-group">
+<button class="btn warn" id="btn-failures" title="Failure Simulation">FAILURES</button>
+<button class="btn" id="btn-compare" title="Archetype Comparison">COMPARE</button>
+<button class="btn danger" id="btn-reset" title="Reset All">RESET</button>
+</div>
+<div class="toolbar-group" id="slice-nav" style="display:none;">
+<button class="btn" id="btn-prev-server" title="Previous Server">&lt; PREV</button>
+<span id="slice-server-pos" style="display:flex; align-items:center; padding:0 12px; font-size:11px; color:var(--text-dim);">SERVER 01 / 08</span>
+<button class="btn" id="btn-next-server" title="Next Server">NEXT &gt;</button>
+</div>
+</div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div id="failure-modal" class="panel" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:50; display:none; min-width:320px; max-width:90vw;">
+<div class="section-title">FAILURE SIMULATION</div>
+<div class="col" style="gap:4px;">
+<button class="failure-btn" data-failure="fan">FAN FAILURE — One fan stops, others compensate, temps rise</button>
+<button class="failure-btn" data-failure="psu">PSU FAILURE — Redundant PSU takes load, remaining PSU stressed</button>
+<button class="failure-btn" data-failure="drive">DRIVE FAILURE — Drive shows degraded, array status changes</button>
+<button class="failure-btn" data-failure="gpu-overheat">GPU OVERHEAT — Temp spikes, fans max out, throttle warning</button>
+<button class="failure-btn" data-failure="net-link">NETWORK LINK FAILURE — Port link down, failover if configured</button>
+</div>
+<div class="divider"></div>
+<div class="row" style="justify-content:flex-end;">
+<button class="btn" id="btn-clear-failures">CLEAR ALL FAILURES</button>
+<button class="btn" id="btn-close-failure-modal">CLOSE</button>
+</div>
+</div>
+
+<div id="compare-modal" class="panel" style="position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:50; display:none; min-width:480px; max-width:90vw; max-height:80vh; overflow:auto;">
+<div class="section-title">ARCHETYPE COMPARISON</div>
+<div id="compare-content"></div>
+<div class="divider"></div>
+<div class="row" style="justify-content:flex-end;">
+<button class="btn" id="btn-close-compare">CLOSE</button>
+</div>
+</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ============================================================================
+// CONSTANTS & CONFIGURATION
+// ============================================================================
+const U_HEIGHT = 44.45; // mm
+const RACK_U = 42;
+const RACK_WIDTH = 600; // mm (19" = 482.6mm, plus rails)
+const RACK_DEPTH = 1200; // mm
+const RACK_HEIGHT = RACK_U * U_HEIGHT;
+
+const SERVER_ARCHETYPES = {
+  'general-purpose': {
+    name: 'GENERAL PURPOSE COMPUTE',
+    shortName: 'GEN-PURPOSE',
+    height: 1,
+    purpose: 'Web hosting, APIs, lightweight services, application hosting, general compute',
+    color: 0x238636,
+    cpuCount: 2,
+    dimmSlots: 24,
+    dimmPopulated: 16,
+    gpuCount: 0,
+    driveBays: 8,
+    driveType: '2.5"',
+    psuCount: 2,
+    fanCount: 6,
+    nicPorts: 4,
+    mgmtPort: true,
+    powerEstimate: 650,
+    coolingLevel: 2,
+    description: 'Balanced architecture for general workloads. Moderate CPU, memory, and I/O with efficient power usage. Dual-socket design provides redundancy and throughput for typical cloud workloads.'
+  },
+  'virtualization': {
+    name: 'VIRTUALIZATION SERVER',
+    shortName: 'VIRT-HOST',
+    height: 2,
+    purpose: 'Virtualization, VM hosting, container hosting, private cloud, hypervisor workloads',
+    color: 0x8957e5,
+    cpuCount: 2,
+    dimmSlots: 32,
+    dimmPopulated: 32,
+    gpuCount: 0,
+    driveBays: 8,
+    driveType: '2.5" NVMe',
+    psuCount: 2,
+    fanCount: 8,
+    nicPorts: 6,
+    mgmtPort: true,
+    powerEstimate: 1100,
+    coolingLevel: 3,
+    description: 'Maximum memory capacity for VM density. Fully populated DIMM slots across all channels. High-core CPUs with large L3 cache. Multiple high-speed NICs for vMotion and storage networks. Hot-swap fans for zero-downtime maintenance.'
+  },
+  'gpu-ai': {
+    name: 'GPU / AI COMPUTE SERVER',
+    shortName: 'AI-COMPUTE',
+    height: 4,
+    purpose: 'Machine learning, AI training, AI inference, scientific computing, rendering, accelerator workloads',
+    color: 0xd29922,
+    cpuCount: 2,
+    dimmSlots: 32,
+    dimmPopulated: 24,
+    gpuCount: 8,
+    driveBays: 8,
+    driveType: 'NVMe U.2',
+    psuCount: 4,
+    fanCount: 12,
+    nicPorts: 4,
+    mgmtPort: true,
+    powerEstimate: 7200,
+    coolingLevel: 5,
+    description: 'GPU servers use very high airflow and large power systems because accelerator modules can dissipate 300-700W each. Short front-to-rear airflow paths reduce pressure losses. GPU interconnect fabric (NVLink/NVSwitch) requires dedicated PCB routing. 4+ PSUs provide N+N redundancy for 6-10kW loads.'
+  },
+  'storage': {
+    name: 'STORAGE SERVER',
+    shortName: 'STORAGE',
+    height: 4,
+    purpose: 'NAS, backups, object storage, archival storage, large storage pools',
+    color: 0x58a6ff,
+    cpuCount: 2,
+    dimmSlots: 16,
+    dimmPopulated: 12,
+    gpuCount: 0,
+    driveBays: 36,
+    driveType: '3.5" SAS/SATA',
+    psuCount: 2,
+    fanCount: 6,
+    nicPorts: 4,
+    mgmtPort: true,
+    powerEstimate: 1000,
+    coolingLevel: 3,
+    description: 'Storage architecture follows DRIVE → BACKPLANE → HBA/CONTROLLER → CPU/MEMORY → NETWORK. Front dominated by hot-swap drive cages with expander backplanes. Moderate CPU handles filesystem/metadata. High airflow through drive cages prevents thermal throttling. Dual controllers for HA.'
+  },
+  'database': {
+    name: 'DATABASE / HIGH-MEMORY SERVER',
+    shortName: 'DATABASE',
+    height: 2,
+    purpose: 'Databases, analytics, transactional systems, large in-memory workloads',
+    color: 0xf85149,
+    cpuCount: 2,
+    dimmSlots: 32,
+    dimmPopulated: 32,
+    gpuCount: 0,
+    driveBays: 12,
+    driveType: 'NVMe U.2',
+    psuCount: 2,
+    fanCount: 8,
+    nicPorts: 4,
+    mgmtPort: true,
+    powerEstimate: 1600,
+    coolingLevel: 4,
+    description: 'Memory capacity and bandwidth are paramount. All DIMM slots populated with high-capacity RDIMMs/LRDIMMs. NVMe drives connect directly to CPU PCIe lanes for minimal latency. Large CPU heatsinks with heatpipes. High-speed NICs (100-400Gb) for distributed transactions.'
+  },
+  'network': {
+    name: 'NETWORK APPLIANCE',
+    shortName: 'NET-APPLIANCE',
+    height: 1,
+    purpose: 'Routing, firewalling, load balancing, switching',
+    color: 0xa371f7,
+    cpuCount: 1,
+    dimmSlots: 8,
+    dimmPopulated: 4,
+    gpuCount: 0,
+    driveBays: 2,
+    driveType: 'M.2',
+    psuCount: 2,
+    fanCount: 5,
+    nicPorts: 24,
+    mgmtPort: true,
+    powerEstimate: 400,
+    coolingLevel: 2,
+    description: 'Network-oriented CPU with many PCIe lanes for high port count. Minimal local storage (boot only). Front-to-rear airflow optimized for dense port cages. Redundant PSUs critical for network uptime. BMC with dedicated management network.'
+  }
+};
+
+const RACK_LAYOUT = [
+  { u: 42, height: 4, archetype: 'gpu-ai', name: 'AI-COMPUTE-01', position: 'U39-U42' },
+  { u: 38, height: 2, archetype: 'virtualization', name: 'VIRT-HOST-01', position: 'U37-U38' },
+  { u: 36, height: 1, archetype: 'general-purpose', name: 'GEN-COMPUTE-01', position: 'U36' },
+  { u: 35, height: 1, archetype: 'general-purpose', name: 'GEN-COMPUTE-02', position: 'U35' },
+  { u: 34, height: 4, archetype: 'storage', name: 'STORAGE-01', position: 'U31-U34' },
+  { u: 30, height: 1, archetype: 'network', name: 'NET-APP-01', position: 'U30' },
+  { u: 29, height: 2, archetype: 'database', name: 'DATABASE-01', position: 'U28-U29' },
+];
+
+// ============================================================================
+// THREE.JS SETUP
+// ============================================================================
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.physicallyCorrectLights = true;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.Fog(0x0d1117, 2000, 5000);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+camera.position.set(1800, 1200, 2200);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 300;
+controls.maxDistance = 5000;
+controls.target.set(0, RACK_HEIGHT / 2, 0);
+
+// Lighting
+const ambient = new THREE.HemisphereLight(0xffffff, 0x1a1f2e, 0.6);
+scene.add(ambient);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+keyLight.position.set(1500, 2000, 1000);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 100;
+keyLight.shadow.camera.far = 5000;
+keyLight.shadow.camera.left = -1500;
+keyLight.shadow.camera.right = 1500;
+keyLight.shadow.camera.top = 1500;
+keyLight.shadow.camera.bottom = -1500;
+keyLight.shadow.bias = -0.0005;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x88aaff, 0.5);
+fillLight.position.set(-1000, 500, -800);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffeedd, 0.3);
+rimLight.position.set(0, -1000, -1000);
+scene.add(rimLight);
+
+// ============================================================================
+// MATERIALS LIBRARY
+// ============================================================================
+const Materials = {
+  chassis: new THREE.MeshStandardMaterial({ color: 0x1a1e23, metalness: 0.8, roughness: 0.4 }),
+  chassisDark: new THREE.MeshStandardMaterial({ color: 0x0d1117, metalness: 0.9, roughness: 0.3 }),
+  metalBrushed: new THREE.MeshStandardMaterial({ color: 0x3d444d, metalness: 0.9, roughness: 0.25 }),
+  metalDark: new THREE.MeshStandardMaterial({ color: 0x21262d, metalness: 0.85, roughness: 0.35 }),
+  pcb: new THREE.MeshStandardMaterial({ color: 0x0d2818, metalness: 0.1, roughness: 0.8 }),
+  pcbDark: new THREE.MeshStandardMaterial({ color: 0x081a10, metalness: 0.05, roughness: 0.9 }),
+  heatsink: new THREE.MeshStandardMaterial({ color: 0x8a9199, metalness: 0.95, roughness: 0.15 }),
+  heatsinkDark: new THREE.MeshStandardMaterial({ color: 0x5a6169, metalness: 0.9, roughness: 0.2 }),
+  copper: new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 1.0, roughness: 0.1 }),
+  gold: new THREE.MeshStandardMaterial({ color: 0xd4a843, metalness: 1.0, roughness: 0.15 }),
+  silver: new THREE.MeshStandardMaterial({ color: 0xc0c0c0, metalness: 0.9, roughness: 0.2 }),
+  blackPlastic: new THREE.MeshStandardMaterial({ color: 0x0d1117, metalness: 0.0, roughness: 0.9 }),
+  whitePlastic: new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.0, roughness: 0.7 }),
+  fanBlade: new THREE.MeshStandardMaterial({ color: 0x161b22, metalness: 0.3, roughness: 0.6, side: THREE.DoubleSide }),
+  fanFrame: new THREE.MeshStandardMaterial({ color: 0x21262d, metalness: 0.5, roughness: 0.5 }),
+  driveBody: new THREE.MeshStandardMaterial({ color: 0x161b22, metalness: 0.7, roughness: 0.4 }),
+  driveLabel: new THREE.MeshStandardMaterial({ color: 0x30363d, metalness: 0.1, roughness: 0.8 }),
+  ledOff: new THREE.MeshBasicMaterial({ color: 0x1a1f2e }),
+  ledGreen: new THREE.MeshBasicMaterial({ color: 0x3fb950 }),
+  ledAmber: new THREE.MeshBasicMaterial({ color: 0xd29922 }),
+  ledRed: new THREE.MeshBasicMaterial({ color: 0xf85149 }),
+  ledBlue: new THREE.MeshBasicMaterial({ color: 0x58a6ff }),
+  portBody: new THREE.MeshStandardMaterial({ color: 0x0d1117, metalness: 0.6, roughness: 0.4 }),
+  cable: new THREE.MeshStandardMaterial({ color: 0x161b22, metalness: 0.1, roughness: 0.8 }),
+  grille: new THREE.MeshStandardMaterial({ color: 0x1a1e23, metalness: 0.8, roughness: 0.3 }),
+  glass: new THREE.MeshPhysicalMaterial({ color: 0x000000, metalness: 0.0, roughness: 0.05, transmission: 0.9, thickness: 2, clearcoat: 1, clearcoatRoughness: 0.1 }),
+  airflowParticle: new THREE.MeshBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.6, sizeAttenuation: true }),
+  powerPath: new THREE.MeshBasicMaterial({ color: 0xd29922, transparent: true, opacity: 0.8 }),
+  dataPath: new THREE.MeshBasicMaterial({ color: 0x58a6ff, transparent: true, opacity: 0.7 }),
+  highlight: new THREE.MeshStandardMaterial({ color: 0x58a6ff, metalness: 0.5, roughness: 0.3, emissive: 0x58a6ff, emissiveIntensity: 0.3 }),
+  wireframe: new THREE.MeshBasicMaterial({ color: 0x58a6ff, wireframe: true, transparent: true, opacity: 0.3 }),
+  cutaway: new THREE.MeshStandardMaterial({ color: 0x1a1e23, metalness: 0.8, roughness: 0.4, transparent: true, opacity: 0.15, side: THREE.DoubleSide }),
+};
+
+// ============================================================================
+// GEOMETRY FACTORY & CACHING
+// ============================================================================
+const GeometryCache = new Map();
+function getGeometry(key, creator) {
+  if (!GeometryCache.has(key)) GeometryCache.set(key, creator());
+  return GeometryCache.get(key);
+}
+
+const Geo = {
+  box: (w,h,d) => getGeometry(`box_${w}_${h}_${d}`, () => new THREE.BoxGeometry(w,h,d)),
+  cylinder: (r,t,h,rs=16) => getGeometry(`cyl_${r}_${t}_${h}_${rs}`, () => new THREE.CylinderGeometry(r,t,h,rs)),
+  sphere: (r,rs=16) => getGeometry(`sph_${r}_${rs}`, () => new THREE.SphereGeometry(r,rs,rs)),
+  plane: (w,h) => getGeometry(`plane_${w}_${h}`, () => new THREE.PlaneGeometry(w,h)),
+  torus: (r,t,rs,ts) => getGeometry(`tor_${r}_${t}_${rs}_${ts}`, () => new THREE.TorusGeometry(r,t,rs,ts)),
+  roundedBox: (w,h,d,r=2) => getGeometry(`rbox_${w}_${h}_${d}_${r}`, () => {
+    const g = new THREE.BoxGeometry(w,h,d);
+    return g;
+  }),
+};
+
+// Instanced geometry creators
+function createInstancedMesh(geometry, material, count, matrixFn) {
+  const mesh = new THREE.InstancedMesh(geometry, material, count);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < count; i++) {
+    matrixFn(dummy, i);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  return mesh;
+}
+
+// ============================================================================
+// RACK CONSTRUCTION
+// ============================================================================
+class RackBuilder {
+  constructor() {
+    this.group = new THREE.Group();
+    this.group.name = 'RACK';
+    this.units = [];
+    this.build();
+  }
+
+  build() {
+    // Frame
+    const frameMat = Materials.chassisDark;
+    const frameThick = 40;
+    
+    // Vertical posts (4 corners)
+    const postGeo = Geo.box(frameThick, RACK_HEIGHT, frameThick);
+    const positions = [
+      [-RACK_WIDTH/2 + frameThick/2, 0, -RACK_DEPTH/2 + frameThick/2],
+      [RACK_WIDTH/2 - frameThick/2, 0, -RACK_DEPTH/2 + frameThick/2],
+      [-RACK_WIDTH/2 + frameThick/2, 0, RACK_DEPTH/2 - frameThick/2],
+      [RACK_WIDTH/2 - frameThick/2, 0, RACK_DEPTH/2 - frameThick/2],
+    ];
+    positions.forEach(pos => {
+      const mesh = new THREE.Mesh(postGeo, frameMat);
+      mesh.position.set(...pos);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+    });
+
+    // Horizontal rails (front/rear, top/bottom)
+    const railGeo = Geo.box(RACK_WIDTH - frameThick*2, frameThick, frameThick);
+    // Top front/rear
+    [ -RACK_DEPTH/2 + frameThick/2, RACK_DEPTH/2 - frameThick/2 ].forEach(z => {
+      const m = new THREE.Mesh(railGeo, frameMat);
+      m.position.set(0, RACK_HEIGHT/2 - frameThick/2, z);
+      m.castShadow = true;
+      this.group.add(m);
+    });
+    // Bottom front/rear
+    [ -RACK_DEPTH/2 + frameThick/2, RACK_DEPTH/2 - frameThick/2 ].forEach(z => {
+      const m = new THREE.Mesh(railGeo, frameMat);
+      m.position.set(0, -RACK_HEIGHT/2 + frameThick/2, z);
+      m.castShadow = true;
+      this.group.add(m);
+    });
+    // Side top/bottom
+    const sideRailGeo = Geo.box(frameThick, frameThick, RACK_DEPTH - frameThick*2);
+    [ -RACK_WIDTH/2 + frameThick/2, RACK_WIDTH/2 - frameThick/2 ].forEach(x => {
+      [ RACK_HEIGHT/2 - frameThick/2, -RACK_HEIGHT/2 + frameThick/2 ].forEach(y => {
+        const m = new THREE.Mesh(sideRailGeo, frameMat);
+        m.position.set(x, y, 0);
+        m.castShadow = true;
+        this.group.add(m);
+      });
+    });
+
+    // Mounting rails (front & rear) with holes
+    this.buildMountingRails();
+    
+    // Top cover
+    const topGeo = Geo.box(RACK_WIDTH - 4, 4, RACK_DEPTH - 4);
+    const top = new THREE.Mesh(topGeo, Materials.chassis);
+    top.position.set(0, RACK_HEIGHT/2 - 2, 0);
+    top.castShadow = true;
+    this.group.add(top);
+
+    // Bottom base
+    const baseGeo = Geo.box(RACK_WIDTH, 20, RACK_DEPTH);
+    const base = new THREE.Mesh(baseGeo, Materials.chassisDark);
+    base.position.set(0, -RACK_HEIGHT/2 + 10, 0);
+    base.castShadow = true;
+    this.group.add(base);
+
+    // Feet/casters
+    const footGeo = Geo.cylinder(30, 30, 15, 16);
+    [-1,1].forEach(x => [-1,1].forEach(z => {
+      const foot = new THREE.Mesh(footGeo, Materials.metalDark);
+      foot.position.set(x*(RACK_WIDTH/2-50), -RACK_HEIGHT/2 + 7.5, z*(RACK_DEPTH/2-50));
+      foot.castShadow = true;
+      this.group.add(foot);
+    }));
+
+    // Side panels (removable)
+    const sideGeo = Geo.box(3, RACK_HEIGHT - 80, RACK_DEPTH - 80);
+    [-1,1].forEach(side => {
+      const panel = new THREE.Mesh(sideGeo, Materials.chassis);
+      panel.position.set(side*(RACK_WIDTH/2 - 1.5), -40, 0);
+      panel.castShadow = true;
+      panel.name = `side-panel-${side}`;
+      this.group.add(panel);
+    });
+
+    // Rear door (mesh)
+    const doorGeo = Geo.box(RACK_WIDTH - 80, RACK_HEIGHT - 80, 5);
+    const door = new THREE.Mesh(doorGeo, Materials.grille);
+    door.position.set(0, 0, RACK_DEPTH/2 - 2.5);
+    door.castShadow = true;
+    this.group.add(door);
+
+    // Vertical PDUs (rear, left and right)
+    this.buildPDUs();
+
+    // Cable management rings
+    this.buildCableManagement();
+
+    // Rack unit markers
+    this.buildUnitMarkers();
+  }
+
+  buildMountingRails() {
+    const railW = 50, railH = RACK_HEIGHT - 20, railD = 8;
+    const railMat = Materials.metalDark;
+    const holeGeo = Geo.cylinder(4.5, 4.5, 10, 8);
+    const holeMat = Materials.metalDark;
+
+    // Front rails (at z = -RACK_DEPTH/2 + railD/2)
+    const railZ = -RACK_DEPTH/2 + railD/2 + 20;
+    [-1, 1].forEach(side => {
+      const x = side * (RACK_WIDTH/2 - railW/2 - 20);
+      const rail = new THREE.Mesh(Geo.box(railW, railH, railD), railMat);
+      rail.position.set(x, 0, railZ);
+      rail.castShadow = true;
+      this.group.add(rail);
+
+      // Square holes pattern (EIA-310: 3 holes per U, alternating)
+      for (let u = 1; u <= RACK_U; u++) {
+        const y = RACK_HEIGHT/2 - u * U_HEIGHT + U_HEIGHT/2;
+        const pattern = u % 2 === 1 ? [0, 1, 2] : [0, 1, 2]; // Simplified
+        pattern.forEach((h, idx) => {
+          const hole = new THREE.Mesh(holeGeo, holeMat);
+          hole.position.set(x, y - 22 + idx * 22, railZ + railD/2 + 5);
+          hole.rotation.x = Math.PI/2;
+          this.group.add(hole);
+        });
+      }
+    });
+
+    // Rear rails
+    const rearRailZ = RACK_DEPTH/2 - railD/2 - 20;
+    [-1, 1].forEach(side => {
+      const x = side * (RACK_WIDTH/2 - railW/2 - 20);
+      const rail = new THREE.Mesh(Geo.box(railW, railH, railD), railMat);
+      rail.position.set(x, 0, rearRailZ);
+      rail.castShadow = true;
+      this.group.add(rail);
+    });
+  }
+
+  buildPDUs() {
+    const pduGeo = Geo.box(50, RACK_HEIGHT - 100, 80);
+    const pduMat = Materials.metalDark;
+    [-1, 1].forEach(side => {
+      const pdu = new THREE.Mesh(pduGeo, pduMat);
+      pdu.position.set(side * (RACK_WIDTH/2 - 25), -50, RACK_DEPTH/2 - 40);
+      pdu.castShadow = true;
+      pdu.name = `PDU-${side}`;
+      this.group.add(pdu);
+
+      // Outlets
+      const outletGeo = Geo.box(30, 15, 5);
+      const outletMat = Materials.blackPlastic;
+      for (let i = 0; i < 20; i++) {
+        const y = RACK_HEIGHT/2 - 80 - i * 80;
+        const outlet = new THREE.Mesh(outletGeo, outletMat);
+        outlet.position.set(side * (RACK_WIDTH/2 - 25), y, RACK_DEPTH/2 - 40 + 42.5);
+        this.group.add(outlet);
+        // LED
+        const led = new THREE.Mesh(Geo.cylinder(2,2,1,8), Materials.ledGreen);
+        led.position.set(side * (RACK_WIDTH/2 - 25) + 12, y, RACK_DEPTH/2 - 40 + 45);
+        this.group.add(led);
+      }
+    });
+  }
+
+  buildCableManagement() {
+    const ringGeo = Geo.torus(30, 5, 8, 16);
+    const ringMat = Materials.metalBrushed;
+    [-1, 1].forEach(side => {
+      for (let i = 0; i < 6; i++) {
+        const y = RACK_HEIGHT/2 - 100 - i * 180;
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.set(side * (RACK_WIDTH/2 - 80), y, RACK_DEPTH/2 - 30);
+        ring.rotation.x = Math.PI/2;
+        this.group.add(ring);
+      }
+    });
+  }
+
+  buildUnitMarkers() {
+    for (let u = 1; u <= RACK_U; u++) {
+      const y = RACK_HEIGHT/2 - u * U_HEIGHT;
+      const marker = new THREE.Mesh(Geo.box(10, 1, 10), Materials.metalBrushed);
+      marker.position.set(-RACK_WIDTH/2 + 15, y + 0.5, -RACK_DEPTH/2 + 30);
+      marker.name = `U${u}-marker`;
+      this.group.add(marker);
+    }
+  }
+
+  getUnitY(uStart, height) {
+    // uStart is the highest U number (e.g., 42 for U42-U39)
+    // Returns center Y position
+    const topY = RACK_HEIGHT/2 - (RACK_U - uStart + 1) * U_HEIGHT;
+    return topY + (height * U_HEIGHT) / 2;
+  }
+}
+
+// ============================================================================
+// SERVER ARCHETYPE BUILDERS
+// ============================================================================
+class ServerBuilder {
+  static createChassis(width, height, depth, archetype) {
+    const group = new THREE.Group();
+    group.name = 'chassis';
+    
+    // Base chassis (U-shape: bottom + sides + rear)
+    const thickness = 2;
+    const mat = Materials.chassis;
+    
+    // Bottom
+    const bottom = new THREE.Mesh(Geo.box(width, thickness, depth), mat);
+    bottom.position.set(0, thickness/2, 0);
+    bottom.castShadow = true;
+    bottom.receiveShadow = true;
+    group.add(bottom);
+    group.userData.bottom = bottom;
+
+    // Side walls
+    const sideGeo = Geo.box(thickness, height - thickness, depth - 10);
+    [-1, 1].forEach(s => {
+      const side = new THREE.Mesh(sideGeo, mat);
+      side.position.set(s * (width/2 - thickness/2), height/2 - thickness/2, -5);
+      side.castShadow = true;
+      side.receiveShadow = true;
+      group.add(side);
+      group.userData[`side${s}`] = side;
+    });
+
+    // Rear wall
+    const rearGeo = Geo.box(width - 4, height - thickness, thickness);
+    const rear = new THREE.Mesh(rearGeo, mat);
+    rear.position.set(0, height/2 - thickness/2, depth/2 - thickness/2);
+    rear.castShadow = true;
+    rear.receiveShadow = true;
+    group.add(rear);
+    group.userData.rear = rear;
+
+    // Front bezel
+    const bezelGeo = Geo.box(width, height, 8);
+    const bezel = new THREE.Mesh(bezelGeo, Materials.chassisDark);
+    bezel.position.set(0, height/2, -depth/2 + 4);
+    bezel.castShadow = true;
+    group.add(bezel);
+    group.userData.bezel = bezel;
+
+    // Top cover (removable)
+    const coverGeo = Geo.box(width - 4, 3, depth - 4);
+    const cover = new THREE.Mesh(coverGeo, Materials.chassis);
+    cover.position.set(0, height - 1.5, 0);
+    cover.castShadow = true;
+    cover.name = 'top-cover';
+    group.add(cover);
+    group.userData.cover = cover;
+
+    // Ventilation grilles on sides
+    const ventGeo = Geo.box(thickness + 2, height - 40, 2);
+    const ventMat = Materials.grille;
+    [-1, 1].forEach(s => {
+      const vent = new THREE.Mesh(ventGeo, ventMat);
+      vent.position.set(s * (width/2 - thickness/2 - 1), height/2 - thickness/2, -depth/2 + 50);
+      group.add(vent);
+    });
+
+    return group;
+  }
+
+  static createMotherboard(width, depth, archetype) {
+    const group = new THREE.Group();
+    group.name = 'motherboard';
+    
+    const pcbThick = 2;
+    const mbW = width - 40;
+    const mbD = depth - 100;
+    
+    // PCB base
+    const pcb = new THREE.Mesh(Geo.box(mbW, pcbThick, mbD), Materials.pcb);
+    pcb.position.set(0, pcbThick/2 + 3, -20);
+    pcb.receiveShadow = true;
+    group.add(pcb);
+    group.userData.pcb = pcb;
+
+    // CPU sockets
+    const socketGeo = Geo.box(60, 4, 60);
+    const socketMat = Materials.blackPlastic;
+    const cpuCount = archetype.cpuCount;
+    const cpuSpacing = mbW / (cpuCount + 1);
+    
+    for (let i = 0; i < cpuCount; i++) {
+      const x = -mbW/2 + cpuSpacing * (i + 1);
+      const z = mbD/2 - 80;
+      
+      // Socket
+      const socket = new THREE.Mesh(socketGeo, socketMat);
+      socket.position.set(x, pcbThick + 5, z);
+      group.add(socket);
+      group.userData[`socket${i}`] = socket;
+
+      // CPU package
+      const cpuGeo = Geo.box(45, 3, 45);
+      const cpu = new THREE.Mesh(cpuGeo, Materials.metalDark);
+      cpu.position.set(x, pcbThick + 7.5, z);
+      group.add(cpu);
+      group.userData[`cpu${i}`] = cpu;
+
+      // Heatsink
+      const hsH = archetype.name.includes('GPU') ? 35 : (archetype.height === 1 ? 25 : 30);
+      const hsGeo = Geo.box(70, hsH, 70);
+      const hs = new THREE.Mesh(hsGeo, Materials.heatsink);
+      hs.position.set(x, pcbThick + 7.5 + hsH/2, z);
+      hs.castShadow = true;
+      group.add(hs);
+      group.userData[`heatsink${i}`] = hs;
+
+      // Heatpipes/fins detail
+      const finGeo = Geo.box(65, hsH - 4, 1.5);
+      const finMat = Materials.heatsink;
+      for (let f = 0; f < 12; f++) {
+        const fin = new THREE.Mesh(finGeo, finMat);
+        fin.position.set(x - 30 + f * 5, pcbThick + 7.5 + hsH/2, z);
+        group.add(fin);
+      }
+
+      // VRM area
+      const vrmGeo = Geo.box(80, 8, 30);
+      const vrm = new THREE.Mesh(vrmGeo, Materials.pcbDark);
+      vrm.position.set(x, pcbThick + 4, z + 55);
+      group.add(vrm);
+      group.userData[`vrm${i}`] = vrm;
+
+      // Inductors
+      const indGeo = Geo.cylinder(4, 4, 6, 8);
+      const indMat = Materials.copper;
+      for (let v = 0; v < 6; v++) {
+        const ind = new THREE.Mesh(indGeo, indMat);
+        ind.position.set(x - 25 + v * 10, pcbThick + 11, z + 55);
+        group.add(ind);
+      }
+
+      // Capacitors
+      const capGeo = Geo.cylinder(2.5, 2.5, 8, 8);
+      const capMat = Materials.blackPlastic;
+      for (let c = 0; c < 12; c++) {
+        const cap = new THREE.Mesh(capGeo, capMat);
+        cap.position.set(x - 30 + (c%6)*10, pcbThick + 8, z + 70 + Math.floor(c/6)*10);
+        group.add(cap);
+      }
+    }
+
+    // DIMM slots
+    const dimmSlotGeo = Geo.box(5, 35, 130);
+    const dimmSlotMat = Materials.blackPlastic;
+    const dimmGeo = Geo.box(4, 32, 120);
+    const dimmMat = Materials.pcbDark;
+    const chipGeo = Geo.box(8, 1.5, 12);
+    const chipMat = Materials.blackPlastic;
+
+    const dimmPerChannel = archetype.dimmSlots / (cpuCount * 8); // 8 channels per CPU typical
+    const slotsPerCPU = archetype.dimmSlots / cpuCount;
+    
+    for (let cpu = 0; cpu < cpuCount; cpu++) {
+      const cpuX = -mbW/2 + cpuSpacing * (cpu + 1);
+      const cpuZ = mbD/2 - 80;
+      
+      // DIMMs on both sides of CPU (4 channels each side typically)
+      const channelsPerSide = 4;
+      for (let side = 0; side < 2; side++) {
+        const sideZ = side === 0 ? cpuZ - 100 : cpuZ + 100;
+        for (let ch = 0; ch < channelsPerSide; ch++) {
+          for (let slot = 0; slot < dimmPerChannel; slot++) {
+            const slotX = cpuX - 60 + ch * 40;
+            const slotZ = sideZ + (slot - dimmPerChannel/2) * 18;
+            
+            // Slot
+            const slotMesh = new THREE.Mesh(dimmSlotGeo, dimmSlotMat);
+            slotMesh.position.set(slotX, pcbThick + 20, slotZ);
+            slotMesh.rotation.x = -Math.PI/2 * 0.1; // slight angle
+            group.add(slotMesh);
+
+            // DIMM if populated
+            const dimmIndex = cpu * slotsPerCPU + side * channelsPerSide * dimmPerChannel + ch * dimmPerChannel + slot;
+            if (dimmIndex < archetype.dimmPopulated) {
+              const dimm = new THREE.Mesh(dimmGeo, dimmMat);
+              dimm.position.set(slotX, pcbThick + 36, slotZ);
+              dimm.rotation.x = -Math.PI/2 * 0.1;
+              group.add(dimm);
+              group.userData[`dimm-${cpu}-${side}-${ch}-${slot}`] = dimm;
+
+              // Chips on DIMM
+              for (let chip = 0; chip < 8; chip++) {
+                const c = new THREE.Mesh(chipGeo, chipMat);
+                c.position.set(slotX - 28 + chip * 8, pcbThick + 38, slotZ);
+                group.add(c);
+              }
+              // Label
+              const labelGeo = Geo.box(30, 0.5, 8);
+              const label = new THREE.Mesh(labelGeo, Materials.whitePlastic);
+              label.position.set(slotX, pcbThick + 38.5, slotZ - 55);
+              group.add(label);
+            }
+          }
+        }
+      }
+    }
+
+    // Chipset / PCH
+    const pchGeo = Geo.box(40, 4, 40);
+    const pch = new THREE.Mesh(pchGeo, Materials.blackPlastic);
+    pch.position.set(mbW/2 - 50, pcbThick + 2, -mbD/2 + 60);
+    group.add(pch);
+    group.userData.pch = pch;
+    
+    const pchHsGeo = Geo.box(45, 12, 45);
+    const pchHs = new THREE.Mesh(pchHsGeo, Materials.heatsink);
+    pchHs.position.set(mbW/2 - 50, pcbThick + 8, -mbD/2 + 60);
+    group.add(pchHs);
+
+    // BMC
+    const bmcGeo = Geo.box(30, 3, 30);
+    const bmc = new THREE.Mesh(bmcGeo, Materials.pcbDark);
+    bmc.position.set(-mbW/2 + 50, pcbThick + 1.5, -mbD/2 + 50);
+    group.add(bmc);
+    group.userData.bmc = bmc;
+
+    // PCIe slots (riser connectors)
+    const pcieSlotGeo = Geo.box(15, 8, 100);
+    const pcieSlotMat = Materials.blackPlastic;
+    const pcieCount = archetype.height === 4 ? 8 : (archetype.height === 2 ? 4 : 2);
+    for (let i = 0; i < pcieCount; i++) {
+      const slot = new THREE.Mesh(pcieSlotGeo, pcieSlotMat);
+      slot.position.set(-mbW/2 + 40 + i * (mbW - 80) / (pcieCount - 1 || 1), pcbThick + 4, -mbD/2 + 30);
+      group.add(slot);
+      group.userData[`pcie-slot-${i}`] = slot;
+    }
+
+    // Power connectors (24-pin, 8-pin CPU)
+    const pwr24Geo = Geo.box(30, 8, 12);
+    const pwr24 = new THREE.Mesh(pwr24Geo, Materials.blackPlastic);
+    pwr24.position.set(-mbW/2 + 50, pcbThick + 4, mbD/2 - 30);
+    group.add(pwr24);
+    
+    const pwr8Geo = Geo.box(20, 8, 12);
+    for (let i = 0; i < cpuCount; i++) {
+      const cpuX = -mbW/2 + cpuSpacing * (i + 1);
+      const pwr8 = new THREE.Mesh(pwr8Geo, Materials.blackPlastic);
+      pwr8.position.set(cpuX, pcbThick + 4, mbD/2 - 20);
+      group.add(pwr8);
+    }
+
+    // Fan headers
+    const fanHeaderGeo = Geo.box(8, 4, 12);
+    const fanHeaderMat = Materials.blackPlastic;
+    for (let i = 0; i < archetype.fanCount; i++) {
+      const fh = new THREE.Mesh(fanHeaderGeo, fanHeaderMat);
+      fh.position.set(-mbW/2 + 20 + i * (mbW - 40) / (archetype.fanCount - 1 || 1), pcbThick + 2, -mbD/2 + 10);
+      group.add(fh);
+    }
+
+    return group;
+  }
+
+  static createFanWall(count, width, archetype) {
+    const group = new THREE.Group();
+    group.name = 'fan-wall';
+    
+    const fanDia = archetype.height === 1 ? 40 : (archetype.height === 4 ? 80 : 60);
+    const fanThick = 25;
+    const spacing = width / (count + 1);
+    
+    const frameGeo = Geo.cylinder(fanDia/2 + 3, fanDia/2 + 3, fanThick, 16);
+    const frameMat = Materials.fanFrame;
+    const bladeGeo = Geo.cylinder(fanDia/2 - 2, fanDia/2 - 2, 3, 8);
+    const bladeMat = Materials.fanBlade;
+    const motorGeo = Geo.cylinder(12, 12, 8, 8);
+    const motorMat = Materials.metalDark;
+
+    for (let i = 0; i < count; i++) {
+      const x = -width/2 + spacing * (i + 1);
+      const fanGroup = new THREE.Group();
+      fanGroup.name = `fan-${i}`;
+      fanGroup.position.set(x, fanThick/2 + 5, 0);
+      
+      const frame = new THREE.Mesh(frameGeo, frameMat);
+      fanGroup.add(frame);
+      
+      const blades = new THREE.Group();
+      blades.name = 'blades';
+      for (let b = 0; b < 7; b++) {
+        const blade = new THREE.Mesh(bladeGeo, bladeMat);
+        blade.rotation.y = b * Math.PI * 2 / 7;
+        blade.rotation.x = 0.3;
+        blade.position.set(0, 1.5, 0);
+        blades.add(blade);
+      }
+      fanGroup.add(blades);
+      fanGroup.userData.blades = blades;
+      fanGroup.userData.speed = 1.0;
+      fanGroup.userData.targetSpeed = 1.0;
+      
+      const motor = new THREE.Mesh(motorGeo, motorMat);
+      motor.position.set(0, -fanThick/2 - 4, 0);
+      fanGroup.add(motor);
+      
+      // Power connector
+      const conn = new THREE.Mesh(Geo.box(8, 4, 8), Materials.blackPlastic);
+      conn.position.set(0, -fanThick/2 - 10, fanDia/2 + 5);
+      fanGroup.add(conn);
+      
+      group.add(fanGroup);
+      group.userData[`fan${i}`] = fanGroup;
+    }
+    
+    return group;
+  }
+
+  static createDriveBays(count, driveType, archetype) {
+    const group = new THREE.Group();
+    group.name = 'drive-bays';
+    
+    const is35 = driveType.includes('3.5');
+    const isNVMe = driveType.includes('NVMe') || driveType.includes('U.2');
+    const driveW = is35 ? 102 : (isNVMe ? 25 : 70);
+    const driveH = is35 ? 25 : (isNVMe ? 11 : 15);
+    const driveD = is35 ? 147 : (isNVMe ? 110 : 100);
+    const carrierW = driveW + 8;
+    const carrierH = driveH + 4;
+    
+    const cols = is35 ? 4 : (isNVMe ? 8 : 6);
+    const rows = Math.ceil(count / cols);
+    
+    const startX = -(cols - 1) * (carrierW + 4) / 2;
+    const startZ = -(rows - 1) * (carrierH + 4) / 2; // Actually Y for vertical stack, but we lay out in X-Z plane for front
+    
+    // For front bays, we arrange in grid on front face
+    // Actually drives go front-to-back, so we arrange in X (horizontal) and Y (vertical)
+    
+    for (let i = 0; i < count; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      
+      const carrier = new THREE.Group();
+      carrier.name = `drive-${i}`;
+      
+      // Carrier frame
+      const frameGeo = Geo.box(carrierW, carrierH, 8);
+      const frame = new THREE.Mesh(frameGeo, Materials.metalBrushed);
+      frame.position.set(0, 0, 4);
+      carrier.add(frame);
+      
+      // Drive body
+      const driveGeo = Geo.box(driveW, driveH, driveD);
+      const drive = new THREE.Mesh(driveGeo, Materials.driveBody);
+      drive.position.set(0, 0, 8 + driveD/2);
+      carrier.add(drive);
+      carrier.userData.drive = drive;
+      
+      // Label area
+      const labelGeo = Geo.box(driveW - 10, 10, 1);
+      const label = new THREE.Mesh(labelGeo, Materials.driveLabel);
+      label.position.set(0, driveH/2 - 5, 8 + driveD - 0.5);
+      carrier.add(label);
+      
+      // Latch
+      const latchGeo = Geo.box(12, carrierH - 4, 6);
+      const latch = new THREE.Mesh(latchGeo, Materials.metalBrushed);
+      latch.position.set(carrierW/2 - 6, 0, 7);
+      carrier.add(latch);
+      carrier.userData.latch = latch;
+      
+      // LED
+      const ledGeo = Geo.cylinder(2, 2, 1, 8);
+      const led = new THREE.Mesh(ledGeo, Materials.ledGreen);
+      led.position.set(-carrierW/2 + 8, carrierH/2 - 6, 9);
+      carrier.add(led);
+      carrier.userData.led = led;
+      carrier.userData.ledState = 'ok';
+      
+      // Position in chassis (front face)
+      carrier.position.set(
+        startX + col * (carrierW + 4),
+        archetype.height * U_HEIGHT / 2 - carrierH/2 - row * (carrierH + 4),
+        -archetype.depth / 2 + 4 + 8 + driveD/2
+      );
+      
+      group.add(carrier);
+      group.userData[`drive${i}`] = carrier;
+    }
+    
+    // Backplane (behind drives)
+    if (count > 8) {
+      const bpW = cols * (carrierW + 4) + 20;
+      const bpH = rows * (carrierH + 4) + 20;
+      const bpGeo = Geo.box(bpW, bpH, 15);
+      const bp = new THREE.Mesh(bpGeo, Materials.pcb);
+      bp.position.set(0, archetype.height * U_HEIGHT / 2 - bpH/2, -archetype.depth / 2 + 4 + 8 + driveD + 7.5);
+      group.add(bp);
+      group.userData.backplane = bp;
+      
+      // Connectors on backplane
+      const connGeo = Geo.box(20, 4, 8);
+      const connMat = Materials.blackPlastic;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const conn = new THREE.Mesh(connGeo, connMat);
+          conn.position.set(startX + c * (carrierW + 4), archetype.height * U_HEIGHT / 2 - bpH/2 + carrierH/2 + r * (carrierH + 4), -archetype.depth / 2 + 4 + 8 + driveD + 15);
+          group.add(conn);
+        }
+      }
+    }
+    
+    return group;
+  }
+
+  static createPSUs(count, archetype) {
+    const group = new THREE.Group();
+    group.name = 'psus';
+    
+    const psuW = 100, psuH = archetype.height === 1 ? 40 : 60, psuD = 200;
+    
+    for (let i = 0; i < count; i++) {
+      const psuGroup = new THREE.Group();
+      psuGroup.name = `psu-${i}`;
+      
+      // Housing
+      const housing = new THREE.Mesh(Geo.box(psuW, psuH, psuD), Materials.metalDark);
+      housing.castShadow = true;
+      psuGroup.add(housing);
+      
+      // Handle
+      const handleGeo = Geo.torus(15, 4, 8, 16);
+      const handle = new THREE.Mesh(handleGeo, Materials.metalBrushed);
+      handle.position.set(0, psuH/2 + 5, psuD/2 + 5);
+      handle.rotation.x = Math.PI/2;
+      psuGroup.add(handle);
+      
+      // Exhaust grille
+      const grillGeo = Geo.box(psuW - 10, psuH - 10, 3);
+      const grill = new THREE.Mesh(grillGeo, Materials.grille);
+      grill.position.set(0, 0, psuD/2 + 1.5);
+      psuGroup.add(grill);
+      
+      // AC inlet
+      const inletGeo = Geo.box(30, 20, 5);
+      const inlet = new THREE.Mesh(inletGeo, Materials.blackPlastic);
+      inlet.position.set(-psuW/2 + 20, 0, psuD/2 + 2.5);
+      psuGroup.add(inlet);
+      
+      // LED
+      const led = new THREE.Mesh(Geo.cylinder(3,3,1,8), Materials.ledGreen);
+      led.position.set(psuW/2 - 10, psuH/2 - 8, psuD/2 + 3);
+      psuGroup.add(led);
+      psuGroup.userData.led = led;
+      psuGroup.userData.status = 'ok';
+      
+      // Position (rear of chassis)
+      const yPos = i === 0 ? psuH/2 + 5 : archetype.height * U_HEIGHT - psuH/2 - 5;
+      psuGroup.position.set(archetype.width/2 - psuW/2 - 10, yPos, archetype.depth/2 - psuD/2);
+      
+      group.add(psuGroup);
+      group.userData[`psu${i}`] = psuGroup;
+    }
+    
+    return group;
+  }
+
+  static createRearIO(archetype) {
+    const group = new THREE.Group();
+    group.name = 'rear-io';
+    
+    // NIC ports
+    const portW = 22, portH = 14, portD = 8;
+    const portsPerRow = 4;
+    const rows = Math.ceil(archetype.nicPorts / portsPerRow);
+    
+    for (let i = 0; i < archetype.nicPorts; i++) {
+      const row = Math.floor(i / portsPerRow);
+      const col = i % portsPerRow;
+      const x = -archetype.width/2 + 50 + col * 55;
+      const y = archetype.height * U_HEIGHT - 30 - row * 25;
+      const z = archetype.depth/2 - 2;
+      
+      const port = new THREE.Mesh(Geo.box(portW, portH, portD), Materials.portBody);
+      port.position.set(x, y, z);
+      group.add(port);
+      
+      // LEDs
+      const led1 = new THREE.Mesh(Geo.cylinder(1.5,1.5,1,6), Materials.ledGreen);
+      led1.position.set(x - 6, y + portH/2 - 3, z + 4);
+      group.add(led1);
+      const led2 = new THREE.Mesh(Geo.cylinder(1.5,1.5,1,6), Materials.ledAmber);
+      led2.position.set(x + 6, y + portH/2 - 3, z + 4);
+      group.add(led2);
+    }
+    
+    // Management port
+    if (archetype.mgmtPort) {
+      const mgmt = new THREE.Mesh(Geo.box(30, 16, 10), Materials.portBody);
+      mgmt.position.set(archetype.width/2 - 40, archetype.height * U_HEIGHT - 50, archetype.depth/2 - 2);
+      group.add(mgmt);
+      const mgmtLed = new THREE.Mesh(Geo.cylinder(1.5,1.5,1,6), Materials.ledBlue);
+      mgmtLed.position.set(archetype.width/2 - 40, archetype.height * U_HEIGHT - 45, archetype.depth/2 + 3);
+      group.add(mgmtLed);
+    }
+    
+    // USB/VGA
+    const usbGeo = Geo.box(14, 8, 6);
+    const usb = new THREE.Mesh(usbGeo, Materials.portBody);
+    usb.position.set(archetype.width/2 - 60, 15, archetype.depth/2 - 2);
+    group.add(usb);
+    
+    return group;
+  }
+
+  static createGPUArray(archetype) {
+    if (archetype.gpuCount === 0) return null;
+    
+    const group = new THREE.Group();
+    group.name = 'gpu-array';
+    
+    const gpuW = 40, gpuH = 110, gpuD = 260; // Full-length dual-slot
+    const spacing = (archetype.width - 80) / (archetype.gpuCount + 1);
+    
+    for (let i = 0; i < archetype.gpuCount; i++) {
+      const x = -archetype.width/2 + 50 + spacing * (i + 1);
+      const gpuGroup = new THREE.Group();
+      gpuGroup.name = `gpu-${i}`;
+      
+      // PCB
+      const pcbGeo = Geo.box(gpuW, 3, gpuD);
+      const pcb = new THREE.Mesh(pcbGeo, Materials.pcb);
+      pcb.position.set(0, gpuH - 1.5, 0);
+      gpuGroup.add(pcb);
+      
+      // GPU die (center)
+      const dieGeo = Geo.box(35, 2, 35);
+      const die = new THREE.Mesh(dieGeo, Materials.metalDark);
+      die.position.set(0, gpuH - 2, gpuD/2 - 40);
+      gpuGroup.add(die);
+      
+      // HBM stacks around die
+      const hbmGeo = Geo.box(10, 4, 10);
+      const hbmMat = Materials.blackPlastic;
+      [[-25,-25], [25,-25], [-25,25], [25,25]].forEach(([dx, dz]) => {
+        const hbm = new THREE.Mesh(hbmGeo, hbmMat);
+        hbm.position.set(dx, gpuH - 1, gpuD/2 - 40 + dz);
+        gpuGroup.add(hbm);
+      });
+      
+      // Heatsink (vapor chamber + fins)
+      const hsGeo = Geo.box(gpuW + 10, 35, gpuD - 20);
+      const hs = new THREE.Mesh(hsGeo, Materials.heatsink);
+      hs.position.set(0, gpuH - 20, 0);
+      hs.castShadow = true;
+      gpuGroup.add(hs);
+      gpuGroup.userData.heatsink = hs;
+      
+      // Fins
+      const finGeo = Geo.box(gpuW, 30, 1);
+      for (let f = 0; f < 30; f++) {
+        const fin = new THREE.Mesh(finGeo, Materials.heatsink);
+        fin.position.set(0, gpuH - 35, -gpuD/2 + 15 + f * 8);
+        gpuGroup.add(fin);
+      }
+      
+      // Fans on GPU (3 axial)
+      const fanDia = 50;
+      const fanGeo = Geo.cylinder(fanDia/2, fanDia/2, 15, 16);
+      const fanFrameMat = Materials.fanFrame;
+      for (let f = 0; f < 3; f++) {
+        const fanFrame = new THREE.Mesh(fanGeo, fanFrameMat);
+        fanFrame.position.set(-gpuW/2 + 15 + f * 30, gpuH - 55, gpuD/2 - 10);
+        fanFrame.rotation.x = -Math.PI/2;
+        gpuGroup.add(fanFrame);
+        
+        const blades = new THREE.Group();
+        const bladeGeo = Geo.cylinder(fanDia/2 - 2, fanDia/2 - 2, 2, 7);
+        for (let b = 0; b < 7; b++) {
+          const blade = new THREE.Mesh(bladeGeo, Materials.fanBlade);
+          blade.rotation.z = b * Math.PI * 2 / 7;
+          blade.position.set(0, 1, 0);
+          blades.add(blade);
+        }
+        blades.position.copy(fanFrame.position);
+        blades.rotation.x = -Math.PI/2;
+        gpuGroup.add(blades);
+        gpuGroup.userData[`fan${f}`] = blades;
+      }
+      
+      // Power connectors (12VHPWR or 8-pin x 3)
+      const pwrGeo = Geo.box(25, 10, 12);
+      const pwrMat = Materials.blackPlastic;
+      for (let p = 0; p < 3; p++) {
+        const pwr = new THREE.Mesh(pwrGeo, pwrMat);
+        pwr.position.set(-gpuW/2 + 10 + p * 20, 10, gpuD/2 - 15);
+        gpuGroup.add(pwr);
+      }
+      
+      // NVLink / interconnect (top edge)
+      if (i < archetype.gpuCount - 1) {
+        const linkGeo = Geo.box(5, 5, spacing - gpuW - 10);
+        const link = new THREE.Mesh(linkGeo, Materials.gold);
+        link.position.set(x + gpuW/2 + 2.5, gpuH + 2.5, 0);
+        group.add(link);
+      }
+      
+      // Riser card connector (bottom)
+      const riserConnGeo = Geo.box(80, 5, 15);
+      const riserConn = new THREE.Mesh(riserConnGeo, Materials.blackPlastic);
+      riserConn.position.set(0, 2.5, -gpuD/2 + 20);
+      gpuGroup.add(riserConn);
+      
+      // Position in chassis (mid-section, above motherboard)
+      gpuGroup.position.set(x, archetype.height * U_HEIGHT / 2, -30);
+      group.add(gpuGroup);
+      group.userData[`gpu${i}`] = gpuGroup;
+    }
+    
+    return group;
+  }
+
+  static createRiserCards(archetype) {
+    if (archetype.height === 1) return null;
+    
+    const group = new THREE.Group();
+    group.name = 'riser-cards';
+    
+    const riserW = 15, riserH = archetype.height === 4 ? 200 : 100, riserD = 120;
+    const count = archetype.height === 4 ? 4 : 2;
+    
+    for (let i = 0; i < count; i++) {
+      const x = -archetype.width/2 + 50 + i * (archetype.width - 100) / (count - 1 || 1);
+      const riser = new THREE.Group();
+      riser.name = `riser-${i}`;
+      
+      // PCB
+      const pcb = new THREE.Mesh(Geo.box(riserW, riserH, riserD), Materials.pcb);
+      pcb.position.set(0, riserH/2, 0);
+      riser.add(pcb);
+      
+      // PCIe slot on riser
+      const slotGeo = Geo.box(15, 8, 100);
+      const slot = new THREE.Mesh(slotGeo, Materials.blackPlastic);
+      slot.position.set(0, riserH - 10, riserD/2 - 10);
+      riser.add(slot);
+      
+      // Expansion card (NIC/HBA)
+      const cardW = 110, cardH = 80, cardD = 2;
+      const card = new THREE.Mesh(Geo.box(cardW, cardH, cardD), Materials.pcb);
+      card.position.set(0, riserH - cardH/2 - 10, riserD/2 + 2);
+      riser.add(card);
+      
+      // Bracket
+      const bracketGeo = Geo.box(cardW + 4, 12, 4);
+      const bracket = new THREE.Mesh(bracketGeo, Materials.metalBrushed);
+      bracket.position.set(0, riserH - 6, riserD/2 + 5);
+      riser.add(bracket);
+      
+      // Ports on bracket
+      const portGeo = Geo.box(22, 10, 4);
+      const portMat = Materials.portBody;
+      [-1, 1].forEach(s => {
+        const port = new THREE.Mesh(portGeo, portMat);
+        port.position.set(s * 30, riserH - 6, riserD/2 + 7);
+        riser.add(port);
+      });
+      
+      riser.position.set(x, archetype.height * U_HEIGHT - riserH - 10, archetype.depth/2 - riserD - 10);
+      group.add(riser);
+      group.userData[`riser${i}`] = riser;
+    }
+    
+    return group;
+  }
+
+  static buildServer(archetypeKey, serverName, position) {
+    const archetype = SERVER_ARCHETYPES[archetypeKey];
+    const width = 430;
+    const height = archetype.height * U_HEIGHT - 2; // Small gap
+    const depth = RACK_DEPTH - 100; // Leave room for cables
+    
+    const server = new THREE.Group();
+    server.name = serverName;
+    server.userData = {
+      archetype: archetypeKey,
+      name: serverName,
+      position: position,
+      height: archetype.height,
+      health: {
+        cpuTemp: [45 + Math.random()*15, 48 + Math.random()*12],
+        gpuTemp: [],
+        memUtil: 40 + Math.random()*30,
+        storageUtil: 30 + Math.random()*40,
+        netTraffic: 10 + Math.random()*40,
+        fanRPM: 8000 + Math.random()*3000,
+        power: archetype.powerEstimate * (0.5 + Math.random()*0.3),
+        fans: Array(archetype.fanCount).fill('ok'),
+        psus: Array(archetype.psuCount).fill('ok'),
+        drives: Array(archetype.driveBays).fill('ok'),
+        gpus: Array(archetype.gpuCount).fill('ok'),
+        netLinks: Array(archetype.nicPorts).fill('ok')
+      },
+      failures: {}
+    };
+    
+    // Initialize GPU temps
+    for (let i = 0; i < archetype.gpuCount; i++) {
+      server.userData.health.gpuTemp.push(50 + Math.random()*25);
+    }
+    
+    server.userData.width = width;
+    server.userData.height = height;
+    server.userData.depth = depth;
+    server.userData.archetypeData = archetype;
+
+    // Chassis
+    const chassis = ServerBuilder.createChassis(width, height, depth, archetype);
+    server.add(chassis);
+    server.userData.chassis = chassis;
+
+    // Motherboard
+    const mb = ServerBuilder.createMotherboard(width, depth, archetype);
+    mb.position.set(0, 0, -40);
+    server.add(mb);
+    server.userData.motherboard = mb;
+
+    // Fan wall (front, behind drives)
+    const fans = ServerBuilder.createFanWall(archetype.fanCount, width - 20, archetype);
+    fans.position.set(0, 0, -depth/2 + 150 + (archetype.driveBays > 16 ? 80 : 0));
+    server.add(fans);
+    server.userData.fans = fans;
+
+    // Drive bays (front)
+    const drives = ServerBuilder.createDriveBays(archetype.driveBays, archetype.driveType, { ...archetype, width, height, depth });
+    server.add(drives);
+    server.userData.drives = drives;
+
+    // PSUs (rear)
+    const psus = ServerBuilder.createPSUs(archetype.psuCount, { ...archetype, width, height, depth });
+    server.add(psus);
+    server.userData.psus = psus;
+
+    // Rear I/O
+    const rearIO = ServerBuilder.createRearIO({ ...archetype, width, height, depth });
+    server.add(rearIO);
+    server.userData.rearIO = rearIO;
+
+    // GPU array (for GPU servers)
+    if (archetype.gpuCount > 0) {
+      const gpus = ServerBuilder.createGPUArray({ ...archetype, width, height, depth });
+      if (gpus) {
+        server.add(gpus);
+        server.userData.gpus = gpus;
+      }
+    }
+
+    // Riser cards
+    const risers = ServerBuilder.createRiserCards({ ...archetype, width, height, depth });
+    if (risers) {
+      server.add(risers);
+      server.userData.risers = risers;
+    }
+
+    // Airflow visualization particles
+    server.userData.airflowParticles = ServerBuilder.createAirflowParticles(server, archetype);
+    server.add(server.userData.airflowParticles);
+    server.userData.airflowParticles.visible = false;
+
+    // Power path visualization
+    server.userData.powerPaths = ServerBuilder.createPowerPaths(server, archetype);
+    server.add(server.userData.powerPaths);
+    server.userData.powerPaths.visible = false;
+
+    // Data path visualization
+    server.userData.dataPaths = ServerBuilder.createDataPaths(server, archetype);
+    server.add(server.userData.dataPaths);
+    server.userData.dataPaths.visible = false;
+
+    return server;
+  }
+
+  static createAirflowParticles(server, archetype) {
+    const group = new THREE.Group();
+    group.name = 'airflow-particles';
+    
+    const count = 200;
+    const geo = Geo.sphere(2, 6);
+    const mat = Materials.airflowParticle.clone();
+    
+    const mesh = new THREE.InstancedMesh(geo, mat, count);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    
+    const dummy = new THREE.Object3D();
+    const paths = [];
+    
+    // Define airflow paths based on archetype
+    const w = server.userData.width;
+    const h = server.userData.height;
+    const d = server.userData.depth;
+    
+    // Front intake -> drives -> fans -> CPU/RAM -> GPU/PCIe -> rear exhaust
+    for (let i = 0; i < count; i++) {
+      const pathType = i % 4;
+      let path;
+      if (pathType === 0) { // Drive path
+        path = {
+          start: new THREE.Vector3((Math.random()-0.5)*w*0.8, Math.random()*h*0.8, -d/2 + 10),
+          mid1: new THREE.Vector3((Math.random()-0.5)*w*0.6, Math.random()*h*0.6, -d/2 + 100),
+          mid2: new THREE.Vector3((Math.random()-0.5)*w*0.4, Math.random()*h*0.4, -d/2 + 180),
+          end: new THREE.Vector3((Math.random()-0.5)*w*0.3, h/2, d/2 - 20)
+        };
+      } else if (pathType === 1) { // CPU path
+        path = {
+          start: new THREE.Vector3((Math.random()-0.5)*w*0.5, h*0.7, -d/2 + 180),
+          mid1: new THREE.Vector3((Math.random()-0.5)*w*0.3, h*0.6, -d/2 + 220),
+          mid2: new THREE.Vector3((Math.random()-0.5)*w*0.2, h*0.5, -20),
+          end: new THREE.Vector3((Math.random()-0.5)*w*0.3, h*0.4, d/2 - 30)
+        };
+      } else if (pathType === 2 && archetype.gpuCount > 0) { // GPU path
+        path = {
+          start: new THREE.Vector3((Math.random()-0.5)*w*0.6, h*0.5, -d/2 + 200),
+          mid1: new THREE.Vector3((Math.random()-0.5)*w*0.4, h*0.6, 0),
+          mid2: new THREE.Vector3((Math.random()-0.5)*w*0.3, h*0.7, 100),
+          end: new THREE.Vector3((Math.random()-0.5)*w*0.4, h*0.6, d/2 - 30)
+        };
+      } else { // Direct rear exhaust
+        path = {
+          start: new THREE.Vector3((Math.random()-0.5)*w*0.7, Math.random()*h, -d/2 + 150),
+          mid1: new THREE.Vector3((Math.random()-0.5)*w*0.5, Math.random()*h, 0),
+          mid2: new THREE.Vector3((Math.random()-0.5)*w*0.4, Math.random()*h, d/2 - 50),
+          end: new THREE.Vector3((Math.random()-0.5)*w*0.3, Math.random()*h*0.8, d/2 - 20)
+        };
+      }
+      paths.push(path);
+      
+      // Initial position
+      dummy.position.copy(path.start);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    }
+    
+    mesh.userData.paths = paths;
+    mesh.userData.progress = new Float32Array(count).fill(0);
+    return mesh;
+  }
+
+  static createPowerPaths(server, archetype) {
+    const group = new THREE.Group();
+    group.name = 'power-paths';
+    
+    // AC -> PSU -> PDB -> Motherboard -> CPU/VRM -> DIMM -> GPU/Drives
+    const w = server.userData.width;
+    const h = server.userData.height;
+    const d = server.userData.depth;
+    
+    // PSU to motherboard (main power)
+    const pathGeo = Geo.box(4, 4, 4);
+    const pathMat = Materials.powerPath;
+    
+    for (let i = 0; i < archetype.psuCount; i++) {
+      const y = i === 0 ? 50 : h - 50;
+      // PSU to PDB (conceptual)
+      const segments = 20;
+      for (let s = 0; s < segments; s++) {
+        const t = s / (segments - 1);
+        const box = new THREE.Mesh(pathGeo, pathMat.clone());
+        box.position.set(
+          w/2 - 50 - t * 100,
+          y,
+          d/2 - 100 - t * (d - 200)
+        );
+        box.userData.animOffset = Math.random() * Math.PI * 2;
+        group.add(box);
+      }
+    }
+    
+    // Motherboard to CPU VRMs
+    for (let cpu = 0; cpu < archetype.cpuCount; cpu++) {
+      const cpuX = (cpu - 0.5) * w / 2.5;
+      for (let s = 0; s < 15; s++) {
+        const t = s / 14;
+        const box = new THREE.Mesh(pathGeo, pathMat.clone());
+        box.position.set(
+          cpuX * t,
+          h * 0.1 + t * h * 0.4,
+          -40 + t * 80
+        );
+        box.userData.animOffset = Math.random() * Math.PI * 2;
+        group.add(box);
+      }
+    }
+    
+    // GPU power (if applicable)
+    if (archetype.gpuCount > 0 && server.userData.gpus) {
+      server.userData.gpus.children.forEach((gpu, i) => {
+        for (let s = 0; s < 10; s++) {
+          const t = s / 9;
+          const box = new THREE.Mesh(pathGeo, pathMat.clone());
+          box.position.set(
+            gpu.position.x,
+            h * 0.3 + t * (gpu.position.y - h * 0.3),
+            -40 + t * (gpu.position.z + 40)
+          );
+          box.userData.animOffset = Math.random() * Math.PI * 2;
+          group.add(box);
+        }
+      });
+    }
+    
+    return group;
+  }
+
+  static createDataPaths(server, archetype) {
+    const group = new THREE.Group();
+    group.name = 'data-paths';
+    const mat = Materials.dataPath;
+    const geo = Geo.box(3, 3, 3);
+    
+    // Conceptual data paths
+    // CPU <-> RAM (memory channels)
+    for (let cpu = 0; cpu < archetype.cpuCount; cpu++) {
+      const cpuX = (cpu - 0.5) * server.userData.width / 2.5;
+      for (let side = 0; side < 2; side++) {
+        for (let ch = 0; ch < 4; ch++) {
+          const dimmX = cpuX - 60 + ch * 40;
+          const dimmZ = side === 0 ? -140 : 60;
+          for (let s = 0; s < 10; s++) {
+            const t = s / 9;
+            const box = new THREE.Mesh(geo, mat.clone());
+            box.position.set(
+              cpuX + t * (dimmX - cpuX),
+              server.userData.height * 0.2,
+              -20 + t * (dimmZ + 20)
+            );
+            box.userData.animOffset = Math.random() * Math.PI * 2;
+            group.add(box);
+          }
+        }
+      }
+    }
+    
+    // CPU <-> GPU (PCIe)
+    if (archetype.gpuCount > 0 && server.userData.gpus) {
+      for (let cpu = 0; cpu < archetype.cpuCount; cpu++) {
+        const cpuX = (cpu - 0.5) * server.userData.width / 2.5;
+        server.userData.gpus.children.forEach((gpu, i) => {
+          if (i % archetype.cpuCount === cpu) {
+            for (let s = 0; s < 12; s++) {
+              const t = s / 11;
+              const box = new THREE.Mesh(geo, mat.clone());
+              box.position.set(
+                cpuX + t * (gpu.position.x - cpuX),
+                server.userData.height * 0.2 + t * (gpu.position.y - server.userData.height * 0.2),
+                -20 + t * (gpu.position.z + 20)
+              );
+              box.userData.animOffset = Math.random() * Math.PI * 2;
+              group.add(box);
+            }
+          }
+        });
+      }
+    }
+    
+    // Storage -> CPU
+    if (archetype.driveBays > 8) {
+      for (let s = 0; s < 15; s++) {
+        const t = s / 14;
+        const box = new THREE.Mesh(geo, mat.clone());
+        box.position.set(
+          0,
+          server.userData.height * 0.7 * (1-t) + server.userData.height * 0.2 * t,
+          -server.userData.depth/2 + 100 + t * (server.userData.depth/2 - 100)
+        );
+        box.userData.animOffset = Math.random() * Math.PI * 2;
+        group.add(box);
+      }
+    }
+    
+    // CPU -> Network (rear)
+    for (let cpu = 0; cpu < archetype.cpuCount; cpu++) {
+      const cpuX = (cpu - 0.5) * server.userData.width / 2.5;
+      for (let s = 0; s < 10; s++) {
+        const t = s / 9;
+        const box = new THREE.Mesh(geo, mat.clone());
+        box.position.set(
+          cpuX + t * (server.userData.width/2 - 20 - cpuX),
+          server.userData.height * 0.2 + t * (server.userData.height * 0.9 - server.userData.height * 0.2),
+          -20 + t * (server.userData.depth/2 + 20)
+        );
+        box.userData.animOffset = Math.random() * Math.PI * 2;
+        group.add(box);
+      }
+    }
+    
+    return group;
+  }
+}
+
+// ============================================================================
+// MAIN APPLICATION STATE
+// ============================================================================
+const AppState = {
+  mode: 'rack', // 'rack' | 'slice' | 'transitioning'
+  selectedServer: null,
+  selectedComponent: null,
+  hoveredServer: null,
+  hoveredComponent: null,
+  servers: [],
+  rack: null,
+  sliceServer: null,
+  sliceServerOriginalPos: null,
+  animationQueue: [],
+  isAnimating: false,
+  visualizations: {
+    airflow: false,
+    power: false,
+    data: false
+  },
+  cutaway: false,
+  exploded: false,
+  coverOpen: false,
+  failureMode: null,
+  compareMode: false,
+  perfStats: { fps: 0, draws: 0, tris: 0, frames: 0, lastTime: performance.now() }
+};
+
+// ============================================================================
+// RACK POPULATION
+// ============================================================================
+function populateRack() {
+  const rack = new RackBuilder();
+  AppState.rack = rack;
+  scene.add(rack.group);
+  
+  RACK_LAYOUT.forEach((layout, idx) => {
+    const server = ServerBuilder.buildServer(layout.archetype, layout.name, layout.position);
+    server.userData.rackIndex = idx;
+    server.userData.rackU = layout.u;
+    server.userData.rackHeight = layout.height;
+    
+    // Position in rack
+    const y = rack.getUnitY(layout.u, layout.height);
+    server.position.set(0, y, -RACK_DEPTH/2 + 50 + server.userData.depth/2);
+    
+    // Add rack rails (server slides on these)
+    const railGeo = Geo.box(20, server.userData.height * U_HEIGHT - 4, 400);
+    const railMat = Materials.metalDark;
+    [-1, 1].forEach(s => {
+      const rail = new THREE.Mesh(railGeo, railMat);
+      rail.position.set(s * (RACK_WIDTH/2 - 30), y, -RACK_DEPTH/2 + 250);
+      rack.group.add(rail);
+    });
+    
+    AppState.servers.push(server);
+    scene.add(server);
+  });
+  
+  // Blanking panels for empty U
+  const occupiedU = new Set();
+  RACK_LAYOUT.forEach(l => {
+    for (let i = 0; i < l.height; i++) occupiedU.add(l.u - i);
+  });
+  
+  for (let u = 1; u <= RACK_U; u++) {
+    if (!occupiedU.has(u)) {
+      // 50% chance of blanking panel
+      if (Math.random() > 0.5) {
+        const panel = new THREE.Mesh(
+          Geo.box(RACK_WIDTH - 20, U_HEIGHT - 1, 10),
+          Materials.chassis
+        );
+        const y = rack.getUnitY(u, 1);
+        panel.position.set(0, y, -RACK_DEPTH/2 + 25);
+        panel.name = `blank-${u}`;
+        rack.group.add(panel);
+      }
+    }
+  }
+  
+  // Rear cabling
+  buildRearCabling();
+}
+
+function buildRearCabling() {
+  const cableGroup = new THREE.Group();
+  cableGroup.name = 'rear-cables';
+  
+  AppState.servers.forEach((server, idx) => {
+    const archetype = server.userData.archetypeData;
+    const psuCount = archetype.psuCount;
+    const yBase = server.position.y;
+    
+    // Power cables
+    for (let p = 0; p < psuCount; p++) {
+      const y = yBase + (p === 0 ? 50 : - (server.userData.height * U_HEIGHT - 50));
+      const cablePoints = [];
+      const startZ = server.position.z + server.userData.depth/2;
+      const endZ = RACK_DEPTH/2 - 60;
+      const side = p % 2 === 0 ? -1 : 1;
+      const pduX = side * (RACK_WIDTH/2 - 25);
+      
+      // Curved cable path
+      for (let t = 0; t <= 1; t += 0.1) {
+        const z = startZ + (endZ - startZ) * t;
+        const x = server.position.x + (pduX - server.position.x) * t;
+        const cableY = y + Math.sin(t * Math.PI) * 30;
+        cablePoints.push(new THREE.Vector3(x, cableY, z));
+      }
+      
+      const cableGeo = new THREE.BufferGeometry().setFromPoints(cablePoints);
+      const cable = new THREE.Line(cableGeo, Materials.cable.clone());
+      cableGroup.add(cable);
+    }
+    
+    // Network cables
+    const nicCount = Math.min(archetype.nicPorts, 4);
+    for (let n = 0; n < nicCount; n++) {
+      const y = yBase + server.userData.height * U_HEIGHT - 40 - n * 25;
+      const cablePoints = [];
+      const startZ = server.position.z + server.userData.depth/2;
+      const endZ = RACK_DEPTH/2 - 100;
+      const switchX = (Math.random() - 0.5) * (RACK_WIDTH * 0.6);
+      
+      for (let t = 0; t <= 1; t += 0.1) {
+        const z = startZ + (endZ - startZ) * t;
+        const x = server.position.x + (switchX - server.position.x) * t;
+        const cableY = y + Math.sin(t * Math.PI) * 20;
+        cablePoints.push(new THREE.Vector3(x, cableY, z));
+      }
+      
+      const cableGeo = new THREE.BufferGeometry().setFromPoints(cablePoints);
+      const cable = new THREE.Line(cableGeo, Materials.cable.clone());
+      cableGroup.add(cable);
+    }
+  });
+  
+  AppState.rack.group.add(cableGroup);
+  AppState.rack.cableGroup = cableGroup;
+}
+
+// ============================================================================
+// UI MANAGEMENT
+// ============================================================================
+function updateRackVisual() {
+  const container = document.getElementById('rack-visual');
+  container.innerHTML = '';
+  
+  for (let u = RACK_U; u >= 1; u--) {
+    const div = document.createElement('div');
+    div.className = 'rack-unit';
+    div.dataset.u = u;
+    
+    const occupied = AppState.servers.find(s => {
+      const start = s.userData.rackU;
+      const h = s.userData.rackHeight;
+      return u >= start - h + 1 && u <= start;
+    });
+    
+    if (occupied) {
+      div.classList.add('occupied');
+      div.classList.add(`u${occupied.userData.rackU}`);
+      if (AppState.selectedServer === occupied) div.classList.add('selected');
+    }
+    
+    const num = document.createElement('span');
+    num.className = 'unit-num';
+    num.textContent = u.toString().padStart(2, '0');
+    div.appendChild(num);
+    
+    div.addEventListener('click', () => {
+      if (occupied) selectServer(occupied);
+    });
+    
+    container.appendChild(div);
+  }
+}
+
+function updateServerList() {
+  const container = document.getElementById('server-list');
+  container.innerHTML = '';
+  
+  AppState.servers.forEach((server, idx) => {
+    const div = document.createElement('div');
+    div.className = 'server-list-item';
+    if (AppState.selectedServer === server) div.classList.add('selected');
+    
+    const archetype = server.userData.archetypeData;
+    const badgeClass = archetype.height === 1 ? 'badge-1u' : (archetype.height === 2 ? 'badge-2u' : 'badge-4u');
+    
+    div.innerHTML = `
+      <span class="badge ${badgeClass}">${archetype.height}U</span>
+      <div class="srv-info">
+        <div class="srv-name">${server.name}</div>
+        <div class="srv-meta">${server.userData.position} • ${archetype.shortName}</div>
+      </div>
+    `;
+    
+    div.addEventListener('click', () => selectServer(server));
+    container.appendChild(div);
+  });
+}
+
+function selectServer(server) {
+  AppState.selectedServer = server;
+  
+  // Update visual selection
+  AppState.servers.forEach(s => {
+    s.traverse(obj => {
+      if (obj.isMesh && obj.material !== Materials.highlight) {
+        obj.userData.originalMaterial = obj.material;
+      }
+    });
+    if (s === server) {
+      s.traverse(obj => {
+        if (obj.isMesh) obj.material = Materials.highlight;
+      });
+    } else {
+      s.traverse(obj => {
+        if (obj.isMesh && obj.userData.originalMaterial) {
+          obj.material = obj.userData.originalMaterial;
+        }
+      });
+    }
+  });
+  
+  updateRackVisual();
+  updateServerList();
+  updateServerInfoPanel();
+  updateComponentPanel();
+  updateHealthPanel();
+  updateArchReasoning();
+}
+
+function updateServerInfoPanel() {
+  const panel = document.getElementById('server-info-panel');
+  if (!AppState.selectedServer) {
+    panel.innerHTML = '<div class="section-title">SELECT A SERVER</div><div style="color:var(--text-dim); font-size:11px; text-align:center; padding:20px;">Click a server in the rack or list to inspect</div>';
+    return;
+  }
+  
+  const s = AppState.selectedServer;
+  const a = s.userData.archetypeData;
+  
+  panel.innerHTML = `
+    <div class="section-title">${a.name} <span class="badge ${a.height===1?'badge-1u':a.height===2?'badge-2u':'badge-4u'}">${a.height}U</span></div>
+    <div class="stat-row"><span class="stat-label">Server Name</span><span class="stat-value">${s.name}</span></div>
+    <div class="stat-row"><span class="stat-label">Rack Position</span><span class="stat-value">${s.userData.position}</span></div>
+    <div class="stat-row"><span class="stat-label">Form Factor</span><span class="stat-value">${a.height}U</span></div>
+    <div class="stat-row"><span class="stat-label">Purpose</span><span class="stat-value">${a.purpose}</span></div>
+    <div class="divider"></div>
+    <div class="stat-row"><span class="stat-label">CPUs</span><span class="stat-value">${a.cpuCount} Socket${a.cpuCount>1?'s':''}</span></div>
+    <div class="stat-row"><span class="stat-label">Memory</span><span class="stat-value">${a.dimmPopulated}/${a.dimmSlots} DIMMs</span></div>
+    <div class="stat-row"><span class="stat-label">GPUs</span><span class="stat-value">${a.gpuCount}</span></div>
+    <div class="stat-row"><span class="stat-label">Drive Bays</span><span class="stat-value">${a.driveBays} × ${a.driveType}</span></div>
+    <div class="stat-row"><span class="stat-label">Network Ports</span><span class="stat-value">${a.nicPorts} + ${a.mgmtPort?'Mgmt':''}</span></div>
+    <div class="stat-row"><span class="stat-label">PSUs</span><span class="stat-value">${a.psuCount} Redundant</span></div>
+    <div class="stat-row"><span class="stat-label">Est. Power</span><span class="stat-value">${a.powerEstimate} W</span></div>
+    <div class="divider"></div>
+    <button class="btn" id="btn-inspect-slice" style="width:100%; margin-top:8px;">INSPECT SLICE</button>
+  `;
+  
+  document.getElementById('btn-inspect-slice').addEventListener('click', enterSliceView);
+}
+
+function updateComponentPanel() {
+  const panel = document.getElementById('component-info-panel');
+  const detail = document.getElementById('component-detail');
+  
+  if (!AppState.selectedComponent) {
+    panel.style.display = 'none';
+    return;
+  }
+  
+  panel.style.display = 'block';
+  const comp = AppState.selectedComponent;
+  const server = AppState.selectedServer;
+  const archetype = server.userData.archetypeData;
+  
+  let html = '';
+  if (comp.userData.type === 'cpu') {
+    html = `
+      <div class="tooltip-title">CPU ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">Server CPU (${archetype.name.includes('GPU')?'Xeon Scalable':'EPYC/Xeon'})</span></div>
+      <div class="tooltip-row"><span class="k">Role</span><span class="v">General Processing</span></div>
+      <div class="tooltip-row"><span class="k">Socket</span><span class="v">CPU ${comp.userData.index + 1}</span></div>
+      <div class="tooltip-row"><span class="k">Approx. Power</span><span class="v">${archetype.name.includes('GPU')?'350W':'280W'}</span></div>
+      <div class="tooltip-row"><span class="k">Cooling</span><span class="v">Passive Heatsink + Chassis Airflow</span></div>
+      <div class="tooltip-row"><span class="k">Cores</span><span class="v">${archetype.name.includes('Virtual')?'64':archetype.name.includes('GPU')?'32':'48'}</span></div>
+      <div class="tooltip-row"><span class="k">L3 Cache</span><span class="v">${archetype.name.includes('Virtual')?'256MB':archetype.name.includes('GPU')?'64MB':'96MB'}</span></div>
+    `;
+  } else if (comp.userData.type === 'dimm') {
+    html = `
+      <div class="tooltip-title">DIMM ${comp.userData.label}</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">ECC RDIMM DDR5</span></div>
+      <div class="tooltip-row"><span class="k">Capacity</span><span class="v">64 GB</span></div>
+      <div class="tooltip-row"><span class="k">CPU</span><span class="v">CPU ${comp.userData.cpu + 1}</span></div>
+      <div class="tooltip-row"><span class="k">Channel</span><span class="v">${String.fromCharCode(65 + comp.userData.channel)}</span></div>
+      <div class="tooltip-row"><span class="k">Speed</span><span class="v">4800 MT/s</span></div>
+      <div class="tooltip-row"><span class="k">Voltage</span><span class="v">1.1V</span></div>
+    `;
+  } else if (comp.userData.type === 'gpu') {
+    html = `
+      <div class="tooltip-title">GPU Accelerator #${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Role</span><span class="v">AI / Compute Acceleration</span></div>
+      <div class="tooltip-row"><span class="k">Architecture</span><span class="v">Hopper / Blackwell Class</span></div>
+      <div class="tooltip-row"><span class="k">Connection</span><span class="v">PCIe 5.0 x16 + NVLink</span></div>
+      <div class="tooltip-row"><span class="k">Memory</span><span class="v">80-192 GB HBM3e</span></div>
+      <div class="tooltip-row"><span class="k">Approx. Power</span><span class="v">600-700 W</span></div>
+      <div class="tooltip-row"><span class="k">Cooling</span><span class="v">High-Pressure Chassis Airflow</span></div>
+      <div class="tooltip-row"><span class="k">Interconnect</span><span class="v">NVLink / NVSwitch Fabric</span></div>
+    `;
+  } else if (comp.userData.type === 'drive') {
+    const isNVMe = archetype.driveType.includes('NVMe');
+    html = `
+      <div class="tooltip-title">Drive Bay ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Form Factor</span><span class="v">${archetype.driveType}</span></div>
+      <div class="tooltip-row"><span class="k">Interface</span><span class="v">${isNVMe?'PCIe 5.0 x4 (NVMe)':'SAS 12Gbps / SATA 6Gbps'}</span></div>
+      <div class="tooltip-row"><span class="k">Capacity</span><span class="v">${isNVMe?'3.84 TB':'18 TB'}</span></div>
+      <div class="tooltip-row"><span class="k">Hot-Swap</span><span class="v">Yes</span></div>
+      <div class="tooltip-row"><span class="k">Status</span><span class="v">${comp.userData.ledState === 'ok' ? '🟢 Online' : comp.userData.ledState === 'rebuild' ? '🟡 Rebuilding' : '🔴 Failed'}</span></div>
+      <div class="tooltip-row"><span class="k">Backplane</span><span class="v">12Gbps Expander</span></div>
+    `;
+  } else if (comp.userData.type === 'fan') {
+    html = `
+      <div class="tooltip-title">Fan Module ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">Hot-Swap Counter-Rotating</span></div>
+      <div class="tooltip-row"><span class="k">Size</span><span class="v">${archetype.height===1?'40mm':archetype.height===4?'80mm':'60mm'}</span></div>
+      <div class="tooltip-row"><span class="k">Speed</span><span class="v">${Math.round(8000 + comp.userData.speed * 4000)} RPM</span></div>
+      <div class="tooltip-row"><span class="k">Airflow</span><span class="v">${archetype.height===4?'120+ CFM':'45 CFM'}</span></div>
+      <div class="tooltip-row"><span class="k">Redundancy</span><span class="v">N+1 (${archetype.fanCount} fans)</span></div>
+      <div class="tooltip-row"><span class="k">Status</span><span class="v">${comp.userData.status === 'failed' ? '🔴 FAILED' : '🟢 Operational'}</span></div>
+    `;
+  } else if (comp.userData.type === 'psu') {
+    html = `
+      <div class="tooltip-title">PSU ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">CRPS Redundant</span></div>
+      <div class="tooltip-row"><span class="k">Rating</span><span class="v">${archetype.powerEstimate / archetype.psuCount * 1.5} W</span></div>
+      <div class="tooltip-row"><span class="k">Efficiency</span><span class="v">80+ Titanium (96%+)</span></div>
+      <div class="tooltip-row"><span class="k">Input</span><span class="v">200-240 VAC / 240 VDC</span></div>
+      <div class="tooltip-row"><span class="k">Output</span><span class="v">12V Main + 12VSB</span></div>
+      <div class="tooltip-row"><span class="k">Redundancy</span><span class="v">${archetype.psuCount}-PSU ${archetype.psuCount>2?'N+N':'1+1'}</span></div>
+      <div class="tooltip-row"><span class="k">Status</span><span class="v">${comp.userData.status === 'failed' ? '🔴 FAILED' : '🟢 Online'}</span></div>
+    `;
+  } else if (comp.userData.type === 'nic') {
+    html = `
+      <div class="tooltip-title">Network Port ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">${archetype.name.includes('Network')?'QSFP28':'SFP28/RJ45'}</span></div>
+      <div class="tooltip-row"><span class="k">Speed</span><span class="v">${archetype.name.includes('Network')?'100 Gbps':'25/10 Gbps'}</span></div>
+      <div class="tooltip-row"><span class="k">Link</span><span class="v">${comp.userData.linkState === 'down' ? '🔴 Down' : '🟢 Up'}</span></div>
+      <div class="tooltip-row"><span class="k">FEC</span><span class="v">RS(528,514)</span></div>
+    `;
+  } else if (comp.userData.type === 'heatsink') {
+    html = `
+      <div class="tooltip-title">CPU Heatsink ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">Passive Vapor Chamber</span></div>
+      <div class="tooltip-row"><span class="k">Fin Material</span><span class="v">Aluminum</span></div>
+      <div class="tooltip-row"><span class="k">Heatpipes</span><span class="v">6-8</span></div>
+      <div class="tooltip-row"><span class="k">Thermal Resistance</span><span class="v">&lt; 0.15 °C/W</span></div>
+      <div class="tooltip-row"><span class="k">Airflow Direction</span><span class="v">Front → Rear</span></div>
+      <div class="tooltip-row"><span class="k">Mounting</span><span class="v">ILM (Independent Loading Mechanism)</span></div>
+    `;
+  } else if (comp.userData.type === 'backplane') {
+    html = `
+      <div class="tooltip-title">Storage Backplane</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">12Gbps SAS Expander</span></div>
+      <div class="tooltip-row"><span class="k">Ports</span><span class="v">${archetype.driveBays} Drive + 2 Host</span></div>
+      <div class="tooltip-row"><span class="k">Topology</span><span class="v">Dual-Port Redundant</span></div>
+      <div class="tooltip-row"><span class="k">Controller</span><span class="v">HBA / RAID Card on Riser</span></div>
+      <div class="tooltip-row"><span class="k">SES/SEAF</span><span class="v">Enclosure Management</span></div>
+    `;
+  } else if (comp.userData.type === 'riser') {
+    html = `
+      <div class="tooltip-title">Riser Card ${comp.userData.index + 1}</div>
+      <div class="tooltip-row"><span class="k">Slot</span><span class="v">PCIe 5.0 x16</span></div>
+      <div class="tooltip-row"><span class="k">Card</span><span class="v">${archetype.name.includes('Storage')?'HBA/RAID':archetype.name.includes('Network')?'NIC':'GPU/NIC'}</span></div>
+      <div class="tooltip-row"><span class="k">Bracket</span><span class="v">Low-Profile / FHFL</span></div>
+      <div class="tooltip-row"><span class="k">Power</span><span class="v">Slot + Aux (if needed)</span></div>
+    `;
+  } else if (comp.userData.type === 'vrm') {
+    html = `
+      <div class="tooltip-title">CPU ${comp.userData.index + 1} VRM</div>
+      <div class="tooltip-row"><span class="k">Phases</span><span class="v">16+2 Phase</span></div>
+      <div class="tooltip-row"><span class="k">Controller</span><span class="v">Digital Multiphase PWM</span></div>
+      <div class="tooltip-row"><span class="k">Current</span><span class="v">~80-100A per Phase</span></div>
+      <div class="tooltip-row"><span class="k">Efficiency</span><span class="v">92%+ at Load</span></div>
+    `;
+  } else if (comp.userData.type === 'pch') {
+    html = `
+      <div class="tooltip-title">PCH / Chipset</div>
+      <div class="tooltip-row"><span class="k">Role</span><span class="v">Platform Controller Hub</span></div>
+      <div class="tooltip-row"><span class="k">Functions</span><span class="v">SATA, USB, PCIe Gen3/4, SPI, LPC, SMBus</span></div>
+      <div class="tooltip-row"><span class="k">Heatsink</span><span class="v">Passive</span></div>
+    `;
+  } else if (comp.userData.type === 'bmc') {
+    html = `
+      <div class="tooltip-title">BMC (Baseboard Management Controller)</div>
+      <div class="tooltip-row"><span class="k">Type</span><span class="v">ASPEED AST2600</span></div>
+      <div class="tooltip-row"><span class="k">Interfaces</span><span class="v">IPMI, Redfish, KVM, Virtual Media</span></div>
+      <div class="tooltip-row"><span class="k">Network</span><span class="v">Dedicated 1GbE Mgmt Port</span></div>
+      <div class="tooltip-row"><span class="k">Firmware</span><span class="v">OpenBMC / Vendor</span></div>
+    `;
+  }
+  
+  detail.innerHTML = html;
+}
+
+function updateHealthPanel() {
+  const panel = document.getElementById('health-panel');
+  if (!AppState.selectedServer) {
+    panel.innerHTML = '<div style="color:var(--text-dim); font-size:11px; text-align:center; padding:10px;">Select a server</div>';
+    return;
+  }
+  
+  const h = AppState.selectedServer.userData.health;
+  const a = AppState.selectedServer.userData.archetypeData;
+  
+  let html = '';
+  // CPU temps
+  h.cpuTemp.forEach((t, i) => {
+    const cls = t > 85 ? 'danger' : t > 75 ? 'warn' : 'ok';
+    html += `<div class="health-metric"><span class="health-label">CPU ${i+1} Temp</span><span class="health-value ${cls}">${t.toFixed(1)}°C</span></div>`;
+  });
+  
+  // GPU temps
+  h.gpuTemp.forEach((t, i) => {
+    const cls = t > 88 ? 'danger' : t > 80 ? 'warn' : 'ok';
+    html += `<div class="health-metric"><span class="health-label">GPU ${i+1} Temp</span><span class="health-value ${cls}">${t.toFixed(1)}°C</span></div>`;
+  });
+  
+  // Memory
+  const memCls = h.memUtil > 90 ? 'danger' : h.memUtil > 75 ? 'warn' : 'ok';
+  html += `<div class="health-metric"><span class="health-label">Memory Utilization</span><span class="health-value ${memCls}">${h.memUtil.toFixed(1)}%</span></div>`;
+  
+  // Storage
+  const storCls = h.storageUtil > 90 ? 'danger' : h.storageUtil > 80 ? 'warn' : 'ok';
+  html += `<div class="health-metric"><span class="health-label">Storage Utilization</span><span class="health-value ${storCls}">${h.storageUtil.toFixed(1)}%</span></div>`;
+  
+  // Network
+  html += `<div class="health-metric"><span class="health-label">Network Traffic</span><span class="health-value">${h.netTraffic.toFixed(1)} Gbit/s</span></div>`;
+  
+  // Fans
+  const fanRpm = Math.round(h.fanRPM);
+  const fanCls = h.fans.some(f => f !== 'ok') ? 'danger' : 'ok';
+  html += `<div class="health-metric"><span class="health-label">Fan Speed</span><span class="health-value ${fanCls}">${fanRpm.toLocaleString()} RPM</span></div>`;
+  
+  // Power
+  html += `<div class="health-metric"><span class="health-label">Power Draw</span><span class="health-value">${h.power.toFixed(1)} W</span></div>`;
+  
+  // PSU Status
+  h.psus.forEach((s, i) => {
+    html += `<div class="health-metric"><span class="health-label">PSU ${i+1}</span><span class="health-value ${s==='ok'?'ok':'danger'}">${s==='ok'?'Online':'FAILED'}</span></div>`;
+  });
+  
+  panel.innerHTML = html;
+}
+
+function updateArchReasoning() {
+  const el = document.getElementById('arch-reasoning');
+  if (!AppState.selectedServer) {
+    el.textContent = 'Select a server to see design rationale';
+    return;
+  }
+  el.textContent = AppState.selectedServer.userData.archetypeData.description;
+}
+
+// ============================================================================
+// SLICE VIEW TRANSITION
+// ============================================================================
+function enterSliceView() {
+  if (!AppState.selectedServer || AppState.isAnimating) return;
+  
+  AppState.isAnimating = true;
+  AppState.mode = 'transitioning';
+  
+  const server = AppState.selectedServer;
+  AppState.sliceServer = server;
+  AppState.sliceServerOriginalPos = server.position.clone();
+  
+  // Hide rack (fade out)
+  animateRackFade(false);
+  
+  // Slide server forward on rails
+  const targetZ = server.position.z + 600;
+  const duration = 1500;
+  const startTime = performance.now();
+  const startPos = server.position.clone();
+  
+  function animateSlide(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3); // Ease out cubic
+    
+    server.position.z = startPos.z + (targetZ - startPos.z) * eased;
+    
+    // Move camera to follow
+    const camTarget = new THREE.Vector3(server.position.x, server.position.y, server.position.z);
+    controls.target.lerp(camTarget, 0.1);
+    camera.position.lerp(new THREE.Vector3(server.position.x + 800, server.position.y + 400, server.position.z + 800), 0.1);
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateSlide);
+    } else {
+      // Transition complete - enter slice mode
+      completeSliceTransition();
+    }
+  }
+  
+  requestAnimationFrame(animateSlide);
+}
+
+function completeSliceTransition() {
+  const server = AppState.sliceServer;
+  
+  // Remove from rack scene, add to slice scene (or just reposition)
+  server.userData.inSliceMode = true;
+  
+  // Open cover
+  openCover(true);
+  
+  // Enable high-detail mode
+  enableHighDetail(server);
+  
+  // Position camera for whole slice view
+  const targetPos = new THREE.Vector3(server.position.x, server.position.y + 400, server.position.z + 600);
+  const targetLook = new THREE.Vector3(server.position.x, server.position.y, server.position.z);
+  
+  animateCameraTo(targetPos, targetLook, 1000, () => {
+    AppState.mode = 'slice';
+    AppState.isAnimating = false;
+    updateModeUI();
+    document.getElementById('slice-nav').style.display = 'flex';
+    updateSliceNav();
+  });
+}
+
+function exitSliceView() {
+  if (AppState.isAnimating || !AppState.sliceServer) return;
+  
+  AppState.isAnimating = true;
+  AppState.mode = 'transitioning';
+  
+  const server = AppState.sliceServer;
+  
+  // Close cover
+  openCover(false);
+  
+  // Disable high-detail
+  disableHighDetail(server);
+  
+  // Animate back to rack position
+  const targetPos = AppState.sliceServerOriginalPos.clone();
+  const duration = 1500;
+  const startTime = performance.now();
+  const startPos = server.position.clone();
+  const startCamPos = camera.position.clone();
+  const startCamTarget = controls.target.clone();
+  const rackCamPos = new THREE.Vector3(1800, RACK_HEIGHT/2, 2200);
+  const rackCamTarget = new THREE.Vector3(0, RACK_HEIGHT/2, 0);
+  
+  function animateReturn(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    server.position.lerpVectors(startPos, targetPos, eased);
+    camera.position.lerpVectors(startCamPos, rackCamPos, eased);
+    controls.target.lerpVectors(startCamTarget, rackCamTarget, eased);
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateReturn);
+    } else {
+      server.position.copy(targetPos);
+      camera.position.copy(rackCamPos);
+      controls.target.copy(rackCamTarget);
+      server.userData.inSliceMode = false;
+      AppState.sliceServer = null;
+      AppState.sliceServerOriginalPos = null;
+      
+      // Restore rack visibility
+      animateRackFade(true);
+      
+      AppState.mode = 'rack';
+      AppState.isAnimating = false;
+      updateModeUI();
+      document.getElementById('slice-nav').style.display = 'none';
+    }
+  }
+  
+  requestAnimationFrame(animateReturn);
+}
+
+function animateRackFade(visible) {
+  const rack = AppState.rack.group;
+  const targetOpacity = visible ? 1 : 0;
+  const duration = 800;
+  const startTime = performance.now();
+  const startOpacity = rack.userData.fadeOpacity || 1;
+  
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    const opacity = startOpacity + (targetOpacity - startOpacity) * progress;
+    rack.userData.fadeOpacity = opacity;
+    
+    rack.traverse(obj => {
+      if (obj.isMesh && obj.material) {
+        if (Array.isArray(obj.material)) {
+          obj.material.forEach(m => { m.transparent = true; m.opacity = opacity; });
+        } else {
+          obj.material.transparent = opacity < 1;
+          obj.material.opacity = opacity;
+        }
+      }
+    });
+    
+    if (progress < 1) requestAnimationFrame(animate);
+    else if (!visible) rack.visible = false;
+    else rack.visible = true;
+  }
+  
+  if (visible) rack.visible = true;
+  requestAnimationFrame(animate);
+}
+
+function animateCameraTo(targetPos, targetLook, duration, callback) {
+  const startTime = performance.now();
+  const startPos = camera.position.clone();
+  const startTarget = controls.target.clone();
+  
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    camera.position.lerpVectors(startPos, targetPos, eased);
+    controls.target.lerpVectors(startTarget, targetLook, eased);
+    
+    if (progress < 1) requestAnimationFrame(animate);
+    else if (callback) callback();
+  }
+  
+  requestAnimationFrame(animate);
+}
+
+function enableHighDetail(server) {
+  // Already built with high detail, but we can enhance
+  server.traverse(obj => {
+    if (obj.isMesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
+}
+
+function disableHighDetail(server) {
+  // Reduce detail for rack mode
+  server.traverse(obj => {
+    if (obj.isMesh) {
+      obj.castShadow = false;
+      obj.receiveShadow = false;
+    }
+  });
+}
+
+function openCover(open) {
+  if (!AppState.sliceServer) return;
+  const cover = AppState.sliceServer.userData.chassis.userData.cover;
+  if (!cover) return;
+  
+  AppState.coverOpen = open;
+  const targetY = open ? AppState.sliceServer.userData.height + 50 : AppState.sliceServer.userData.height - 1.5;
+  const targetRot = open ? -Math.PI/2 : 0;
+  const duration = 800;
+  const startTime = performance.now();
+  const startY = cover.position.y;
+  const startRot = cover.rotation.x;
+  
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    cover.position.y = startY + (targetY - startY) * eased;
+    cover.rotation.x = startRot + (targetRot - startRot) * eased;
+    
+    if (progress < 1) requestAnimationFrame(animate);
+  }
+  
+  requestAnimationFrame(animate);
+  
+  // Update button
+  document.getElementById('btn-open-cover').textContent = open ? 'CLOSE COVER' : 'OPEN COVER';
+  document.getElementById('btn-open-cover').classList.toggle('active', open);
+}
+
+function toggleCutaway() {
+  AppState.cutaway = !AppState.cutaway;
+  if (!AppState.sliceServer) return;
+  
+  const chassis = AppState.sliceServer.userData.chassis;
+  const targetOpacity = AppState.cutaway ? 0.15 : 1;
+  
+  ['bottom', 'side1', 'side-1', 'rear', 'bezel'].forEach(key => {
+    const mesh = chassis.userData[key];
+    if (mesh) {
+      mesh.material = AppState.cutaway ? Materials.cutaway : Materials.chassis;
+      mesh.material.transparent = AppState.cutaway;
+      mesh.material.opacity = targetOpacity;
+    }
+  });
+  
+  document.getElementById('btn-cutaway').classList.toggle('active', AppState.cutaway);
+}
+
+function toggleExplode() {
+  AppState.exploded = !AppState.exploded;
+  if (!AppState.sliceServer) return;
+  
+  const server = AppState.sliceServer;
+  const components = [
+    { key: 'cover', offset: new THREE.Vector3(0, 150, -200) },
+    { key: 'gpus', offset: new THREE.Vector3(0, 200, -300) },
+    { key: 'risers', offset: new THREE.Vector3(-200, 100, -200) },
+    { key: 'fans', offset: new THREE.Vector3(0, -100, -300) },
+    { key: 'motherboard', offset: new THREE.Vector3(0, -50, 200) },
+    { key: 'drives', offset: new THREE.Vector3(200, 0, -300) },
+    { key: 'psus', offset: new THREE.Vector3(0, -200, 300) },
+    { key: 'chassis', offset: new THREE.Vector3(0, -150, 0) }
+  ];
+  
+  const duration = 800;
+  const startTime = performance.now();
+  
+  // Store original positions
+  if (AppState.exploded) {
+    components.forEach(c => {
+      const obj = server.userData[c.key];
+      if (obj) obj.userData.originalPos = obj.position.clone();
+    });
+  }
+  
+  function animate(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    components.forEach(c => {
+      const obj = server.userData[c.key];
+      if (!obj) return;
+      
+      const start = obj.userData.originalPos || obj.position.clone();
+      const target = AppState.exploded ? start.clone().add(c.offset) : start;
+      
+      obj.position.lerpVectors(start, target, eased);
+    });
+    
+    if (progress < 1) requestAnimationFrame(animate);
+  }
+  
+  requestAnimationFrame(animate);
+  document.getElementById('btn-explode').classList.toggle('active', AppState.exploded);
+}
+
+// ============================================================================
+// SLICE CAMERA PRESETS
+// ============================================================================
+const SLICE_PRESETS = {
+  'whole': { pos: [0, 400, 600], look: [0, 0, 0], name: 'WHOLE SLICE' },
+  'top': { pos: [0, 800, 0], look: [0, 0, 0], name: 'TOP DOWN' },
+  'engineering': { pos: [400, 300, 400], look: [0, 0, 0], name: '3/4 ENGINEERING' },
+  'front': { pos: [0, 200, -500], look: [0, 100, 0], name: 'FRONT INTERNALS' },
+  'rear': { pos: [0, 100, 700], look: [0, 50, 0], name: 'REAR INTERNALS' },
+  'cpu-mem': { pos: [0, 250, 100], look: [0, 80, -20], name: 'CPU + MEMORY' },
+  'gpu': { pos: [0, 300, 50], look: [0, 120, 0], name: 'GPU AREA' },
+  'storage': { pos: [-200, 150, -300], look: [0, 50, -100], name: 'STORAGE AREA' }
+};
+
+function applySlicePreset(preset) {
+  if (!AppState.sliceServer) return;
+  const s = AppState.sliceServer;
+  const p = SLICE_PRESETS[preset];
+  const targetPos = new THREE.Vector3(s.position.x + p.pos[0], s.position.y + p.pos[1], s.position.z + p.pos[2]);
+  const targetLook = new THREE.Vector3(s.position.x + p.look[0], s.position.y + p.look[1], s.position.z + p.look[2]);
+  animateCameraTo(targetPos, targetLook, 800);
+}
+
+// ============================================================================
+// COMPONENT SELECTION (RAYCASTING)
+// ============================================================================
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onMouseMove(event) {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  
+  // Raycast
+  raycaster.setFromCamera(mouse, camera);
+  
+  let targets = [];
+  if (AppState.mode === 'rack') {
+    targets = AppState.servers;
+  } else if (AppState.sliceServer) {
+    targets = [AppState.sliceServer];
+  }
+  
+  const intersects = raycaster.intersectObjects(targets, true);
+  
+  // Reset previous hover
+  if (AppState.hoveredServer) {
+    AppState.hoveredServer.traverse(obj => {
+      if (obj.isMesh && obj.userData.originalMaterial) {
+        obj.material = obj.userData.originalMaterial;
+      }
+    });
+    AppState.hoveredServer = null;
+  }
+  if (AppState.hoveredComponent) {
+    AppState.hoveredComponent.material = AppState.hoveredComponent.userData.originalMaterial;
+    AppState.hoveredComponent = null;
+  }
+  
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    
+    if (AppState.mode === 'rack') {
+      // Find parent server
+      let parent = obj;
+      while (parent && !AppState.servers.includes(parent)) parent = parent.parent;
+      if (parent && parent !== AppState.selectedServer) {
+        AppState.hoveredServer = parent;
+        parent.traverse(o => {
+          if (o.isMesh) {
+            o.userData.originalMaterial = o.material;
+            o.material = Materials.highlight;
+          }
+        });
+      }
+    } else {
+      // Component selection in slice mode
+      if (obj.userData.type) {
+        AppState.hoveredComponent = obj;
+        obj.userData.originalMaterial = obj.material;
+        obj.material = Materials.highlight;
+        showTooltip(obj, event.clientX, event.clientY);
+      } else {
+        hideTooltip();
+      }
+    }
+  } else {
+    hideTooltip();
+  }
+}
+
+function onClick(event) {
+  if (AppState.mode === 'rack') {
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(AppState.servers, true);
+    if (intersects.length > 0) {
+      let parent = intersects[0].object;
+      while (parent && !AppState.servers.includes(parent)) parent = parent.parent;
+      if (parent) selectServer(parent);
+    }
+  } else if (AppState.sliceServer) {
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects([AppState.sliceServer], true);
+    if (intersects.length > 0) {
+      const obj = intersects[0].object;
+      if (obj.userData.type) {
+        AppState.selectedComponent = obj;
+        updateComponentPanel();
+      }
+    }
+  }
+}
+
+function showTooltip(obj, x, y) {
+  const tooltip = document.getElementById('tooltip');
+  let html = '';
+  
+  if (obj.userData.type === 'cpu') {
+    html = `<div class="tooltip-title">CPU ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'dimm') {
+    html = `<div class="tooltip-title">DIMM ${obj.userData.label}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'gpu') {
+    html = `<div class="tooltip-title">GPU ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'drive') {
+    html = `<div class="tooltip-title">Drive Bay ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'fan') {
+    html = `<div class="tooltip-title">Fan ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'psu') {
+    html = `<div class="tooltip-title">PSU ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'nic') {
+    html = `<div class="tooltip-title">Network Port ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'heatsink') {
+    html = `<div class="tooltip-title">CPU Heatsink ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'backplane') {
+    html = `<div class="tooltip-title">Storage Backplane</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'riser') {
+    html = `<div class="tooltip-title">Riser Card ${obj.userData.index + 1}</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'vrm') {
+    html = `<div class="tooltip-title">VRM Zone</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'pch') {
+    html = `<div class="tooltip-title">PCH / Chipset</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  } else if (obj.userData.type === 'bmc') {
+    html = `<div class="tooltip-title">BMC</div><div class="tooltip-row"><span class="k">Click for details</span></div>`;
+  }
+  
+  if (html) {
+    tooltip.innerHTML = html;
+    tooltip.style.left = `${x + 16}px`;
+    tooltip.style.top = `${y + 16}px`;
+    tooltip.classList.add('visible');
+  }
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('visible');
+}
+
+canvas.addEventListener('mousemove', onMouseMove);
+canvas.addEventListener('click', onClick);
+
+// ============================================================================
+// VISUALIZATION TOGGLES
+// ============================================================================
+function toggleAirflow() {
+  AppState.visualizations.airflow = !AppState.visualizations.airflow;
+  if (AppState.sliceServer) {
+    AppState.sliceServer.userData.airflowParticles.visible = AppState.visualizations.airflow;
+  }
+  document.getElementById('btn-airflow').classList.toggle('active', AppState.visualizations.airflow);
+}
+
+function togglePower() {
+  AppState.visualizations.power = !AppState.visualizations.power;
+  if (AppState.sliceServer) {
+    AppState.sliceServer.userData.powerPaths.visible = AppState.visualizations.power;
+  }
+  document.getElementById('btn-power').classList.toggle('active', AppState.visualizations.power);
+}
+
+function toggleData() {
+  AppState.visualizations.data = !AppState.visualizations.data;
+  if (AppState.sliceServer) {
+    AppState.sliceServer.userData.dataPaths.visible = AppState.visualizations.data;
+  }
+  document.getElementById('btn-data').classList.toggle('active', AppState.visualizations.data);
+}
+
+function showFailureModal() {
+  document.getElementById('failure-modal').style.display = 'block';
+}
+
+function hideFailureModal() {
+  document.getElementById('failure-modal').style.display = 'none';
+  document.querySelectorAll('.failure-btn.active').forEach(b => b.classList.remove('active'));
+}
+
+function triggerFailure(type) {
+  if (!AppState.sliceServer) return;
+  
+  const server = AppState.sliceServer;
+  const health = server.userData.health;
+  
+  // Clear previous
+  AppState.failureMode = type;
+  
+  switch(type) {
+    case 'fan':
+      const fanIdx = Math.floor(Math.random() * health.fans.length);
+      health.fans[fanIdx] = 'failed';
+      health.fanRPM *= 1.3;
+      // Visual: stop one fan
+      const fans = server.userData.fans;
+      if (fans && fans.userData[`fan${fanIdx}`]) {
+        fans.userData[`fan${fanIdx}`].userData.targetSpeed = 0;
+        fans.userData[`fan${fanIdx}`].userData.status = 'failed';
+        // Update LED
+        const led = fans.userData[`fan${fanIdx}`].getObjectByName('led');
+        if (led) led.material = Materials.ledRed;
+      }
+      break;
+    case 'psu':
+      const psuIdx = Math.floor(Math.random() * health.psus.length);
+      health.psus[psuIdx] = 'failed';
+      health.power *= 1.1;
+      const psus = server.userData.psus;
+      if (psus && psus.userData[`psu${psuIdx}`]) {
+        psus.userData[`psu${psuIdx}`].userData.status = 'failed';
+        psus.userData[`psu${psuIdx}`].userData.led.material = Materials.ledRed;
+      }
+      break;
+    case 'drive':
+      const driveIdx = Math.floor(Math.random() * health.drives.length);
+      health.drives[driveIdx] = 'failed';
+      const drives = server.userData.drives;
+      if (drives && drives.userData[`drive${driveIdx}`]) {
+        drives.userData[`drive${driveIdx}`].userData.ledState = 'failed';
+        drives.userData[`drive${driveIdx}`].userData.led.material = Materials.ledRed;
+      }
+      break;
+    case 'gpu-overheat':
+      if (health.gpuTemp.length > 0) {
+        const gpuIdx = Math.floor(Math.random() * health.gpuTemp.length);
+        health.gpuTemp[gpuIdx] = 95;
+        health.fanRPM *= 1.5;
+        const gpus = server.userData.gpus;
+        if (gpus && gpus.userData[`gpu${gpuIdx}`]) {
+          gpus.userData[`gpu${gpuIdx}`].userData.overheating = true;
+        }
+      }
+      break;
+    case 'net-link':
+      const linkIdx = Math.floor(Math.random() * health.netLinks.length);
+      health.netLinks[linkIdx] = 'down';
+      const rearIO = server.userData.rearIO;
+      // Visual indicator would be on the port
+      break;
+  }
+  
+  updateHealthPanel();
+  updateComponentPanel();
+}
+
+function clearFailures() {
+  if (!AppState.sliceServer) return;
+  const server = AppState.sliceServer;
+  const health = server.userData.health;
+  
+  health.fans.fill('ok');
+  health.psus.fill('ok');
+  health.drives.fill('ok');
+  health.gpus.fill('ok');
+  health.netLinks.fill('ok');
+  health.fanRPM = 8000 + Math.random()*3000;
+  health.power = server.userData.archetypeData.powerEstimate * (0.5 + Math.random()*0.3);
+  health.gpuTemp = health.gpuTemp.map(() => 50 + Math.random()*25);
+  health.cpuTemp = [45 + Math.random()*15, 48 + Math.random()*12];
+  
+  // Reset visuals
+  const fans = server.userData.fans;
+  if (fans) {
+    for (let i = 0; i < health.fans.length; i++) {
+      if (fans.userData[`fan${i}`]) {
+        fans.userData[`fan${i}`].userData.targetSpeed = 1.0;
+        fans.userData[`fan${i}`].userData.status = 'ok';
+      }
+    }
+  }
+  
+  const psus = server.userData.psus;
+  if (psus) {
+    for (let i = 0; i < health.psus.length; i++) {
+      if (psus.userData[`psu${i}`]) {
+        psus.userData[`psu${i}`].userData.status = 'ok';
+        psus.userData[`psu${i}`].userData.led.material = Materials.ledGreen;
+      }
+    }
+  }
+  
+  const drives = server.userData.drives;
+  if (drives) {
+    for (let i = 0; i < health.drives.length; i++) {
+      if (drives.userData[`drive${i}`]) {
+        drives.userData[`drive${i}`].userData.ledState = 'ok';
+        drives.userData[`drive${i}`].userData.led.material = Materials.ledGreen;
+      }
+    }
+  }
+  
+  const gpus = server.userData.gpus;
+  if (gpus) {
+    gpus.children.forEach(gpu => {
+      gpu.userData.overheating = false;
+    });
+  }
+  
+  AppState.failureMode = null;
+  updateHealthPanel();
+  updateComponentPanel();
+  hideFailureModal();
+}
+
+// ============================================================================
+// COMPARISON MODAL
+// ============================================================================
+function showCompareModal() {
+  const content = document.getElementById('compare-content');
+  const archetypes = Object.entries(SERVER_ARCHETYPES);
+  
+  let html = '<table style="width:100%; border-collapse:collapse; font-size:11px;">';
+  html += '<thead><tr style="text-align:left; color:var(--text-dim); border-bottom:1px solid var(--panel-border);">';
+  html += '<th style="padding:8px;">Attribute</th>';
+  archetypes.forEach(([key, a]) => {
+    html += `<th style="padding:8px; color:${'#'+a.color.toString(16).padStart(6,'0')}">${a.shortName}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  
+  const attrs = [
+    { key: 'cpuCount', label: 'CPU Capability', format: v => v + ' Socket' + (v>1?'s':''), max: 2 },
+    { key: 'gpuCount', label: 'GPU Capability', format: v => v > 0 ? v + ' GPUs' : 'None', max: 8 },
+    { key: 'dimmPopulated', label: 'Memory Capacity', format: v => v + ' DIMMs', max: 32 },
+    { key: 'driveBays', label: 'Storage Capacity', format: v => v + ' Bays', max: 36 },
+    { key: 'nicPorts', label: 'Network Capability', format: v => v + ' Ports', max: 24 },
+    { key: 'powerEstimate', label: 'Power Consumption', format: v => (v/1000).toFixed(1) + ' kW', max: 7200, invert: true },
+    { key: 'coolingLevel', label: 'Cooling Requirement', format: v => 'Level ' + v, max: 5, invert: true },
+    { key: 'height', label: 'Implementation Complexity', format: v => v + 'U', max: 4, invert: true }
+  ];
+  
+  attrs.forEach(attr => {
+    html += '<tr style="border-bottom:1px solid var(--panel-border);">';
+    html += `<td style="padding:8px; color:var(--text-dim);">${attr.label}</td>`;
+    archetypes.forEach(([key, a]) => {
+      const val = a[attr.key];
+      const pct = Math.min(val / attr.max, 1);
+      const barColor = attr.invert ? (pct > 0.7 ? '#f85149' : pct > 0.4 ? '#d29922' : '#3fb950') : '#58a6ff';
+      html += `<td style="padding:8px;">
+        <div>${attr.format(val)}</div>
+        <div class="compare-bar"><div class="compare-bar-fill" style="width:${pct*100}%; background:${barColor}"></div></div>
+      </td>`;
+    });
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table>';
+  content.innerHTML = html;
+  document.getElementById('compare-modal').style.display = 'block';
+}
+
+function updateSliceNav() {
+  if (!AppState.sliceServer) return;
+  const idx = AppState.servers.indexOf(AppState.sliceServer);
+  document.getElementById('slice-server-pos').textContent = `SERVER ${(idx+1).toString().padStart(2,'0')} / ${AppState.servers.length} • ${AppState.sliceServer.name} • ${AppState.sliceServer.userData.archetypeData.height}U • ${AppState.sliceServer.userData.position}`;
+}
+
+function switchSliceServer(delta) {
+  if (!AppState.sliceServer) return;
+  const idx = AppState.servers.indexOf(AppState.sliceServer);
+  const newIdx = (idx + delta + AppState.servers.length) % AppState.servers.length;
+  const newServer = AppState.servers[newIdx];
+  
+  // Animate swap
+  const oldServer = AppState.sliceServer;
+  oldServer.userData.inSliceMode = false;
+  disableHighDetail(oldServer);
+  openCover(false);
+  
+  // Quick swap
+  setTimeout(() => {
+    AppState.sliceServer = newServer;
+    AppState.sliceServerOriginalPos = newServer.position.clone();
+    newServer.userData.inSliceMode = true;
+    enableHighDetail(newServer);
+    openCover(true);
+    updateSliceNav();
+    updateServerInfoPanel();
+    updateHealthPanel();
+    updateArchReasoning();
+    AppState.selectedServer = newServer;
+    updateServerList();
+    updateRackVisual();
+  }, 400);
+}
+
+// ============================================================================
+// RESET
+// ============================================================================
+function resetAll() {
+  clearFailures();
+  AppState.visualizations = { airflow: false, power: false, data: false };
+  AppState.cutaway = false;
+  AppState.exploded = false;
+  AppState.coverOpen = false;
+  
+  document.getElementById('btn-airflow').classList.remove('active');
+  document.getElementById('btn-power').classList.remove('active');
+  document.getElementById('btn-data').classList.remove('active');
+  document.getElementById('btn-cutaway').classList.remove('active');
+  document.getElementById('btn-explode').classList.remove('active');
+  document.getElementById('btn-open-cover').textContent = 'OPEN COVER';
+  document.getElementById('btn-open-cover').classList.remove('active');
+  
+  if (AppState.sliceServer) {
+    exitSliceView();
+  }
+  
+  // Reset camera
+  camera.position.set(1800, RACK_HEIGHT/2, 2200);
+  controls.target.set(0, RACK_HEIGHT/2, 0);
+  
+  // Restore all materials
+  AppState.servers.forEach(s => {
+    s.traverse(obj => {
+      if (obj.isMesh && obj.userData.originalMaterial) {
+        obj.material = obj.userData.originalMaterial;
+      }
+    });
+  });
+  
+  AppState.selectedServer = null;
+  AppState.selectedComponent = null;
+  updateRackVisual();
+  updateServerList();
+  updateServerInfoPanel();
+  updateComponentPanel();
+  updateHealthPanel();
+  updateArchReasoning();
+  document.getElementById('component-info-panel').style.display = 'none';
+}
+
+// ============================================================================
+// ANIMATION LOOP
+// ============================================================================
+let lastTime = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+  
+  const now = performance.now();
+  const delta = (now - lastTime) / 1000;
+  lastTime = now;
+  
+  // Update performance stats
+  AppState.perfStats.frames++;
+  if (now - AppState.perfStats.lastTime >= 1000) {
+    AppState.perfStats.fps = AppState.perfStats.frames;
+    AppState.perfStats.draws = renderer.info.render.calls;
+    AppState.perfStats.tris = renderer.info.render.triangles;
+    AppState.perfStats.frames = 0;
+    AppState.perfStats.lastTime = now;
+    
+    document.getElementById('stat-fps').textContent = `FPS: ${AppState.perfStats.fps}`;
+    document.getElementById('stat-draws').textContent = `Draw: ${AppState.perfStats.draws}`;
+    document.getElementById('stat-tris').textContent = `Tris: ${(AppState.perfStats.tris/1000).toFixed(1)}k`;
+  }
+  
+  // Animate fans
+  AppState.servers.forEach(server => {
+    if (server.userData.fans) {
+      server.userData.fans.children.forEach(fan => {
+        if (fan.userData.blades) {
+          const speed = fan.userData.speed || 1;
+          const target = fan.userData.targetSpeed || 1;
+          fan.userData.speed += (target - speed) * 0.1;
+          fan.userData.blades.rotation.z += fan.userData.speed * delta * 50;
+        }
+      });
+    }
+    
+    // Animate GPU fans
+    if (server.userData.gpus) {
+      server.userData.gpus.children.forEach(gpu => {
+        for (let f = 0; f < 3; f++) {
+          const fan = gpu.userData[`fan${f}`];
+          if (fan) fan.rotation.z += delta * 60;
+        }
+      });
+    }
+    
+    // Animate health values slowly
+    if (Math.random() < 0.01) {
+      const h = server.userData.health;
+      h.cpuTemp.forEach((t, i) => { h.cpuTemp[i] += (Math.random()-0.5)*2; h.cpuTemp[i] = Math.max(35, Math.min(95, h.cpuTemp[i])); });
+      h.gpuTemp.forEach((t, i) => { h.gpuTemp[i] += (Math.random()-0.5)*3; h.gpuTemp[i] = Math.max(40, Math.min(100, h.gpuTemp[i])); });
+      h.memUtil += (Math.random()-0.5)*2; h.memUtil = Math.max(10, Math.min(95, h.memUtil));
+      h.storageUtil += (Math.random()-0.5)*0.5; h.storageUtil = Math.max(10, Math.min(90, h.storageUtil));
+      h.netTraffic += (Math.random()-0.5)*10; h.netTraffic = Math.max(1, Math.min(100, h.netTraffic));
+      h.fanRPM += (Math.random()-0.5)*200; h.fanRPM = Math.max(5000, Math.min(15000, h.fanRPM));
+      h.power += (Math.random()-0.5)*50; h.power = Math.max(server.userData.archetypeData.powerEstimate*0.3, Math.min(server.userData.archetypeData.powerEstimate*1.2, h.power));
+      
+      if (server === AppState.selectedServer) updateHealthPanel();
+    }
+  });
+  
+  // Animate airflow particles
+  if (AppState.visualizations.airflow && AppState.sliceServer) {
+    const particles = AppState.sliceServer.userData.airflowParticles;
+    if (particles && particles.userData.paths) {
+      const paths = particles.userData.paths;
+      const progress = particles.userData.progress;
+      const dummy = new THREE.Object3D();
+      
+      for (let i = 0; i < paths.length; i++) {
+        progress[i] += delta * 0.3;
+        if (progress[i] > 1) progress[i] = 0;
+        
+        const p = paths[i];
+        const t = progress[i];
+        // Cubic bezier interpolation
+        const mt = 1 - t;
+        const pos = new THREE.Vector3().copy(p.start).multiplyScalar(mt*mt*mt)
+          .add(new THREE.Vector3().copy(p.mid1).multiplyScalar(3*mt*mt*t))
+          .add(new THREE.Vector3().copy(p.mid2).multiplyScalar(3*mt*t*t))
+          .add(new THREE.Vector3().copy(p.end).multiplyScalar(t*t*t));
+        
+        dummy.position.copy(pos);
+        dummy.updateMatrix();
+        particles.setMatrixAt(i, dummy.matrix);
+      }
+      particles.instanceMatrix.needsUpdate = true;
+    }
+  }
+  
+  // Animate power paths
+  if (AppState.visualizations.power && AppState.sliceServer) {
+    const paths = AppState.sliceServer.userData.powerPaths;
+    if (paths) {
+      paths.children.forEach((mesh, i) => {
+        if (mesh.userData.animOffset !== undefined) {
+          const intensity = (Math.sin(now * 0.005 + mesh.userData.animOffset) + 1) / 2;
+          mesh.material.opacity = 0.3 + intensity * 0.5;
+          mesh.scale.setScalar(0.8 + intensity * 0.4);
+        }
+      });
+    }
+  }
+  
+  // Animate data paths
+  if (AppState.visualizations.data && AppState.sliceServer) {
+    const paths = AppState.sliceServer.userData.dataPaths;
+    if (paths) {
+      paths.children.forEach((mesh, i) => {
+        if (mesh.userData.animOffset !== undefined) {
+          const intensity = (Math.sin(now * 0.008 + mesh.userData.animOffset) + 1) / 2;
+          mesh.material.opacity = 0.2 + intensity * 0.5;
+          mesh.scale.setScalar(0.7 + intensity * 0.6);
+        }
+      });
+    }
+  }
+  
+  // Animate failure effects
+  if (AppState.failureMode) {
+    // GPU overheat pulsing
+    if (AppState.sliceServer && AppState.sliceServer.userData.gpus) {
+      AppState.sliceServer.userData.gpus.children.forEach(gpu => {
+        if (gpu.userData.overheating && gpu.userData.heatsink) {
+          const intensity = (Math.sin(now * 0.01) + 1) / 2;
+          gpu.userData.heatsink.material.emissiveIntensity = intensity * 0.5;
+          gpu.userData.heatsink.material.emissive.setHex(0xff4400);
+        }
+      });
+    }
+  }
+  
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ============================================================================
+// EVENT HANDLERS & INIT
+// ============================================================================
+function updateModeUI() {
+  const indicator = document.getElementById('mode-indicator');
+  indicator.textContent = AppState.mode === 'rack' ? 'RACK VIEW' : 'SLICE VIEW';
+  indicator.className = 'mode-indicator ' + (AppState.mode === 'rack' ? 'mode-rack' : 'mode-slice');
+  
+  document.getElementById('btn-rack-view').classList.toggle('active', AppState.mode === 'rack');
+  document.getElementById('btn-slice-view').classList.toggle('active', AppState.mode === 'slice');
+  document.getElementById('btn-slice-view').disabled = !AppState.selectedServer || AppState.mode === 'transitioning';
+}
+
+function initUI() {
+  // View mode buttons
+  document.getElementById('btn-rack-view').addEventListener('click', () => {
+    if (AppState.mode === 'slice') exitSliceView();
+  });
+  
+  document.getElementById('btn-slice-view').addEventListener('click', () => {
+    if (AppState.mode === 'rack' && AppState.selectedServer) enterSliceView();
+  });
+  
+  // Camera presets
+  document.querySelectorAll('.camera-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      if (AppState.mode === 'rack') {
+        const positions = {
+          'rack-front': { pos: [0, RACK_HEIGHT/2, 2000], look: [0, RACK_HEIGHT/2, 0] },
+          'rack-34': { pos: [1800, RACK_HEIGHT/2, 1800], look: [0, RACK_HEIGHT/2, 0] },
+          'rack-side': { pos: [2000, RACK_HEIGHT/2, 0], look: [0, RACK_HEIGHT/2, 0] },
+          'rack-rear': { pos: [0, RACK_HEIGHT/2, -2000], look: [0, RACK_HEIGHT/2, 0] }
+        };
+        const p = positions[preset];
+        animateCameraTo(new THREE.Vector3(...p.pos), new THREE.Vector3(...p.look), 1000);
+      } else if (AppState.mode === 'slice') {
+        applySlicePreset(preset.replace('rack-', ''));
+      }
+    });
+  });
+  
+  // Toolbar buttons
+  document.getElementById('btn-open-cover').addEventListener('click', () => {
+    if (AppState.sliceServer) openCover(!AppState.coverOpen);
+  });
+  
+  document.getElementById('btn-cutaway').addEventListener('click', toggleCutaway);
+  document.getElementById('btn-explode').addEventListener('click', toggleExplode);
+  document.getElementById('btn-airflow').addEventListener('click', toggleAirflow);
+  document.getElementById('btn-power').addEventListener('click', togglePower);
+  document.getElementById('btn-data').addEventListener('click', toggleData);
+  document.getElementById('btn-failures').addEventListener('click', showFailureModal);
+  document.getElementById('btn-compare').addEventListener('click', showCompareModal);
+  document.getElementById('btn-reset').addEventListener('click', resetAll);
+  
+  // Failure modal
+  document.querySelectorAll('.failure-btn[data-failure]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.failure-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      triggerFailure(btn.dataset.failure);
+    });
+  });
+  
+  document.getElementById('btn-clear-failures').addEventListener('click', clearFailures);
+  document.getElementById('btn-close-failure-modal').addEventListener('click', hideFailureModal);
+  document.getElementById('btn-close-compare').addEventListener('click', () => {
+    document.getElementById('compare-modal').style.display = 'none';
+  });
+  
+  // Slice navigation
+  document.getElementById('btn-prev-server').addEventListener('click', () => switchSliceServer(-1));
+  document.getElementById('btn-next-server').addEventListener('click', () => switchSliceServer(1));
+  
+  // Window resize
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (AppState.mode === 'slice') exitSliceView();
+      hideFailureModal();
+      document.getElementById('compare-modal').style.display = 'none';
+    }
+    if (e.key === ' ') { e.preventDefault(); if (AppState.mode === 'rack' && AppState.selectedServer) enterSliceView(); }
+    if (e.key === 'ArrowLeft' && AppState.mode === 'slice') switchSliceServer(-1);
+    if (e.key === 'ArrowRight' && AppState.mode === 'slice') switchSliceServer(1);
+  });
+}
+
+// Initialize
+populateRack();
+updateRackVisual();
+updateServerList();
+initUI();
+animate();
+
+// Select first server by default
+setTimeout(() => {
+  if (AppState.servers.length > 0) {
+    selectServer(AppState.servers[0]);
+  }
+}, 100);
+
+</script>
+</body>
+</html>
