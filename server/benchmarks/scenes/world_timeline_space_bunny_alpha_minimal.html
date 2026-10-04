@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>A Timeline of the World — Animated SVG Documentary</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #07111c; color: #f6f1df; font-family: Georgia, "Times New Roman", serif; }
+  #stage { width: 100%; height: 100%; display: block; touch-action: none; }
+  #controls { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid #f3d99b55; border-radius: 24px; background: #07111ce8; box-shadow: 0 8px 28px #0008; backdrop-filter: blur(8px); }
+  button, select { appearance: none; border: 1px solid #f3d99b66; color: #fff8df; background: #102333; border-radius: 16px; padding: 7px 11px; font: 600 12px Arial, sans-serif; cursor: pointer; }
+  button:hover, select:hover { background: #1d3b4d; }
+  #play { min-width: 72px; }
+  #restart { padding-inline: 12px; }
+  #clock { color: #d8c590; font: 11px Arial, sans-serif; min-width: 66px; text-align: center; }
+  #timelineHint { position: fixed; right: 14px; bottom: 17px; z-index: 3; color: #ddd7c3aa; font: 10px Arial, sans-serif; pointer-events: none; }
+  @media (max-width: 650px) {
+    #controls { bottom: 10px; gap: 4px; padding: 5px; }
+    button, select { padding: 6px 8px; font-size: 11px; }
+    #clock { display: none; }
+    #timelineHint { display: none; }
+  }
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="svgTitle svgDesc">
+  <title id="svgTitle">A Timeline of the World</title>
+  <desc id="svgDesc">A continuously evolving SVG globe from Earth's formation to the digital age. Drag the timeline or use the chapter markers to explore.</desc>
+  <defs>
+    <radialGradient id="space" cx="50%" cy="46%" r="70%">
+      <stop offset="0" stop-color="#17374b"/>
+      <stop offset=".58" stop-color="#091c2c"/>
+      <stop offset="1" stop-color="#020711"/>
+    </radialGradient>
+    <radialGradient id="ocean" cx="35%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#56c7cf"/>
+      <stop offset=".5" stop-color="#176b91"/>
+      <stop offset="1" stop-color="#102d55"/>
+    </radialGradient>
+    <radialGradient id="molten" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#fff19a"/>
+      <stop offset=".35" stop-color="#f26b24"/>
+      <stop offset=".72" stop-color="#761d1c"/>
+      <stop offset="1" stop-color="#180b18"/>
+    </radialGradient>
+    <radialGradient id="land" cx="35%" cy="25%" r="80%">
+      <stop offset="0" stop-color="#a4c86b"/>
+      <stop offset=".55" stop-color="#4c8b59"/>
+      <stop offset="1" stop-color="#224b48"/>
+    </radialGradient>
+    <linearGradient id="atmosphere" x1="0" y1="0" x2="0" y2="1">
+      <stop id="sky0" offset="0" stop-color="#291525"/>
+      <stop id="sky1" offset=".65" stop-color="#743021"/>
+      <stop id="sky2" offset="1" stop-color="#d35825"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#73dbe0" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#0c3157" stop-opacity=".72"/>
+    </linearGradient>
+    <linearGradient id="ice" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#fff" stop-opacity=".92"/>
+      <stop offset="1" stop-color="#9dd9e8" stop-opacity=".72"/>
+    </linearGradient>
+    <linearGradient id="cityGlow" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#65e8ff"/>
+      <stop offset="1" stop-color="#ffca61"/>
+    </linearGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="smallGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="globeClip"><circle cx="800" cy="405" r="246"/></clipPath>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#bde6e0" stroke-opacity=".13" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#space)"/>
+  <g id="stars" fill="#dff7ff"></g>
+
+  <g id="camera">
+    <circle cx="800" cy="390" r="310" fill="url(#atmosphere)" opacity=".44" filter="url(#soft)"/>
+    <circle cx="800" cy="405" r="246" fill="url(#ocean)" stroke="#b7f6ed" stroke-opacity=".35" stroke-width="2"/>
+    <g clip-path="url(#globeClip)">
+      <circle id="moltenSurface" cx="800" cy="405" r="246" fill="url(#molten)" opacity="1"/>
+      <path id="lavaA" d="M550 280Q650 220 730 315T930 285T1100 390" fill="none" stroke="#ffd35a" stroke-width="14" opacity=".8"/>
+      <path id="lavaB" d="M590 520Q680 430 770 510T1010 465" fill="none" stroke="#ff8b2d" stroke-width="10" opacity=".7"/>
+      <g id="landGroup" fill="url(#land)" stroke="#b6df9b" stroke-width="2" stroke-opacity=".45">
+        <path id="land0"/>
+        <path id="land1"/>
+        <path id="land2"/>
+        <path id="land3"/>
+      </g>
+      <circle cx="800" cy="405" r="246" fill="url(#sea)"/>
+      <path id="coastGlow" d="M555 375C650 160 955 175 1050 390" fill="none" stroke="#8de7e5" stroke-width="7" opacity=".32"/>
+      <g id="iceGroup" fill="url(#ice)" opacity="0">
+        <path d="M554 375Q620 156 800 158Q1010 160 1048 360Q978 330 915 355Q850 310 782 350Q700 300 640 350Z"/>
+        <path d="M548 402Q578 600 790 650Q1000 608 1054 420Q1000 468 930 445Q850 500 770 460Q680 510 620 455Z"/>
+        <path d="M579 318Q680 255 760 295Q845 240 1004 317L1002 344Q896 303 830 340Q705 325 592 361Z" opacity=".8"/>
+      </g>
+      <g id="stromatolites" opacity="0" fill="#4b8a72" stroke="#a8e0b6" stroke-width="2">
+        <path d="M600 594Q615 540 635 594Z M650 606Q670 526 695 606Z M715 598Q738 532 760 598Z M825 602Q845 535 868 602Z M900 595Q922 540 944 595Z"/>
+        <path d="M615 573Q675 560 690 584M720 577Q780 562 800 590M840 577Q890 560 918 586" fill="none" stroke="#c7e6a1" stroke-width="6"/>
+      </g>
+      <g id="trilobites" fill="#e5a85a" stroke="#633b35" stroke-width="3" opacity="0">
+        <g transform="translate(650 465) rotate(-18)"><ellipse rx="42" ry="20"/><path d="M-36 0H36M-25 0V14M-10 0V17M8 0V17M25 0V14" fill="none"/></g>
+        <g transform="translate(815 500) rotate(20) scale(.7)"><ellipse rx="42" ry="20"/><path d="M-36 0H36M-25 0V14M-10 0V17M8 0V17M25 0V14" fill="none"/></g>
+        <g transform="translate(935 430) rotate(-10) scale(.55)"><ellipse rx="42" ry="20"/><path d="M-36 0H36M-25 0V14M-10 0V17M8 0V17M25 0V14" fill="none"/></g>
+      </g>
+      <g id="forests" opacity="0">
+        <g fill="#1d5a3d">
+          <path d="M615 590L640 430L665 590ZM640 470L585 540H635ZM645 445L700 510H652Z"/>
+          <path d="M875 595L905 400L935 595ZM903 450L840 530H898ZM910 430L970 500H918Z"/>
+          <path d="M735 625L758 490L781 625Z"/>
+        </g>
+        <g fill="none" stroke="#6f4b2b" stroke-width="12"><path d="M640 590V665M905 595V660M758 625V670"/></g>
+      </g>
+      <g id="dinosaurs" opacity="0" fill="#395d3c" stroke="#172c28" stroke-width="3">
+        <path d="M650 565Q710 510 790 548Q845 550 870 515Q880 490 855 482L820 492Q840 460 865 477Q902 500 868 538Q835 575 770 570L690 590Z"/>
+        <path d="M680 568L670 615L695 615L715 572M830 560L840 610L865 610L850 551" fill="none" stroke-width="13"/>
+        <path d="M710 535Q672 510 696 490" fill="none" stroke-width="8"/>
+        <path d="M730 560Q704 618 690 630" fill="none"/>
+      </g>
+      <g id="impact" opacity="0" filter="url(#glow)">
+        <circle cx="1010" cy="240" r="9" fill="#fff4b0"/>
+        <path d="M940 285L995 250" stroke="#ffd567" stroke-width="7"/>
+        <circle cx="1005" cy="250" r="13" fill="#fff7cf"/>
+        <path d="M1005 265L900 360" stroke="#ff8b32" stroke-width="12" stroke-dasharray="8 18"/>
+      </g>
+      <g id="mammals" opacity="0" fill="#9b6447" stroke="#4b2c25" stroke-width="2">
+        <path d="M630 585Q655 530 704 555Q731 525 770 565Q733 597 680 590Z"/>
+        <path d="M645 575L650 600M700 584L706 605M742 580L748 600" fill="none" stroke-width="5"/>
+        <path d="M622 570Q595 548 584 522Q614 524 640 548" fill="#8a503d"/>
+        <path d="M755 558Q790 535 810 557Q792 582 754 577Z"/>
+      </g>
+      <g id="humans" opacity="0" stroke="#e9c08a" fill="#de8d5d" stroke-width="3">
+        <g transform="translate(590 520)"><circle r="8"/><path d="M0 12V38M0 19L-13 31M0 19L14 27M0 38L-11 60M0 38L13 60" fill="none"/></g>
+        <g transform="translate(640 545) scale(.8)"><circle r="8"/><path d="M0 12V38M0 19L-13 31M0 19L14 27M0 38L-11 60M0 38L13 60" fill="none"/></g>
+        <g transform="translate(680 520) scale(.9)"><circle r="8"/><path d="M0 12V38M0 19L-13 31M0 19L14 27M0 38L-11 60M0 38L13 60" fill="none"/></g>
+      </g>
+      <g id="fields" opacity="0" stroke="#d5a94c" stroke-width="5">
+        <path d="M560 600L700 530L840 620L700 650Z" fill="#708844"/>
+        <path d="M590 594L720 545M630 615L754 566M680 633L790 587M590 600L710 648M650 585L770 636"/>
+      </g>
+      <g id="pyramids" opacity="0" fill="#d9b96b" stroke="#795b32" stroke-width="2">
+        <path d="M610 600L680 475L750 600Z"/><path d="M790 620L850 510L910 620Z"/>
+        <path d="M680 475V600M850 510V620" opacity=".45"/>
+      </g>
+      <g id="classical" opacity="0" fill="#e5d3aa" stroke="#6e5239" stroke-width="3">
+        <path d="M590 610H800M610 610V550H640V610M655 610V530H685V610M700 610V550H730V610M745 610V530H775V610"/>
+        <path d="M600 550L625 520L650 550M650 530L670 500L690 530M740 530L760 500L780 530"/>
+        <circle cx="850" cy="550" r="34"/><path d="M850 516V584M816 550H884"/>
+        <path d="M910 610V535H970V610M920 535L940 500L960 535" fill="#d77b4d"/>
+      </g>
+      <g id="medieval" opacity="0" fill="#c3b68f" stroke="#5d4b38" stroke-width="3">
+        <path d="M585 620V510H675V620M600 510L630 460L660 510M615 620V550H645V620"/>
+        <path d="M705 620V520H810V620M720 520L758 475L795 520"/>
+        <path d="M835 620V525H955V620M850 525L895 480L940 525"/>
+        <path d="M900 475V430" stroke-width="7"/><path d="M902 432Q945 455 950 505" fill="none"/>
+      </g>
+      <g id="industry" opacity="0" fill="#53606a" stroke="#1b2730" stroke-width="3">
+        <path d="M580 620V540H620V500H660V620ZM690 620V555H750V620ZM780 620V520H860V620ZM890 620V565H980V620Z"/>
+        <g fill="#9bb5b8"><rect x="600" y="555" width="14" height="17"/><rect x="630" y="555" width="14" height="17"/><rect x="710" y="580" width="18" height="16"/><rect x="810" y="550" width="18" height="18"/></g>
+        <path d="M850 500V450H890V500M920 540V455H960V540" fill="none" stroke="#4b5960" stroke-width="16"/>
+      </g>
+      <g id="modern" opacity="0" fill="none" stroke="#eaf8ff" stroke-width="3">
+        <path d="M580 540L940 470" stroke-width="2"/>
+        <path d="M650 523L690 525L705 540L650 533ZM690 525L670 505M690 525L680 545"/>
+        <path d="M825 495L850 495L860 505L825 501Z"/>
+        <path d="M900 465V410M885 420H915"/>
+        <circle cx="900" cy="402" r="3" fill="#8cf5ff"/>
+      </g>
+      <g id="digital" opacity="0">
+        <g stroke="#55e7ff" fill="#16364a">
+          <path d="M570 610V520H620V610M585 520V490H605V520M650 610V475H715V610M675 475V440H690V475M740 610V505H790V610M920 610V450H990V610M940 450V410H970V450"/>
+        </g>
+        <g fill="#a8f6ff" filter="url(#smallGlow)">
+          <rect x="581" y="540" width="10" height="12"/><rect x="600" y="570" width="10" height="12"/>
+          <rect x="665" y="505" width="12" height="14"/><rect x="690" y="545" width="12" height="14"/><rect x="665" y="580" width="12" height="12"/>
+          <rect x="755" y="530" width="12" height="12"/><rect x="775" y="570" width="10" height="10"/>
+          <rect x="935" y="485" width="12" height="12"/><rect x="962" y="530" width="12" height="12"/><rect x="935" y="575" width="12" height="12"/>
+        </g>
+        <path d="M620 565Q680 520 740 555T860 520T990 535" fill="none" stroke="url(#cityGlow)" stroke-width="4" filter="url(#smallGlow)"/>
+      </g>
+      <circle cx="800" cy="405" r="246" fill="url(#grid)" opacity=".35"/>
+      <ellipse cx="730" cy="300" rx="90" ry="55" fill="#fff" opacity=".08" filter="url(#soft)"/>
+    </g>
+    <circle id="atmoRing" cx="800" cy="405" r="262" fill="none" stroke="#8de8e5" stroke-width="10" opacity=".14" filter="url(#smallGlow)"/>
+  </g>
+
+  <g id="particles"></g>
+
+  <g id="theia" opacity="0">
+    <circle cx="1110" cy="205" r="32" fill="#7c8da0"/>
+    <circle cx="1095" cy="192" r="7" fill="#adb8bd"/><circle cx="1124" cy="218" r="9" fill="#596875"/><circle cx="1123" cy="190" r="5" fill="#bdc4c3"/>
+    <path d="M1060 224Q1015 260 988 307" fill="none" stroke="#f9b35b" stroke-width="5" stroke-dasharray="9 14"/>
+  </g>
+
+  <g id="ship" opacity="0" fill="none" stroke="#f3dfad" stroke-width="3">
+    <path d="M390 635H510L485 658H420Z" fill="#8b5135"/>
+    <path d="M450 635V590M450 596L500 626H450Z" fill="#e7d9b0"/>
+    <path d="M420 610Q450 625 500 610" fill="none"/>
+  </g>
+
+  <g id="moonLanding" opacity="0">
+    <ellipse cx="1060" cy="590" rx="155" ry="35" fill="#8d9294"/>
+    <path d="M930 590Q1080 540 1190 590Z" fill="#c8c8bc"/>
+    <g transform="translate(1010 535)">
+      <path d="M-24 50L0-35L24 50Z" fill="#e9e9df" stroke="#777" stroke-width="2"/>
+      <path d="M-8-8L-45 10L-30 35L-4 28M8-8L45 10L30 35L4 28" fill="#d0583c"/>
+      <circle cx="0" cy="-3" r="7" fill="#76d8ef" stroke="#777"/>
+      <path d="M-13 50L-22 65M13 50L22 65" stroke="#eee" stroke-width="5"/>
+    </g>
+    <g transform="translate(1100 572)"><circle cy="-20" r="7"/><path d="M0-12V10M0-5L-12 5M0-5L13 2M0 10L-8 28M0 10L9 28" fill="none" stroke="#eee" stroke-width="4"/></g>
+  </g>
+
+  <g id="hud">
+    <g transform="translate(70 55)">
+      <text id="chapterNumber" x="0" y="0" fill="#e4c779" font-family="Arial, sans-serif" font-size="14" letter-spacing="4">CHAPTER 01 / 19</text>
+      <rect id="captionBox" x="-18" y="22" width="610" height="194" rx="8" fill="#06111c" fill-opacity=".7" stroke="#f0d58a" stroke-opacity=".28"/>
+      <text id="chapterTitle" x="0" y="70" fill="#fff8df" font-size="36" font-weight="bold">Earth Takes Shape</text>
+      <text id="chapterDate" x="0" y="105" fill="#efcb74" font-family="Arial, sans-serif" font-size="16" letter-spacing="1.5">ABOUT 4.54 BILLION YEARS AGO</text>
+      <text id="captionA" x="0" y="145" fill="#e7e5d8" font-family="Arial, sans-serif" font-size="18">Dust and rock gathered into a molten world.</text>
+      <text id="captionB" x="0" y="174" fill="#e7e5d8" font-family="Arial, sans-serif" font-size="18">A giant impact with Theia helped form the Moon.</text>
+    </g>
+    <g transform="translate(70 784)">
+      <rect x="-20" y="-26" width="1480" height="92" rx="12" fill="#06111c" fill-opacity=".88" stroke="#eed38b" stroke-opacity=".35"/>
+      <text x="0" y="-8" fill="#cfc8b4" font-family="Arial, sans-serif" font-size="10" letter-spacing="1">PIECEWISE SCALE · DEEP TIME COMPRESSED · HUMAN HISTORY EXPANDED</text>
+      <g id="eraBands">
+        <rect x="0" y="0" width="520" height="18" fill="#6d3e37"/>
+        <rect x="520" y="0" width="120" height="18" fill="#49745d"/>
+        <rect x="640" y="0" width="205" height="18" fill="#4c7d78"/>
+        <rect x="845" y="0" width="180" height="18" fill="#7b7650"/>
+        <rect x="1025" y="0" width="160" height="18" fill="#6f7544"/>
+        <rect x="1185" y="0" width="165" height="18" fill="#4c6d77"/>
+        <rect x="1350" y="0" width="90" height="18" fill="#d09a45"/>
+        <g fill="#f4ead2" font-family="Arial, sans-serif" font-size="9" text-anchor="middle">
+          <text x="260" y="34">HADEAN</text><text x="580" y="34">ARCHEAN</text><text x="742" y="34">PROTEROZOIC</text>
+          <text x="935" y="34">PALEOZOIC</text><text x="1105" y="34">MESOZOIC</text><text x="1267" y="34">CENOZOIC</text><text x="1395" y="34">HISTORY</text>
+        </g>
+      </g>
+      <line x1="0" y1="9" x2="1440" y2="9" stroke="#fff5d0" stroke-opacity=".6" stroke-width="1"/>
+      <g id="ticks" stroke="#f6e7bd" stroke-width="1.5"></g>
+      <g id="playhead" transform="translate(0 9)">
+        <path d="M0-9L6 0L0 9L-6 0Z" fill="#ffe08a" filter="url(#smallGlow)"/>
+        <line y1="-15" y2="17" stroke="#ffe08a" stroke-width="2"/>
+      </g>
+    </g>
+  </g>
+</svg>
+
+<div id="controls" aria-label="Playback controls">
+  <button id="play" aria-label="Pause">PAUSE</button>
+  <button id="restart" aria-label="Restart">RESTART</button>
+  <select id="speed" aria-label="Playback speed">
+    <option value="0.5">0.5×</option>
+    <option value="1" selected>1×</option>
+    <option value="2">2×</option>
+  </select>
+  <span id="clock">00:00</span>
+</div>
+<div id="timelineHint">SPACE: PLAY / PAUSE · ← →: CHAPTER</div>
+
+<script>
+(() => {
+  const NS = "http://www.w3.org/2000/svg";
+  const $ = id => document.getElementById(id);
+  const svg = $("stage");
+  const chapters = [
+    {title:"Earth Takes Shape", date:"ABOUT 4.54 BILLION YEARS AGO", a:"Dust and rock gathered into a molten world.", b:"A giant impact with Theia helped form the Moon.", readout:"4.54 billion years ago", x:0},
+    {title:"The Hadean World", date:"4.54–4.0 BILLION YEARS AGO", a:"A world of magma slowly cooled and a solid crust formed.", b:"Rain began the long creation of the first oceans.", readout:"4.2 billion years ago", x:34},
+    {title:"The First Life", date:"ABOUT 3.7–3.5 BILLION YEARS AGO", a:"Single-celled organisms appeared in a young ocean.", b:"Microbial mats built layered structures called stromatolites.", readout:"3.7 billion years ago", x:92},
+    {title:"The Great Oxidation", date:"ABOUT 2.4 BILLION YEARS AGO", a:"Cyanobacteria released oxygen, changing seas and atmosphere.", b:"The oxygenated sky enabled a very different future for life.", readout:"2.4 billion years ago", x:145},
+    {title:"Snowball Earth", date:"ABOUT 720–635 MILLION YEARS AGO", a:"Repeated glaciations may have covered much of the planet in ice.", b:"Life endured beneath ice and in refuges at lower latitudes.", readout:"720 million years ago", x:220},
+    {title:"The Cambrian Explosion", date:"ABOUT 538 MILLION YEARS AGO", a:"A rapid evolutionary radiation produced many animal body plans.", b:"Trilobites crawled across diverse marine ecosystems.", readout:"538 million years ago", x:266},
+    {title:"Life Comes Ashore", date:"ABOUT 470–375 MILLION YEARS AGO", a:"Plants colonized land before animals followed them.", b:"Forests transformed soils, climates and habitats.", readout:"470 million years ago", x:310},
+    {title:"Pangaea & The Dinosaurs", date:"252–66 MILLION YEARS AGO", a:"Continents joined as Pangaea, then slowly began to split.", b:"Dinosaurs dominated many land ecosystems for nearly 186 million years.", readout:"252 million years ago", x:356},
+    {title:"The Asteroid Impact", date:"ABOUT 66 MILLION YEARS AGO", a:"An asteroid struck shallow seas, triggering global catastrophe.", b:"Non-avian dinosaurs ended, opening a path for mammals.", readout:"66 million years ago", x:406},
+    {title:"The Mammal Age", date:"ABOUT 66–2.6 MILLION YEARS AGO", a:"Small mammals diversified after the extinction.", b:"Many familiar groups appeared as climates and continents changed.", readout:"60 million years ago", x:454},
+    {title:"Homo sapiens", date:"ABOUT 300,000 YEARS AGO", a:"Anatomically modern humans arose in Africa.", b:"Our species later spread across nearly the whole world.", readout:"300,000 years ago", x:510},
+    {title:"Farming Begins", date:"ABOUT 10,000 BCE", a:"People in several regions independently cultivated food.", b:"Permanent settlements and surplus changed society.", readout:"10,000 BCE", x:675},
+    {title:"Early Civilisations", date:"MESOPOTAMIA & EGYPT; PYRAMID c. 2560 BCE", a:"Cities and writing flourished beside great rivers.", b:"The Great Pyramid of Giza was built about 4,500 years ago.", readout:"2560 BCE", x:790},
+    {title:"The Classical World", date:"c. 800 BCE–500 CE", a:"Greece and Rome transformed politics, philosophy and culture.", b:"Han China developed alongside vast trade across Eurasia.", readout:"100 BCE", x:900},
+    {title:"The Medieval World", date:"c. 500–1450 CE", a:"New states, cities and trade networks linked regions.", b:"Knowledge was preserved and exchanged across cultures.", readout:"1000 CE", x:1000},
+    {title:"Press & Exploration", date:"PRINTING PRESS c. 1450 · AMERICAS 1492", a:"Movable type made books faster to reproduce in Europe.", b:"Ocean voyages connected distant societies, often disastrously.", readout:"1492 CE", x:1100},
+    {title:"Industry & Steam", date:"FROM ABOUT 1760 CE", a:"Fossil fuels powered machines, factories and transport.", b:"Industrialisation brought enormous change and environmental cost.", readout:"1850 CE", x:1190},
+    {title:"The 20th Century", date:"FLIGHT 1903 · MOON 1969", a:"Powered flight, two world wars and rapid invention remade life.", b:"In 1969 humans first walked on the Moon.", readout:"1969 CE", x:1325},
+    {title:"The Digital Age", date:"LATE 20TH CENTURY–TODAY", a:"Computers and networks connected information at planetary scale.", b:"Today the world’s cities glow with screens, data and light.", readout:"Today", x:1440}
+  ];
+
+  const landSets = [
+    [
+      [[-100,-48],[-57,-76],[-8,-62],[24,-77],[55,-40],[86,-8],[72,31],[45,54],[15,76],[-18,68],[-47,81],[-85,51],[-118,20],[-123,-15]],
+      [[-170,-28],[-138,-60],[-105,-35],[-91,4],[-112,38],[-156,52],[-190,18]],
+      [[68,70],[112,47],[156,59],[190,24],[177,-14],[137,-35],[99,-12]],
+      [[82,-156],[126,-132],[154,-94],[133,-61],[97,-76],[67,-113]]
+    ],
+    [
+      [[-90,-105],[-45,-95],[-15,-67],[18,-82],[45,-52],[78,-28],[65,13],[45,54],[15,72],[-18,68],[-47,81],[-85,51],[-108,11],[-120,-47]],
+      [[-140,-70],[-104,-65],[-78,-35],[-91,5],[-119,35],[-153,28]],
+      [[60,63],[102,55],[150,66],[191,20],[172,-20],[126,-38],[88,-5]],
+      [[90,-150],[137,-126],[156,-89],[130,-66],[94,-88],[64,-118]]
+    ],
+    [
+      [[-105,-65],[-63,-80],[-20,-64],[20,-79],[50,-50],[79,-15],[69,30],[43,58],[13,73],[-18,67],[-48,80],[-86,47],[-120,16],[-125,-24]],
+      [[-150,-38],[-119,-58],[-91,-31],[-88,9],[-112,43],[-150,50]],
+      [[71,72],[113,48],[151,57],[185,21],[172,-18],[128,-39],[93,-9]],
+      [[81,-155],[128,-132],[155,-95],[132,-62],[96,-75],[65,-115]]
+    ],
+    [
+      [[-92,-78],[-43,-80],[-7,-54],[18,-64],[43,-36],[71,-15],[59,22],[38,48],[9,68],[-18,62],[-46,74],[-78,46],[-105,8],[-115,-37]],
+      [[-133,-67],[-99,-66],[-72,-33],[-83,13],[-112,36],[-146,26]],
+      [[60,58],[100,42],[144,54],[187,10],[165,-32],[120,-42],[84,-11]],
+      [[74,-146],[122,-120],[153,-88],[127,-58],[90,-73],[58,-108]]
+    ]
+  ];
+  const skies = [
+    ["#251324","#6e2a22","#d65a27"],["#241a2a","#763326","#c66235"],["#102c46","#275d73","#8ac5c3"],
+    ["#26354b","#71807b","#b9b58c"],["#a9c9d4","#d9e6e6","#f4f2df"],["#143b58","#4b9cad","#b5dfd6"],
+    ["#183950","#4e8290","#b8d4ba"],["#1c3d50","#4c807f","#9bc9aa"],["#1b3045","#4a6570","#b8a983"],
+    ["#182f46","#3d6678","#a3c6ba"],["#162d45","#3a6576","#9bc3ba"],["#183a4a","#557c67","#c5bd78"],
+    ["#214052","#8a7048","#e0b56b"],["#1b4054","#687f73","#d2b579"],["#1c394c","#4b6670","#a1ac9d"],
+    ["#16394e","#4d7b8c","#b8c7b8"],["#222d3b","#514b4c","#b79b79"],["#172d43","#3b657a","#8fb5bd"],
+    ["#081225","#102a45","#295073"]
+  ];
+
+  const ids = ["land0","land1","land2","land3"];
+  ids.forEach((id,i) => {
+    $(id).setAttribute("d", smooth(landSets[0][i]));
+    $("ticks").insertAdjacentHTML("beforeend", `<g data-index="${i}" class="tick" transform="translate(${chapters[i].x} 9)"><line y1="-6" y2="6"/><circle r="5" fill="#ffe29a"/></g>`);
+  });
+  document.querySelectorAll(".tick").forEach(t => t.addEventListener("click", e => jump(Number(t.dataset.index), true)));
+
+  const starGroup = $("stars"), particleGroup = $("particles");
+  const stars = [];
+  for (let i=0;i<65;i++) {
+    const c=document.createElementNS(NS,"circle"); const r=.5+Math.random()*1.7;
+    c.setAttribute("cx",Math.random()*1600); c.setAttribute("cy",Math.random()*740); c.setAttribute("r",r);
+    c.setAttribute("opacity",.2+Math.random()*.65); starGroup.appendChild(c);
+    stars.push({el:c,x:+c.getAttribute("cx"),y:+c.getAttribute("cy"),r});
+  }
+  const particles=[];
+  for (let i=0;i<34;i++) {
+    const c=document.createElementNS(NS,"circle"); c.setAttribute("r",1+Math.random()*2.4); particleGroup.appendChild(c);
+    particles.push({el:c,x:Math.random()*1600,y:Math.random()*700,s:.15+Math.random()*.65,p:Math.random()*Math.PI*2});
+  }
+
+  const duration = 171;
+  let elapsed=0, playing=true, speed=1, last=performance.now();
+  let current=-1, displayedA="", displayedB="";
+  const baseIce = $("iceGroup");
+
+  function smooth(a) {
+    let s=`M${a[0][0]} ${a[0][1]}`;
+    for(let i=0;i<a.length-1;i++) {
+      const p0=a[(i-1+a.length)%a.length], p1=a[i], p2=a[i+1], p3=a[(i+2)%a.length];
+      const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6];
+      const c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6];
+      s+=`C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
+    return s+"Z";
+  }
+  function mix(a,b,t){ return a.map((v,i)=>v+(b[i]-v)*t); }
+  function mixSky(a,b,t){
+    $("sky0").setAttribute("stop-color",rgb(mix(hex(a[0]),hex(b[0]),t)));
+    $("sky1").setAttribute("stop-color",rgb(mix(hex(a[1]),hex(b[1]),t)));
+    $("sky2").setAttribute("stop-color",rgb(mix(hex(a[2]),hex(b[2]),t)));
+  }
+  function hex(s){ return [parseInt(s.slice(1,3),16),parseInt(s.slice(3,5),16),parseInt(s.slice(5,7),16)]; }
+  function rgb(a){ return `rgb(${a.map(v=>Math.round(v)).join(",")})`; }
+  function chapterAt(t){
+    const per=duration/chapters.length, i=Math.floor(t/per);
+    return {i,local:(t-i*per)/per};
+  }
+  function setChapter(i){
+    if(i===current) return;
+    current=i;
+    const c=chapters[i];
+    $("chapterNumber").textContent=`CHAPTER ${String(i+1).padStart(2,"0")} / 19`;
+    $("chapterTitle").textContent=c.title;
+    $("chapterDate").textContent=c.date;
+    $("captionA").textContent=c.a;
+    $("captionB").textContent=c.b;
+    $("chapterTitle").setAttribute("opacity",0);
+    $("captionBox").setAttribute("fill-opacity",0);
+  }
+  function band(t){ return t<.5?0:t<.62?1:t<.74?2:1; }
+  function updateArt(t){
+    const {i,local}=chapterAt(t);
+    if(i!==current) setChapter(i);
+    const a=band(i), b=band(i+1), u=smoothstep(local);
+    for(let k=0;k<4;k++) $(ids[k]).setAttribute("d",smooth(landSets[a][k].map((p,j)=>mix(p,landSets[b][k][j],u))));
+    mixSky(skies[i],skies[i+1],u);
+    const e=local;
+    const magma=Math.max(0,1-i*1.55);
+    $("moltenSurface").setAttribute("opacity",magma);
+    $("lavaA").setAttribute("opacity",.8*magma);
+    $("lavaB").setAttribute("opacity",.7*magma);
+    $("theia").setAttribute("opacity",i===0?Math.sin(Math.PI*Math.min(1,local*1.15))*.95:0);
+    const theiaX=1110-e*185, theiaY=205+e*110;
+    $("theia").setAttribute("transform",`translate(${theiaX-1110} ${theiaY-205})`);
+    const ice=i===4?1:(i===5?(1-local*.65):0);
+    baseIce.setAttribute("opacity",ice);
+    $("atmoRing").setAttribute("stroke",i===3?"#b8e5a6":i>=12?"#86cde2":"#8de8e5");
+    const op=(id,on)=>$(id).setAttribute("opacity",on?Math.min(1,on):0);
+    op("stromatolites",i===2?Math.min(1,local*5):0);
+    op("trilobites",i===5?Math.min(1,local*5):0);
+    op("forests",i===6?Math.min(1,local*5):0);
+    op("dinosaurs",i===7?Math.min(1,local*5):0);
+    op("impact",i===8?Math.min(1,local*7):0);
+    op("mammals",i===9?Math.min(1,local*4):0);
+    op("humans",i>=10?(i===10?Math.min(1,local*5):1):0);
+    op("fields",i===11?Math.min(1,local*5):0);
+    op("pyramids",i===12?Math.min(1,local*5):0);
+    op("classical",i===13?Math.min(1,local*5):0);
+    op("medieval",i===14?Math.min(1,local*5):0);
+    op("ship",i===15?Math.min(1,local*5):0);
+    op("industry",i===16?Math.min(1,local*5):0);
+    op("modern",i===17?Math.min(1,local*5):0);
+    op("moonLanding",i===17?Math.max(0,Math.sin((local-.55)*Math.PI*3))*1:0);
+    op("digital",i===18?Math.min(1,local*4):0);
+    const zoom=1+Math.sin(t/duration*Math.PI*2)*.018;
+    const panX=Math.sin(t*.12)*8+Math.sin(t*.035)*18;
+    $("camera").setAttribute("transform",`translate(${800 800*0} ${405 405*0}) translate(${panX} 0) translate(800 405) scale(${zoom}) translate(-800 -405)`);
+    const px=chapters[i].x+(chapters[i+1]?.x-chapters[i].x||0)*local;
+    $("playhead").setAttribute("transform",`translate(${px} 9)`);
+    const captionFade=Math.min(1,local/.09);
+    $("chapterTitle").setAttribute("opacity",captionFade);
+    $("captionBox").setAttribute("fill-opacity",.7*captionFade);
+    $("clock").textContent=`${String(Math.floor(t/60)).padStart(2,"0")}:${String(Math.floor(t%60)).padStart(2,"0")}`;
+    svg.setAttribute("aria-label",`${chapters[i].title}. ${chapters[i].date}. ${chapters[i].a}`);
+  }
+  function smoothstep(x){ return x*x*(3-2*x); }
+  function jump(i,play){
+    elapsed=i*duration/chapters.length+.01;
+    updateArt(elapsed);
+    if(play!==false) setPlaying(true);
+  }
+  function setPlaying(v){
+    playing=v;
+    $("play").textContent=v?"PAUSE":"PLAY";
+    $("play").setAttribute("aria-label",v?"Pause":"Play");
+  }
+
+  $("play").addEventListener("click",()=>setPlaying(!playing));
+  $("restart").addEventListener("click",()=>{elapsed=0;current=-1;setPlaying(true);});
+  $("speed").addEventListener("change",e=>speed=+e.target.value);
+  window.addEventListener("keydown",e=>{
+    if(e.code==="Space"){e.preventDefault();setPlaying(!playing);}
+    if(e.code==="ArrowRight"){e.preventDefault();jump((chapterAt(elapsed).i+1)%chapters.length);}
+    if(e.code==="ArrowLeft"){e.preventDefault();jump((chapterAt(elapsed).i+chapters.length-1)%chapters.length);}
+  });
+
+  let dragging=false;
+  function scrub(e){
+    const r=svg.getBoundingClientRect(), vw=1600/viewportScale(r), vh=900/viewportScale(r);
+    const px=(e.clientX-r.left)/r.width*vw, py=(e.clientY-r.top)/r.height*vh;
+    const x=Math.max(0,Math.min(1440,px-70));
+    elapsed=x/1440*duration;
+    updateArt(elapsed);
+  }
+  function viewportScale(r){ return Math.min(r.width/1600,r.height/900); }
+  svg.addEventListener("pointerdown",e=>{dragging=true;svg.setPointerCapture(e.pointerId);scrub(e);});
+  svg.addEventListener("pointermove",e=>{if(dragging)scrub(e);});
+  svg.addEventListener("pointerup",()=>dragging=false);
+  svg.addEventListener("pointercancel",()=>dragging=false);
+
+  function frame(now){
+    const dt=Math.min(.05,(now-last)/1000); last=now;
+    if(playing&&!dragging){
+      elapsed+=dt*speed;
+      if(elapsed>=duration) elapsed%=duration;
+    }
+    updateArt(elapsed);
+    const {i,local}=chapterAt(elapsed);
+    for(const p of particles){
+      p.p+=dt*(.5+p.s);
+      p.y+=dt*(14+p.s*35);
+      if(i<2) p.y-=dt*22;
+      if(p.y>760){p.y=40;p.x=Math.random()*1600;}
+      if(p.y<30)p.y=730;
+      p.x+=Math.sin(p.p)*dt*12;
+      p.el.setAttribute("cx",p.x); p.el.setAttribute("cy",p.y);
+      p.el.setAttribute("fill",i<2?"#ffbd48":i===4?"#ffffff":i>=17?"#78eaff":"#bde9d2");
+      p.el.setAttribute("opacity",i<2?.8:i===4?.9:.25+Math.sin(p.p)*.25);
+    }
+    stars.forEach((s,n)=>{
+      s.el.setAttribute("cx",s.x+Math.sin(now*.00012+n)*2);
+      s.el.setAttribute("opacity",i>=11?.1:.35+.35*Math.sin(now*.001+n));
+    });
+    requestAnimationFrame(frame);
+  }
+  updateArt(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
