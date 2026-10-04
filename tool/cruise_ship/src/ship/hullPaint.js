@@ -121,18 +121,17 @@ function letters(atlas, slot, u, y, u0, u1, y0, y1) {
 // Window rows on the topsides:
 // [y centre, width, height, pitch, group length, max per group, x0, x1].
 const ROWS = [
-  [17.4, 1.7, 0.95, 2.15, 11.0, 4, -126, 112],
-  [12.4, 1.45, 0.8, 1.95, 9.8, 4, -146, 126],
-  [9.4, 0.9, 0.9, 1.7, 12.0, 4, -140, 122],
-  [6.4, 0.62, 0.62, 2.6, 15.0, 3, -120, 110],
+  [11.9, 1.5, 0.82, 2.0, 11.0, 4, -124, 118],
+  [8.6, 1.3, 0.72, 1.85, 9.8, 4, -146, 128],
+  [5.3, 0.8, 0.8, 1.7, 12.0, 4, -124, 124],
 ];
 
 /** Areas kept free of windows: [x0, x1, yMax] (logo, vent, shell doors). */
 const KEEP_CLEAR = [
-  [-124, -97, 17.0],
-  [-60, -45, 21.0],
-  [-27.5, -21.5, 8.2],
-  [65.5, 71.5, 8.2],
+  [-155, -123, 13.0],     // MSC logo aft
+  [-45, -27, 14.0],       // louvred vent
+  [-27.5, -21.5, 6.2],    // shell doors
+  [65.5, 71.5, 6.2],
 ];
 
 export function hullPaintMaterial() {
@@ -167,12 +166,12 @@ export function hullPaintMaterial() {
 
   // --- mooring openings: transom row, bow, stern quarters ---------------------
   const tCell = fract(z.div(3.4)).sub(0.5).mul(3.4);
-  const tOpen = sdRoundBox(vec2(tCell, y.sub(14.8)), vec2(1.05, 0.55), 0.35);
+  const tOpen = sdRoundBox(vec2(tCell, y.sub(8.4)), vec2(1.05, 0.55), 0.35);
   const tOn = transom.mul(step(abs(z), 15.5)).mul(step(1.2, abs(z)));
   const bCell = fract(x.div(2.9)).sub(0.5).mul(2.9);
-  const bOpen = sdRoundBox(vec2(bCell, y.sub(19.0)), vec2(0.85, 0.5), 0.3);
-  const bOn = step(138.0, x).mul(step(x, 153.5));
-  const sOpen = sdRoundBox(vec2(bCell, y.sub(15.2)), vec2(0.85, 0.5), 0.3);
+  const bOpen = sdRoundBox(vec2(bCell, y.sub(15.0)), vec2(0.85, 0.5), 0.3);
+  const bOn = step(144.0, x).mul(step(x, 158.0));
+  const sOpen = sdRoundBox(vec2(bCell, y.sub(9.8)), vec2(0.85, 0.5), 0.3);
   const sOn = step(-162.0, x).mul(step(x, -150.5)).mul(notTransom);
   const dMoor = min(min(
     select(tOn.greaterThan(0.5), tOpen, float(BIG)),
@@ -180,29 +179,29 @@ export function hullPaintMaterial() {
     select(sOn.greaterThan(0.5), sOpen, float(BIG)));
 
   // Dark glazing band (decks 5-6) round the stern and along the aft quarters.
-  const glazeZone = max(transom.mul(step(abs(z), 17.2)), step(x, -131.0).mul(notTransom));
-  const glazeBand = smoothstep(16.68, 16.72, y).mul(smoothstep(19.32, 19.28, y)).mul(glazeZone);
+  const glazeZone = max(transom.mul(step(abs(z), 18.0)), step(x, -137.0).mul(notTransom));
+  const glazeBand = smoothstep(10.48, 10.52, y).mul(smoothstep(12.72, 12.68, y)).mul(glazeZone);
   const mull = smoothstep(0.07, 0.035, gridDist(select(transom.greaterThan(0.5), z, x), 1.7));
 
   // --- anchor pocket (parallelogram leaning forward at the foot) ------------
-  const fy = clamp(y.sub(1.6).div(8.4), 0.0, 1.0);
-  const ax0 = mix(float(133.0), float(127.8), fy), ax1 = mix(float(139.6), float(133.2), fy);
-  const dAnchor = max(max(ax0.sub(x), x.sub(ax1)), max(float(1.6).sub(y), y.sub(10.0)));
+  const fy = clamp(y.sub(1.2).div(8.0), 0.0, 1.0);
+  const ax0 = mix(float(137.6), float(133.0), fy), ax1 = mix(float(143.6), float(138.4), fy);
+  const dAnchor = max(max(ax0.sub(x), x.sub(ax1)), max(float(1.2).sub(y), y.sub(9.2)));
   const ac = mix(ax0, ax1, 0.5);
-  const shank = max(abs(x.sub(ac)).sub(0.3), max(float(3.4).sub(y), y.sub(8.6)));
-  const crown = max(abs(length(vec2(x.sub(ac), y.sub(5.2).mul(1.25))).sub(1.5)).sub(0.26), y.sub(5.2));
+  const shank = max(abs(x.sub(ac)).sub(0.3), max(float(3.0).sub(y), y.sub(8.0)));
+  const crown = max(abs(length(vec2(x.sub(ac), y.sub(4.8).mul(1.25))).sub(1.5)).sub(0.26), y.sub(4.8));
   const anchorShape = min(shank, crown);
 
   // --- shell doors: seam outlines ---------------------------------------------
   let doorSeam = float(0.0);
   for (const xc of [-24.5, 68.5]) {
-    const d = sdRoundBox(vec2(x.sub(xc), y.sub(5.6)), vec2(2.3, 1.9), 0.12);
+    const d = sdRoundBox(vec2(x.sub(xc), y.sub(3.9)), vec2(2.3, 1.7), 0.12);
     doorSeam = max(doorSeam, smoothstep(0.035, 0.0, abs(d)));
   }
   doorSeam = doorSeam.mul(notTransom);
 
   // --- louvred vent below the recess -------------------------------------------
-  const ventBox = sdRoundBox(vec2(x.sub(-52.5), y.sub(16.6)), vec2(5.6, 3.9), 0.1);
+  const ventBox = sdRoundBox(vec2(x.sub(-36.4), y.sub(11.4)), vec2(6.6, 2.4), 0.1);
   const louvre = smoothstep(0.35, 0.5, abs(fract(x.div(0.32)).sub(0.5)).mul(2.0));
 
   // --- plating ----------------------------------------------------------------
@@ -214,15 +213,15 @@ export function hullPaintMaterial() {
 
   // --- lettering ----------------------------------------------------------------
   const u = select(side.greaterThan(0.0), x, x.negate());
-  const stbd = letters(atlas, 'name', u, y, 121.0, 139.0, 21.75, 23.45)
-    .add(letters(atlas, 'logo', u, y, -122.0, -99.5, 10.4, 16.6))
-    .add(letters(atlas, 'emblem', u, y, 151.0, 154.6, 21.9, 25.9))
-    .add(letters(atlas, 'thruster', u, y, 145.0, 149.0, 1.2, 3.2));
-  const port = letters(atlas, 'name', u, y, -139.0, -121.0, 21.75, 23.45)
-    .add(letters(atlas, 'logo', u, y, 99.5, 122.0, 10.4, 16.6))
-    .add(letters(atlas, 'emblem', u, y, -154.6, -151.0, 21.9, 25.9))
-    .add(letters(atlas, 'thruster', u, y, -149.0, -145.0, 1.2, 3.2));
-  const sternInk = letters(atlas, 'stern', z, y, -14.6, 14.6, 8.2, 12.6);
+  const stbd = letters(atlas, 'name', u, y, 130.5, 147.5, 17.0, 18.6)
+    .add(letters(atlas, 'logo', u, y, -153.0, -121.0, 2.6, 11.4))
+    .add(letters(atlas, 'emblem', u, y, 153.5, 156.7, 14.6, 18.2))
+    .add(letters(atlas, 'thruster', u, y, 146.0, 150.0, 1.0, 2.8));
+  const port = letters(atlas, 'name', u, y, -147.5, -130.5, 17.0, 18.6)
+    .add(letters(atlas, 'logo', u, y, 121.0, 153.0, 2.6, 11.4))
+    .add(letters(atlas, 'emblem', u, y, -156.7, -153.5, 14.6, 18.2))
+    .add(letters(atlas, 'thruster', u, y, -150.0, -146.0, 1.0, 2.8));
+  const sternInk = letters(atlas, 'stern', z, y, -14.6, 14.6, 2.6, 7.0);
   const ink = saturate(select(transom.greaterThan(0.5), sternInk, select(side.greaterThan(0.0), stbd, port)));
 
   // --- masks -------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 const Map<String, int> kWebSearchWeeklyLimits = {
   'core': 5,
@@ -192,7 +193,8 @@ class AiUsageStore {
 
   List<int> _aiCheckEvents(String userId) {
     final raw = _entry(userId)['aiChecks'] as List? ?? const [];
-    final cutoff = DateTime.now().subtract(_aiCheckWindow).millisecondsSinceEpoch;
+    final cutoff =
+        DateTime.now().subtract(_aiCheckWindow).millisecondsSinceEpoch;
     return [
       for (final e in raw)
         if (e is num && e.toInt() > cutoff) e.toInt(),
@@ -281,14 +283,13 @@ class AiUsageStore {
       _windowsOpen(userId, mode, budget) || creditBalance(userId) > 0;
 
   /// Whether a flat-priced action costing [cost] tokens can be paid for.
-  bool canAfford(
-          String userId, String mode, AiTokenBudget budget, int cost) =>
+  bool canAfford(String userId, String mode, AiTokenBudget budget, int cost) =>
       _windowsFit(userId, mode, budget, cost) || creditBalance(userId) >= cost;
 
   /// Charges [tokens] to the plan's budget while it has room, and to
   /// purchased credits once it does not.
-  Future<void> charge(String userId, int tokens, String mode,
-      AiTokenBudget budget) async {
+  Future<void> charge(
+      String userId, int tokens, String mode, AiTokenBudget budget) async {
     if (_windowsOpen(userId, mode, budget) || creditBalance(userId) <= 0) {
       return recordTokens(userId, tokens, mode: mode);
     }
@@ -296,8 +297,8 @@ class AiUsageStore {
   }
 
   /// Like [charge] for a flat [cost] that must fit whole in the budget.
-  Future<void> chargeFlat(String userId, int cost, String mode,
-      AiTokenBudget budget) async {
+  Future<void> chargeFlat(
+      String userId, int cost, String mode, AiTokenBudget budget) async {
     if (_windowsFit(userId, mode, budget, cost) ||
         creditBalance(userId) < cost) {
       return recordTokens(userId, cost, mode: mode);
@@ -323,6 +324,7 @@ class AiUsageStore {
     required String upstream,
     required String model,
     required AiCallUsage usage,
+    bool includeInUsage = false,
   }) async {
     final cutoff =
         DateTime.now().subtract(_callRetention).millisecondsSinceEpoch;
@@ -338,6 +340,9 @@ class AiUsageStore {
         usage.outputTokens,
         usage.totalTokens,
         usage.costUsd,
+        includeInUsage,
+        '${DateTime.now().microsecondsSinceEpoch}-${Random.secure().nextInt(1 << 32)}',
+        usage.cacheReadTokens,
       ],
     ];
     if (rows.length > _maxCallsPerUser) {
@@ -356,13 +361,29 @@ class AiUsageStore {
     ];
   }
 
+  List<Map<String, Object?>> usageCalls(String userId) => [
+        for (final row in _callRows(userId))
+          if (row.length >= 10 && row[8] == true)
+            {
+              'id': row[9],
+              'atMs': row[0],
+              'feature': row[1],
+              'upstream': row[2],
+              'model': row[3],
+              'inputTokens': row[4],
+              'outputTokens': row[5],
+              'totalTokens': row[6],
+              'costUsd': row[7],
+              'cacheReadTokens': row.length > 10 ? row[10] : 0,
+            },
+      ];
+
   /// The admin dashboard's view of [userId]'s AI calls: one line per
   /// feature + provider + model, plus the most recent calls.
   Map<String, dynamic> callSummary(String userId, {int recent = 25}) {
     final rows = _callRows(userId);
-    final weekAgo = DateTime.now()
-        .subtract(const Duration(days: 7))
-        .millisecondsSinceEpoch;
+    final weekAgo =
+        DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
     final groups = <String, Map<String, dynamic>>{};
     for (final row in rows) {
       final at = row[0] as int;
@@ -490,6 +511,7 @@ class AiCallUsage {
   const AiCallUsage({
     this.inputTokens = 0,
     this.outputTokens = 0,
+    this.cacheReadTokens = 0,
     int? totalTokens,
     this.costUsd,
     this.model,
@@ -497,6 +519,7 @@ class AiCallUsage {
 
   final int inputTokens;
   final int outputTokens;
+  final int cacheReadTokens;
   final int totalTokens;
   final double? costUsd;
 
@@ -521,11 +544,14 @@ class AiCallUsage {
           count(usage['completion_tokens'] ?? usage['output_tokens']);
       final total = count(usage['total_tokens']);
       final cost = usage['cost'];
+      final details =
+          usage['prompt_tokens_details'] ?? usage['input_tokens_details'];
       return AiCallUsage(
         inputTokens: input,
         outputTokens: output,
         totalTokens: total > 0 ? total : input + output,
         costUsd: cost is num ? cost.toDouble() : null,
+        cacheReadTokens: details is Map ? count(details['cached_tokens']) : 0,
         model: model,
       );
     }
@@ -538,6 +564,7 @@ class AiCallUsage {
         inputTokens: input,
         outputTokens: output,
         totalTokens: total > 0 ? total : input + output,
+        cacheReadTokens: count(meta['cachedContentTokenCount']),
         model: model,
       );
     }

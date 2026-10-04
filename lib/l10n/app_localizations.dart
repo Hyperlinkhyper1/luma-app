@@ -103,6 +103,18 @@ abstract class L {
     Locale('zh'),
   ];
 
+  /// No description provided for @settingsTrackBackendAiUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Track backend AI usage'**
+  String get settingsTrackBackendAiUsage;
+
+  /// No description provided for @settingsTrackBackendAiUsageSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Include new calls made by app features through the Luma server in AI Usage. Off by default.'**
+  String get settingsTrackBackendAiUsageSub;
+
   /// No description provided for @trayOpen.
   ///
   /// In en, this message translates to:

@@ -93,6 +93,7 @@ typedef ServerAccess = ServerAccessGate;
 /// routing their traffic through this client means a missed check can't turn
 /// into a silent connection to the server.
 class GatedServerClient extends http.BaseClient {
+  static bool Function()? trackBackendAiUsage;
   GatedServerClient({http.Client? inner, this.allowBeforeApproval = const {}})
     : _inner = inner ?? http.Client();
 
@@ -108,6 +109,10 @@ class GatedServerClient extends http.BaseClient {
       throw const ServerAccessDeniedException();
     }
     requirePrivateTransport(request.url);
+    request.headers.remove('X-Luma-Track-AI-Usage');
+    if (trackBackendAiUsage?.call() == true) {
+      request.headers['X-Luma-Track-AI-Usage'] = 'true';
+    }
     request.followRedirects = false;
     return _inner.send(request);
   }

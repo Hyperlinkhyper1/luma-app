@@ -45,6 +45,12 @@ function fatal(msg) {
 
 const KNOT = 0.514444;
 
+const MODE_TOAST = {
+  walk: 'On deck · V for the tender',
+  tender: 'In the tender at sea level · W/S throttle, A/D steer, V for the drone',
+  drone: 'Drone · WASD, Space/Q up and down, V to walk again',
+};
+
 class App {
   async start() {
     const canvas = $('view');
@@ -96,8 +102,15 @@ class App {
     this.modes = new Modes({ camera: this.camera, shipRoot: ship.root, collider: ship.collider, input: this.input, tender: this.tender });
     this.modes.walker.cols.push(this.port.collider);
     this.modes.walker.place(ship.pois.spots.find((s) => s.id === 'deck7-stbd'));
-    this.modes.walker.respawn = () => this.modes.walker.place(ship.pois.spots[0]);
-    this.modes.onChange = (m) => { this.hud.setMode(MODE_LABEL[m]); };
+    this.modes.walker.respawn = () => {
+      const id = this.inPort() && this.modes.walker.pos.z > 20 ? 'quay' : 'deck7-stbd';
+      this.modes.walker.place(ship.pois.spots.find((s) => s.id === id) ?? ship.pois.spots[0]);
+      this.hud?.toast('Back aboard');
+    };
+    this.modes.onChange = (m) => {
+      this.hud.setMode(MODE_LABEL[m]);
+      this.hud.toast(MODE_TOAST[m]);
+    };
 
     progress(0.9, 'Compiling shaders…');
     this.post = new Post(renderer, this.scene, this.camera);
@@ -248,7 +261,9 @@ class App {
 
   _bindKeys() {
     const I = this.input;
-    I.on('KeyV', () => this.modes.next());
+    // Switching view fades through black, so the jump to sea level in the
+    // tender reads as a move, not a fall.
+    I.on('KeyV', () => { if (!this._switching) { this._switching = true; this.fade(() => this.modes.next()).then(() => { this._switching = false; }); } });
     I.on('F1', () => document.body.classList.toggle('nohud'));
     I.on('KeyE', () => this.interact());
     I.on('KeyH', () => this.audio?.horn());
@@ -358,6 +373,7 @@ if (import.meta.env.DEV) {
     const c = document.createElement('canvas');
     c.width = canvas.width; c.height = canvas.height;
     c.getContext('2d').drawImage(canvas, 0, 0);
+    window.__lastShot = c;
     const url = c.toDataURL('image/jpeg', 0.88);
     await fetch(`/__shot?name=${encodeURIComponent(name)}`, { method: 'POST', body: url });
     return `${name}: ${c.width}x${c.height}`;
@@ -366,16 +382,17 @@ if (import.meta.env.DEV) {
   // away with a long lens (starboard side, bow to the right), then draw the
   // photo over it, scaled so its stern, bow and waterline land on ours.
   // ref = { url, sternPx, bowPx, wlPx } in the photo's own pixels.
-  window.__compare = async (name, ref, { alpha = 0.5, W = 1600, H = 900, dist = 2600, mode = 'blend' } = {}) => {
+  window.__compare = async (name, ref, { alpha = 0.5, W = 1600, H = 900, dist = 2600, mode = 'blend', cx = 0, cy = 22, span = 370 } = {}) => {
     const cam = app.camera;
     const fov0 = cam.fov;
     app.modes.set('drone');
     const d = app.modes.drone;
-    d.pos.set(0, 22, dist); d.yaw = -Math.PI / 2; d.pitch = 0;
-    cam.fov = 2 * Math.atan((370 / (W / H)) / 2 / dist) * 180 / Math.PI;
+    d.pos.set(cx, cy, dist); d.yaw = -Math.PI / 2; d.pitch = 0;
+    cam.fov = 2 * Math.atan((span / (W / H)) / 2 / dist) * 180 / Math.PI;
     cam.updateProjectionMatrix();
     await window.__shot(name + '_raw', 24, W, H);
-    const gl = $('view');
+    // The WebGPU canvas is cleared once presented: use the copy __shot kept.
+    const gl = window.__lastShot;
     const out = document.createElement('canvas'); out.width = W; out.height = H;
     const g = out.getContext('2d');
     g.drawImage(gl, 0, 0, W, H);

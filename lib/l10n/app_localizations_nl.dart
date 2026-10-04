@@ -9,6 +9,14 @@ class LNl extends L {
   LNl([String locale = 'nl']) : super(locale);
 
   @override
+  String get settingsTrackBackendAiUsage =>
+      'AI-gebruik via de server bijhouden';
+
+  @override
+  String get settingsTrackBackendAiUsageSub =>
+      'Neem nieuwe AI-aanroepen van appfuncties via de Luma-server op in AI-gebruik. Standaard uitgeschakeld.';
+
+  @override
   String get trayOpen => 'luma openen';
 
   @override

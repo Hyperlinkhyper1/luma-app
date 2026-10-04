@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { Fn, vec3, float, mix, smoothstep, abs, sin, positionGeometry, fract } from 'three/tsl';
+import { Fn, vec2, vec3, float, mix, smoothstep, abs, sin, step, select, sign, texture, attribute, positionGeometry } from 'three/tsl';
 import { canvasTexture } from './materials.js';
 
 // Enclosed lifeboats and tenders (photos 5, 9, 11, 14, 20): white GRP hull
@@ -181,18 +181,35 @@ function mergeList(list) {
   return out;
 }
 
-/** Hull material with the scalloped grab line painted in (photo 14). */
-export function boatHullMaterial() {
+// Where the name is painted on each bow, in boat-local metres.
+const PLATE = { x0: 3.0, x1: 5.7, y0: 0.32, y1: 0.92 };
+
+/**
+ * Hull material with the scalloped grab line painted in (photo 14). With a
+ * plate atlas, each boat's number and name ("8  MSC VIRTUOSA / VALLETTA",
+ * photo 20) is painted on both bows too, picked by the per-instance
+ * 'plateRow' attribute - on the hull itself, so it follows the curve.
+ */
+export function boatHullMaterial(plates = null) {
   const m = new THREE.MeshStandardNodeMaterial({ roughness: 0.35 });
   m.colorNode = Fn(() => {
     const p = positionGeometry;
-    const side = abs(p.z).greaterThan(0.6);
-    const x = p.x;
-    const loop = abs(sin(x.mul(Math.PI / 1.25))).mul(0.2);
-    const yLine = float(1.02).sub(loop);
-    const d = abs(p.y.sub(yLine));
-    const line = smoothstep(0.035, 0.012, d).mul(side ? 1 : 1);
-    return mix(vec3(0.86, 0.88, 0.89), vec3(0.05, 0.05, 0.06), line);
+    const loop = abs(sin(p.x.mul(Math.PI / 1.25))).mul(0.2);
+    const yLine = float(1.18).sub(loop);
+    const line = smoothstep(0.035, 0.012, abs(p.y.sub(yLine)));
+    let c = mix(vec3(0.86, 0.88, 0.89), vec3(0.05, 0.05, 0.06), line);
+    if (plates) {
+      const w = PLATE.x1 - PLATE.x0;
+      // Reads aft-to-bow on starboard and bow-to-aft on port, as painted.
+      const u = select(sign(p.z).greaterThan(0.0), p.x.sub(PLATE.x0).div(w), float(PLATE.x1).sub(p.x).div(w));
+      const v = p.y.sub(PLATE.y0).div(PLATE.y1 - PLATE.y0);
+      const inside = step(0.0, u).mul(step(u, 1.0)).mul(step(0.0, v)).mul(step(v, 1.0)).mul(step(0.4, abs(p.z)));
+      const row = attribute('plateRow', 'float');
+      const tv = float(plates.rows - 1).sub(row).add(v.clamp(0.0, 1.0)).div(plates.rows);
+      const ink = texture(plates.tex, vec2(u.clamp(0.0, 1.0), tv)).a.mul(inside);
+      c = mix(c, vec3(0.03, 0.035, 0.045), ink);
+    }
+    return c;
   })();
   return m;
 }

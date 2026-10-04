@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { deckY, PROM, LIFEBOATS, RAFT_RACKS, hullHalf, wallZ, railZ, wallZAt, BALCONY_D, BOW_X, STERN_X, frontX } from './dims.js';
 import { Builder, Instancer, mat, prism } from './kit.js';
-import { boatParts, boatHullMaterial, plateAtlas, BOAT, boatHalfBeam } from './lifeboat.js';
+import { boatParts, boatHullMaterial, plateAtlas, BOAT } from './lifeboat.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTexture } from './materials.js';
 import { closedOutline } from './superstructure.js';
@@ -168,25 +168,20 @@ export function buildPromenade(M, col, pois) {
   }
 
   // --- lifeboats in their davits ---------------------------------------------------
-  const boatMats = { hull: boatHullMaterial(), canopy: M.boatOrange, fender: M.rubber, windows: M.boatWindow, tower: M.boatOrange, towerGlass: M.boatWindow, hardware: M.steelDark };
+  const atlas = plateAtlas(LIFEBOATS.map((b) => b.num));
+  const boatMats = { hull: boatHullMaterial(atlas), canopy: M.boatOrange, fender: M.rubber, windows: M.boatWindow, tower: M.boatOrange, towerGlass: M.boatWindow, hardware: M.steelDark };
   const boatInst = { lifeboat: new Map(), tender: new Map() };
+  const boatNums = { lifeboat: [], tender: [] };
   const boatY = Y + 1.0;      // keel height, hanging just above the deck
-  const plates = [];
   for (const b of LIFEBOATS) {
     const S = b.side;
     const m = mat(b.x, boatY, S * PROM.boatZ, 0, 0, 0);
     const kind = b.tender ? 'tender' : 'lifeboat';
     const map = boatInst[kind];
+    boatNums[kind].push(b.num);
     for (const part of Object.keys(boatMats)) {
       if (!map.has(part)) map.set(part, []);
       map.get(part).push(m);
-    }
-    // Number plates on both bows (photo 20: "8 MSC VIRTUOSA / VALLETTA"),
-    // collected into one atlas-mapped mesh below.
-    const tPlate = 0.8;
-    for (const ps of [1, -1]) {
-      const zz = boatHalfBeam(tPlate) * 0.99 + 0.03;
-      plates.push({ num: b.num, x: b.x + (tPlate - 0.5) * BOAT.L, y: boatY + 1.12, z: S * PROM.boatZ + ps * zz, ry: (ps > 0 ? 0 : Math.PI) + ps * -0.18 });
     }
     // Gravity davits: a post and an arm at each end, wire falls to the hooks.
     for (const t of [0.1, 0.9]) {
@@ -202,20 +197,6 @@ export function buildPromenade(M, col, pois) {
     }
     col.box(b.x, boatY + 1.6, S * PROM.boatZ, BOAT.L - 0.6, 3.4, BOAT.B);
   }
-  {
-    const atlas = plateAtlas(LIFEBOATS.map((b) => b.num));
-    const geos = [];
-    for (const p of plates) {
-      const g = new THREE.PlaneGeometry(2.6, 0.65);
-      const row = atlas.index.get(p.num);
-      const uv = g.attributes.uv;
-      for (let i = 0; i < uv.count; i++) uv.setY(i, (atlas.rows - 1 - row + uv.getY(i)) / atlas.rows);
-      g.applyMatrix4(mat(p.x, p.y, p.z, 0, p.ry, 0));
-      geos.push(g);
-    }
-    const pm = new THREE.MeshStandardNodeMaterial({ map: atlas.tex, transparent: true, alphaTest: 0.35, roughness: 0.4 });
-    group.add(new THREE.Mesh(mergeGeometries(geos), pm));
-  }
   // Merge each boat's parts that share a material: four instanced meshes per variant.
   const merged = {
     hull: ['hull'], orange: ['canopy', 'tower'], dark: ['fender', 'hardware'], glass: ['windows', 'towerGlass'],
@@ -226,6 +207,11 @@ export function buildPromenade(M, col, pois) {
     const mats = boatInst[kind].get('hull');
     for (const [name, keys] of Object.entries(merged)) {
       const geo = mergeGeometries(keys.map((k) => { const g = parts[k].index ? parts[k].toNonIndexed() : parts[k].clone(); for (const a of Object.keys(g.attributes)) if (a !== 'position' && a !== 'normal') g.deleteAttribute(a); return g; }));
+      if (name === 'hull') {
+        // Which atlas row (boat number) each instance paints on its bows.
+        const rows = new Float32Array(boatNums[kind].map((n) => atlas.index.get(n)));
+        geo.setAttribute('plateRow', new THREE.InstancedBufferAttribute(rows, 1));
+      }
       const mesh = new THREE.InstancedMesh(geo, mergedMats[name], mats.length);
       mats.forEach((m, i) => mesh.setMatrixAt(i, m));
       mesh.castShadow = name !== 'glass';

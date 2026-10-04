@@ -76,7 +76,8 @@ export class Walker {
     let grounded = false;
     for (let i = 0; i < steps; i++) grounded = this._move(h) || grounded;
     this.onGround = grounded;
-    if (this.pos.y < -20) this.respawn?.();
+    // Over the side into the sea (or off the quay): back on deck.
+    if (this.pos.y < 0.3) this.respawn?.();
 
     // Head bob from horizontal speed.
     const hs = Math.hypot(this.vel.x, this.vel.z);

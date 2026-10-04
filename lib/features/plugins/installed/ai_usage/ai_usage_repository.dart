@@ -1,4 +1,4 @@
-﻿import 'package:drift/drift.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../../storage/storage_guard.dart';
@@ -21,13 +21,125 @@ class AiUsageRepository extends ChangeNotifier {
     AntigravityScanner? antigravityScanner,
     OpencodeScanner? opencodeScanner,
     FreebuffScanner? freebuffScanner,
-  })  : _claudeScanner = claudeScanner ?? const ClaudeCodeScanner(),
-        _codexScanner = codexScanner ?? const CodexCliScanner(),
-        _antigravityScanner = antigravityScanner ?? const AntigravityScanner(),
-        _opencodeScanner = opencodeScanner ?? const OpencodeScanner(),
-        _freebuffScanner = freebuffScanner ?? const FreebuffScanner();
+    Future<List<Map<String, dynamic>>?> Function()? fetchBackendCalls,
+    String? Function()? backendAccount,
+  }) : _claudeScanner = claudeScanner ?? const ClaudeCodeScanner(),
+       _codexScanner = codexScanner ?? const CodexCliScanner(),
+       _antigravityScanner = antigravityScanner ?? const AntigravityScanner(),
+       _opencodeScanner = opencodeScanner ?? const OpencodeScanner(),
+       _freebuffScanner = freebuffScanner ?? const FreebuffScanner(),
+       // ignore: prefer_initializing_formals
+       _fetchBackendCalls = fetchBackendCalls,
+       // ignore: prefer_initializing_formals
+       _backendAccount = backendAccount;
 
   final AiUsageDatabase _db;
+  final Future<List<Map<String, dynamic>>?> Function()? _fetchBackendCalls;
+  final String? Function()? _backendAccount;
+  bool _refreshingBackend = false;
+  bool _backendRefreshPending = false;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  Future<void> refreshBackendUsage() async {
+    if (_disposed || _fetchBackendCalls == null) return;
+    if (_refreshingBackend) {
+      _backendRefreshPending = true;
+      return;
+    }
+    _refreshingBackend = true;
+    try {
+      final account = _backendAccount?.call();
+      final deviceId = account == null ? null : 'backend:$account';
+      await (_db.delete(_db.aiUsageTurns)..where(
+            (t) =>
+                t.deviceId.like('backend:%') &
+                (deviceId == null
+                    ? const Constant(true)
+                    : t.deviceId.equals(deviceId).not()),
+          ))
+          .go();
+      if (account == null) return;
+      final calls = await _fetchBackendCalls();
+      if (_disposed || calls == null || _backendAccount?.call() != account) {
+        return;
+      }
+      await _db.transaction(() async {
+        final existing = await (_db.select(
+          _db.aiUsageTurns,
+        )..where((t) => t.deviceId.equals(deviceId!))).get();
+        final seen = existing.map((t) => t.messageId).toSet();
+        for (final call in calls) {
+          final id = call['id'];
+          final at = call['atMs'];
+          if (id is! String || at is! num) continue;
+          final messageId = 'backend:$account:$id';
+          if (!seen.add(messageId)) continue;
+          int count(String key) => call[key] is num
+              ? (call[key] as num).toInt().clamp(0, 1 << 40)
+              : 0;
+          final prompt = count('inputTokens');
+          final rawCached = count('cacheReadTokens');
+          final cached = rawCached > prompt ? prompt : rawCached;
+          final input = prompt - cached;
+          final output = count('outputTokens');
+          final remainder = count('totalTokens') - prompt;
+          final provider = switch (call['upstream']) {
+            'Google AI Studio' => 'google',
+            'OpenRouter' => 'openrouter',
+            'Mistral' => 'mistral',
+            _ => 'backend',
+          };
+          await _db
+              .into(_db.aiUsageTurns)
+              .insert(
+                AiUsageTurnsCompanion.insert(
+                  sessionId: 'backend:$account:${call['feature']}',
+                  timestamp: DateTime.fromMillisecondsSinceEpoch(
+                    at.toInt(),
+                    isUtc: true,
+                  ),
+                  model:
+                      '$provider/${_bareModel(call['model'] as String? ?? '')}',
+                  source: AiUsageSource.luma,
+                  inputTokens: Value(input),
+                  cacheReadTokens: Value(cached),
+                  outputTokens: Value(
+                    output > remainder ? output : remainder.clamp(0, 1 << 40),
+                  ),
+                  messageId: Value(messageId),
+                  project: Value(call['feature'] as String?),
+                  reportedCost: Value((call['costUsd'] as num?)?.toDouble()),
+                  deviceId: Value(deviceId),
+                ),
+              );
+        }
+      });
+      final lumaTurn =
+          await (_db.select(_db.aiUsageTurns)
+                ..where((t) => t.source.equalsValue(AiUsageSource.luma))
+                ..limit(1))
+              .getSingleOrNull();
+      _lumaUsageFound = lumaTurn != null;
+    } catch (error) {
+      debugPrint('Backend AI usage refresh failed: $error');
+    } finally {
+      _refreshingBackend = false;
+      if (!_disposed) {
+        notifyListeners();
+        if (_backendRefreshPending) {
+          _backendRefreshPending = false;
+          await refreshBackendUsage();
+        }
+      }
+    }
+  }
+
   final ClaudeCodeScanner _claudeScanner;
   final CodexCliScanner _codexScanner;
   final AntigravityScanner _antigravityScanner;
@@ -106,6 +218,7 @@ class AiUsageRepository extends ChangeNotifier {
     _remoteDevices = devices;
     notifyListeners();
   }
+
   ClaudeCodeScanResult? get lastClaudeResult => _lastClaudeResult;
   CodexCliScanResult? get lastCodexResult => _lastCodexResult;
   AntigravityScanResult? get lastAntigravityResult => _lastAntigravityResult;
@@ -132,6 +245,7 @@ class AiUsageRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
+      await refreshBackendUsage();
       final (
         claudeResult,
         codexResult,
@@ -162,14 +276,15 @@ class AiUsageRepository extends ChangeNotifier {
       _remoteDevices = await (_db.select(
         _db.aiUsageRemoteDevices,
       )..orderBy([(d) => OrderingTerm.asc(d.name)])).get();
-      final lumaTurn = await (_db.select(_db.aiUsageTurns)
-            ..where((t) => t.source.equalsValue(AiUsageSource.luma))
-            ..limit(1))
-          .getSingleOrNull();
+      final lumaTurn =
+          await (_db.select(_db.aiUsageTurns)
+                ..where((t) => t.source.equalsValue(AiUsageSource.luma))
+                ..limit(1))
+              .getSingleOrNull();
       _lumaUsageFound = _lumaUsageFound || lumaTurn != null;
     } finally {
       _scanning = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
@@ -191,7 +306,9 @@ class AiUsageRepository extends ChangeNotifier {
   }) async {
     final timestamp = (at ?? DateTime.now()).toUtc();
     try {
-      await _db.into(_db.aiUsageTurns).insert(
+      await _db
+          .into(_db.aiUsageTurns)
+          .insert(
             AiUsageTurnsCompanion.insert(
               sessionId: sessionId ?? 'luma:$feature',
               timestamp: timestamp,

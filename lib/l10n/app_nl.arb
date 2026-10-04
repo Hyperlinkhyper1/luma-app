@@ -1,4 +1,6 @@
 {
+  "settingsTrackBackendAiUsage": "AI-gebruik via de server bijhouden",
+  "settingsTrackBackendAiUsageSub": "Neem nieuwe AI-aanroepen van appfuncties via de Luma-server op in AI-gebruik. Standaard uitgeschakeld.",
   "@@locale": "nl",
   "trayOpen": "luma openen",
   "trayQuit": "luma afsluiten",

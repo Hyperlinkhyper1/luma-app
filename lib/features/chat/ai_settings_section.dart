@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/widgets.dart';
+import '../../l10n/app_localizations.dart';
 import '../../settings/settings_controller.dart';
 import '../../settings/settings_scope.dart';
 import '../../sync/sync_scope.dart';
@@ -49,6 +50,13 @@ class AiSettingsSection extends StatelessWidget {
               providerId: settings.aiProviderId,
             ),
           const SizedBox(height: 16),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(L.of(context).settingsTrackBackendAiUsage),
+            subtitle: Text(L.of(context).settingsTrackBackendAiUsageSub),
+            value: settings.trackBackendAiUsage,
+            onChanged: settings.setTrackBackendAiUsage,
+          ),
           _ModelUsageSection(usage: settings.modelUsage),
         ],
       ),
@@ -544,7 +552,9 @@ class _AiKeyBodyState extends State<_AiKeyBody> {
         metadataFor: (_, __) => null,
       );
       final usage = result.usage;
-      if (usage != null) {
+      if (usage != null &&
+          client is! GoogleProxyClient &&
+          client is! MistralProxyClient) {
         await aiUsage?.recordLumaCall(
           providerId: widget.providerId,
           usage: usage,

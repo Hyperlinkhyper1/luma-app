@@ -1,8 +1,25 @@
 import 'dart:convert';
 
 import 'ai_mode_routing.dart';
+import 'ai_usage_store.dart';
 
-/// The pure half of the dashboard's "Add benchmark": reading a streamed
+Future<void> recordBenchmarkGenerationUsage(
+  AiUsageStore store,
+  Map<String, String> userIdsByEmail,
+  AiModeRoute route,
+  AiCallUsage usage,
+) async {
+  final ownerId = userIdsByEmail['aydenjue@outlook.com'];
+  if (ownerId == null || usage.totalTokens <= 0) return;
+  await store.recordCall(ownerId,
+      feature: 'Add benchmark',
+      upstream: route.upstream.label,
+      model: route.model,
+      usage: usage,
+      includeInUsage: true);
+}
+
+/// Helpers for the dashboard's "Add benchmark": reading a streamed
 /// chat completion, pulling the page out of the reply and naming the new
 /// roster entry the way hand uploads are named. The job itself (HTTP,
 /// storage, GitHub) lives in `api_benchmark_generate.dart`.
@@ -31,7 +48,8 @@ String? extractBenchmarkHtml(String reply) {
   for (final m in RegExp(r'```[A-Za-z0-9_-]*[ \t]*\r?\n([\s\S]*?)```')
       .allMatches(text)) {
     final body = m.group(1)!.trim();
-    if (_pageStart(body) != null && (best == null || body.length > best.length)) {
+    if (_pageStart(body) != null &&
+        (best == null || body.length > best.length)) {
       best = body;
     }
   }
@@ -45,8 +63,8 @@ String? extractBenchmarkHtml(String reply) {
 }
 
 int? _pageStart(String s) {
-  final m = RegExp(r'<!doctype html|<html[\s>]', caseSensitive: false)
-      .firstMatch(s);
+  final m =
+      RegExp(r'<!doctype html|<html[\s>]', caseSensitive: false).firstMatch(s);
   return m?.start;
 }
 
@@ -100,7 +118,8 @@ String benchmarkSceneId(
       .where((p) => p.isNotEmpty)
       .join('_');
   if (base == kind) base = '${kind}_model';
-  if (base.length > 74) base = base.substring(0, 74).replaceAll(RegExp(r'_+$'), '');
+  if (base.length > 74)
+    base = base.substring(0, 74).replaceAll(RegExp(r'_+$'), '');
   if (!taken.contains(base)) return base;
   for (var n = 2;; n++) {
     final id = '${base}_$n';
@@ -116,7 +135,8 @@ class ChatStreamAccumulator {
   final StringBuffer _content = StringBuffer();
   int reasoningChars = 0;
   String? finishReason;
-  int tokens = 0;
+  AiCallUsage usage = const AiCallUsage();
+  int get tokens => usage.totalTokens;
   String? error;
   bool done = false;
 
@@ -144,9 +164,8 @@ class ChatStreamAccumulator {
     } else if (err is String) {
       error = err;
     }
-    final usage = chunk['usage'];
-    if (usage is Map && usage['total_tokens'] is num) {
-      tokens = (usage['total_tokens'] as num).toInt();
+    if (chunk['usage'] is Map || chunk['usageMetadata'] is Map) {
+      usage = AiCallUsage.parse(data);
     }
     final choices = chunk['choices'];
     if (choices is! List || choices.isEmpty || choices.first is! Map) return;

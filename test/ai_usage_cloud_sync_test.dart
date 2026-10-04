@@ -68,8 +68,9 @@ class _Device {
     deviceName: name,
   );
 
-  Future<void> addTurn({required int input, required int output}) =>
-      db.into(db.aiUsageTurns).insert(
+  Future<void> addTurn({required int input, required int output}) => db
+      .into(db.aiUsageTurns)
+      .insert(
         AiUsageTurnsCompanion.insert(
           sessionId: 'session-$name',
           timestamp: DateTime.utc(2026, 9, 1, 12),
@@ -136,6 +137,40 @@ void main() {
     expect(costForRow(row), 0.27);
     expect(totals([row]).hasUnbillable, isFalse);
   });
+
+  test(
+    'backend calls are never uploaded and survive disabling device sync',
+    () async {
+      await laptop.db
+          .into(laptop.db.aiUsageTurns)
+          .insert(
+            AiUsageTurnsCompanion.insert(
+              sessionId: 'backend:owner:Classroom',
+              timestamp: DateTime.utc(2026, 10, 4),
+              model: 'openrouter/test/model',
+              source: AiUsageSource.luma,
+              inputTokens: const Value(100),
+              deviceId: const Value('backend:owner'),
+            ),
+          );
+      await laptop.addTurn(input: 20, output: 10);
+      await laptop.sync.syncOnOpen();
+      await desktop.sync.syncOnOpen();
+      final desktopRows = await desktop.db
+          .select(desktop.db.aiUsageTurns)
+          .get();
+      expect(desktopRows, hasLength(1));
+      expect(desktopRows.single.inputTokens, 20);
+      laptop.store.on = false;
+      await laptop.sync.syncOnOpen();
+      final laptopRows = await laptop.db.select(laptop.db.aiUsageTurns).get();
+      expect(laptopRows, hasLength(2));
+      expect(
+        laptopRows.where((r) => r.deviceId == 'backend:owner'),
+        hasLength(1),
+      );
+    },
+  );
 
   test('sums usage across devices without re-uploading pulled turns', () async {
     await laptop.addTurn(input: 100, output: 10);

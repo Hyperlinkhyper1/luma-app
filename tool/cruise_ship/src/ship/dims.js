@@ -47,7 +47,7 @@ const smooth = (e0, e1, x) => {
 
 /** Waterline stem and the stem at the top of the bow (deck 9). */
 const STEM_WL = 153.5;
-const BOW_TOP_Y = 19.4;
+const BOW_TOP_Y = 18.8;
 
 /**
  * x where the bow taper starts and where the stem is, at height y. The stem
@@ -102,7 +102,7 @@ export function hullHalf(x, y) {
 
 /** Height of the hull's top edge (the weather deck / forecastle) at x. */
 export function hullTop(x) {
-  return deckY(7) + smooth(92, 146, x) * (BOW_TOP_Y - deckY(7));
+  return deckY(7) + smooth(110, 141, x) * (BOW_TOP_Y - deckY(7));
 }
 
 /** Lowest point of the hull at x (keel line incl. the stern run). */

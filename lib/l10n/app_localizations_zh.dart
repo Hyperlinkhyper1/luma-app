@@ -9,6 +9,13 @@ class LZh extends L {
   LZh([String locale = 'zh']) : super(locale);
 
   @override
+  String get settingsTrackBackendAiUsage => '记录后端 AI 用量';
+
+  @override
+  String get settingsTrackBackendAiUsageSub =>
+      '将应用功能通过 Luma 服务器发起的新 AI 调用计入 AI 用量。默认关闭。';
+
+  @override
   String get trayOpen => '打开 luma';
 
   @override

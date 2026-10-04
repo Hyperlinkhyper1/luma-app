@@ -27,13 +27,13 @@ enum AppLanguage { system, english, dutch, chinese, spanish, french }
 /// Maps [AppLanguage] to a [Locale], or null for `system` (let MaterialApp
 /// resolve from the platform).
 Locale? localeForLanguage(AppLanguage lang) => switch (lang) {
-      AppLanguage.english => const Locale('en'),
-      AppLanguage.dutch => const Locale('nl'),
-      AppLanguage.chinese => const Locale('zh'),
-      AppLanguage.spanish => const Locale('es'),
-      AppLanguage.french => const Locale('fr'),
-      AppLanguage.system => null,
-    };
+  AppLanguage.english => const Locale('en'),
+  AppLanguage.dutch => const Locale('nl'),
+  AppLanguage.chinese => const Locale('zh'),
+  AppLanguage.spanish => const Locale('es'),
+  AppLanguage.french => const Locale('fr'),
+  AppLanguage.system => null,
+};
 
 /// A selectable accent color. A null [seed] keeps luma's default lavender.
 class AccentPreset {
@@ -79,28 +79,30 @@ class SettingsController extends ChangeNotifier {
     required List<String> visitedCountries,
     required bool useAmericanGpaScale,
     required bool includeCs2InInvestments,
+    bool trackBackendAiUsage = false,
     required File? file,
-  })  : _themeMode = themeMode,
-        _themeStyle = themeStyle,
-        _accentIndex = accentIndex,
-        _startScreen = startScreen,
-        _appLanguage = appLanguage,
-        _hideAmounts = hideAmounts,
-        _lockPasswordHash = lockPasswordHash,
-        _avatarPath = avatarPath,
-        _selectedPlanId = selectedPlanId,
-        _planExpiresAt = planExpiresAt,
-        _adminPlanId = adminPlanId,
-        _aiCallsToday = aiCallsToday,
-        _aiCallsResetDate = aiCallsResetDate,
-        _aiProviderId = aiProviderId,
-        _aiMode = aiMode,
-        _modelUsage = modelUsage,
-        _navOrder = navOrder,
-        _visitedCountries = visitedCountries,
-        _useAmericanGpaScale = useAmericanGpaScale,
-        _includeCs2InInvestments = includeCs2InInvestments,
-        _file = file;
+  }) : _themeMode = themeMode,
+       _themeStyle = themeStyle,
+       _accentIndex = accentIndex,
+       _startScreen = startScreen,
+       _appLanguage = appLanguage,
+       _hideAmounts = hideAmounts,
+       _lockPasswordHash = lockPasswordHash,
+       _avatarPath = avatarPath,
+       _selectedPlanId = selectedPlanId,
+       _planExpiresAt = planExpiresAt,
+       _adminPlanId = adminPlanId,
+       _aiCallsToday = aiCallsToday,
+       _aiCallsResetDate = aiCallsResetDate,
+       _aiProviderId = aiProviderId,
+       _aiMode = aiMode,
+       _modelUsage = modelUsage,
+       _navOrder = navOrder,
+       _visitedCountries = visitedCountries,
+       _useAmericanGpaScale = useAmericanGpaScale,
+       _includeCs2InInvestments = includeCs2InInvestments,
+       _trackBackendAiUsage = trackBackendAiUsage,
+       _file = file;
 
   // These fields are deliberately assigned in the initializer list (rather than
   // via initializing formals) so the constructor exposes clean public names.
@@ -146,6 +148,15 @@ class SettingsController extends ChangeNotifier {
   List<String> _visitedCountries;
   bool _useAmericanGpaScale;
   bool _includeCs2InInvestments;
+  bool _trackBackendAiUsage;
+  bool get trackBackendAiUsage => _trackBackendAiUsage;
+
+  void setTrackBackendAiUsage(bool value) {
+    if (value == _trackBackendAiUsage) return;
+    _trackBackendAiUsage = value;
+    _changed();
+  }
+
   final File? _file;
 
   static const _aiDailyCallLimit = 10;
@@ -158,8 +169,8 @@ class SettingsController extends ChangeNotifier {
   /// not applied until they're back on Orbit or Nova.
   LumaThemeStyle get themeStyle =>
       themeStyleUnlocked(_themeStyle, selectedPlanId)
-          ? _themeStyle
-          : LumaThemeStyle.standard;
+      ? _themeStyle
+      : LumaThemeStyle.standard;
 
   /// What the user last picked, unlocked or not. Used by the Settings picker
   /// to keep the locked entry visibly selected.
@@ -214,14 +225,14 @@ class SettingsController extends ChangeNotifier {
   /// core < orbit < nova. Unknown ids fall back to core.
   String get _effectivePlanId =>
       _tierIndex(_adminPlanId) > _tierIndex(_selectedPlanId)
-          ? _adminPlanId
-          : _selectedPlanId;
+      ? _adminPlanId
+      : _selectedPlanId;
 
   static int _tierIndex(String id) => switch (id) {
-        'nova' => 2,
-        'orbit' => 1,
-        _ => 0,
-      };
+    'nova' => 2,
+    'orbit' => 1,
+    _ => 0,
+  };
 
   /// Records the plan tier the server has on file for this account, learned
   /// from /account on every sync. Idempotent. Passing null/empty clears it
@@ -302,8 +313,7 @@ class SettingsController extends ChangeNotifier {
   List<String> get navOrder => List.unmodifiable(_navOrder);
 
   void setNavOrder(List<String> order) {
-    if (order.length == _navOrder.length &&
-        _listEquals(order, _navOrder)) {
+    if (order.length == _navOrder.length && _listEquals(order, _navOrder)) {
       return;
     }
     _navOrder = List.of(order);
@@ -480,6 +490,7 @@ class SettingsController extends ChangeNotifier {
     _visitedCountries = const [];
     _useAmericanGpaScale = false;
     _includeCs2InInvestments = true;
+    _trackBackendAiUsage = false;
     _changed();
   }
 
@@ -494,20 +505,21 @@ class SettingsController extends ChangeNotifier {
   /// Snapshot for the "settings" sync collection. Same shape as [_persist]'s
   /// local file so nothing is lost translating between the two.
   Map<String, Object?> exportData() => {
-        'themeMode': _themeMode.name,
-        'themeStyle': _themeStyle.name,
-        'accentIndex': _accentIndex,
-        'startScreen': _startScreen.name,
-        'appLanguage': _appLanguage.name,
-        'hideAmounts': _hideAmounts,
-        'avatarPath': _avatarPath,
-        'selectedPlanId': _selectedPlanId,
-        'planExpiresAt': _planExpiresAt,
-        'navOrder': _navOrder,
-        'visitedCountries': _visitedCountries,
-        'useAmericanGpaScale': _useAmericanGpaScale,
-        'includeCs2InInvestments': _includeCs2InInvestments,
-      };
+    'themeMode': _themeMode.name,
+    'themeStyle': _themeStyle.name,
+    'accentIndex': _accentIndex,
+    'startScreen': _startScreen.name,
+    'appLanguage': _appLanguage.name,
+    'hideAmounts': _hideAmounts,
+    'avatarPath': _avatarPath,
+    'selectedPlanId': _selectedPlanId,
+    'planExpiresAt': _planExpiresAt,
+    'navOrder': _navOrder,
+    'visitedCountries': _visitedCountries,
+    'useAmericanGpaScale': _useAmericanGpaScale,
+    'includeCs2InInvestments': _includeCs2InInvestments,
+    'trackBackendAiUsage': _trackBackendAiUsage,
+  };
 
   /// Replaces every preference with a previously exported snapshot.
   Future<void> importData(Object? data) async {
@@ -515,10 +527,16 @@ class SettingsController extends ChangeNotifier {
     _themeMode = _parseEnum(ThemeMode.values, data['themeMode'], _themeMode);
     _themeStyle = themeStyleFromId(data['themeStyle']);
     _accentIndex = _parseAccentIndex(data['accentIndex']);
-    _startScreen =
-        _parseEnum(StartScreen.values, data['startScreen'], _startScreen);
-    _appLanguage =
-        _parseEnum(AppLanguage.values, data['appLanguage'], _appLanguage);
+    _startScreen = _parseEnum(
+      StartScreen.values,
+      data['startScreen'],
+      _startScreen,
+    );
+    _appLanguage = _parseEnum(
+      AppLanguage.values,
+      data['appLanguage'],
+      _appLanguage,
+    );
     _hideAmounts = data['hideAmounts'] == true;
     _avatarPath = data['avatarPath'] as String?;
     _selectedPlanId = data['selectedPlanId'] as String? ?? 'core';
@@ -527,6 +545,7 @@ class SettingsController extends ChangeNotifier {
     _visitedCountries = _parseStringList(data['visitedCountries']);
     _useAmericanGpaScale = data['useAmericanGpaScale'] == true;
     _includeCs2InInvestments = data['includeCs2InInvestments'] != false;
+    _trackBackendAiUsage = data['trackBackendAiUsage'] == true;
     notifyListeners();
     await _persist();
   }
@@ -537,30 +556,33 @@ class SettingsController extends ChangeNotifier {
     final file = _file;
     if (file == null) return;
     try {
-      await file.writeAsString(jsonEncode({
-        'themeMode': _themeMode.name,
-        'themeStyle': _themeStyle.name,
-        'accentIndex': _accentIndex,
-        'startScreen': _startScreen.name,
-        'appLanguage': _appLanguage.name,
-        'hideAmounts': _hideAmounts,
-        'lockPasswordHash': _lockPasswordHash,
-        'avatarPath': _avatarPath,
-        'selectedPlanId': _selectedPlanId,
-        'planExpiresAt': _planExpiresAt,
-        // Local-device-only — deliberately not part of exportData/importData
-        // (sync): each device learns its admin-granted plan from /account.
-        'adminPlanId': _adminPlanId,
-        'aiCallsToday': _aiCallsToday,
-        'aiCallsResetDate': _aiCallsResetDate,
-        'aiProviderId': _aiProviderId,
-        'aiMode': _aiMode,
-        'modelUsage': _modelUsage,
-        'navOrder': _navOrder,
-        'visitedCountries': _visitedCountries,
-        'useAmericanGpaScale': _useAmericanGpaScale,
-        'includeCs2InInvestments': _includeCs2InInvestments,
-      }));
+      await file.writeAsString(
+        jsonEncode({
+          'themeMode': _themeMode.name,
+          'themeStyle': _themeStyle.name,
+          'accentIndex': _accentIndex,
+          'startScreen': _startScreen.name,
+          'appLanguage': _appLanguage.name,
+          'hideAmounts': _hideAmounts,
+          'lockPasswordHash': _lockPasswordHash,
+          'avatarPath': _avatarPath,
+          'selectedPlanId': _selectedPlanId,
+          'planExpiresAt': _planExpiresAt,
+          // Local-device-only — deliberately not part of exportData/importData
+          // (sync): each device learns its admin-granted plan from /account.
+          'adminPlanId': _adminPlanId,
+          'aiCallsToday': _aiCallsToday,
+          'aiCallsResetDate': _aiCallsResetDate,
+          'aiProviderId': _aiProviderId,
+          'aiMode': _aiMode,
+          'modelUsage': _modelUsage,
+          'trackBackendAiUsage': _trackBackendAiUsage,
+          'navOrder': _navOrder,
+          'visitedCountries': _visitedCountries,
+          'useAmericanGpaScale': _useAmericanGpaScale,
+          'includeCs2InInvestments': _includeCs2InInvestments,
+        }),
+      );
     } catch (_) {
       // Ignore — preferences just won't survive a restart.
     }
@@ -583,13 +605,23 @@ class SettingsController extends ChangeNotifier {
     }
 
     return SettingsController._(
-      themeMode: _parseEnum(ThemeMode.values, data['themeMode'], ThemeMode.dark),
+      themeMode: _parseEnum(
+        ThemeMode.values,
+        data['themeMode'],
+        ThemeMode.dark,
+      ),
       themeStyle: themeStyleFromId(data['themeStyle']),
       accentIndex: _parseAccentIndex(data['accentIndex']),
-      startScreen:
-          _parseEnum(StartScreen.values, data['startScreen'], StartScreen.home),
-      appLanguage:
-          _parseEnum(AppLanguage.values, data['appLanguage'], AppLanguage.system),
+      startScreen: _parseEnum(
+        StartScreen.values,
+        data['startScreen'],
+        StartScreen.home,
+      ),
+      appLanguage: _parseEnum(
+        AppLanguage.values,
+        data['appLanguage'],
+        AppLanguage.system,
+      ),
       hideAmounts: data['hideAmounts'] == true,
       lockPasswordHash: data['lockPasswordHash'] as String?,
       avatarPath: data['avatarPath'] as String?,
@@ -610,6 +642,7 @@ class SettingsController extends ChangeNotifier {
       visitedCountries: _parseStringList(data['visitedCountries']),
       useAmericanGpaScale: data['useAmericanGpaScale'] == true,
       includeCs2InInvestments: data['includeCs2InInvestments'] != false,
+      trackBackendAiUsage: data['trackBackendAiUsage'] == true,
       file: file,
     );
   }

@@ -156,7 +156,11 @@ export class Tender {
 
   /** Camera in the conning hatch, looking where the mouse says. */
   rig(camera, roll) {
-    _v.set(-0.2 * BOAT.L + 0.6, BOAT.hull + BOAT.canopy + 1.05, 0).applyMatrix4(this.group.matrixWorld);
+    // Sitting up behind the conning hatch, so the orange canopy is in view
+    // and it is obvious you are in the boat, not in the sea.
+    _v.set(-0.2 * BOAT.L - 2.2, BOAT.hull + BOAT.canopy + 1.9, 0).applyMatrix4(this.group.matrixWorld);
+    // Never below the waves, whatever the sea state.
+    _v.y = Math.max(_v.y, this.ocean.heightAt(_v.x, _v.z) + 1.4);
     const yaw = this.heading + this.view.yaw;
     const p = this.view.pitch;
     _t.set(Math.cos(p) * Math.cos(yaw), Math.sin(p), Math.cos(p) * Math.sin(yaw));

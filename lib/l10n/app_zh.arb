@@ -1,4 +1,6 @@
 {
+  "settingsTrackBackendAiUsage": "记录后端 AI 用量",
+  "settingsTrackBackendAiUsageSub": "将应用功能通过 Luma 服务器发起的新 AI 调用计入 AI 用量。默认关闭。",
   "@@locale": "zh",
   "trayOpen": "打开 luma",
   "trayQuit": "退出 luma",

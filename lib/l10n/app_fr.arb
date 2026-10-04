@@ -1,4 +1,6 @@
 {
+  "settingsTrackBackendAiUsage": "Suivre l’utilisation de l’IA côté serveur",
+  "settingsTrackBackendAiUsageSub": "Inclure dans Utilisation de l’IA les nouveaux appels des fonctions de l’application via le serveur Luma. Désactivé par défaut.",
   "@@locale": "fr",
   "trayOpen": "Ouvrir luma",
   "trayQuit": "Quitter luma",

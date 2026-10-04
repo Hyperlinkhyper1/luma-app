@@ -9,6 +9,14 @@ class LEs extends L {
   LEs([String locale = 'es']) : super(locale);
 
   @override
+  String get settingsTrackBackendAiUsage =>
+      'Registrar el uso de IA del servidor';
+
+  @override
+  String get settingsTrackBackendAiUsageSub =>
+      'Incluir en Uso de IA las nuevas llamadas de las funciones de la aplicación a través del servidor Luma. Desactivado por defecto.';
+
+  @override
   String get trayOpen => 'Abrir luma';
 
   @override

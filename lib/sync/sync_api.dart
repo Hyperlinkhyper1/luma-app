@@ -589,7 +589,8 @@ class SyncApi {
   ) async {
     final body = await _postJson('/auth/resend-verification', {'email': email});
     return (
-      message: body['message'] as String? ??
+      message:
+          body['message'] as String? ??
           'If that email has an unverified account, we just sent a new code.',
       emailed: body['status'] == 'pending_verification',
     );
@@ -770,6 +771,14 @@ class SyncApi {
   /// Which shared AI keys the operator configured plus this account's usage
   /// — usage arrives only as percentages / message counts (the server keeps
   /// the raw token budgets to itself). See Api._aiStatus server-side.
+  Future<List<Map<String, dynamic>>> backendAiUsageCalls() async {
+    final response = await _client
+        .get(_uri('/ai/usage-calls'), headers: _authHeaders)
+        .timeout(const Duration(seconds: 20));
+    final body = _decodeOrThrow(response);
+    return (body['calls'] as List).cast<Map<String, dynamic>>();
+  }
+
   Future<Map<String, dynamic>> aiStatus() async {
     final response = await _client
         .get(Uri.parse('$baseUrl/api/v1/ai/status'), headers: _authHeaders)
@@ -919,7 +928,7 @@ class SyncApi {
       decoded?['message'] as String? ??
           (_isUnreachableOrigin(response.statusCode)
               ? 'Couldn\'t reach the luma server (${response.statusCode}). '
-                  'It may be restarting — try again in a minute.'
+                    'It may be restarting — try again in a minute.'
               : 'Server error (${response.statusCode}).'),
       extra: decoded,
     );

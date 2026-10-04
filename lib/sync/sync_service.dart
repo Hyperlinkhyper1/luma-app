@@ -1503,6 +1503,12 @@ class SyncService extends ChangeNotifier {
     }
   }
 
+  Future<List<Map<String, dynamic>>?> backendAiUsageCalls() async {
+    final api = _api;
+    if (api == null || !serverReady) return null;
+    return api.backendAiUsageCalls();
+  }
+
   // ---- Sync ---------------------------------------------------------------------
 
   /// Synchronizes all enabled collections. Safe to call at any time â€”

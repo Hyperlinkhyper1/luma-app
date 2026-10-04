@@ -277,7 +277,9 @@ class ChatController extends ChangeNotifier {
         modelUsageKeyFor(providerId, mode: googleMode),
       );
       final usage = result.usage;
-      if (usage != null) {
+      if (usage != null &&
+          client is! GoogleProxyClient &&
+          client is! MistralProxyClient) {
         await _aiUsage?.recordLumaCall(
           providerId: providerId,
           usage: usage,

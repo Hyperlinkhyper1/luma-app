@@ -9,6 +9,13 @@ class LEn extends L {
   LEn([String locale = 'en']) : super(locale);
 
   @override
+  String get settingsTrackBackendAiUsage => 'Track backend AI usage';
+
+  @override
+  String get settingsTrackBackendAiUsageSub =>
+      'Include new calls made by app features through the Luma server in AI Usage. Off by default.';
+
+  @override
   String get trayOpen => 'Open luma';
 
   @override

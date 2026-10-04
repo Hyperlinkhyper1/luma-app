@@ -244,16 +244,21 @@ class AiUsageCloudSync {
   /// so drop them and show this device's own usage again.
   Future<void> _forgetRemoteDevices() async {
     final devices = await _db.select(_db.aiUsageRemoteDevices).get();
-    final orphaned = await (_db.selectOnly(_db.aiUsageTurns)
-          ..addColumns([_db.aiUsageTurns.id.count()])
-          ..where(_db.aiUsageTurns.deviceId.isNotNull()))
-        .map((row) => row.read(_db.aiUsageTurns.id.count()) ?? 0)
-        .getSingle();
+    final orphaned =
+        await (_db.selectOnly(_db.aiUsageTurns)
+              ..addColumns([_db.aiUsageTurns.id.count()])
+              ..where(
+                _db.aiUsageTurns.deviceId.isNotNull() &
+                    _db.aiUsageTurns.deviceId.like('backend:%').not(),
+              ))
+            .map((row) => row.read(_db.aiUsageTurns.id.count()) ?? 0)
+            .getSingle();
     if (devices.isEmpty && orphaned == 0) return;
     await _db.transaction(() async {
-      await (_db.delete(
-        _db.aiUsageTurns,
-      )..where((t) => t.deviceId.isNotNull())).go();
+      await (_db.delete(_db.aiUsageTurns)..where(
+            (t) => t.deviceId.isNotNull() & t.deviceId.like('backend:%').not(),
+          ))
+          .go();
       await _db.delete(_db.aiUsageRemoteDevices).go();
     });
   }

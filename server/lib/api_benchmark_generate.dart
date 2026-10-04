@@ -131,7 +131,8 @@ extension BenchmarkGenerateApi on Api {
 
     final upstream = AiUpstream.parse(str('upstream'));
     if (upstream == null) {
-      return errorResponse(400, 'bad_request', 'Pick one of the server\'s keys.');
+      return errorResponse(
+          400, 'bad_request', 'Pick one of the server\'s keys.');
     }
     if (!config.configuredAiUpstreams.contains(upstream)) {
       return errorResponse(409, 'no_key',
@@ -143,7 +144,8 @@ extension BenchmarkGenerateApi on Api {
     }
     final effort = str('effort');
     if (!kBenchmarkEfforts.containsKey(effort)) {
-      return errorResponse(400, 'bad_request', 'Pick a valid reasoning effort.');
+      return errorResponse(
+          400, 'bad_request', 'Pick a valid reasoning effort.');
     }
     final kind = str('kind');
     if (!kBenchmarkPrompts.containsKey(kind)) {
@@ -261,17 +263,18 @@ extension BenchmarkGenerateApi on Api {
   Future<void> _runBenchmarkGen(BenchmarkGenJob job) async {
     final acc = ChatStreamAccumulator();
     try {
-      var (status, errorBody) = await _streamBenchmarkGen(job, acc,
-          withMaxTokens: true);
+      var (status, errorBody) =
+          await _streamBenchmarkGen(job, acc, withMaxTokens: true);
       // Some models cap output below what was asked and refuse the request
       // outright; their own maximum is the next best thing.
       if (status == HttpStatus.badRequest &&
           acc.contentChars == 0 &&
-          RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion', caseSensitive: false)
+          RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
+                  caseSensitive: false)
               .hasMatch(errorBody) &&
           !job.stopRequested) {
-        (status, errorBody) = await _streamBenchmarkGen(job, acc,
-            withMaxTokens: false);
+        (status, errorBody) =
+            await _streamBenchmarkGen(job, acc, withMaxTokens: false);
       }
       await _saveBenchmarkGenOutput(job, acc.content);
       if (job.stopRequested) {
@@ -304,6 +307,12 @@ extension BenchmarkGenerateApi on Api {
       job.reasoningChars = acc.reasoningChars;
       job.tokens = acc.tokens;
       job.finishReason = acc.finishReason;
+      try {
+        await recordBenchmarkGenerationUsage(
+            aiUsage, store.userIdByEmail, job.route, acc.usage);
+      } catch (error) {
+        stderr.writeln('[luma] benchmark usage recording failed: $error');
+      }
     }
     final mins =
         ((job.finishedAtMs! - job.startedAtMs) / 60000).toStringAsFixed(1);
@@ -327,6 +336,7 @@ extension BenchmarkGenerateApi on Api {
         {'role': 'user', 'content': job.prompt},
       ],
       'stream': true,
+      'stream_options': {'include_usage': true},
       if (withMaxTokens) 'max_tokens': job.maxTokens,
       if (effort != null && route.upstream == AiUpstream.openrouter)
         'reasoning': effort == 'none' ? {'enabled': false} : {'effort': effort},
@@ -334,7 +344,8 @@ extension BenchmarkGenerateApi on Api {
         'reasoning_effort': effort,
     };
     job.client?.close(force: true);
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 30);
     job.client = client;
     job.phase = 'connecting';
     final deadline =
@@ -357,7 +368,10 @@ extension BenchmarkGenerateApi on Api {
           .transform(utf8.decoder)
           .join()
           .timeout(const Duration(seconds: 30), onTimeout: () => '');
-      return (res.statusCode, text.length > 4000 ? text.substring(0, 4000) : text);
+      return (
+        res.statusCode,
+        text.length > 4000 ? text.substring(0, 4000) : text
+      );
     }
     job.phase = 'thinking';
     await for (final line in res
@@ -381,7 +395,8 @@ extension BenchmarkGenerateApi on Api {
     String? message;
     try {
       final decoded = jsonDecode(body);
-      final err = decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
+      final err =
+          decoded is List && decoded.isNotEmpty ? decoded.first : decoded;
       final e = err is Map ? err['error'] ?? err['message'] : null;
       message = e is Map ? '${e['message'] ?? e}' : e?.toString();
     } catch (_) {
@@ -389,7 +404,8 @@ extension BenchmarkGenerateApi on Api {
     }
     final flat = (message ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
     final short = flat.length > 300 ? '${flat.substring(0, 300)}…' : flat;
-    final refused = status == HttpStatus.unauthorized || status == HttpStatus.forbidden;
+    final refused =
+        status == HttpStatus.unauthorized || status == HttpStatus.forbidden;
     return 'HTTP $status${short.isEmpty ? '' : ': $short'}'
         '${refused ? ' — ${job.route.upstream.label} refused the server\'s key' : ''}';
   }
@@ -459,8 +475,7 @@ extension BenchmarkGenerateApi on Api {
 /// The "Add benchmark" dialog: key → model → test → entry, top to bottom.
 /// The script fills the key, model and test lists from
 /// `/admin/benchmarks/generate` and the Assistant tab's model data.
-String _bgDialogHtml() =>
-    '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
+String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     'aria-labelledby="bgTitle">'
     '<form id="bgForm" novalidate>'
     '<div class="bn-dlg-head"><div><h2 id="bgTitle">Add a benchmark</h2>'

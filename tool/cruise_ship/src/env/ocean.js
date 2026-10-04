@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import {
   Fn, vec2, vec3, vec4, float, uniform, uniformArray, texture, dot, sqrt, exp, max, min, clamp, mix, length,
   normalize, smoothstep, saturate, Loop, If, select, pow, abs, sin, cos, varying, positionLocal, positionWorld,
-  cameraPosition, modelWorldMatrix, equirectUV, reflect, luminance, fract, sign, atan,
+  cameraPosition, modelWorldMatrix, equirectUV, reflect, luminance, fract, sign, atan, step,
 } from 'three/tsl';
 import { sky } from './atmosphere.js';
 import { cloud, cloudTex, WEATHER_TILE } from './clouds.js';
@@ -39,13 +39,15 @@ export const ocean = {
 };
 
 /** Waterline half-breadth of the hull (m) at ship x; mirrors ship/hull.js. */
+// Matches dims.hullHalf at the waterline: 43 m beam, the entrance running
+// from x = 74 to the stem at 153.5, the run ending just short of the transom.
 export const hullHalfBeamWL = Fn(([x]) => {
-  const mid = float(20.2);
-  const bowT = saturate(x.sub(86.0).div(160.0 - 86.0));
-  const bow = mid.mul(pow(max(float(1.0).sub(pow(bowT, 2.6)), 0.0), 0.62));
-  const sternT = saturate(x.add(150.0).div(-14.0));
-  const stern = mid.mul(float(1.0).sub(pow(sternT, 3.0).mul(0.25)));
-  return select(x.greaterThan(86.0), bow, select(x.lessThan(-150.0), stern, mid));
+  const mid = float(21.4);
+  const bowT = saturate(x.sub(74.0).div(153.5 - 74.0));
+  const bow = mid.mul(pow(max(float(1.0).sub(pow(bowT, 1.7)), 0.0), 0.62));
+  const sternT = saturate(x.add(146.0).div(-19.7));
+  const stern = mid.mul(float(1.0).sub(pow(sternT, 3.5).mul(0.18))).mul(step(-163.7, x));
+  return select(x.greaterThan(74.0), bow, select(x.lessThan(-146.0), stern, mid));
 });
 
 export class Ocean {
@@ -230,32 +232,37 @@ export class Ocean {
       const wcAmt = saturate(float(0.3).sub(J).mul(2.2)).mul(ocean.whitecap);
       // Hull-contact foam and the bow wave piling up at the stem.
       const gap = az.sub(hw);
-      const inHull = select(sx.lessThan(166.0).and(sx.greaterThan(-166.0)), float(1.0), float(0.0));
+      const inHull = select(sx.lessThan(154.0).and(sx.greaterThan(-164.0)), float(1.0), float(0.0));
       const contact = exp(max(gap, 0.0).mul(-0.9)).mul(inHull).mul(spd.mul(0.5).add(0.25));
-      const bowZone = smoothstep(60.0, 155.0, sx);
-      const bowSpread = exp(max(gap.sub(float(166.0).sub(sx).mul(0.07)), 0.0).negate().mul(0.18));
+      // Nothing ahead of the stem: the bow wave starts at it and spreads aft.
+      const bowZone = smoothstep(50.0, 145.0, sx).mul(smoothstep(158.0, 152.0, sx));
+      const bowSpread = exp(max(gap.sub(max(float(154.0).sub(sx), 0.0).mul(0.07)), 0.0).negate().mul(0.18));
       const bowWave = bowZone.mul(bowSpread).mul(spd);
       // Behind the stern: propeller wash, turbulent wake, Kelvin arms.
+      // Real wakes: white, churned water for the first couple of hundred
+      // metres, then a long pale-turquoise lane of aerated water, not foam.
       const back_ = max(float(-163.0).sub(sx), 0.0);
       const behind = select(sx.lessThan(-163.0), float(1.0), float(0.0));
       const wakeW = float(16.0).add(back_.mul(0.05));
-      const core = smoothstep(wakeW, wakeW.mul(0.3), az).mul(exp(back_.mul(-1.0 / 1400.0)));
-      const wash = smoothstep(24.0, 5.0, az).mul(exp(back_.mul(-1.0 / 180.0)));
+      const core = smoothstep(wakeW, wakeW.mul(0.3), az).mul(exp(back_.mul(-1.0 / 160.0)));
+      const lane = smoothstep(wakeW.mul(1.15), wakeW.mul(0.2), az).mul(exp(back_.mul(-1.0 / 1600.0)));
+      const wash = smoothstep(22.0, 5.0, az).mul(exp(back_.mul(-1.0 / 90.0)));
       const kelvin = back_.mul(0.3535).add(hw.mul(0.6));
       const armW = float(2.5).add(back_.mul(0.012));
       const kd = az.sub(kelvin).div(armW);
       const arm = exp(kd.mul(kd).negate()).mul(exp(back_.mul(-1.0 / 900.0)));
-      const wakeAmt = core.mul(0.55).add(wash.mul(0.8)).add(arm.mul(0.45)).mul(behind).mul(spd);
+      const wakeAmt = core.mul(0.45).add(wash.mul(0.8)).add(arm.mul(0.3)).mul(behind).mul(spd);
+      const wakeAer = lane.mul(0.55).add(wash.mul(0.6)).mul(behind).mul(spd);
       // Turbulence along the side of the hull aft of the bow wave.
       const sideWake = exp(max(gap, 0.0).mul(-0.16)).mul(smoothstep(140.0, -160.0, sx)).mul(inHull).mul(spd).mul(0.55);
       const amt = saturate(max(max(wcAmt, contact), max(max(bowWave, wakeAmt), sideWake)));
       const fade = saturate(float(1.0).sub(dist.div(9000.0)));
       const foam = cover(amt).mul(fade).toVar();
       // Aerated water under and around the foam glows turquoise.
-      const aerated = saturate(wakeAmt.mul(1.3).add(bowWave.mul(0.8)).add(contact.mul(0.4)).add(sideWake.mul(0.6)).add(wcAmt.mul(0.4)));
+      const aerated = saturate(wakeAer.add(wakeAmt.mul(0.6)).add(bowWave.mul(0.8)).add(contact.mul(0.4)).add(sideWake.mul(0.6)).add(wcAmt.mul(0.4)));
 
       const foamCol = vec3(0.82, 0.86, 0.88).mul(amb.mul(2.6).add(sunLit.mul(saturate(N.y).mul(0.32))));
-      const aerCol = vec3(0.05, 0.22, 0.24).mul(amb.mul(2.8).add(sunLit.mul(0.3)));
+      const aerCol = vec3(0.03, 0.15, 0.16).mul(amb.mul(2.4).add(sunLit.mul(0.22)));
       const water = mix(body.add(sss).add(aerCol.mul(aerated)), refl, F.mul(float(1.0).sub(aerated.mul(0.5))));
       const col = mix(water.add(spec).add(mspec), foamCol, foam.mul(0.92));
       return vec4(col, 1.0);

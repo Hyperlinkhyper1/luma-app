@@ -1,4 +1,6 @@
 {
+  "settingsTrackBackendAiUsage": "Track backend AI usage",
+  "settingsTrackBackendAiUsageSub": "Include new calls made by app features through the Luma server in AI Usage. Off by default.",
   "@@locale": "en",
   "trayOpen": "Open luma",
   "trayQuit": "Quit luma",

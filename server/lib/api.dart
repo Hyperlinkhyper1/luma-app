@@ -554,6 +554,8 @@ class Api {
       ..get(
           '/api/v1/ai/mistral-key-configured', _requireAuth(_mistralKeyStatus))
       ..get('/api/v1/ai/status', _requireAuth(_aiStatus))
+      ..get('/api/v1/ai/usage-calls', _requireAuth((request, user) =>
+          jsonResponse(200, {'calls': aiUsage.usageCalls(user.id)})))
       ..post('/api/v1/ai/mistral/chat', _requireAuth(_mistralChatProxy))
       ..post('/api/v1/ai/google/chat', _requireAuth(_googleChatProxy))
       ..post('/api/v1/ai/image', _requireAuth(_aiImage))
@@ -807,7 +809,7 @@ class Api {
           'Access-Control-Allow-Origin': config.corsOrigin,
           'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
           'Access-Control-Allow-Headers':
-              'Authorization, Content-Type, X-Base-Version, X-Payload-Saved-At',
+              'Authorization, Content-Type, X-Base-Version, X-Payload-Saved-At, X-Luma-Track-AI-Usage',
           'Access-Control-Expose-Headers': 'X-Version, X-Payload-Saved-At',
           'X-Content-Type-Options': 'nosniff',
           // Nothing this server serves should ever render inside a frame on
@@ -987,7 +989,13 @@ class Api {
           await store.saveSessions();
         });
       }
-      final response = await handler(request, user);
+      final response = await runZoned(
+        () async => await handler(request, user),
+        zoneValues: {
+          #trackBackendAiUsage:
+              request.headers['x-luma-track-ai-usage'] == 'true',
+        },
+      );
       if (store.usersById.containsKey(user.id)) {
         store.userTraffic.record(
           user.id,
@@ -2702,6 +2710,7 @@ class Api {
           feature: feature,
           upstream: route.upstream.label,
           model: route.model,
+          includeInUsage: Zone.current[#trackBackendAiUsage] == true,
           usage: AiCallUsage.parse(responseBody));
 
   Future<void> _recordAiPaid(

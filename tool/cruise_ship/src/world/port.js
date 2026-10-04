@@ -13,8 +13,8 @@ import { shipU } from '../ship/materials.js';
 // old city across the harbour with its cathedral dome.
 
 const QY = 2.6;            // quay level above the water
-const QZ = 24.2;           // quay edge (hull + fenders)
-const QX0 = -420, QX1 = 430, QZ1 = 140;     // quay extent
+const QZ = 23.2;           // quay edge (hull + fenders)
+const QX0 = -420, QX1 = 430, QZ1 = 82;      // quay extent: a working apron, not a plaza
 const CX0 = 210, CX1 = 420, CBEAM = 42;     // container berth ahead of the bow
 const HZ = -760;                            // the old city across the harbour
 
@@ -203,7 +203,7 @@ export class Port {
 
     // --- terminal building with the wave roof (photo 12) -------------------------
     {
-      const tx0 = -110, tx1 = 110, tz0 = 52, tz1 = 82, h = 8.5;
+      const tx0 = -110, tx1 = 110, tz0 = QZ + 21, tz1 = QZ + 46, h = 8.5;
       B.boxMM('termGlass', tx0, QY, tz0, tx1, QY + h - 1.5, tz0 + 0.3);
       B.boxMM('paint', tx0, QY, tz0 + 0.3, tx1, QY + h - 1.5, tz1);
       col.boxMM(tx0, QY, tz0, tx1, QY + h, tz1);
@@ -248,7 +248,7 @@ export class Port {
       frond.computeVertexNormals();
     }
     for (let i = 0; i < 26; i++) {
-      const x = 120 + (i % 13) * 7 + Math.random() * 2, z = 60 + Math.floor(i / 13) * 9 + Math.random() * 2;
+      const x = 120 + (i % 13) * 7 + Math.random() * 2, z = QZ + 24 + Math.floor(i / 13) * 8 + Math.random() * 2;
       const h = 9 + Math.random() * 5;
       I.add('palmTrunk', mat(x, QY, z, (Math.random() - 0.5) * 0.15, 0, (Math.random() - 0.5) * 0.15, 1, h, 1));
       for (let k = 0; k < 9; k++) {
@@ -259,10 +259,10 @@ export class Port {
     const carBody = new THREE.BoxGeometry(4.4, 0.9, 1.8); carBody.translate(0, 0.65, 0);
     const carTop = new THREE.BoxGeometry(2.4, 0.6, 1.6); carTop.translate(-0.2, 1.4, 0);
     for (let i = 0; i < 18; i++) {
-      const x = -60 + i * 6.2, z = 100 + (i % 2) * 6;
-      I.add(i % 3 === 0 ? 'carDark' : 'carBody', mat(x, QY, z, 0, Math.PI / 2, 0));
-      I.add('carTop', mat(x, QY, z, 0, Math.PI / 2, 0));
-      col.box(x, QY + 0.8, z, 1.9, 1.6, 4.5);
+      const x = 122 + (i % 9) * 6.2, z = QZ + 46 + Math.floor(i / 9) * 6;
+      I.add(i % 3 === 0 ? 'carDark' : 'carBody', mat(x, QY, z, 0, 0, 0));
+      I.add('carTop', mat(x, QY, z, 0, 0, 0));
+      col.box(x, QY + 0.8, z, 4.5, 1.6, 1.9);
     }
 
     // --- container terminal: cranes and a berthed container ship (photo 10) -------

@@ -9,6 +9,14 @@ class LFr extends L {
   LFr([String locale = 'fr']) : super(locale);
 
   @override
+  String get settingsTrackBackendAiUsage =>
+      'Suivre l’utilisation de l’IA côté serveur';
+
+  @override
+  String get settingsTrackBackendAiUsageSub =>
+      'Inclure dans Utilisation de l’IA les nouveaux appels des fonctions de l’application via le serveur Luma. Désactivé par défaut.';
+
+  @override
   String get trayOpen => 'Ouvrir luma';
 
   @override

@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'sync/server_access.dart';
 
 import 'account/password_reset_page.dart';
 import 'account/plan.dart';
@@ -184,6 +185,8 @@ class LumaApp extends StatefulWidget {
 }
 
 class _LumaAppState extends State<LumaApp> {
+  Timer? _backendUsageTimer;
+  String? _backendUsageAccount;
   late final HomeRepository _homeRepository = HomeRepository();
   late final AppDatabase _db = AppDatabase();
   late final FinanceRepository _repository = FinanceRepository(_db);
@@ -235,6 +238,9 @@ class _LumaAppState extends State<LumaApp> {
   late final AiUsageDatabase _aiUsageDb = AiUsageDatabase();
   late final AiUsageRepository _aiUsageRepository = AiUsageRepository(
     _aiUsageDb,
+    fetchBackendCalls: () => _sync.backendAiUsageCalls(),
+    backendAccount: () =>
+        _sync.serverReady ? '${_sync.serverUrl}:${_sync.email}' : null,
   );
   late final AiWorkbenchRepository _aiWorkbenchRepository =
       AiWorkbenchRepository();
@@ -570,6 +576,11 @@ class _LumaAppState extends State<LumaApp> {
   @override
   void initState() {
     super.initState();
+    GatedServerClient.trackBackendAiUsage = () =>
+        widget.settings.trackBackendAiUsage;
+    _backendUsageTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(_aiUsageRepository.refreshBackendUsage());
+    });
     StorageGuardService.instance = _storageGuard;
     widget.settings.addListener(_onSettingsChanged);
     _storageGuard.refresh();
@@ -634,6 +645,7 @@ class _LumaAppState extends State<LumaApp> {
       await _aiUsageRepository.rescan();
     }
     await _aiUsageCloudSync.syncOnOpen();
+    await _aiUsageRepository.refreshBackendUsage();
     await _aiUsageRepository.loadRemoteDevices();
   }
 
@@ -641,6 +653,13 @@ class _LumaAppState extends State<LumaApp> {
   /// without this the first exchange would wait for the next restart.
   /// Turning it off drops the other devices' numbers straight away.
   void _onSyncStateChanged() {
+    final backendAccount = _sync.serverReady
+        ? '${_sync.serverUrl}:${_sync.email}'
+        : null;
+    if (backendAccount != _backendUsageAccount) {
+      _backendUsageAccount = backendAccount;
+      unawaited(_aiUsageRepository.refreshBackendUsage());
+    }
     final available =
         _sync.serverReady && _sync.isEnabled(kAiUsageSyncCollectionId);
     final wasAvailable = _aiUsageSyncAvailable;
@@ -685,6 +704,8 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   void dispose() {
+    _backendUsageTimer?.cancel();
+    GatedServerClient.trackBackendAiUsage = null;
     _homeRepository.dispose();
     _lifecycleListener?.dispose();
     _windowCloseSubscription?.cancel();
@@ -708,6 +729,7 @@ class _LumaAppState extends State<LumaApp> {
     _calendarDb.close();
     _dataManagementDb.close();
     _moodJournalDb.close();
+    _aiUsageRepository.dispose();
     _aiUsageDb.close();
     _steamRepository.dispose();
     _steamDb.close();
@@ -754,6 +776,7 @@ class _LumaAppState extends State<LumaApp> {
   /// cap, but a plan change still needs to start or stop the device-share
   /// mirror.
   void _onSettingsChanged() {
+    unawaited(_aiUsageRepository.refreshBackendUsage());
     // The shared folder is Nova-only, so an upgrade has to start the mirror
     // and a downgrade has to stop it.
     unawaited(_syncDeviceShareWithPlan());
