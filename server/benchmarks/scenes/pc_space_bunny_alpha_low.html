@@ -31,6 +31,9 @@
   .tag{position:fixed;z-index:6;pointer-events:none;padding:6px 9px;border:1px solid #00e5ff44;background:#06111ddd;font-size:7px;letter-spacing:.14em;color:var(--accent);opacity:0;transform:translate(12px,-50%);transition:opacity .2s;white-space:nowrap}.tag:after{content:"";position:absolute;left:-22px;top:50%;width:22px;height:1px;background:var(--accent);opacity:.5}
   @media(max-width:760px){.title{top:90px}.title h1{font-size:42px}.eyebrow{display:none}.metrics{right:16px;top:16px}.metric{display:none}.metric:first-child{display:block;min-width:70px}.hud{right:12px;bottom:12px;width:270px}.hint{display:none}.brand{font-size:10px}header{left:18px;top:18px}.title{left:18px}.live{left:18px;bottom:20px}}
 </style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"}}
+</script>
 </head>
 <body>
 <div id="scene"></div><div class="grid"></div><div class="vignette"></div>
@@ -198,9 +201,9 @@ document.getElementById('reset').onclick=()=>{camera.position.set(7.3,5.1,8.7);c
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();let down;renderer.domElement.addEventListener('pointerdown',e=>down=e.clientX+','+e.clientY);renderer.domElement.addEventListener('pointerup',e=>{if(!down||down===e.clientX+','+e.clientY)return;down=null;mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mouse,camera);const hit=ray.intersectObject(root,true)[0];if(hit){let o=hit.object;while(o&&!o.userData.focus)o=o.parent;if(o){const c=new THREE.Vector3();o.getWorldPosition(c);controls.target.lerp(c,.4)}}});gpu.userData.focus=1;pump.userData.focus=1;
 renderer.domElement.addEventListener('dblclick',()=>{controls.target.set(0,1.8,0);camera.position.set(5,2.7,5.8)});
 
-const clock=new THREE.Clock();let frame=0;
+const clock=new THREE.Clock();let frameId=0;
 function animate(){
- requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;frame++;
+ requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;frameId++;
  const target=powered?1:0;powerMix=THREE.MathUtils.damp(powerMix,target,powered?1.2:4,dt);
  const startup=powered?THREE.MathUtils.clamp((performance.now()-startTime)/1600,0,1):0;
  const envelope=powered?THREE.MathUtils.clamp(startup*1.7,0,1):0;
