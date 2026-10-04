@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>3D PC Building + Creativity Benchmark</title>
+  <style>
+    body, html { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000; font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif; color:#e0e0e0; }
+    #canvas-container { width:100%; height:100%; display:block; }
+    #hud {
+      position:fixed; bottom:20px; right:20px; width:260px;
+      background:radial-gradient(circle at top left, #2a2a2a, #111);
+      border:2px solid #444; border-radius:12px; padding:14px;
+      box-shadow:0 0 20px rgba(0,0,0,0.9), inset 0 0 10px rgba(255,255,255,0.05);
+      z-index:10; pointer-events:auto;
+    }
+    .hud-title {
+      text-align:center; font-size:1.3em; margin-bottom:12px;
+      letter-spacing:1px; text-transform:uppercase; color:#4caf50;
+      text-shadow:0 0 5px #4caf50;
+    }
+    .hud-section { margin-bottom:12px; border-top:1px solid #333; padding-top:8px; }
+    .hud-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .hud-label { flex:1; font-size:0.95em; }
+    .hud-input { flex:2; }
+    button.power-btn {
+      width:60px; height:28px; border-radius:14px;
+      background:linear-gradient(180deg, #555, #333);
+      border:2px solid #777; color:#ccc; font-weight:bold;
+      transition:background 0.2s, box-shadow 0.2s;
+    }
+    button.power-btn.on {
+      background:linear-gradient(180deg, #4caf50, #2e7031);
+      box-shadow:0 0 8px #4caf50; border-color:#6cbf68;
+    }
+    button.power-btn.off {
+      background:linear-gradient(180deg, #e53935, #b71c1c);
+      box-shadow:0 0 6px #e53935;
+    }
+    input[type=range] { width:100%; }
+    input[type=color] { width:100%; height:30px; border:none; background:none; padding:0; }
+    select {
+      width:100%; background:#222; color:#eee; border:1px solid #555;
+      border-radius:4px; padding:4px;
+    }
+    .hud-btn {
+      background:#333; border:1px solid #555; color:#eee;
+      padding:4px 8px; border-radius:4px; cursor:pointer;
+      transition:background 0.2s;
+    }
+    .hud-btn:hover { background:#444; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div id="hud"></div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+    // ---------- Global state ----------
+    let scene, camera, renderer, controls;
+    let emissiveObjects = [];
+    let fanGroups = [];
+    let currentColor = new THREE.Color(0xff0000);
+    let isOn = false;
+    let isPoweringOn = false;
+    let isPoweringOff = false;
+    let lightingMode = 'static';
+    let lightingIntensityCurrent = 0;
+    let fanTargetSpeed = 0;
+    let fanCurrentSpeed = 0;
+    let powerSequenceStartTime = 0;
+    const POWER_UP_DURATION = 3000; // ms
+    const MAX_FAN_SPEED = 0.2; // rad/s
+
+    // UI references
+    let powerBtn, rSlider, gSlider, bSlider, colorPicker, modeSelect, fanSpeedSlider, randomColorBtn;
+
+    // ---------- Helper functions ----------
+    function makeEmissive(mesh) {
+      if (!mesh.material) return;
+      mesh.material.emissive = new THREE.Color(0xffffff);
+      mesh.material.emissiveIntensity = 0;
+      emissiveObjects.push(mesh);
+    }
+
+    function createFanGroup() {
+      const group = new THREE.Group();
+      // Hub
+      const hubGeo = new THREE.CylinderGeometry(4, 4, 2, 32);
+      const hubMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7, roughness: 0.3 });
+      const hub = new THREE.Mesh(hubGeo, hubMat);
+      hub.position.set(0, 0, 0);
+      group.add(hub);
+      makeEmissive(hub);
+
+      // Blades
+      const bladeGeo = new THREE.BoxGeometry(50, 2, 8);
+      const bladeMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.5, roughness: 0.5 });
+      for (let i = 0; i < 4; i++) {
+        const blade = new THREE.Mesh(bladeGeo, bladeMat.clone());
+        blade.position.set(0, 0, 0);
+        blade.rotation.z = (Math.PI / 4) + i * (Math.PI / 2);
+        group.add(blade);
+        makeEmissive(blade);
+      }
+      group.speed = 0;
+      fanGroups.push(group);
+      return group;
+    }
+
+    // ---------- Case ----------
+    function createCase() {
+      const caseGroup = new THREE.Group();
+      const wallMat = new THREE.MeshPhysicalMaterial({
+        color: 0x222222,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+
+      const thickness = 15;
+      const w = 400;
+      const h = 250;
+      const d = 200;
+
+      // Left wall (transparent for viewing)
+      const leftWallGeo = new THREE.BoxGeometry(thickness, h, d);
+      const leftWallMat = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.2 });
+      const leftWall = new THREE.Mesh(leftWallGeo, leftWallMat);
+      leftWall.position.set(-w/2 + thickness/2, 0, 0);
+      caseGroup.add(leftWall);
+
+      // Right wall
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(thickness, h, d), wallMat);
+      rightWall.position.set(w/2 - thickness/2, 0, 0);
+      caseGroup.add(rightWall);
+
+      // Front wall
+      const frontWall = new THREE.Mesh(new THREE.BoxGeometry(w, h, thickness), wallMat);
+      frontWall.position.set(0, 0, d/2 - thickness/2);
+      caseGroup.add(frontWall);
+
+      // Back wall
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(w, h, thickness), wallMat);
+      backWall.position.set(0, 0, -d/2 + thickness/2);
+      caseGroup.add(backWall);
+
+      // Top
+      const top = new THREE.Mesh(new THREE.BoxGeometry(w, thickness, d), wallMat);
+      top.position.set(0, h/2 - thickness/2, 0);
+      caseGroup.add(top);
+
+      // Bottom
+      const bottom = new THREE.Mesh(new THREE.BoxGeometry(w, thickness, d), wallMat);
+      bottom.position.set(0, -h/2 + thickness/2, 0);
+      caseGroup.add(bottom);
+
+      return caseGroup;
+    }
+
+    // ---------- Motherboard ----------
+    function createMotherboard() {
+      const boardGroup = new THREE.Group();
+      const boardGeo = new THREE.BoxGeometry(360, 5, 150);
+      const boardMat = new THREE.MeshPhysicalMaterial({
+        color: 0x111111,
+        metalness: 0.7,
+        roughness: 0.3
+      });
+      const board = new THREE.Mesh(boardGeo, boardMat);
+      board.position.set(0, -100, 0);
+      boardGroup.add(board);
+
+      // CPU socket placeholder
+      const cpuSocketGeo = new THREE.CylinderGeometry(20, 20, 2, 32);
+      const cpuSocketMat = new THREE.MeshPhysicalMaterial({
+        color: 0x333333,
+        metalness: 0.5,
+        roughness: 0.5
+      });
+      const cpuSocket = new THREE.Mesh(cpuSocketGeo, cpuSocketMat);
+      cpuSocket.position.set(0, 2.5, 30);
+      boardGroup.add(cpuSocket);
+
+      // RAM sticks
+      const ramGeo = new THREE.BoxGeometry(80, 3, 140);
+      const ramMat = new THREE.MeshPhysicalMaterial({
+        color: 0x2255aa,
+        metalness: 0.6,
+        roughness: 0.4
+      });
+      for (let i = 0; i < 2; i++) {
+        const ram = new THREE.Mesh(ramGeo, ramMat.clone());
+        const xPos = (i === 0 ? -120 : 120);
+        ram.position.set(xPos, -95, 30);
+        boardGroup.add(ram);
+      }
+
+      return boardGroup;
+    }
+
+    // ---------- CPU Cooler ----------
+    function createCPUCooler() {
+      const coolerGroup = new THREE.Group();
+
+      // Base
+      const baseGeo = new THREE.BoxGeometry(80, 20, 80);
+      const baseMat = new THREE.MeshPhysicalMaterial({
+        color: 0x444444,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.set(0, -70, 40);
+      coolerGroup.add(base);
+
+      // Fins
+      const finMat = new THREE.MeshPhysicalMaterial({
+        color: 0x555555,
+        metalness: 0.7,
+        roughness: 0.3
+      });
+      const finY = -55;
+      for (let i = 0; i < 5; i++) {
+        const finGeo = new THREE.BoxGeometry(70, 12, 12);
+        const fin = new THREE.Mesh(finGeo, finMat.clone());
+        fin.position.set(0, finY + i * 15, 40);
+        coolerGroup.add(fin);
+        makeEmissive(fin);
+      }
+
+      // CPU fan
+      const fan = createFanGroup();
+      fan.position.set(0, 0, 40);
+      fan.rotation.y = 0;
+      coolerGroup.add(fan);
+
+      return coolerGroup;
+    }
+
+    // ---------- GPU ----------
+    function createGPU() {
+      const gpuGroup = new THREE.Group();
+
+      // Body
+      const bodyGeo = new THREE.BoxGeometry(60, 150, 30);
+      const bodyMat = new THREE.MeshPhysicalMaterial({
+        color: 0x333366,
+        metalness: 0.9,
+        roughness: 0.2
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.set(0, -80, 70);
+      gpuGroup.add(body);
+      makeEmissive(body);
+
+      // Side fans
+      const sideFan1 = createFanGroup();
+      sideFan1.position.set(35, 30, 70);
+      sideFan1.rotation.y = Math.PI / 2;
+      gpuGroup.add(sideFan1);
+
+      const sideFan2 = createFanGroup();
+      sideFan2.position.set(35, -30, 70);
+      sideFan2.rotation.y = Math.PI / 2;
+      gpuGroup.add(sideFan2);
+
+      return gpuGroup;
+    }
+
+    // ---------- Storage ----------
+    function createStorage() {
+      const storageGroup = new THREE.Group();
+
+      const ssdGeo = new THREE.BoxGeometry(70, 5, 100);
+      const ssdMat = new THREE.MeshPhysicalMaterial({
+        color: 0x888888,
+        metalness: 0.7,
+        roughness: 0.3
+      });
+
+      const ssd1 = new THREE.Mesh(ssdGeo, ssdMat.clone());
+      ssd1.position.set(-100, -70, 0);
+      storageGroup.add(ssd1);
+
+      const ssd2 = new THREE.Mesh(ssdGeo, ssdMat.clone());
+      ssd2.position.set(100, -70, 0);
+      storageGroup.add(ssd2);
+
+      return storageGroup;
+    }
+
+    // ---------- PSU ----------
+    function createPSU() {
+      const psuGroup = new THREE.Group();
+
+      const psuGeo = new THREE.BoxGeometry(80, 150, 200);
+      const psuMat = new THREE.MeshPhysicalMaterial({
+        color: 0x443322,
+        metalness: 0.9,
+        roughness: 0.2
+      });
+      const psu = new THREE.Mesh(psuGeo, psuMat);
+      psu.position.set(-150, -100, -80);
+      psuGroup.add(psu);
+
+      return psuGroup;
+    }
+
+    // ---------- Case fans ----------
+    function createCaseFans() {
+      const fans = [];
+
+      const fanFL = createFanGroup();
+      fanFL.position.set(-120, -50, 85);
+      fanFL.rotation.y = 0;
+      fans.push(fanFL);
+
+      const fanFR = createFanGroup();
+      fanFR.position.set(120, -50, 85);
+      fanFR.rotation.y = 0;
+      fans.push(fanFR);
+
+      const fanRE = createFanGroup();
+      fanRE.position.set(0, 0, -85);
+      fanRE.rotation.y = 0;
+      fans.push(fanRE);
+
+      return fans;
+    }
+
+    // ---------- Build entire PC ----------
+    function buildPC() {
+      const caseGroup = createCase();
+      scene.add(caseGroup);
+
+      const motherboardGroup = createMotherboard();
+      scene.add(motherboardGroup);
+
+      const cpuCoolerGroup = createCPUCooler();
+      scene.add(cpuCoolerGroup);
+
+      const gpuGroup = createGPU();
+      scene.add(gpuGroup);
+
+      const storageGroup = createStorage();
+      scene.add(storageGroup);
+
+      const psuGroup = createPSU();
+      scene.add(psuGroup);
+
+      const caseFans = createCaseFans();
+      caseFans.forEach(fan => scene.add(fan));
+    }
+
+    // ---------- UI setup ----------
+    function setupUI() {
+      const hud = document.getElementById('hud');
+
+      // Title
+      const title = document.createElement('div');
+      title.className = 'hud-title';
+      title.textContent = 'PC Control Panel';
+      hud.appendChild(title);
+
+      // Power button
+      const powerSection = document.createElement('div');
+      powerSection.className = 'hud-section';
+      const powerRow = document.createElement('div');
+      powerRow.className = 'hud-row';
+      const powerLabel = document.createElement('div');
+      powerLabel.className = 'hud-label';
+      powerLabel.textContent = 'Power';
+      powerRow.appendChild(powerLabel);
+      powerBtn = document.createElement('button');
+      powerBtn.id = 'powerBtn';
+      powerBtn.className = 'power-btn';
+      powerRow.appendChild(powerBtn);
+      powerSection.appendChild(powerRow);
+      hud.appendChild(powerSection);
+
+      // RGB controls
+      const rgbSection = document.createElement('div');
+      rgbSection.className = 'hud-section';
+      const rgbLabel = document.createElement('div');
+      rgbLabel.className = 'hud-label';
+      rgbLabel.textContent = 'RGB Color';
+      rgbSection.appendChild(rgbLabel);
+
+      colorPicker = document.createElement('input');
+      colorPicker.type = 'color';
+      colorPicker.id = 'colorPicker';
+      colorPicker.className = 'hud-input';
+      rgbSection.appendChild(colorPicker);
+
+      const slidersDiv = document.createElement('div');
+      slidersDiv.style.marginTop = '6px';
+
+      const makeSliderRow = (id, labelText, initial) => {
+        const row = document.createElement('div');
+        row.className = 'hud-row';
+        const lbl = document.createElement('label');
+        lbl.className = 'hud-label';
+        lbl.textContent = labelText;
+        lbl.htmlFor = id;
+        row.appendChild(lbl);
+        const inp = document.createElement('input');
+        inp.type = 'range';
+        inp.id = id;
+        inp.min = '0';
+        inp.max = '255';
+        inp.value = initial;
+        inp.className = 'hud-input';
+        row.appendChild(inp);
+        slidersDiv.appendChild(row);
+        return inp;
+      };
+
+      rSlider = makeSliderRow('rSlider', 'R', '255');
+      gSlider = makeSliderRow('gSlider', 'G', '0');
+      bSlider = makeSliderRow('bSlider', 'B', '0');
+
+      rgbSection.appendChild(slidersDiv);
+
+      // Random color button
+      randomColorBtn = document.createElement('button');
+      randomColorBtn.className = 'hud-btn';
+      randomColorBtn.textContent = 'Random Color';
+      randomColorBtn.style.marginTop = '8px';
+      rgbSection.appendChild(randomColorBtn);
+
+      hud.appendChild(rgbSection);
+
+      // Lighting mode
+      const modeSection = document.createElement('div');
+      modeSection.className = 'hud-section';
+      const modeRow = document.createElement('div');
+      modeRow.className = 'hud-row';
+      const modeLabel = document.createElement('label');
+      modeLabel.className = 'hud-label';
+      modeLabel.textContent = 'Lighting Mode';
+      modeRow.appendChild(modeLabel);
+      modeSelect = document.createElement('select');
+      modeSelect.id = 'modeSelect';
+      modeSelect.className = 'hud-input';
+      ['static', 'breathing', 'pulse'].forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v.charAt(0).toUpperCase() + v.slice(1);
+        modeSelect.appendChild(opt);
+      });
+      modeRow.appendChild(modeSelect);
+      modeSection.appendChild(modeRow);
+      hud.appendChild(modeSection);
+
+      // Fan speed
+      const fanSection = document.createElement('div');
+      fanSection.className = 'hud-section';
+      const fanRow = document.createElement('div');
+      fanRow.className = 'hud-row';
+      const fanLbl = document.createElement('label');
+      fanLbl.className = 'hud-label';
+      fanLbl.textContent = 'Fan Speed';
+      fanRow.appendChild(fanLbl);
+      fanSpeedSlider = document.createElement('input');
+      fanSpeedSlider.type = 'range';
+      fanSpeedSlider.id = 'fanSpeedSlider';
+      fanSpeedSlider.min = '0';
+      fanSpeedSlider.max = '100';
+      fanSpeedSlider.value = '50';
+      fanSpeedSlider.className = 'hud-input';
+      fanRow.appendChild(fanSpeedSlider);
+      fanSection.appendChild(fanRow);
+      hud.appendChild(fanSection);
+
+      // CPU Temp gauge
+      const tempSection = document.createElement('div');
+      tempSection.className = 'hud-section';
+      const tempRow = document.createElement('div');
+      tempRow.className = 'hud-row';
+      const tempLbl = document.createElement('div');
+      tempLbl.className = 'hud-label';
+      tempLbl.textContent = 'CPU Temp';
+      tempRow.appendChild(tempLbl);
+      const tempBarContainer = document.createElement('div');
+      tempBarContainer.style.cssText = 'flex:2; height:16px; background:#333; border-radius:8px; overflow:hidden;';
+      const tempBar = document.createElement('div');
+      tempBar.id = 'tempBar';
+      tempBar.style.cssText = 'width:50%; height:100%; background:#f00; transition: width 0.2s, background-color 0.2s;';
+      tempBarContainer.appendChild(tempBar);
+      tempRow.appendChild(tempBarContainer);
+      tempSection.appendChild(tempRow);
+      hud.appendChild(tempSection);
+
+      // Event listeners
+      powerBtn.addEventListener('click', togglePower);
+
+      rSlider.addEventListener('input', updateRGB);
+      gSlider.addEventListener('input', updateRGB);
+      bSlider.addEventListener('input', updateRGB);
+      colorPicker.addEventListener('input', updateRGBFromColorPicker);
+
+      randomColorBtn.addEventListener('click', () => {
+        const hex = Math.floor(Math.random() * 16777215).toString(16);
+        colorPicker.value = `#${hex}`;
+        updateRGBFromColorPicker();
+      });
+
+      modeSelect.addEventListener('change', e => {
+        lightingMode = e.target.value;
+      });
+
+      fanSpeedSlider.addEventListener('input', e => {
+        const val = parseInt(e.target.value, 10);
+        fanTargetSpeed = (val / 100) * MAX_FAN_SPEED;
+      });
+    }
+
+    // ---------- UI actions ----------
+    function togglePower() {
+      if (isPoweringOn || isPoweringOff) return;
+      if (isOn) {
+        isPoweringOff = true;
+        powerSequenceStartTime = Date.now();
+      } else {
+        isPoweringOn = true;
+        powerSequenceStartTime = Date.now();
+      }
+    }
+
+    function updateRGB() {
+      const r = parseInt(rSlider.value, 10);
+      const g = parseInt(gSlider.value, 10);
+      const b = parseInt(bSlider.value, 10);
+      currentColor.setRGB(r/255, g/255, b/255);
+      colorPicker.value = `#${currentColor.r.toString(16).padStart(2,'0')}${currentColor.g.toString(16).padStart(2,'0')}${currentColor.b.toString(16).padStart(2,'0')}`;
+    }
+
+    function updateRGBFromColorPicker() {
+      const hex = colorPicker.value;
+      currentColor.set(hex);
+      rSlider.value = Math.round(currentColor.r * 255);
+      gSlider.value = Math.round(currentColor.g * 255);
+      bSlider.value = Math.round(currentColor.b * 255);
+    }
+
+    function updateEmissiveObjects(color, intensity) {
+      for (const obj of emissiveObjects) {
+        if (obj.material) {
+          obj.material.emissive.copy(color);
+          obj.material.emissiveIntensity = intensity;
+        }
+      }
+    }
+
+    function updateCPUTemp(time) {
+      const fanSpeedNorm = fanTargetSpeed / MAX_FAN_SPEED;
+      const baseTemp = 40 + (1 - fanSpeedNorm) * 60;
+      const osc = Math.sin(time * 0.002) * 10;
+      let temp = baseTemp + osc;
+      temp = Math.max(30, Math.min(100, temp));
+      const percent = ((temp - 30) / (100 - 30)) * 100;
+      const bar = document.getElementById('tempBar');
+      bar.style.width = percent + '%';
+      const hue = ((100 - temp) / 100) * 240;
+      bar.style.backgroundColor = `hsl(${hue}, 70%, 50%)`;
+    }
+
+    // ---------- Animation loop ----------
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = Date.now();
+      const delta = (now - (lastTime ?? now)) * 0.001;
+      lastTime = now;
+
+      // Power sequence
+      let prog = 0;
+      if (isPoweringOn) {
+        prog = Math.min((now - powerSequenceStartTime) / POWER_UP_DURATION, 1);
+        lightingIntensityCurrent = prog;
+        fanCurrentSpeed = prog * fanTargetSpeed;
+        if (prog >= 1) {
+          isOn = true;
+          isPoweringOn = false;
+        }
+      } else if (isPoweringOff) {
+        prog = Math.min((now - powerSequenceStartTime) / POWER_UP_DURATION, 1);
+        lightingIntensityCurrent = 1 - prog;
+        fanCurrentSpeed = (1 - prog) * fanTargetSpeed;
+        if (prog >= 1) {
+          isOn = false;
+          isPoweringOff = false;
+          lightingIntensityCurrent = 0;
+          fanCurrentSpeed = 0;
+        }
+      }
+
+      // Apply fan rotation
+      for (const g of fanGroups) {
+        g.rotation.y += fanCurrentSpeed * delta;
+      }
+
+      // Lighting multiplier based on mode
+      let mult = 0;
+      if (isOn) {
+        if (lightingMode === 'static') mult = 1;
+        else if (lightingMode === 'breathing') mult = 0.5 + 0.5 * Math.sin(now * 0.001);
+        else if (lightingMode === 'pulse') mult = Math.abs(Math.sin(now * 0.005));
+      }
+      const curIntensity = lightingIntensityCurrent * mult;
+
+      // Update emissive objects
+      updateEmissiveObjects(currentColor, curIntensity);
+
+      // Update internal point light
+      if (internalLight) {
+        internalLight.color.copy(currentColor);
+        internalLight.intensity = curIntensity * 0.5;
+      }
+
+      // Update CPU temp gauge
+      updateCPUTemp(now);
+
+      // Update controls and render
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // ---------- Initialization ----------
+    function init() {
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x111111);
+      scene.fog = new THREE.Fog(0x111111, 200, 2000);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+      camera.position.set(500, 300, 500);
+      camera.lookAt(0, 0, 0);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+      // Controls
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 100;
+      controls.maxDistance = 2000;
+      controls.target.set(0, 0, 0);
+
+      // Lights
+      const ambient = new THREE.AmbientLight(0x404040, 0.2);
+      scene.add(ambient);
+      const dir = new THREE.DirectionalLight(0xffffff, 1);
+      dir.position.set(100, 200, 100);
+      scene.add(dir);
+      internalLight = new THREE.PointLight(0xffffff, 0, 0);
+      internalLight.position.set(0, 0, 0);
+      scene.add(internalLight);
+
+      // Build PC and UI
+      buildPC();
+      setupUI();
+
+      // Start loop
+      lastTime = Date.now();
+      animate();
+    }
+
+    // Start when DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
