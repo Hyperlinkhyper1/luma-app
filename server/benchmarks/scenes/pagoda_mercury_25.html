@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D PAGODA BENCHMARK</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: monospace; }
+        canvas { display: block; }
+        #hud {
+            position: absolute; top: 20px; left: 20px; color: white;
+            background: rgba(0,0,0,0.6); padding: 15px; border-radius: 4px;
+            pointer-events: auto;
+        }
+        #hud h1 { margin: 0 0 10px 0; font-size: 1.2em; color: #FFB7C5; text-transform: uppercase; }
+        #hud p { margin: 4px 0; font-size: 0.85em; color: #ddd; }
+        #controls { margin-top: 12px; }
+        input[type=range] { width: 100%; margin: 5px 0; accent-color: #FFB7C5; }
+        button { background: #444; color: white; border: 1px solid #666; padding: 4px 8px; cursor: pointer; font-size: 0.8em; }
+        button:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <div id="hud">
+        <h1>VOXEL GARDEN</h1>
+        <p id="voxel-count">Loading...</p>
+        <p id="fps-count">0 FPS</p>
+        <p>Click lanterns | Drag to rotate</p>
+        <div id="controls">
+            <button id="btn-pause">Pause Cycle</button>
+            <input type="range" id="slider-time" min="0" max="100" value="25">
+        </div>
+    </div>
+
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- CONFIG ---
+        const COLORS = {
+            VERMILLION: '#C73E1D',
+            GOLD: '#E8B86D',
+            TEAK: '#4A2C1A',
+            JADE: '#40916C',
+            JADE_DARK: '#2D6A4F',
+            SAKURA: '#FFB7C5',
+            SAKURA_DARK: '#FF8FAB',
+            STONE: '#9AA0A6',
+            POND: '#7ED6DF',
+            MOSS: '#606C38'
+        };
+
+        const VOXEL_SIZE = 1;
+        const WORLD_SIZE = 64;
+        let VOXEL_COUNT = 0;
+        let TIME_STEP = 0.05; // Days per second
+        let IS_PAUSED = false;
+        let DAYTIME = 0.25; // 0 to 1
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x111122, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 0.9;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // --- VOXEL SYSTEM ---
+        class VoxelSystem {
+            constructor() {
+                this.meshes = {}; // Map color string to InstancedMesh
+                this.materials = {}; // Map color string to Material
+                this.counts = {}; // Map color string to count
+                this.geometry = new THREE.BoxGeometry(VOXEL_SIZE, VOXEL_SIZE, VOXEL_SIZE);
+            }
+
+            addVoxel(x, y, z, colorHex) {
+                if (!this.meshes[colorHex]) {
+                    const mat = new THREE.MeshStandardMaterial({ 
+                        color: colorHex, 
+                        roughness: 0.8, 
+                        metalness: 0.1 
+                    });
+                    const mesh = new THREE.InstancedMesh(this.geometry, mat, 10000);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.count = 0;
+                    this.meshes[colorHex] = mesh;
+                    this.materials[colorHex] = mat;
+                    this.counts[colorHex] = 0;
+                    scene.add(mesh);
+                }
+
+                const mesh = this.meshes[colorHex];
+                const index = mesh.count;
+                const matrix = new THREE.Matrix4();
+                matrix.setPosition(x * VOXEL_SIZE, y * VOXEL_SIZE, z * VOXEL_SIZE);
+                mesh.setMatrixAt(index, matrix);
+                mesh.count++;
+                this.counts[colorHex]++;
+                VOXEL_COUNT++;
+            }
+
+            updateCount() {
+                for (let key in this.meshes) {
+                    this.meshes[key].count = this.counts[key];
+                }
+            }
+        }
+
+        const voxels = new VoxelSystem();
+
+        // --- LISTS FOR INTERACTIVE ELEMENTS ---
+        const interactiveObjects = []; // { mesh, type, id }
+        const lanterns = [];
+
+        // --- BUILD FUNCTIONS ---
+
+        function buildPagoda() {
+            // Base
+            const baseSz = 8;
+            for(let y=0; y<2; y++) {
+                for(let x=-baseSz; x<baseSz; x++) {
+                    for(let z=-baseSz; z<baseSz; z++) {
+                        voxels.addVoxel(x, y, z, COLORS.TEAK);
+                    }
+                }
+            }
+
+            const floors = 5;
+            let currentY = 2;
+            let width = 6;
+
+            for (let f = 0; f < floors; f++) {
+                // Pillars (Vermillion)
+                for (let y = 0; y < 4; y++) {
+                    voxels.addVoxel(width, currentY+y, width, COLORS.VERMILLION);
+                    voxels.addVoxel(-width, currentY+y, width, COLORS.VERMILLION);
+                    voxels.addVoxel(width, currentY+y, -width, COLORS.VERMILLION);
+                    voxels.addVoxel(-width, currentY+y, -width, COLORS.VERMILLION);
+                }
+
+                // Floor Platform (Teak)
+                for (let y = 0; y < 1; y++) {
+                    for(let x=-width; x<=width; x++) {
+                        for(let z=-width; z<=width; z++) {
+                            if (Math.abs(x)===width || Math.abs(z)===width) {
+                                voxels.addVoxel(x, currentY+y, z, COLORS.VERMILLION);
+                            } else {
+                                voxels.addVoxel(x, currentY+y, z, COLORS.TEAK);
+                            }
+                        }
+                    }
+                }
+                
+                // Interior Light Source (Gold)
+                for(let y=0; y<3; y++) {
+                    voxels.addVoxel(0, currentY+y, 0, COLORS.GOLD);
+                }
+
+                // Roof (Jade) - Stepped/curved approximation
+                const roofH = 3;
+                const roofW = width + 2;
+                
+                for(let y=0; y<roofH; y++) {
+                    let rW = roofW - y;
+                    for(let x=-rW; x<=rW; x++) {
+                        for(let z=-rW; z<=rW; z++) {
+                            if (Math.abs(x)===rW || Math.abs(z)===rW) {
+                                voxels.addVoxel(x, currentY+3+y, z, COLORS.JADE);
+                                if ((y===roofH-1) && (x===rW || x===-rW || z===rW || z===-rW)) {
+                                     // Upturned corners
+                                     voxels.addVoxel(x, currentY+3+roofH, z, COLORS.JADE);
+                                }
+                            } else {
+                                voxels.addVoxel(x, currentY+3+y, z, COLORS.JADE_DARK);
+                            }
+                        }
+                    }
+                }
+
+                // Gold Finial center (top)
+                voxels.addVoxel(0, currentY+3+roofH, 0, COLORS.GOLD);
+                voxels.addVoxel(0, currentY+3+roofH+1, 0, COLORS.GOLD);
+
+                currentY += 3 + roofH;
+                width -= 1;
+            }
+        }
+
+        function buildTerrain() {
+            // Simple terrain
+            for(let x=-32; x<32; x++) {
+                for(let z=-32; z<32; z++) {
+                    // Height based on dist
+                    const dist = Math.sqrt(x*x + z*z);
+                    if (dist < 30) {
+                        // Water level
+                        voxels.addVoxel(x, -2, z, COLORS.POND);
+                        // Banks
+                        if (dist > 15 && dist < 18) voxels.addVoxel(x, -1, z, COLORS.STONE);
+                        if (dist < 15) {
+                            voxels.addVoxel(x, -1, z, COLORS.MOSS);
+                            voxels.addVoxel(x, 0, z, COLORS.TEAK);
+                        }
+                    }
+                }
+            }
+
+            // Path
+            for(let x=-10; x<10; x++) {
+                voxels.addVoxel(x, 0, 10, COLORS.STONE);
+                voxels.addVoxel(x, 0, -10, COLORS.STONE);
+            }
+            for(let z=-10; z<10; z++) {
+                voxels.addVoxel(10, 0, z, COLORS.STONE);
+                voxels.addVoxel(-10, 0, z, COLORS.STONE);
+            }
+        }
+
+        function buildFlyingIsland() {
+            const islandGroup = new THREE.Group();
+            islandGroup.position.set(0, 50, 20);
+            islandGroup.position.y = 25;
+            
+            // Base island
+            const size = 10;
+            for(let x=-size; x<=size; x++) {
+                for(let y=-size; y<=size; y++) {
+                    for(let z=-size; z<=size; z++) {
+                        if (x*x+y*y+z*z < size*size*0.8) {
+                            voxels.addVoxel(x+30, y+25, z+20, COLORS.MOSS);
+                        }
+                    }
+                }
+            }
+
+            // Trees
+            buildTree(0, 5, 0, 'pine');
+
+            // Waterfall
+            for(let y=25; y>5; y--) {
+                voxels.addVoxel(size+1, y, 0, COLORS.POND);
+            }
+
+            scene.add(islandGroup);
+        }
+
+        function buildTree(x,y,z,type) {
+            const colTrunk = COLORS.TEAK;
+            const colLeaves = type==='pine' ? COLORS.JADE_DARK : (type==='sakura' ? COLORS.SAKURA : COLORS.JADE);
+
+            // Trunk
+            for(let i=0; i<4; i++) voxels.addVoxel(x,y+i,z,colTrunk);
+
+            // Leaves
+            const rad = 3;
+            const top = y+4;
+            for(let ix=-rad; ix<=rad; ix++) {
+                for(let iy=-rad; iy<=rad; iy++) {
+                    for(let iz=-rad; iz<=rad; iz++) {
+                        if(ix*ix+iy*iy+iz*iz <= rad*rad) {
+                            voxels.addVoxel(x+ix, top+iy, z+iz, colLeaves);
+                        }
+                    }
+                }
+            }
+        }
+
+        function buildDecor() {
+            // Lanterns
+            for(let i=0; i<4; i++) {
+                const lx = (Math.cos(i*1.57)*10);
+                const lz = (Math.sin(i*1.57)*10);
+                const y = 1;
+                
+                // Body
+                voxels.addVoxel(lx, y, lz, COLORS.STONE);
+                voxels.addVoxel(lx, y+1, lz, COLORS.STONE);
+                voxels.addVoxel(lx, y+2, lz, COLORS.GOLD);
+
+                // Interactive Light
+                const light = new THREE.PointLight(COLORS.GOLD, 1, 15);
+                light.position.set(lx, y+1, lz);
+                light.castShadow = true;
+                scene.add(light);
+                
+                const obj = {
+                    obj: new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({color:0xFFFFFF, visible:false})),
+                    light: light,
+                    on: true
+                };
+                obj.obj.position.set(lx, y+1, lz);
+                scene.add(obj.obj);
+                interactiveObjects.push({ mesh: obj.obj, type: 'lantern', ref: obj });
+                lanterns.push(obj);
+            }
+
+            // Torii
+            const tx = -20; const tz = 0;
+            // Legs
+            for(let y=0; y<6; y++) {
+                voxels.addVoxel(tx, y, tz-2, COLORS.VERMILLION);
+                voxels.addVoxel(tx+6, y, tz-2, COLORS.VERMILLION);
+                voxels.addVoxel(tx, y, tz+2, COLORS.VERMILLION);
+                voxels.addVoxel(tx+6, y, tz+2, COLORS.VERMILLION);
+            }
+            // Top
+            for(let x=-1; x<9; x++) voxels.addVoxel(tx+x, 6, tz, COLORS.VERMILLION);
+
+            // Flowers
+            for(let i=0; i<40; i++) {
+                const x = Math.random()*60 -30;
+                const z = Math.random()*60 -30;
+                voxels.addVoxel(Math.floor(x), 1, Math.floor(z), COLORS.SAKURA_DARK);
+            }
+        }
+
+        function buildAnimationObjects() {
+            // Koi
+            const koi = [];
+            for(let i=0; i<6; i++) {
+                const m = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.2), new THREE.MeshBasicMaterial({color:0xFF5500}));
+                m.position.set(Math.random()*20-10, -1.8, Math.random()*20-10);
+                scene.add(m);
+                koi.push({mesh:m, vx:(Math.random()-0.5)*0.1, vy:(Math.random()-0.5)*0.1});
+            }
+
+            // Petals
+            const petalGroup = new THREE.Group();
+            for(let i=0; i<100; i++) {
+                const m = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.01, 0.15), new THREE.MeshBasicMaterial({color: COLORS.SAKURA}));
+                m.position.set(Math.random()*50-25, Math.random()*15+5, Math.random()*50-25);
+                petalGroup.add(m);
+            }
+            scene.add(petalGroup);
+
+            return { koi, petalGroup };
+        }
+
+        // --- INITIALIZATION ---
+        function init() {
+            buildPagoda();
+            buildTerrain();
+            buildDecor();
+            buildFlyingIsland();
+            
+            // Lighting
+            const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+            scene.add(hemi);
+
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(50, 40, 20);
+            sun.castShadow = true;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            sun.shadow.camera.near = 10;
+            sun.shadow.camera.far = 200;
+            sun.shadow.camera.left = -50;
+            sun.shadow.camera.right = 50;
+            sun.shadow.camera.top = 50;
+            sun.shadow.camera.bottom = -50;
+            scene.add(sun);
+            scene.userData.sun = sun;
+
+            // Camera Intro
+            camera.position.set(-50, 10, -50);
+            controls.target.set(0, 5, 0);
+
+            window.__VOXEL__ = {
+                voxelCount: 0,
+                fps: 0,
+                pagodaFloors: 5,
+                timeOfDay: DAYTIME,
+                addVoxel: voxels.addVoxel.bind(voxels),
+                toggleLantern: (idx) => {
+                    const l = lanterns[idx];
+                    if(l) {
+                        l.on = !l.on;
+                        l.light.intensity = l.on ? 1.5 : 0;
+                        l.obj.material.color.set(l.on ? 0xFFFF00 : 0x222222);
+                    }
+                }
+            };
+        }
+
+        init();
+        voxels.updateCount();
+        const animateObjects = buildAnimationObjects();
+        
+        // HUD refs
+        const elCount = document.getElementById('voxel-count');
+        const elFPS = document.getElementById('fps-count');
+        const slider = document.getElementById('slider-time');
+        const btnPause = document.getElementById('btn-pause');
+
+        // --- LOOP ---
+        const clock = new THREE.Clock();
+        const frameClock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            const fps = 1/frameClock.getDelta();
+            frameClock.getElapsedTime();
+
+            // Day/Night Cycle
+            if(!IS_PAUSED) {
+                DAYTIME += delta * TIME_STEP;
+                if(DAYTIME > 1) DAYTIME -= 1;
+                slider.value = DAYTIME * 100;
+            }
+
+            // Sun rotation
+            const rad = (DAYTIME - 0.25) * Math.PI * 2; 
+            const sun = scene.userData.sun;
+            sun.position.x = Math.cos(rad) * 100;
+            sun.position.y = Math.sin(rad) * 100;
+            sun.position.z = Math.sin(rad*0.5) * 50;
+            scene.background = new THREE.Color(Math.max(0, Math.sin(rad)*0.3));
+            scene.fog.color.copy(scene.background);
+
+            // Lantern auto on
+            const night = (DAYTIME > 0.8 || DAYTIME < 0.2);
+            lanterns.forEach(l => {
+                if(!l.on && night) {
+                    l.on = true;
+                    l.light.intensity = 1;
+                    l.obj.material.color.set(0xFFFF00);
+                }
+            });
+
+            // Animate
+            animateObjects.koi.forEach(k => {
+                k.mesh.position.add(new THREE.Vector3(k.vx, k.vy, 0));
+                if(Math.abs(k.mesh.position.x)>10) k.vx *= -1;
+                if(Math.abs(k.mesh.position.z)>10) k.vy *= -1;
+                k.mesh.lookAt(k.mesh.position.clone().add(new THREE.Vector3(k.vx*10, 0, 0)));
+            });
+
+            animateObjects.petalGroup.children.forEach((p,i) => {
+                p.position.x += Math.sin(clock.getElapsedTime()+i)*0.005;
+                p.position.y -= 0.02;
+                if(p.position.y < -5) p.position.y = 15;
+                p.rotation.z += 0.02;
+            });
+
+            renderer.render(scene, camera);
+
+            // HUD
+            elCount.innerText = `${(VOXEL_COUNT/1000).toFixed(1)}k voxels`;
+            elFPS.innerText = `${Math.round(fps)} FPS`;
+            window.__VOXEL__.voxelCount = VOXEL_COUNT;
+            window.__VOXEL__.fps = Math.round(fps);
+            window.__VOXEL__.timeOfDay = DAYTIME;
+        }
+
+        // Events
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+        document.addEventListener('click', (e) => {
+            if(e.target.closest('#hud')) return;
+            mouse.x = (e.clientX/window.innerWidth)*2 - 1;
+            mouse.y = -(e.clientY/window.innerHeight)*2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersects = raycaster.intersectObjects(interactiveObjects.map(o=>o.mesh));
+            if(intersects.length > 0) {
+                const idx = interactiveObjects.findIndex(o => o.mesh === intersects[0].object);
+                if(idx >= 0 && interactiveObjects[idx].type === 'lantern') {
+                    window.__VOXEL__.toggleLantern(idx);
+                }
+            }
+        });
+
+        slider.addEventListener('input', (e) => {
+            DAYTIME = e.target.value / 100;
+        });
+
+        btnPause.addEventListener('click', (e) => {
+            IS_PAUSED = !IS_PAUSED;
+            e.target.innerText = IS_PAUSED ? "Play Cycle" : "Pause Cycle";
+        });
+
+        animate();
+    </script>
+</body>
+</html>
