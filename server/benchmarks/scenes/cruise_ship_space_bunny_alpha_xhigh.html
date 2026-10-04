@@ -983,6 +983,7 @@ const oceanMaterial = new THREE.ShaderMaterial({
     }
   `,
   fragmentShader: `
+    uniform float uTime;
     uniform float uDay;
     uniform float uWeather;
     uniform vec3 uSun;
