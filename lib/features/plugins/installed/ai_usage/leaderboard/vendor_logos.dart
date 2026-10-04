@@ -229,23 +229,40 @@ void _seed(Canvas c) {
   c.drawRRect(_rr(21, 7, 5, 18, 1.5), _fill(const Color(0xFF3455DB)));
 }
 
-/// Space Bunny: a long-eared head over its brand gradient, drawn rather
-/// than lettered so the mark reads at 32 px.
+/// Space Bunny: OpenRouter's stealth mark, a B-2 bomber on a pale disc,
+/// redrawn from its 240-unit SVG at 32 px.
 void _spaceBunny(Canvas c) {
-  const violet = Color(0xFF7C5CFF);
-  const teal = Color(0xFF2DD4BF);
-  c.drawOval(const Rect.fromLTWH(7.5, 4, 4.6, 15), _fill(violet));
-  c.drawOval(const Rect.fromLTWH(19.9, 4, 4.6, 15), _fill(teal));
-  c.drawOval(const Rect.fromLTWH(8.8, 5.4, 2, 11),
-      _fill(const Color(0xFF1A1330).withValues(alpha: 0.55)));
-  c.drawOval(const Rect.fromLTWH(21.2, 5.4, 2, 11),
-      _fill(const Color(0xFF0B2B2A).withValues(alpha: 0.55)));
-  c.drawOval(const Rect.fromLTWH(6, 17, 20, 13), _fill(violet));
-  c.drawCircle(const Offset(12.6, 22), 2.1, _fill(const Color(0xFFEDE9FE)));
-  c.drawCircle(const Offset(19.4, 22), 2.1, _fill(const Color(0xFFCCFBF1)));
-  c.drawCircle(const Offset(13.2, 22.4), 1.05, _fill(const Color(0xFF1A1330)));
-  c.drawCircle(const Offset(18.8, 22.4), 1.05, _fill(const Color(0xFF0B2B2A)));
-  c.drawRRect(_rr(14.6, 24.6, 2.8, 1.8, 0.9), _fill(teal));
+  const k = 32 / 240;
+  const ink = Color(0xFF212529);
+  c.drawCircle(
+    const Offset(16, 16),
+    110 * k,
+    Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFF8F9FA), Color(0xFFE9ECEF)],
+      ).createShader(const Rect.fromLTWH(1.33, 1.33, 29.34, 29.34)),
+  );
+  final wing = Path()
+    ..moveTo(120 * k, 70 * k)
+    ..lineTo(70 * k, 130 * k)
+    ..lineTo(50 * k, 150 * k)
+    ..lineTo(65 * k, 160 * k)
+    ..lineTo(120 * k, 130 * k)
+    ..lineTo(175 * k, 160 * k)
+    ..lineTo(190 * k, 150 * k)
+    ..lineTo(170 * k, 130 * k)
+    ..close();
+  final engine = Path()
+    ..moveTo(100 * k, 130 * k)
+    ..lineTo(120 * k, 150 * k)
+    ..lineTo(140 * k, 130 * k)
+    ..close();
+  for (final path in [wing, engine]) {
+    c.drawPath(path, _fill(ink));
+    c.drawPath(path, _stroke(ink, 0.15));
+  }
 }
 
 /// Tencent Hunyuan's blue interlocking-loop emblem.
