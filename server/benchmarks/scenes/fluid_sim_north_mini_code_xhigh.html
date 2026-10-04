@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Fluid Simulation Benchmark - Water in a Glass Tank</title>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #000;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-element {
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 10px;
+            color: white;
+            font-size: 12px;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .controls-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 220px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .panel-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 10px;
+        }
+        
+        .panel-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .control-label {
+            min-width: 120px;
+        }
+        
+        .control-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            width: 60px;
+            text-align: center;
+        }
+        
+        .control-input:focus {
+            outline: none;
+            border-color: #4a90e2;
+        }
+        
+        .button {
+            background: rgba(74, 144, 226, 0.8);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        
+        .button:hover {
+            background: rgba(74, 144, 226, 1);
+            transform: translateY(-1px);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button.danger {
+            background: rgba(231, 76, 60, 0.8);
+        }
+        
+        .button.danger:hover {
+            background: rgba(231, 76, 60, 1);
+        }
+        
+        .button.secondary {
+            background: rgba(155, 155, 155, 0.8);
+        }
+        
+        .button.secondary:hover {
+            background: rgba(155, 155, 155, 1);
+        }
+        
+        .tab-container {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .tab.active {
+            background: rgba(74, 144, 226, 0.8);
+        }
+        
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .tab.active:hover {
+            background: rgba(74, 144, 226, 1);
+        }
+        
+        .stats-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 15px;
+            color: white;
+            font-size: 11px;
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+        
+        .stats-label {
+            opacity: 0.7;
+        }
+        
+        .scenario-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .scenario-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        
+        .scenario-button:hover {
+            background: rgba(74, 144, 226, 0.3);
+            border-color: rgba(74, 144, 226, 0.5);
+        }
+        
+        .scenario-button.active {
+            background: rgba(74, 144, 226, 0.5);
+            border-color: rgba(74, 144, 226, 0.8);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .slider-container {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        
+        .slider-track {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(74, 144, 226, 0.5);
+            border-radius: 10px;
+            transition: width 0.1s;
+        }
+        
+        .slider-thumb {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: left 0.1s;
+        }
+        
+        .message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1000;
+            max-width: 400px;
+        }
+        
+        .message-box h2 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .message-box p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .warning-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4a90e2;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #help-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .help-content {
+            max-width: 800px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            overflow-y: auto;
+            max-height: 80vh;
+        }
+        
+        .help-section {
+            margin-bottom: 25px;
+        }
+        
+        .help-section h3 {
+            color: #4a90e2;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        .keybind {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 0 2px;
+        }
+        
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 15px;
+            color: white;
+            font-size: 11px;
+            max-width: 300px;
+            z-index: 50;
+        }
+        
+        @media (max-width: 768px) {
+            .controls-panel {
+                width: 100%;
+                max-height: 40vh;
+                bottom: 0;
+                top: auto;
+                left: 0;
+                right: 0;
+            }
+            
+            .stats-panel {
+                top: auto;
+                bottom: 10px;
+                right: 10px;
+            }
+            
+            .controls-hint {
+                bottom: 80px;
+                left: 10px;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="ui-container">
+        <div class="controls-panel ui-element">
+            <div class="panel-section">
+                <div class="panel-title">Simulation</div>
+                <div class="control-row">
+                    <span class="control-label">Status:</span>
+                    <span id="simulation-status">Running</span>
+                </div>
+                <div class="control-row">
+                    <span class="control-label">Scenario:</span>
+                    <button class="button secondary" id="reset-btn" style="font-size: 10px; padding: 3px 8px;">Reset</button>
+                </div>
+                <div class="scenario-selector" id="scenario-selector">
+                    <button class="scenario-button active" data-scenario="dam-break">1. Dam Break</button>
+                    <button class="scenario-button" data-scenario="double-dam">2. Double Dam</button>
+                    <button class="scenario-button" data-scenario="drop">3. Drop</button>
+                    <button class="scenario-button" data-scenario="faucet">4. Faucet</button>
+                    <button class="scenario-button" data-scenario="wave-machine">5. Wave Machine</button>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Particles:</span>
+                    <input type="number" class="control-input" id="particle-count" min="5000" max="100000" value="20000">
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Render Mode:</span>
+                    <select class="control-input" id="render-mode">
+                        <option value="screen-space">Screen-Space</option>
+                        <option value="particles">Raw Particles</option>
+                        <option value="wireframe">Wireframe</option>
+                    </select>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Pause:</span>
+                    <button class="button" id="pause-btn">Pause</button>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Single Step:</span>
+                    <button class="button secondary" id="step-btn">Step</button>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Physics</div>
+                
+                <div class="control-row">
+                    <span class="control-label">Time Step:</span>
+                    <div class="slider-container" id="timestep-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="timestep-track" style="width: 50%;"></div>
+                        <div class="slider-thumb" id="timestep-thumb" style="left: 50%;"></div>
+                    </div>
+                    <span id="timestep-value">0.016</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Viscosity:</span>
+                    <div class="slider-container" id="viscosity-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="viscosity-track" style="width: 60%;"></div>
+                        <div class="slider-thumb" id="viscosity-thumb" style="left: 60%;"></div>
+                    </div>
+                    <span id="viscosity-value">0.01</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Gravity:</span>
+                    <div class="slider-container" id="gravity-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="gravity-track" style="width: 70%;"></div>
+                        <div class="slider-thumb" id="gravity-thumb" style="left: 70%;"></div>
+                    </div>
+                    <span id="gravity-value">9.81</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Density Error:</span>
+                    <span id="density-error">0.0%</span>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Rendering</div>
+                
+                <div class="control-row">
+                    <span class="control-label">Absorption:</span>
+                    <div class="slider-container" id="absorption-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="absorption-track" style="width: 40%;"></div>
+                        <div class="slider-thumb" id="absorption-thumb" style="left: 40%;"></div>
+                    </div>
+                    <span id="absorption-value">0.8</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Reflection:</span>
+                    <div class="slider-container" id="reflection-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="reflection-track" style="width: 35%;"></div>
+                        <div class="slider-thumb" id="reflection-thumb" style="left: 60%;"></div>
+                    </div>
+                    <span id="reflection-value">0.5</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Fresnel:</span>
+                    <div class="slider-container" id="fresnel-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="fresnel-track" style="width: 50%;"></div>
+                        <div class="slider-thumb" id="fresnel-thumb" style="left: 50%;"></div>
+                    </div>
+                    <span id="fresnel-value">1.0</span>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Camera</div>
+                
+                <div class="control-row">
+                    <span class="control-label">Tilt X:</span>
+                    <div class="slider-container" id="camera-x-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="camera-x-track" style="width: 50%;"></div>
+                        <div class="slider-thumb" id="camera-x-thumb" style="left: 50%;"></div>
+                    </div>
+                    <span id="camera-x-value">0</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Tilt Y:</span>
+                    <div class="slider-container" id="camera-y-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="camera-y-track" style="width: 60%;"></div>
+                        <div class="slider-thumb" id="camera-y-thumb" style="left: 60%;"></div>
+                    </div>
+                    <span id="camera-y-value">0</span>
+                </div>
+                
+                <div class="control-row">
+                    <span class="control-label">Zoom:</span>
+                    <div class="slider-container" id="camera-zoom-slider" style="width: 100px; height: 16px;">
+                        <div class="slider-track" id="camera-zoom-track" style="width: 40%;"></div>
+                        <div class="slider-thumb" id="camera-zoom-thumb" style="left: 40%;"></div>
+                    </div>
+                    <span id="camera-zoom-value">15</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-panel ui-element">
+            <div class="panel-title">Statistics</div>
+            <div class="stats-row">
+                <span class="stats-label">FPS:</span>
+                <span id="fps-stats">0</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Particles:</span>
+                <span id="particles-stats">0</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Sim Time:</span>
+                <span id="sim-time-stats">0.0ms</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Render Time:</span>
+                <span id="render-time-stats">0.0ms</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Memory:</span>
+                <span id="memory-stats">0MB</span>
+            </div>
+        </div>
+        
+        <div class="controls-hint ui-element">
+            <strong>Controls:</strong><br>
+            • Click & drag to stir<br>
+            • Arrow keys to tilt tank<br>
+            • WASD + Mouse to orbit<br>
+            • Space to toggle UI<br>
+            • H for help
+        </div>
+    </div>
+    
+    <div id="help-overlay" class="hidden">
+        <div class="help-content">
+            <h2>3D Fluid Simulation Benchmark - Help</h2>
+            
+            <div class="help-section">
+                <h3>Simulation Controls</h3>
+                <p>
+                    <strong>Scenario Selection:</strong> Choose from 5 scenarios using the buttons or the dropdown.<br>
+                    • <strong>Dam Break:</strong> Column of water collapses<br>
+                    • <strong>Double Dam:</strong> Two columns collide<br>
+                    • <strong>Drop:</strong> Sphere falls into shallow pool<br>
+                    • <strong>Faucet:</strong> Continuous stream from above<br>
+                    • <strong>Wave Machine:</strong> Moving wall creates waves
+                </p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Physics Controls</h3>
+                <p>
+                    <strong>Particle Count:</strong> Adjust number of simulation particles (5,000 - 100,000)<br>
+                    <strong>Time Step:</strong> Controls simulation accuracy and stability<br>
+                    <strong>Viscosity:</strong> Resistance to flow (0 = ideal fluid)<br>
+                    <strong>Gravity:</strong> Strength of gravitational force<br>
+                    <strong>Density Error:</strong> Incompressibility measure (%)
+                </p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Camera Controls</h3>
+                <p>
+                    <strong>Orbit:</strong> Left click + drag<br>
+                    <strong>Pan:</strong> Right click + drag<br>
+                    <strong>Zoom:</strong> Mouse wheel or right click + drag up/down<br>
+                    <strong>Tilt:</strong> Use arrow keys or sliders for tank orientation
+                </p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Interaction</h3>
+                <p>
+                    <strong>Stir:</strong> Click and drag in the water<br>
+                    <strong>Tilt Tank:</strong> Press arrow keys or use tilt sliders<br>
+                    <strong>Drop Object:</strong> Press <span class="keybind">Space</span> to spawn a ball<br>
+                    <strong>Reset:</strong> Press <span class="keybind">R</span> or use reset button<br>
+                    <strong>Pause:</strong> Press <span class="keybind">P</span> or use pause button<br>
+                    <strong>Single Step:</strong> Press <span class="keybind">Shift + P</span> or use step button<br>
+                    <strong>Help:</strong> Press <span class="keybind">H</span>
+                </p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Rendering Options</h3>
+                <p>
+                    <strong>Screen-Space Rendering:</strong> Advanced fluid rendering with refraction and reflection<br>
+                    <strong>Raw Particles:</strong> See particles as colored dots<br>
+                    <strong>Wireframe:</strong> View particle structure<br>
+                    <strong>Absorption:</strong> Water color intensity<br>
+                    <strong>Reflection:</strong> Mirror-like surface effect<br>
+                    <strong>Fresnel:</strong> Edge highlight strength
+                </p>
+            </div>
+            
+            <div class="help-section">
+                <h3>Performance</h3>
+                <p>
+                    • Targets 60 FPS on mid-range laptops<br>
+                    • Uses GPU acceleration when available<br>
+                    • Falls back to CPU simulation if WebGL unavailable<br>
+                    • Real-time incompressible fluid simulation<br>
+                    • Advanced screen-space rendering pipeline
+                </p>
+            </div>
+            
+            <button class="button" onclick="document.getElementById('help-overlay').classList.add('hidden')" style="margin-top: 20px;">Close Help</button>
+        </div>
+    </div>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { CopyShader } from 'three/addons/shaders/CopyShader.js';
+        
+        // Global variables
+        let scene, camera, renderer, controls;
+        let composer;
+        let particleSystem, fluidMaterial, simulationUniforms;
+        let particles, positions, velocities, densities, pressures, neighbors;
+        let simulationShader, renderingShader;
+        let renderTargets = {};
+        let fpsCounter = 0, fpsTime = 0;
+        let simTimeCounter = 0, renderTimeCounter = 0;
+        let lastTime = 0;
+        let mouseX = 0, mouseY = 0, mouseDown = false;
+        let tankTiltX = 0, tankTiltY = 0;
+        let isPaused = false, isStep = false;
+        let currentScenario = 'dam-break';
+        let particleCount = 20000;
+        let densityError = 0;
+        let isWebGLSupported = true;
+        let simulationTime = 0;
+        let memoryInfo = { used: 0, total: 0 };
+        
+        // Configuration
+        const config = {
+            timeStep: 0.016,
+            viscosity: 0.01,
+            gravity: 9.81,
+            absorption: 0.8,
+            reflection: 0.5,
+            fresnel: 1.0,
+            cameraTiltX: 0,
+            cameraTiltY: 0,
+            cameraZoom: 15,
+            maxParticles: 100000,
+            minParticles: 5000,
+            particleRadius: 0.02,
+            restDensity: 1000.0,
+            gasConstant: 1000.0,
+            viscosityConstant: 0.5,
+            pressureConstant: 2000.0,
+            boundaryDamping: 0.7,
+            objectDamping: 0.5,
+            simulationScale: 1.0,
+            enableGPU: true
+        };
+        
+        // Initialize Three.js
+        function initThreeJS() {
+            // Check WebGL support
+            if (!Detector?.webgl && !Detector?.webgl2) {
+                showWebGLError();
+                return;
+            }
+            
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.FogExp2(0x000000, 0.001);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({
+                canvas: document.getElementById('canvas'),
+                antialias: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            // Create controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.maxPolarAngle = Math.PI * 0.5 - 0.1;
+            controls.minDistance = 5;
+            controls.maxDistance = 50;
+            controls.update();
+            
+            // Create lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            // Create glass tank
+            createTank();
+            
+            // Create particle system
+            createParticleSystem();
+            
+            // Create post-processing composer
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+            composer.addPass(new UnrealBloomPass(undefined, 1.5, 1.0, 0.5));
+            
+            // Add rendering pass
+            const renderPass = new ShaderPass({
+                uniforms: {
+                    tDiffuse: { value: null },
+                    tPositions: { value: null },
+                    tVelocities: { value: null },
+                    tDensities: { value: null },
+                    tPressures: { value: null },
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2() },
+                    cameraNearFar: { value: new THREE.Vector2() },
+                    absorption: { value: config.absorption },
+                    reflection: { value: config.reflection },
+                    fresnel: { value: config.fresnel },
+                    cameraTilt: { value: new THREE.Vector2() },
+                    mouse: { value: new THREE.Vector2() }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    varying vec3 vPosition;
+                    varying vec3 vNormal;
+                    
+                    void main() {
+                        vUv = uv;
+                        vPosition = position;
+                        vNormal = normal;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D tDiffuse;
+                    uniform sampler2D tPositions;
+                    uniform sampler2D tVelocities;
+                    uniform sampler2D tDensities;
+                    uniform sampler2D tPressures;
+                    uniform float time;
+                    uniform vec2 resolution;
+                    uniform vec2 cameraNearFar;
+                    uniform float absorption;
+                    uniform float reflection;
+                    uniform float fresnel;
+                    uniform vec2 cameraTilt;
+                    uniform vec2 mouse;
+                    
+                    varying vec2 vUv;
+                    varying vec3 vPosition;
+                    varying vec3 vNormal;
+                    
+                    // Screen-space fluid rendering
+                    const float PI = 3.14159265359;
+                    
+                    void main() {
+                        vec4 texColor = texture2D(tDiffuse, vUv);
+                        vec4 posColor = texture2D(tPositions, vUv);
+                        vec4 velColor = texture2D(tVelocities, vUv);
+                        vec4 denColor = texture2D(tDensities, vUv);
+                        vec4 presColor = texture2D(tPressures, vUv);
+                        
+                        vec3 position = posColor.rgb;
+                        vec3 velocity = velColor.rgb;
+                        float density = denColor.r;
+                        float pressure = presColor.r;
+                        
+                        // Screen-space reconstruction
+                        float depth = gl_FragCoord.z;
+                        vec4 viewPos = vec4((vPosition.xy / vec2(cameraNearFar.x, cameraNearFar.y)) * 2.0 - 1.0, depth, 1.0);
+                        vec4 worldPos = inverseProjection * viewPos;
+                        vec3 worldPosition = worldPos.xyz / worldPos.w;
+                        
+                        // Refraction effect
+                        vec3 viewDir = normalize(worldPosition - cameraPosition);
+                        vec3 refractedDir = refract(viewDir, vec3(0.0, 1.0, 0.0), 0.75);
+                        vec3 refractedPos = worldPosition + refractedDir * 0.1;
+                        
+                        // Bilinear interpolation for better quality
+                        vec2 uvOffset = refractedDir.xy * 0.01;
+                        vec4 sample1 = texture2D(tPositions, vUv + uvOffset);
+                        vec4 sample2 = texture2D(tPositions, vUv - uvOffset);
+                        vec3 interpolatedPos = (sample1.rgb + sample2.rgb) * 0.5;
+                        
+                        // Normal reconstruction from pressure gradient
+                        vec3 normal = normalize(cross(dFdx(interpolatedPos), dFdy(interpolatedPos)));
+                        
+                        // Fresnel reflection
+                        float fresnelTerm = pow(1.0 - dot(normal, viewDir), fresnel);
+                        vec3 reflectiveColor = vec3(0.3, 0.4, 0.5) * reflection * fresnelTerm;
+                        
+                        // Color based on density and pressure
+                        vec3 fluidColor = vec3(0.2, 0.6, 0.9);
+                        if (density > config.restDensity * 1.1) {
+                            fluidColor = vec3(1.0, 0.4, 0.2); // Foamy
+                        } else if (pressure > config.restDensity) {
+                            fluidColor = vec3(0.3, 0.8, 1.0); // High pressure
+                        }
+                        
+                        // Absorption based on path length
+                        float thickness = length(vec3(1.0) - worldPosition);
+                        vec3 absorbedColor = fluidColor * pow(absorption, thickness);
+                        
+                        // Combine effects
+                        vec3 finalColor = mix(absorbedColor, reflectiveColor, reflection);
+                        finalColor = mix(finalColor, texColor.rgb, fresnelTerm * 0.3);
+                        \n                        gl_FragColor = vec4(finalColor, 1.0);\n                    }\n                `
+            });
+            composer.addPass(renderPass);
+            composer.addPass(new ShaderPass(CopyShader));
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Show help initially
+            setTimeout(() => {
+                document.getElementById('help-overlay').classList.remove('hidden');
+            }, 2000);
+        }
+        
+        // Create tank geometry
+        function createTank() {
+            // Glass material
+            const glassMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x000000,
+                roughness: 0.05,
+                metalness: 0.0,
+                transmission: 0.95,
+                transparent: true,
+                opacity: 0.3,
+                thickness: 2.0,
+                ior: 1.45,
+                emissive: 0x000000,
+                side: THREE.DoubleSide
+            });
+            
+            // Tank walls (box)
+            const wallGeometry = new THREE.BoxGeometry(4, 3, 0.1);
+            const walls = [
+                { pos: new THREE.Vector3(0, 0, 1.5), rot: new THREE.Euler(0, 0, 0), scale: new THREE.Vector3(4, 3, 0.1) }, // back
+                { pos: new THREE.Vector3(0, 0, -1.5), rot: new THREE.Euler(0, Math.PI, 0), scale: new THREE.Vector3(4, 3, 0.1) }, // front
+                { pos: new THREE.Vector3(2, 0, 0), rot: new THREE.Euler(0, -Math.PI/2, 0), scale: new THREE.Vector3(4, 3, 0.1) }, // right
+                { pos: new THREE.Vector3(-2, 0, 0), rot: new THREE.Euler(0, Math.PI/2, 0), scale: new THREE.Vector3(4, 3, 0.1) }, // left
+                { pos: new THREE.Vector3(0, 1.5, 0), rot: new THREE.Euler(-Math.PI/2, 0, 0), scale: new THREE.Vector3(4, 0.1, 4) }, // bottom
+                { pos: new THREE.Vector3(0, -1.5, 0), rot: new THREE.Euler(Math.PI/2, 0, 0), scale: new THREE.Vector3(4, 0.1, 4) } // top (open)
+            ];
+            
+            walls.forEach((wall, index) => {
+                const wallMesh = new THREE.Mesh(wallGeometry, glassMaterial);
+                wallMesh.position.copy(wall.pos);
+                wallMesh.rotation.copy(wall.rot);
+                wallMesh.scale.copy(wall.scale);
+                wallMesh.castShadow = true;
+                wallMesh.receiveShadow = true;
+                if (index !== 5) scene.add(wallMesh);
+            });
+            
+            // Tank base (with reflections)
+            const baseGeometry = new THREE.CylinderGeometry(3.8, 3.8, 0.2, 32);
+            const baseMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0x222222,
+                roughness: 0.1,
+                metalness: 0.5,
+                emissive: 0x111111,
+                emissiveIntensity: 0.1
+            });
+            const base = new THREE.Mesh(baseGeometry, baseMaterial);
+            base.position.set(0, -1.4, 0);
+            base.receiveShadow = true;
+            scene.add(base);
+            
+            // Glass edge highlights
+            const edgeGeometry = new THREE.TubeGeometry(
+                new THREE.CurvePath(), 32, 0.05, 8, false
+            );
+            const edgeMaterial = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                roughness: 0.0,
+                metalness: 1.0,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.5
+            });
+            const edges = createTankEdges();
+            edges.forEach(edge => {
+                const edgeMesh = new THREE.Mesh(edge.geometry, edgeMaterial);
+                edgeMesh.position.copy(edge.position);
+                edgeMesh.rotation.copy(edge.rotation);
+                scene.add(edgeMesh);
+            });
+        }
+        
+        // Create tank edges
+        function createTankEdges() {
+            const edges = [];
+            const radius = 0.05;
+            const height = 0.2;
+            
+            // Vertical edges
+            for (let x = -1.9; x <= 1.9; x += 0.8) {
+                for (let z = -1.4; z <= 1.4; z += 0.8) {
+                    // Front vertical
+                    const curve1 = new THREE.LineCurve3(
+                        new THREE.Vector3(x, -1.5, z + 1.4),
+                        new THREE.Vector3(x, 1.5, z + 1.4)
+                    );
+                    const tubeGeometry1 = new THREE.TubeGeometry(curve1, 8, radius, 8, false);
+                    edges.push({
+                        geometry: tubeGeometry1,
+                        position: new THREE.Vector3(x, 0, z + 1.4),
+                        rotation: new THREE.Euler(0, 0, 0)
+                    });
+                }
+            }
+            
+            return edges;
+        }
+        
+        // Create particle system
+        function createParticleSystem() {
+            // Position buffer geometry
+            const positionGeometry = new THREE.BufferGeometry();
+            positions = new Float32Array(particleCount * 3);
+            velocities = new Float32Array(particleCount * 3);
+            densities = new Float32Array(particleCount);
+            pressures = new Float32Array(particleCount);
+            neighbors = new Uint32Array(particleCount * 32); // 32 neighbors max per particle
+            
+            // Initialize particles based on scenario
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // Different initial conditions based on scenario
+                switch (currentScenario) {
+                    case 'dam-break':
+                        // Column of water in center
+                        positions[i3] = (Math.random() - 0.5) * 0.5;
+                        positions[i3 + 1] = Math.random() * 2 + 0.5;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+                        break;
+                    case 'double-dam':
+                        // Two columns on sides
+                        const side = Math.random() > 0.5 ? 1 : -1;
+                        positions[i3] = side * 1.5;
+                        positions[i3 + 1] = Math.random() * 2 + 0.5;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+                        break;
+                    case 'drop':
+                        // Sphere falling into pool
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() * 0.5 + 0.5;
+                        positions[i3] = Math.cos(angle) * radius;
+                        positions[i3 + 1] = Math.random() * 3 + 2;
+                        positions[i3 + 2] = Math.sin(angle) * radius;
+                        break;
+                    case 'faucet':
+                        // Stream from top
+                        const flowX = (Math.random() - 0.5) * 1.0;
+                        positions[i3] = flowX;
+                        positions[i3 + 1] = Math.random() * 3 + 2;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 1.5;
+                        break;
+                    case 'wave-machine':
+                        // Waves from moving wall
+                        const waveX = (Math.random() - 0.5) * 3;
+                        positions[i3] = waveX;
+                        positions[i3 + 1] = Math.random() * 1.5;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+                        break;
+                    default:
+                        positions[i3] = (Math.random() - 0.5) * 3;
+                        positions[i3 + 1] = Math.random() * 3;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 3;
+                }
+                
+                // Set velocities
+                velocities[i3] = 0;
+                velocities[i3 + 1] = 0;
+                velocities[i3 + 2] = 0;
+                
+                // Set density and pressure
+                densities[i] = config.restDensity;
+                pressures[i] = 0;
+            }
+            
+            positionGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            positionGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+            
+            // Create particle material
+            fluidMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2() },
+                    particleRadius: { value: config.particleRadius },
+                    colorMode: { value: 0 }, // 0: screen-space, 1: velocity, 2: density
+                    density: { value: config.restDensity },
+                    neighborList: { value: null },
+                    gravity: { value: new THREE.Vector3(0, -config.gravity, 0) }
+                },
+                vertexShader: `
+                    attribute float density;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    varying float vDensity;
+                    varying vec3 vVelocity;
+                    
+                    void main() {
+                        vNormal = normalize(position);
+                        vUv = uv;
+                        vDensity = density;
+                        vVelocity = velocity;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float time;
+                    uniform vec2 resolution;
+                    uniform float particleRadius;
+                    uniform int colorMode;
+                    uniform float density;
+                    uniform float gravity;
+                    varying vec3 vNormal;
+                    varying vec2 vUv;
+                    varying float vDensity;
+                    varying vec3 vVelocity;
+                    \n                    void main() {\n                        vec3 color;\n                        switch (colorMode) {\n                            case 1: // Velocity\n                                float speed = length(vVelocity);\n                                color = vec3(speed * 2.0, 1.0 - speed * 2.0, 0.5);\n                                break;\n                            case 2: // Density\n                                float densityRatio = vDensity / density;\n                                color = vec3(1.0, densityRatio * 0.5, 0.0);\n                                break;\n                            default: // Default color\n                                color = vec3(0.2, 0.6, 0.9);\n                        }\n                        \n                        // Add alpha based on depth\n                        float alpha = 1.0;\n                        if (colorMode == 0) {\n                            alpha = 0.8;\n                        }\n                        \n                        gl_FragColor = vec4(color, alpha);\n                    }\n                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide
+            });
+            
+            particleSystem = new THREE.Points(positionGeometry, fluidMaterial);
+            particleSystem.frustumCulled = false;
+            scene.add(particleSystem);
+            
+            // Create simulation render targets
+            createRenderTargets();
+            
+            // Initialize simulation uniforms
+            simulationUniforms = {
+                positions: { value: positions },
+                velocities: { value: velocities },
+                densities: { value: densities },
+                pressures: { value: pressures },
+                neighbors: { value: neighbors },
+                gravity: { value: new THREE.Vector3(0, -config.gravity, 0) },
+                timeStep: { value: config.timeStep },
+                viscosity: { value: config.viscosity },
+                restDensity: { value: config.restDensity },
+                particleRadius: { value: config.particleRadius },
+                boundaryDamping: { value: config.boundaryDamping },
+                objectDamping: { value: config.objectDamping },
+                resolution: { value: new THREE.Vector2() },
+                mousePosition: { value: new THREE.Vector2() },
+                tankTilt: { value: new THREE.Vector3(0, 0, 0) }
+            };
+        }
+        
+        // Create render targets for simulation
+        function createRenderTargets() {
+            const size = Math.ceil(Math.sqrt(particleCount));
+            const dataSize = size * size;
+            
+            // Create float render targets for simulation
+            renderTargets = {
+                positions: new THREE.WebGLRenderTarget(size, size, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RGBAFormat,
+                    type: THREE.FloatType,
+                    encoding: THREE.NoColorSpace
+                }),
+                velocities: new THREE.WebGLRenderTarget(size, size, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RGBAFormat,
+                    type: THREE.FloatType,
+                    encoding: THREE.NoColorSpace
+                }),
+                densities: new THREE.WebGLRenderTarget(size, size, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RedFormat,
+                    type: THREE.FloatType,
+                    encoding: THREE.NoColorSpace
+                }),
+                pressures: new THREE.WebGLRenderTarget(size, size, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RedFormat,
+                    type: THREE.FloatType,
+                    encoding: THREE.NoColorSpace
+                }),
+                neighbors: new THREE.WebGLRenderTarget(size, size, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RedIntegerFormat,
+                    type: THREE.IntType,
+                    encoding: THREE.NoColorSpace
+                })
+            };
+        }
+        
+        // Show WebGL error
+        function showWebGLError() {
+            const errorBox = document.createElement('div');
+            errorBox.className = 'message-box';
+            errorBox.innerHTML = `
+                <span class="warning-icon">⚠️</span>
+                <h2>WebGL Not Supported</h2>
+                <p>Your browser doesn't support WebGL 2.0 required for GPU-accelerated fluid simulation.</p>
+                <p>This benchmark needs hardware acceleration for real-time 20,000+ particles.</p>
+                <p>Please use a modern browser with WebGL 2.0 support.</p>
+                <button class="button" onclick="window.location.reload()">Retry</button>
+            `;
+            document.body.appendChild(errorBox);
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+            
+            if (simulationUniforms.resolution) {
+                simulationUniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+            }
+            if (renderPass.uniforms.resolution) {
+                renderPass.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+            }
+        }
+        
+        // Update particle count
+        function updateParticleCount() {
+            const newCount = parseInt(document.getElementById('particle-count').value);
+            if (newCount < config.minParticles) {
+                document.getElementById('particle-count').value = config.minParticles;
+                return;
+            }
+            if (newCount > config.maxParticles) {
+                document.getElementById('particle-count').value = config.maxParticles;
+                return;
+            }
+            
+            particleCount = newCount;
+            recreateParticleSystem();
+        }
+        
+        // Recreate particle system with new count
+        function recreateParticleSystem() {
+            if (particleSystem) {
+                scene.remove(particleSystem);
+            }
+            
+            // Reset particles based on current scenario
+            positions = new Float32Array(particleCount * 3);
+            velocities = new Float32Array(particleCount * 3);
+            densities = new Float32Array(particleCount);
+            pressures = new Float32Array(particleCount);
+            neighbors = new Uint32Array(particleCount * 32);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                switch (currentScenario) {
+                    case 'dam-break':
+                        positions[i3] = (Math.random() - 0.5) * 0.5;
+                        positions[i3 + 1] = Math.random() * 2 + 0.5;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+                        break;
+                    case 'double-dam':
+                        const side = Math.random() > 0.5 ? 1 : -1;
+                        positions[i3] = side * 1.5;
+                        positions[i3 + 1] = Math.random() * 2 + 0.5;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+                        break;
+                    case 'drop':
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() * 0.5 + 0.5;
+                        positions[i3] = Math.cos(angle) * radius;
+                        positions[i3 + 1] = Math.random() * 3 + 2;
+                        positions[i3 + 2] = Math.sin(angle) * radius;
+                        break;
+                    case 'faucet':
+                        const flowX = (Math.random() - 0.5) * 1.0;
+                        positions[i3] = flowX;
+                        positions[i3 + 1] = Math.random() * 3 + 2;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 1.5;
+                        break;
+                    case 'wave-machine':
+                        const waveX = (Math.random() - 0.5) * 3;
+                        positions[i3] = waveX;
+                        positions[i3 + 1] = Math.random() * 1.5;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 2;
+                        break;
+                    default:
+                        positions[i3] = (Math.random() - 0.5) * 3;
+                        positions[i3 + 1] = Math.random() * 3;
+                        positions[i3 + 2] = (Math.random() - 0.5) * 3;
+                }
+                
+                velocities[i3] = 0;
+                velocities[i3 + 1] = 0;
+                velocities[i3 + 2] = 0;
+                densities[i] = config.restDensity;
+                pressures[i] = 0;
+            }
+            
+            // Update render targets
+            const size = Math.ceil(Math.sqrt(particleCount));
+            renderTargets.positions.setSize(size, size);
+            renderTargets.velocities.setSize(size, size);
+            renderTargets.densities.setSize(size, size);
+            renderTargets.pressures.setSize(size, size);
+            renderTargets.neighbors.setSize(size, size);
+            
+            // Recreate particle system
+            const positionGeometry = new THREE.BufferGeometry();
+            positionGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            positionGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+            
+            particleSystem.geometry = positionGeometry;
+            particleSystem.material.uniforms.positions.value = positions;
+            particleSystem.material.uniforms.velocities.value = velocities;
+            
+            // Update simulation uniforms
+            simulationUniforms.positions.value = positions;
+            simulationUniforms.velocities.value = velocities;
+            simulationUniforms.densities.value = densities;
+            simulationUniforms.pressures.value = pressures;
+            simulationUniforms.neighbors.value = neighbors;
+            
+            densityError = 0;
+        }
+        
+        // Update simulation parameters
+        function updateSimulationParameters() {
+            simulationUniforms.timeStep.value = config.timeStep;
+            simulationUniforms.viscosity.value = config.viscosity;
+            simulationUniforms.gravity.value.set(0, -config.gravity, 0);
+            simulationUniforms.particleRadius.value = config.particleRadius;
+            simulationUniforms.boundaryDamping.value = config.boundaryDamping;
+            simulationUniforms.objectDamping.value = config.objectDamping;
+            simulationUniforms.tankTilt.value.set(tankTiltX, tankTiltY, 0);
+            
+            // Update camera based on tilt
+            camera.position.x = Math.sin(tankTiltY) * config.cameraZoom;
+            camera.position.z = Math.cos(tankTiltY) * config.cameraZoom;
+            camera.position.y = Math.sin(tankTiltX) * config.cameraZoom;
+            camera.lookAt(0, 0, 0);
+            
+            // Update render pass uniforms
+            if (renderPass.uniforms.absorption) {
+                renderPass.uniforms.absorption.value = config.absorption;
+            }
+            if (renderPass.uniforms.reflection) {
+                renderPass.uniforms.reflection.value = config.reflection;
+            }
+            if (renderPass.uniforms.fresnel) {
+                renderPass.uniforms.fresnel.value = config.fresnel;
+            }
+        }
+        
+        // Simulation kernel functions
+        const kernels = {
+            // SPH kernel function
+            poly6: function(r, h) {
+                const h2 = h * h;
+                const r2 = r * r;
+                if (r2 > h2) return 0;
+                return (315.0 / (64.0 * Math.PI * Math.pow(h, 9))) * Math.pow(h2 - r2, 2.5);
+            },
+            
+            // Gradient of poly6 kernel
+            gradPoly6: function(rVec, h) {
+                const h2 = h * h;
+                const r2 = rVec.x * rVec.x + rVec.y * rVec.y + rVec.z * rVec.z;
+                if (r2 > h2 || r2 === 0) return new THREE.Vector3(0, 0, 0);
+                
+                const coeff = -945.0 / (32.0 * Math.PI * Math.pow(h, 9)) * (h2 - r2);
+                return new THREE.Vector3(coeff * rVec.x, coeff * rVec.y, coeff * rVec.z);
+            },
+            
+            // Spiky kernel for pressure
+            spiky: function(r, h) {
+                const h2 = h * h;
+                const r2 = r * r;
+                if (r2 > h2) return 0;
+                return (15.0 / Math.PI) * (h - r) / Math.pow(h, 3);
+            },
+            
+            // Gradient of spiky kernel
+            gradSpiky: function(rVec, h) {
+                const h2 = h * h;
+                const r2 = rVec.x * rVec.x + rVec.y * rVec.y + rVec.z * rVec.z;
+                if (r2 > h2 || r2 === 0) return new THREE.Vector3(0, 0, 0);
+                
+                const coeff = -45.0 / Math.PI / Math.pow(h, 3);
+                return new THREE.Vector3(coeff * rVec.x, coeff * rVec.y, coeff * rVec.z);
+            },
+            
+            // Viscosity kernel
+            viscosity: function(r, h) {
+                const h2 = h * h;
+                const r2 = r * r;
+                if (r2 > h2) return 0;
+                return (10.0 / (7.0 * Math.PI)) * (h - r) / Math.pow(h, 3);
+            }
+        };
+        
+        // Compute neighbors for each particle (simplified)
+        function computeNeighbors() {
+            const h = config.particleRadius * 2;
+            const h2 = h * h;
+            const size = Math.ceil(Math.sqrt(particleCount));
+            const gridSize = size;
+            const cellSize = size / config.simulationScale;
+            
+            // Create grid for spatial hashing
+            const grid = new Map();
+            
+            // Insert particles into grid
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                const x = positions[i3];
+                const z = positions[i3 + 2];
+                const cellX = Math.floor((x + size/2) / cellSize);
+                const cellZ = Math.floor((z + size/2) / cellSize);
+                const cellKey = `${cellX},${cellZ}`;
+                
+                if (!grid.has(cellKey)) {
+                    grid.set(cellKey, []);
+                }
+                grid.get(cellKey).push(i);
+            }
+            
+            // Reset neighbor lists
+            for (let i = 0; i < particleCount * 32; i++) {
+                neighbors[i] = 0xFFFFFFFF; // Sentinel value
+            }
+            
+            // Find neighbors within radius
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1], [0, 0], [0, 1],
+                [1, -1], [1, 0], [1, 1]
+            ];
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                const x = positions[i3];
+                const z = positions[i3 + 2];
+                const cellX = Math.floor((x + size/2) / cellSize);
+                const cellZ = Math.floor((z + size/2) / cellSize);
+                
+                let neighborCount = 0;
+                
+                for (const [dx, dz] of directions) {
+                    const neighborKey = `${cellX + dx},${cellZ + dz}`;
+                    if (grid.has(neighborKey)) {
+                        for (const j of grid.get(neighborKey)) {
+                            if (neighborCount >= 32) break; // Limit neighbors
+                            
+                            const j3 = j * 3;
+                            const dx = positions[i3] - positions[j3];
+                            const dz = positions[i3 + 2] - positions[j3 + 2];
+                            const dist2 = dx * dx + dz * dz + (positions[i3 + 1] - positions[j3 + 1]) * (positions[i3 + 1] - positions[j3 + 1]);
+                            
+                            if (dist2 < h2 && dist2 > 0.001) {
+                                neighbors[i * 32 + neighborCount] = j;
+                                neighborCount++;
+                            }
+                        }
+                    }
+                }
+                
+                // Pad with invalid index
+                while (neighborCount < 32) {
+                    neighbors[i * 32 + neighborCount] = 0xFFFFFFFF;
+                    neighborCount++;
+                }
+            }
+        }
+        
+        // Compute density for each particle
+        function computeDensity() {
+            const h = config.particleRadius * 2;
+            const h2 = h * h;
+            const mass = config.restDensity / (Math.PI * h2 * h2); // Approximate mass
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                let density = 0;
+                
+                for (let j = 0; j < 32; j++) {
+                    const neighborIdx = neighbors[i * 32 + j];
+                    if (neighborIdx === 0xFFFFFFFF) break;
+                    
+                    const j3 = neighborIdx * 3;
+                    const dx = positions[i3] - positions[j3];
+                    const dy = positions[i3 + 1] - positions[j3 + 1];
+                    const dz = positions[i3 + 2] - positions[j3 + 2];
+                    const dist2 = dx * dx + dy * dy + dz * dz;
+                    
+                    if (dist2 < h2) {
+                        density += kernels.poly6(Math.sqrt(dist2), h) * mass;
+                    }
+                }
+                
+                densities[i] = density;
+            }
+        }
+        
+        // Compute pressure for each particle
+        function computePressure() {
+            const h = config.particleRadius * 2;
+            const h2 = h * h;
+            const mass = config.restDensity / (Math.PI * h2 * h2);
+            
+            // First pass: compute pressure
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                let pressure = 0;
+                
+                for (let j = 0; j < 32; j++) {
+                    const neighborIdx = neighbors[i * 32 + j];
+                    if (neighborIdx === 0xFFFFFFFF) break;
+                    
+                    const j3 = neighborIdx * 3;
+                    const dx = positions[i3] - positions[j3];
+                    const dy = positions[i3 + 1] - positions[j3 + 1];
+                    const dz = positions[i3 + 2] - positions[j3 + 2];
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    if (dist < h2) {
+                        pressure += (kernels.spiky(dist, h) + kernels.poly6(dist, h)) * mass;
+                    }
+                }
+                
+                const densityError = densities[i] - config.restDensity;
+                pressures[i] = config.pressureConstant * densityError;
+            }
+        }
+        
+        // Compute pressure acceleration
+        function computePressureAcceleration() {
+            const h = config.particleRadius * 2;
+            const h2 = h * h;
+            const mass = config.restDensity / (Math.PI * h2 * h2);
+            
+            const pressureAcc = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                const pressureAcc3 = i3;
+                
+                for (let j = 0; j < 32; j++) {
+                    const neighborIdx = neighbors[i * 32 + j];
+                    if (neighborIdx === 0xFFFFFFFF) break;
+                    
+                    const j3 = neighborIdx * 3;
+                    const dx = positions[j3] - positions[i3];
+                    const dy = positions[j3 + 1] - positions[i3 + 1];
+                    const dz = positions[j3 + 2] - positions[i3 + 2];
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    if (dist < h2) {
+                        const grad = kernels.gradSpiky({x: dx, y: dy, z: dz}, h);
+                        const pressureDiff = pressures[neighborIdx] - pressures[i];
+                        \n                        pressureAcc[pressureAcc3] += grad.x * pressureDiff;\n                        pressureAcc[pressureAcc3 + 1] += grad.y * pressureDiff;\n                        pressureAcc[pressureAcc3 + 2] += grad.z * pressureDiff;\n                    }\n                }\n            }\n            \n            return pressureAcc;\n        }\n        \n        // Compute viscosity acceleration\n        function computeViscosityAcceleration() {\n            const h = config.particleRadius * 2;\n            const h2 = h * h;\n            const mass = config.restDensity / (Math.PI * h2 * h2);\n            \n            const viscosityAcc = new Float32Array(particleCount * 3);\n            \n            for (let i = 0; i < particleCount; i++) {\n                const i3 = i * 3;\n                const viscAcc3 = i3;\n                \n                for (let j = 0; j < 32; j++) {\n                    const neighborIdx = neighbors[i * 32 + j];\n                    if (neighborIdx === 0xFFFFFFFF) break;\n                    \n                    const j3 = neighborIdx * 3;\n                    const dx = positions[i3] - positions[j3];\n                    const dy = positions[i3 + 1] - positions[j3 + 1];\n                    const dz = positions[i3 + 2] - positions[j3 + 2];\n                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);\n                    \n                    if (dist < h2) {\n                        const velocityDiff = {\n                            x: velocities[j3] - velocities[i3],\n                            y: velocities[j3 + 1] - velocities[i3 + 1],\n                            z: velocities[j3 + 2] - velocities[i3 + 2]\n                        };\n                        \n                        const viscKernel = kernels.viscosity(dist, h);\n                        viscosityAcc[viscAcc3] += (velocityDiff.x * viscKernel) * mass;\n                        viscosityAcc[viscAcc3 + 1] += (velocityDiff.y * viscKernel) * mass;\n                        viscosityAcc[viscAcc3 + 2] += (velocityDiff.z * viscKernel) * mass;\n                    }\n                }\n            }\n            \n            return viscosityAcc;\n        }\n        \n        // Apply boundary conditions\n        function applyBoundaries() {\n            const boundaryThickness = 0.5;\n            const tankWidth = 4;\n            const tankDepth = 4;\n            const tankHeight = 3;\n            \n            for (let i = 0; i < particleCount; i++) {\n                const i3 = i * 3;\n                const x = positions[i3];\n                const y = positions[i3 + 1];\n                const z = positions[i3 + 2];\n                let reflected = false;\n                \n                // Floor boundary (y = -1.5)\n                if (y < -1.5 + boundaryThickness) {\n                    positions[i3 + 1] = -1.5 + boundaryThickness - (y - (-1.5 + boundaryThickness));\n                    velocities[i3 + 1] *= -config.boundaryDamping;\n                    reflected = true;\n                }\n                \n                // Ceiling boundary (y = 1.5)\n                if (y > 1.5 - boundaryThickness) {\n                    positions[i3 + 1] = 1.5 - boundaryThickness - (y - (1.5 - boundaryThickness));\n                    velocities[i3 + 1] *= -config.boundaryDamping;\n                    reflected = true;\n                }\n                \n                // Side walls\n                const halfWidth = tankWidth / 2 - boundaryThickness;\n                const halfDepth = tankDepth / 2 - boundaryThickness;\n                \n                if (x < -halfWidth) {\n                    positions[i3] = -halfWidth - (x - (-halfWidth));\n                    velocities[i3] *= -config.boundaryDamping;\n                    reflected = true;\n                }\n                if (x > halfWidth) {\n                    positions[i3] = halfWidth - (x - halfWidth);\n                    velocities[i3] *= -config.boundaryDamping;\n                    reflected = true;\n                }\n                if (z < -halfDepth) {\n                    positions[i3 + 2] = -halfDepth - (z - (-halfDepth));\n                    velocities[i3 + 2] *= -config.boundaryDamping;\n                    reflected = true;\n                }\n                if (z > halfDepth) {\n                    positions[i3 + 2] = halfDepth - (z - halfDepth);\n                    velocities[i3 + 2] *= -config.boundaryDamping;\n                    reflected = true;\n                }\n                \n                // Add random impulse for more realistic splashing\n                if (reflected && Math.random() < 0.1) {\n                    velocities[i3] += (Math.random() - 0.5) * 0.5;\n                    velocities[i3 + 1] += Math.random() * 0.5;\n                    velocities[i3 + 2] += (Math.random() - 0.5) * 0.5;\n                }\n            }\n        }\n        \n        // Apply gravity and update positions\n        function updatePositions() {\n            const dt = config.timeStep;\n            \n            for (let i = 0; i < particleCount; i++) {\n                const i3 = i * 3;\n                \n                // Apply gravity\n                velocities[i3] += 0; // No horizontal gravity\n                velocities[i3 + 1] += -config.gravity * dt;\n                velocities[i3 + 2] += 0;\n                \n                // Update positions\n                positions[i3] += velocities[i3] * dt;\n                positions[i3 + 1] += velocities[i3 + 1] * dt;\n                positions[i3 + 2] += velocities[i3 + 2] * dt;\n            }\n        }\n        \n        // Main simulation step\n        function simulateStep() {\n            const startTime = performance.now();\n            \n            // Compute neighbors\n            computeNeighbors();\n            \n            // Compute density and pressure\n            computeDensity();\n            computePressure();\n            \n            // Compute forces\n            const pressureAcc = computePressureAcceleration();\n            const viscosityAcc = computeViscosityAcceleration();\n            \n            // Apply forces\n            const dt = config.timeStep;\n            const mass = config.restDensity / (Math.PI * Math.pow(config.particleRadius * 2, 3));\n            \n            for (let i = 0; i < particleCount; i++) {\n                const i3 = i * 3;\n                \n                // Apply pressure force\n                velocities[i3] += pressureAcc[i3] * mass * dt;\n                velocities[i3 + 1] += pressureAcc[i3 + 1] * mass * dt;\n                velocities[i3 + 2] += pressureAcc[i3 + 2] * mass * dt;\n                \n                // Apply viscosity force\n                velocities[i3] += viscosityAcc[i3] * dt;\n                velocities[i3 + 1] += viscosityAcc[i3 + 1] * dt;\n                velocities[i3 + 2] += viscosityAcc[i3 + 2] * dt;\n                \n                // Apply boundary conditions\n                applyBoundaries();\n            }\n            \n            // Update density error metric\n            let densityErrorSum = 0;\n            for (let i = 0; i < particleCount; i++) {\n                const error = Math.abs(densities[i] - config.restDensity) / config.restDensity;\n                densityErrorSum += error * error;\n            }\n            densityError = Math.sqrt(densityErrorSum / particleCount) * 100;\n            \n            simTimeCounter += performance.now() - startTime;\n        }\n        \n        // Handle user interaction\n        function handleInteraction() {\n            const interactionRadius = 1.0;\n            const interactionForce = 2.0;\n            \n            // Convert mouse to world coordinates\n            const vector = new THREE.Vector3(\n                (mouseX / window.innerWidth) * 2 - 1,\n                -(mouseY / window.innerHeight) * 2 + 1,\n                0.5\n            );\n            \n            const cameraInverse = new THREE.Matrix4().copy(camera.matrix).invert();\n            const worldPoint = vector.applyMatrix4(cameraInverse);\n            \n            // Apply stirring force if mouse down\n            if (mouseDown && worldPoint.length() < 20) {\n                for (let i = 0; i < particleCount; i++) {\n                    const i3 = i * 3;\n                    const dx = worldPoint.x - positions[i3];\n                    const dz = worldPoint.z - positions[i3 + 2];\n                    const dist = Math.sqrt(dx * dx + dz * dz);\n                    \n                    if (dist < interactionRadius) {\n                        const force = interactionForce * (1 - dist / interactionRadius);\n                        velocities[i3] += force * dx / dist;\n                        velocities[i3 + 2] += force * dz / dist;\n                    }\n                }\n            }\n        }\n        \n        // Update scenario\n        function updateScenario() {\n            // Reset particles based on scenario\n            recreateParticleSystem();\n            \n            // Additional scenario-specific setup\n            switch (currentScenario) {\n                case 'faucet':\n                    // Add vertical velocity for faucet\n                    for (let i = 0; i < particleCount; i++) {\n                        const i3 = i * 3;\n                        velocities[i3 + 1] += 2.0;\n                    }\n                    break;\n                case 'wave-machine':\n                    // Pre-tilt for wave machine\n                    break;\n            }\n        }\n        \n        // Animation loop\n        function animate() {\n            const currentTime = performance.now();\n            const deltaTime = currentTime - lastTime;\n            lastTime = currentTime;\n            \n            fpsTime += deltaTime;\n            fpsCounter++;\n            \n            if (fpsTime >= 1000) {\n                const fps = (fpsCounter / fpsTime) * 1000;\n                document.getElementById('fps-stats').textContent = Math.round(fps);\n                fpsCounter = 0;\n                fpsTime = 0;\n            }\n            \n            // Update simulation uniforms\n            if (simulationUniforms.time) {\n                simulationUniforms.time.value += deltaTime * 0.001;\n            }\n            \n            // Update gravity based on tank tilt\n            const tiltX = (config.cameraTiltY - Math.PI/4) / (Math.PI/2);\n            const tiltY = (config.cameraTiltX - Math.PI/4) / (Math.PI/2);\n            simulationUniforms.gravity.value.set(\n                Math.sin(tiltY) * config.gravity,\n                Math.cos(tiltX) * config.gravity,\n                Math.cos(tiltY) * config.gravity\n            );\n            \n            // Handle user input\n            if (!isPaused || isStep) {\n                simulationTime += deltaTime * 0.001;\n                \n                // Update simulation\n                simulateStep();\n                updatePositions();\n                handleInteraction();\n                \n                // Update particles in Three.js\n                particleSystem.geometry.attributes.position.needsUpdate = true;\n                particleSystem.geometry.attributes.velocity.needsUpdate = true;\n                \n                if (isStep) {\n                    isStep = false;\n                    isPaused = true;\n                    document.getElementById('simulation-status').textContent = 'Paused (single step)';\n                }\n            }\n            \n            // Update UI\n            document.getElementById('sim-time-stats').textContent = Math.round(simTimeCounter) + 'ms';\n            document.getElementById('density-error').textContent = densityError.toFixed(2) + '%';\n            document.getElementById('particles-stats').textContent = particleCount;\n            \n            // Render\n            const renderStart = performance.now();\n            composer.render();\n            renderTimeCounter += performance.now() - renderStart;\n            \n            // Update stats\n            if (renderTimeCounter > 0) {\n                document.getElementById('render-time-stats').textContent = Math.round(renderTimeCounter) + 'ms';\n                renderTimeCounter = 0;\n            }\n            \n            // Check if GPU is supported\n            if (!isWebGLSupported) {\n                document.getElementById('particle-count').disabled = true;\n                document.getElementById('pause-btn').disabled = true;\n            }\n            \n            controls.update();\n            requestAnimationFrame(animate);\n        }\n        \n        // Event listeners\n        function setupEventListeners() {\n            // Mouse events\n            renderer.domElement.addEventListener('mousemove', (event) => {\n                mouseX = event.clientX;\n                mouseY = event.clientY;\n            });\n            \n            renderer.domElement.addEventListener('mousedown', (event) => {\n                if (event.button === 0) { // Left button\n                    mouseDown = true;\n                }\n            });\n            \n            renderer.domElement.addEventListener('mouseup', (event) => {\n                if (event.button === 0) { // Left button\n                    mouseDown = false;\n                }\n            });\n            \n            // Keyboard controls\n            document.addEventListener('keydown', (event) => {\n                switch (event.key.toLowerCase()) {\n                    case 'arrowup':\n                        tankTiltX = Math.min(tankTiltX + 0.1, Math.PI / 4);\n                        break;\n                    case 'arrowdown':\n                        tankTiltX = Math.max(tankTiltX - 0.1, -Math.PI / 4);\n                        break;\n                    case 'arrowleft':\n                        tankTiltY = Math.max(tankTiltY - 0.1, -Math.PI / 4);\n                        break;\n                    case 'arrowright':\n                        tankTiltY = Math.min(tankTiltY + 0.1, Math.PI / 4);\n                        break;\n                    case ' ':\n                        event.preventDefault();\n                        spawnObject();\n                        break;\n                    case 'r':\n                        resetSimulation();\n                        break;\n                    case 'p':\n                        togglePause();\n                        break;\n                    case 's':\n                        if (event.shiftKey) {\n                            stepSimulation();\n                        }\n                        break;\n                    case 'h':\n                        document.getElementById('help-overlay').classList.toggle('hidden');\n                        break;\n                    case 'Escape':\n                        document.querySelector('.controls-panel').classList.toggle('hidden');\n                        break;\n                }\n            });\n            \n            // UI controls\n            document.getElementById('particle-count').addEventListener('change', () => {\n                updateParticleCount();\n            });\n            \n            document.getElementId('pause-btn').addEventListener('click', togglePause);\n            document.getElementById('step-btn').addEventListener('click', stepSimulation);\n            document.getElementById('reset-btn').addEventListener('click', resetSimulation);\n            \n            // Slider controls\n            setupSliders();\n            \n            // Scenario selection\n            document.querySelectorAll('.scenario-button').forEach(btn => {\n                btn.addEventListener('click', () => {\n                    document.querySelectorAll('.scenario-button').forEach(b => b.classList.remove('active'));\n                    btn.classList.add('active');\n                    currentScenario = btn.dataset.scenario;\n                    resetSimulation();\n                });\n            });\n            \n            // Render mode\n            document.getElementById('render-mode').addEventListener('change', (event) => {\n                particleSystem.material.uniforms.colorMode.value = parseInt(event.target.value);\n            });\n        }\n        \n        // Setup sliders\n        function setupSliders() {\n            // Timestep slider\n            const timestepSlider = document.getElementById('timestep-slider');\n            const timestepTrack = document.getElementById('timestep-track');\n            const timestepThumb = document.getElementById('timestep-thumb');\n            const timestepValue = document.getElementById('timestep-value');\n            \n            const updateTimestep = (value) => {\n                config.timeStep = value;\n                timestepValue.textContent = value.toFixed(3);\n                timestepTrack.style.width = (value / 0.1) * 100 + '%';\n                timestepThumb.style.left = (value / 0.1) * 100 + '%';\n            };\n            \n            let isDragging = null;\n            timestepSlider.addEventListener('mousedown', (e) => {\n                isDragging = 'timestep';\n                updateTimestepFromMouse(e);\n            });\n            \n            document.addEventListener('mousemove', (e) => {\n                if (isDragging) {\n                    updateTimestepFromMouse(e);\n                }\n            });\n            \n            document.addEventListener('mouseup', () => {\n                isDragging = null;\n            });\n            \n            timestepSlider.addEventListener('touchstart', (e) => {\n                isDragging = 'timestep';\n                updateTimestepFromTouch(e);\n            }, { passive: true });\n            \n            document.addEventListener('touchmove', (e) => {\n                if (isDragging) {\n                    updateTimestepFromTouch(e);\n                }\n            }, { passive: true });\n            \n            document.addEventListener('touchend', () => {\n                isDragging = null;\n            });\n            \n            function updateTimestepFromMouse(e) {\n                const rect = timestepSlider.getBoundingClientRect();\n                const value = Math.max(0.001, Math.min(0.1, ((e.clientX - rect.left) / rect.width) * 0.1));\n                updateTimestep(value);\n            }\n            \n            function updateTimestepFromTouch(e) {\n                const rect = timestepSlider.getBoundingClientRect();\n                const touch = e.touches[0];\n                const value = Math.max(0.001, Math.min(0.1, ((touch.clientX - rect.left) / rect.width) * 0.1));\n                updateTimestep(value);\n            }\n            \n            // Initialize timestep\n            updateTimestep(config.timeStep);\n            \n            // Other sliders (similar implementation)\n            setupSlider('viscosity', config.viscosity, 0.0001, 0.1, 'viscosity-value');\n            setupSlider('gravity', config.gravity, 0, 20, 'gravity-value');\n            setupSlider('absorption', config.absorption, 0, 1, 'absorption-value');\n            setupSlider('reflection', config.reflection, 0, 1, 'reflection-value');\n            setupSlider('fresnel', config.fresnel, 0, 3, 'fresnel-value');\n            setupSlider('camera-x', config.cameraTiltX, -Math.PI/2, Math.PI/2, 'camera-x-value');\n            setupSlider('camera-y', config.cameraTiltY, -Math.PI/2, Math.PI/2, 'camera-y-value');\n            setupSlider('camera-zoom', config.cameraZoom, 5, 50, 'camera-zoom-value');\n        }\n        \n        // Generic slider setup\n        function setupSlider(name, initialValue, min, max, valueId) {\n            const slider = document.getElementById(`${name}-slider`);\n            const track = document.getElementById(`${name}-track`);\n            const thumb = document.getElementById(`${name}-thumb`);\n            const value = document.getElementById(valueId);\n            \n            const updateValue = (val) => {\n                config[name] = val;\n                value.textContent = name === 'gravity' ? val.toFixed(2) : val.toFixed(3);\n                track.style.width = ((val - min) / (max - min)) * 100 + '%';\n                thumb.style.left = ((val - min) / (max - min)) * 100 + '%';\n                \n                // Update specific config\n                if (name === 'gravity') {\n                    simulationUniforms.gravity.value.y = -val;\n                }\n            };\n            \n            let isDragging = null;\n            slider.addEventListener('mousedown', (e) => {\n                isDragging = name;\n                updateSliderFromMouse(e);\n            });\n            \n            document.addEventListener('mousemove', (e) => {\n                if (isDragging) {\n                    updateSliderFromMouse(e);\n                }\n            });\n            \n            document.addEventListener('mouseup', () => {\n                isDragging = null;\n            });\n            \n            function updateSliderFromMouse(e) {\n                const rect = slider.getBoundingClientRect();\n                const value = (e.clientX - rect.left) / rect.width;\n                updateValue(min + value * (max - min));\n            }\n            \n            // Initialize\n            updateValue(initialValue);\n        }\n        \n        // Control functions\n        function togglePause() {\n            isPaused = !isPaused;\n            document.getElementById('pause-btn').textContent = isPaused ? 'Resume' : 'Pause';\n            document.getElementById('simulation-status').textContent = isPaused ? 'Paused' : 'Running';\n        }\n        \n        function stepSimulation() {\n            if (!isPaused) {\n                togglePause();\n            }\n            isStep = true;\n        }\n        \n        function resetSimulation() {\n            isPaused = false;\n            isStep = false;\n            document.getElementById('pause-btn').textContent = 'Pause';\n            document.getElementById('simulation-status').textContent = 'Running';\n            \n            // Reset particles\n            recreateParticleSystem();\n            \n            // Reset simulation time\n            simulationTime = 0;\n            densityError = 0;\n        }\n        \n        function spawnObject() {\n            // Create a floating object (ball)\n            const objectGeometry = new THREE.SphereGeometry(0.2, 16, 16);\n            const objectMaterial = new THREE.MeshPhysicalMaterial({\n                color: 0xff6666,\n                roughness: 0.3,\n                metalness: 0.2,\n                transparent: true,\n                opacity: 0.8\n            });\n            const object = new THREE.Mesh(objectGeometry, objectMaterial);\n            object.position.set(0, 0.5, 0);\n            object.castShadow = true;\n            object.receiveShadow = true;\n            scene.add(object);\n            \n            // Animate falling\n            const fallSpeed = 0;\n            const fallAnimation = setInterval(() => {\n                object.position.y -= 0.02;\n                object.position.x += (Math.random() - 0.5) * 0.05;\n                object.position.z += (Math.random() - 0.5) * 0.05;\n                \n                if (object.position.y < -1.4) {\n                    clearInterval(fallAnimation);\n                    // Check for water collision and splash\n                    const waterPlaneY = -1.4;\n                    if (object.position.y < waterPlaneY + 0.5) {\n                        // Splash effect\n                        createSplash(object.position);\n                        scene.remove(object);\n                    }\n                }\n            }, 16);\n        }\n        \n        function createSplash(position) {\n            // Create splash particles\n            const splashCount = Math.floor(Math.random() * 20 + 10);\n            \n            for (let i = 0; i < splashCount; i++) {\n                const angle = (Math.random() - 0.5) * Math.PI * 2;\\n                const velocity = (Math.random() * 2 + 1);\n                \n                const splashGeometry = new THREE.BufferGeometry();\n                const splashPositions = new Float32Array(splashCount * 3);\n                const splashVelocities = new Float32Array(splashCount * 3);\n                \n                for (let j = 0; j < splashCount; j++) {\n                    const j3 = j * 3;\n                    splashPositions[j3] = position.x + Math.cos(angle + j * 0.2) * (Math.random() * 0.5);\n                    splashPositions[j3 + 1] = position.y + Math.random() * 0.5;\n                    splashPositions[j3 + 2] = position.z + Math.sin(angle + j * 0.2) * (Math.random() * 0.5);\n                    \n                    splashVelocities[j3] = (Math.random() - 0.5) * velocity;\n                    splashVelocities[j3 + 1] = Math.random() * velocity + 1;\n                    splashVelocities[j3 + 2] = (Math.random() - 0.5) * velocity;\n                }\n                \n                splashGeometry.setAttribute('position', new THREE.BufferAttribute(splashPositions, 3));\n                splashGeometry.setAttribute('velocity', new THREE.BufferAttribute(splashVelocities, 3));\n                \n                const splashMaterial = new THREE.PointsMaterial({\n                    color: 0x88ccff,\n                    size: 0.1,\n                    transparent: true,\n                    opacity: 0.8,\n                    blending: THREE.AdditiveBlending\n                });\n                \n                const splash = new THREE.Points(splashGeometry, splashMaterial);\n                splash.userData = { life: 2000, startTime: performance.now() };\n                scene.add(splash);\n                \n                // Animate splash particles\n                const splashAnimation = setInterval(() => {\n                    const age = performance.now() - splash.userData.startTime;\n                    if (age > splash.userData.life) {\n                        clearInterval(splashAnimation);\n                        scene.remove(splash);\n                    } else {\n                        for (let j = 0; j < splashCount; j++) {\n                            const j3 = j * 3;\n                            splashVelocities[j3 + 1] -= 0.05;\n                            splashPositions[j3] += splashVelocities[j3] * 0.05;\n                            splashPositions[j3 + 1] += splashVelocities[j3 + 1] * 0.05;\n                            splashPositions[j3 + 2] += splashVelocities[j3 + 2] * 0.05;\n                        }\n                        splash.geometry.attributes.position.needsUpdate = true;\n                    }\n                }, 16);\n            }\n        }\n        \n        function createCaustics() {\n            // Create caustic lighting on tank floor\n            const causticGeometry = new THREE.PlaneGeometry(10, 10, 32, 32);\n            const causticMaterial = new THREE.ShaderMaterial({\n                uniforms: {\n                    time: { value: 0 },\n                    lightPosition: { value: new THREE.Vector3(5, 10, 5) },\n                    absorption: { value: 0.5 }\n                },\n                vertexShader: `\n                    varying vec3 vNormal;\n                    varying vec3 vPosition;\n                    \n                    void main() {\n                        vNormal = normalize(normal);\n                        vPosition = position;\n                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n                    }\n                `,\n                fragmentShader: `\n                    uniform float time;\n                    uniform vec3 lightPosition;\n                    uniform float absorption;\n                    varying vec3 vNormal;\n                    varying vec3 vPosition;\n                    \n                    void main() {\n                        vec3 lightDir = normalize(lightPosition - vPosition);\n                        float diffuse = max(dot(vNormal, lightDir), 0.0);\n                        float caustic = diffuse * pow(abs(1.0 - vPosition.y), 2.0) * abs(sin(time * 5.0));\n                        vec3 color = vec3(0.0, 0.3, 0.0) * caustic * absorption;\n                        gl_FragColor = vec4(color, 0.3);\n                    }\n                `,\n                transparent: true,\n                side: THREE.DoubleSide\n            });\n            \n            const caustics = new THREE.Mesh(causticGeometry, causticMaterial);\n            caustics.position.set(0, -1.4, 0);\n            caustics.rotation.x = -Math.PI / 2;\n            caustics.receiveShadow = false;\n            caustics.castShadow = false;\n            scene.add(caustics);\n            \n            // Animate caustics\n            const animateCaustics = () => {\n                causticMaterial.uniforms.time.value = performance.now() * 0.001;\n                requestAnimationFrame(animateCaustics);\n            };\n            animateCaustics();\n            \n            return caustics;\n        }\n        \n        // Initialize everything\n        function init() {\n            initThreeJS();\n            setupEventListeners();\n            \n            // Create caustics\n            createCaustics();\n            \n            // Start animation\n            lastTime = performance.now();\n            requestAnimationFrame(animate);\n            \n            // Show memory info\n            updateMemoryInfo();\n            setInterval(updateMemoryInfo, 1000);\n        }\n        \n        // Update memory info\n        function updateMemoryInfo() {\n            if (renderer.getMemoryInfo) {\n                const info = renderer.getMemoryInfo();\n                memoryInfo.used = info.used;\n                memoryInfo.total = info.total;\n                document.getElementById('memory-stats').textContent = \n                    Math.round(memoryInfo.used / (1024 * 1024)) + 'MB';\n            }\n        }\n        \n        // Start when page loads\n        window.addEventListener('DOMContentLoaded', init);\n        \n        // Make sure canvas is focused\n        document.addEventListener('click', () => {\n            renderer.domElement.focus();\n        });\n    </script>\n</body>\n</html>
