@@ -364,7 +364,7 @@ function buildShip() {
   
   const hull = new THREE.Mesh(hullGeo, new THREE.MeshStandardMaterial({color: hullDark}));
   // Color boot top
-  const hullSplit = new THREE.Mesh(new THREE.SplitShape(geometry: hullGeo, y: 0), new THREE.MeshStandardMaterial({color: bootTop})); // Not supported in r160 directly.
+
   // Manual approach: Use a second mesh for the bottom part? Easier: just one color, or UV mapping.
   // Let's do vertex manipulation to color the bottom.
   const pos = hullGeo.attributes.position;
@@ -611,6 +611,10 @@ function createLighthouse(x, z) {
 // --- SCENE SETUP ---
 
 function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x000000, 300, 3500);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
+
   // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -629,15 +633,9 @@ function init() {
   bloom.threshold = 0.2; bloom.strength = 1.5; bloom.radius = 0.8;
   composer.addPass(bloom);
 
-  // Camera
-  camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 5000);
-  
   // Sky & Lighting
   const environment = new RoomEnvironment();
   const pmrem = new THREE.PMREMGenerator(renderer);
-  renderer.setAnimationLoop(() => {
-    composer.render();
-  });
   scene.environment = pmrem.fromScene(environment).texture;
   pmrem.dispose();
 
@@ -945,8 +943,8 @@ function animate() {
   // Actually EffectComposer requires a loop.
 }
 
-// Fix: The renderer setAnimationLoop inside init is bad.
-// Override it.
+// Start rendering after all scene objects and controls have been initialized.
+init();
 renderer.setAnimationLoop(animate);
 
 // Window resize
@@ -958,7 +956,7 @@ window.addEventListener('resize', () => {
 });
 
 // Init error catch
-try { init(); } catch(e) {
+try { } catch(e) {
   console.error(e);
   const err = document.createElement('div');
   err.style.cssText = 'color:white; background:black; padding:20px; position:absolute; z-index:9999;';
