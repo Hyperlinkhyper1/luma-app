@@ -77,6 +77,14 @@
     </div>
   </div>
 
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
   <script type="module">
     import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
     import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
@@ -422,6 +430,7 @@
       }
       
       positionRod(wristPin, crankThrowPos, direction) {
+        const distance = wristPin.distanceTo(crankThrowPos);
         // Position the rod at the midpoint
         const midpoint = wristPin.clone().add(crankThrowPos).multiplyScalar(0.5);
         
@@ -510,7 +519,7 @@
         this.determineStroke();
         
         // Update piston
-        this.piston.update(crankAngle);
+        this.piston.getPosition(crankAngle);
         
         // Update valves
         this.valveTrain.update(crankAngle);
@@ -865,7 +874,7 @@
       engine = new V8Engine();
       
       // Initialize Three.js
-      initThree.js();
+      initThreeJS();
       
       // Create engine geometry
       createEngineGeometry();
@@ -877,7 +886,7 @@
       animate();
     }
 
-    function initThree.js() {
+    function initThreeJS() {
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x0a0a0f);
       
@@ -903,7 +912,7 @@
     function createEngineGeometry() {
       // Create ground/floor
       const floorGeometry = new THREE.PlaneGeometry(100, 100);
-      const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a25, side: DoubleSide });
+      const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a25, side: THREE.DoubleSide });
       const floor = new THREE.Mesh(floorGeometry, floorMaterial);
       floor.rotation.x = -Math.PI / 2;
       floor.position.y = -1;
@@ -1029,6 +1038,7 @@
     }
 
     function createCylindersAndPistons() {
+      const config = ENGINE_CONFIG;
       const cylinders = engine.cylinders;
       
       for (let i = 0; i < cylinders.length; i++) {
@@ -1151,7 +1161,7 @@
       engine.cylinders.forEach(cyl => {
         const rodGroup = cyl.piston.connectingRod.group;
         const wristPinPos = cyl.piston.getWristPinPosition(crankAngle);
-        const throwPos = cyl.piston.piston.connectingRod.getCrankThrowPosition(crankAngle, CYLINDER_THROWS[cyl.id]);
+        const throwPos = cyl.piston.connectingRod.getCrankThrowPosition(crankAngle, CYLINDER_THROWS[cyl.id]);
         
         // Position rod at midpoint
         const midpoint = wristPinPos.clone().add(throwPos).multiplyScalar(0.5);
