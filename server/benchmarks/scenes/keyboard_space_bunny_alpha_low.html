@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MONOLITH // Mechanical Keyboard Showcase</title>
+<style>
+  @import url('data:text/css,');
+
+  :root {
+    color-scheme: dark;
+    --ink: #e8edf2;
+    --muted: #89939e;
+    --cyan: #66e4df;
+    --orange: #ff7657;
+    --panel: rgba(12, 17, 22, .72);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #090d11;
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(48, 79, 91, .2), transparent 38%),
+      linear-gradient(125deg, rgba(255,255,255,.025), transparent 28% 72%, rgba(255,255,255,.018));
+  }
+
+  #app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    outline: none;
+  }
+
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: clamp(20px, 3.5vw, 48px);
+    pointer-events: none;
+  }
+
+  .brand {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .mark {
+    width: 39px;
+    height: 39px;
+    border: 1px solid rgba(102, 228, 223, .5);
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    color: var(--cyan);
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: inset 0 0 18px rgba(102,228,223,.06), 0 0 30px rgba(102,228,223,.05);
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: .28em;
+    font-weight: 700;
+  }
+
+  .brand p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font: 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .16em;
+  }
+
+  .controls {
+    display: flex;
+    gap: 9px;
+    pointer-events: auto;
+  }
+
+  button {
+    height: 40px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 999px;
+    padding: 0 15px;
+    color: #cbd3da;
+    background: rgba(16, 22, 28, .72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    font: 600 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color .2s, color .2s, transform .2s, background .2s;
+  }
+
+  button:hover {
+    color: white;
+    border-color: rgba(102,228,223,.65);
+    background: rgba(25, 36, 42, .88);
+    transform: translateY(-1px);
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 3px;
+  }
+
+  #mute {
+    width: 40px;
+    padding: 0;
+    font-size: 15px;
+  }
+
+  .info {
+    position: fixed;
+    z-index: 4;
+    left: clamp(20px, 3.5vw, 48px);
+    bottom: clamp(20px, 3.5vw, 44px);
+    width: min(310px, calc(100vw - 40px));
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--cyan);
+    font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 23px;
+    height: 1px;
+    background: currentColor;
+    box-shadow: 0 0 9px currentColor;
+  }
+
+  #stageTitle {
+    margin: 12px 0 5px;
+    font-size: clamp(22px, 3vw, 36px);
+    font-weight: 560;
+    letter-spacing: -.035em;
+  }
+
+  #stageText {
+    margin: 0;
+    color: #8e99a4;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .progress {
+    margin-top: 20px;
+    width: 100%;
+    height: 2px;
+    background: rgba(255,255,255,.09);
+    overflow: hidden;
+  }
+
+  #progressFill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--cyan), var(--orange));
+    box-shadow: 0 0 10px rgba(102,228,223,.45);
+  }
+
+  .hint {
+    position: fixed;
+    z-index: 6;
+    right: clamp(20px, 3.5vw, 48px);
+    bottom: clamp(20px, 3.5vw, 44px);
+    max-width: 280px;
+    padding: 11px 14px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    color: #aeb7c0;
+    background: rgba(10,15,20,.7);
+    backdrop-filter: blur(14px);
+    font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-align: right;
+    transition: opacity .4s, transform .4s;
+  }
+
+  .hint.hidden {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .hint strong { color: var(--orange); }
+
+  .status {
+    position: fixed;
+    z-index: 4;
+    top: 50%;
+    right: clamp(20px, 3.5vw, 48px);
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #697580;
+    font: 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .16em;
+    writing-mode: vertical-rl;
+    text-transform: uppercase;
+  }
+
+  .status i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 9px var(--cyan);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+
+  @media (max-width: 700px) {
+    .topbar { padding: 18px; }
+    .brand p, .status { display: none; }
+    .brand h1 { font-size: 11px; }
+    .mark { width: 34px; height: 34px; }
+    button { height: 36px; padding: 0 11px; }
+    #mute { width: 36px; padding: 0; }
+    .info { left: 18px; bottom: 18px; width: 240px; }
+    .hint { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+    .status i { animation: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">M</div>
+      <div>
+        <h1>MONOLITH</h1>
+        <p>65% CNC WORKSHOP / REV. 04</p>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="replay" title="Replay exploded assembly">↻ Replay</button>
+      <button id="mute" aria-label="Unmute audio" title="Audio enabled">◖))</button>
+    </div>
+  </div>
+
+  <div class="info" aria-live="polite">
+    <div class="eyebrow" id="stageIndex">ASSEMBLY / 06</div>
+    <h2 id="stageTitle">Board architecture</h2>
+    <p id="stageText">A layered foundation, engineered from the circuit up.</p>
+    <div class="progress"><div id="progressFill"></div></div>
+  </div>
+
+  <div class="status"><i></i><span id="statusText">Calibrating components</span></div>
+  <div class="hint" id="soundHint">Tap a key or type to <strong>enable audio</strong> and test the build.</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x090d11);
+scene.fog = new THREE.FogExp2(0x090d11, 0.026);
+
+const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 100);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+app.prepend(renderer.domElement);
+
+const keyboard = new THREE.Group();
+keyboard.rotation.y = -0.12;
+scene.add(keyboard);
+
+const hemi = new THREE.HemisphereLight(0xaedbe5, 0x131117, 1.7);
+scene.add(hemi);
+
+const keyLight = new THREE.DirectionalLight(0xd9f6ff, 4.2);
+keyLight.position.set(-7, 12, 8);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.left = -12;
+keyLight.shadow.camera.right = 12;
+keyLight.shadow.camera.top = 10;
+keyLight.shadow.camera.bottom = -10;
+keyLight.shadow.bias = -0.0004;
+scene.add(keyLight);
+
+const rim = new THREE.PointLight(0xff6547, 28, 24, 2);
+rim.position.set(9, 4, -7);
+scene.add(rim);
+
+const cyan = new THREE.PointLight(0x45ded8, 22, 22, 2);
+cyan.position.set(-9, 3, 5);
+scene.add(cyan);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshStandardMaterial({ color: 0x0b1015, roughness: 0.88, metalness: 0.12 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -1.35;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const grid = new THREE.GridHelper(50, 50, 0x203039, 0x141c22);
+grid.position.y = -1.33;
+grid.material.transparent = true;
+grid.material.opacity = 0.18;
+scene.add(grid);
+
+const materials = {
+  case: new THREE.MeshStandardMaterial({ color: 0x303a42, metalness: 0.82, roughness: 0.25 }),
+  caseDark: new THREE.MeshStandardMaterial({ color: 0x151c22, metalness: 0.72, roughness: 0.3 }),
+  pcb: new THREE.MeshStandardMaterial({ color: 0x123c3d, metalness: 0.25, roughness: 0.48 }),
+  copper: new THREE.MeshStandardMaterial({ color: 0xcf9d55, metalness: 0.85, roughness: 0.26 }),
+  foam: new THREE.MeshStandardMaterial({ color: 0x111317, roughness: 0.95 }),
+  plate: new THREE.MeshStandardMaterial({ color: 0x87939a, metalness: 0.9, roughness: 0.24 }),
+  switchTop: new THREE.MeshPhysicalMaterial({ color: 0xd65243, roughness: 0.28, transmission: 0.08, clearcoat: 0.6 }),
+  switchBase: new THREE.MeshStandardMaterial({ color: 0xd7c8ac, roughness: 0.52 }),
+  stem: new THREE.MeshStandardMaterial({ color: 0xeee5d4, roughness: 0.4 }),
+  alpha: new THREE.MeshStandardMaterial({ color: 0x25313a, roughness: 0.55, metalness: 0.08 }),
+  modifier: new THREE.MeshStandardMaterial({ color: 0x182b34, roughness: 0.5, metalness: 0.12 }),
+  accent: new THREE.MeshStandardMaterial({ color: 0xef654b, roughness: 0.48, metalness: 0.1 }),
+  lightKey: new THREE.MeshStandardMaterial({ color: 0xd7dedc, roughness: 0.48 })
+};
+
+function rounded(w, h, d, radius, mat, segments = 3) {
+  return new THREE.Mesh(new RoundedBoxGeometry(w, h, d, segments, radius), mat);
+}
+
+function addMesh(parent, mesh, x = 0, y = 0, z = 0, shadow = true) {
+  mesh.position.set(x, y, z);
+  mesh.castShadow = shadow;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+const layers = {};
+layers.pcb = new THREE.Group();
+layers.foam = new THREE.Group();
+layers.plate = new THREE.Group();
+layers.switches = new THREE.Group();
+layers.caps = new THREE.Group();
+layers.case = new THREE.Group();
+Object.values(layers).forEach(g => keyboard.add(g));
+
+const BOARD_W = 12.65;
+const BOARD_D = 5.18;
+
+addMesh(layers.pcb, rounded(BOARD_W, .18, BOARD_D, .13, materials.pcb), 0, .25, 0);
+addMesh(layers.pcb, rounded(3.4, .08, 1.25, .08, materials.caseDark), -.8, .38, .4);
+addMesh(layers.pcb, rounded(1.15, .10, .9, .06, materials.copper), 4.9, .39, 1.7);
+addMesh(layers.pcb, rounded(.75, .10, .75, .05, materials.caseDark), 4.9, .4, -.2);
+
+for (let i = 0; i < 8; i++) {
+  addMesh(layers.pcb, rounded(.36, .09, .28, .035, materials.copper), -5.5 + i * .43, .39, 2.12);
+}
+for (let i = 0; i < 4; i++) {
+  addMesh(layers.pcb, rounded(.62, .07, .24, .035, materials.copper), 4.9, .41, -.9 + i * .43);
+}
+
+const traceMat = new THREE.MeshBasicMaterial({ color: 0x4aa9a1, transparent: true, opacity: .45 });
+for (let i = 0; i < 10; i++) {
+  const trace = addMesh(layers.pcb, new THREE.BoxGeometry(2.3 + i * .2, .012, .025), -3.2, .355, -2.1 + i * .42, false);
+  trace.rotation.y = (i % 2 ? 1 : -1) * .07;
+  trace.material = traceMat;
+}
+
+addMesh(layers.foam, rounded(BOARD_W - .25, .24, BOARD_D - .25, .16, materials.foam), 0, .53, 0);
+addMesh(layers.plate, rounded(BOARD_W - .12, .16, BOARD_D - .12, .13, materials.plate), 0, .78, 0);
+
+addMesh(layers.case, rounded(13.25, .62, 5.85, .22, materials.caseDark), 0, -.13, 0);
+addMesh(layers.case, rounded(13.25, .68, .28, .12, materials.case), 0, .14, 2.75);
+addMesh(layers.case, rounded(13.25, .68, .28, .12, materials.case), 0, .14, -2.75);
+addMesh(layers.case, rounded(.28, .68, 5.35, .12, materials.case), -6.48, .14, 0);
+addMesh(layers.case, rounded(.28, .68, 5.35, .12, materials.case), 6.48, .14, 0);
+addMesh(layers.case, rounded(.9, .06, .10, .025, materials.cyan), 0, -.02, 2.98, false);
+
+const rows = [
+  [
+    ['`','Backquote',1],['1','Digit1',1],['2','Digit2',1],['3','Digit3',1],['4','Digit4',1],
+    ['5','Digit5',1],['6','Digit6',1],['7','Digit7',1],['8','Digit8',1],['9','Digit9',1],
+    ['0','Digit0',1],['-','Minus',1],['=','Equal',1],['⌫','Backspace',2]
+  ],
+  [
+    ['Tab','Tab',1.5],['Q','KeyQ',1],['W','KeyW',1],['E','KeyE',1],['R','KeyR',1],['T','KeyT',1],
+    ['Y','KeyY',1],['U','KeyU',1],['I','KeyI',1],['O','KeyO',1],['P','KeyP',1],['[','BracketLeft',1],
+    [']','BracketRight',1],['\\','Backslash',1.5]
+  ],
+  [
+    ['Caps','CapsLock',1.75],['A','KeyA',1],['S','KeyS',1],['D','KeyD',1],['F','KeyF',1],['G','KeyG',1],
+    ['H','KeyH',1],['J','KeyJ',1],['K','KeyK',1],['L','KeyL',1],[';','Semicolon',1],["'",'Quote',1],
+    ['↵','Enter',2.25]
+  ],
+  [
+    ['Shift','ShiftLeft',2.25],['Z','KeyZ',1],['X','KeyX',1],['C','KeyC',1],['V','KeyV',1],['B','KeyB',1],
+    ['N','KeyN',1],['M','KeyM',1],[',','Comma',1],['.','Period',1],['/','Slash',1],['Shift','ShiftRight',2.75]
+  ],
+  [
+    ['Ctrl','ControlLeft',1.25],['Alt','AltLeft',1.25],['Cmd','MetaLeft',1.25],['Space','Space',6.25],
+    ['Cmd','MetaRight',1.25],['Alt','AltRight',1],['Fn','Fn',1],['←','ArrowLeft',1],['↓','ArrowDown',1],['→','ArrowRight',1]
+  ]
+];
+
+const U = .79;
+const GAP = .045;
+const keyData = [];
+const capByCode = new Map();
+const interactiveMeshes = [];
+let xCursor = 0;
+
+function labelTexture(text, accent = false) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const long = text.length > 3;
+  ctx.font = `${long ? 600 : 650} ${long ? 38 : text.length > 1 ? 56 : 76}px ui-sans-serif, system-ui`;
+  ctx.fillStyle = accent ? '#29110d' : '#e2e7e8';
+  ctx.shadowColor = 'rgba(0,0,0,.35)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(text, 128, 132);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+function materialFor(label, code) {
+  if (label === 'Esc') return materials.accent;
+  if (['Tab','Caps','Shift','Ctrl','Alt','Cmd','Fn','⌫','↵','←','↓','→'].includes(label)) return materials.modifier;
+  if (['Space','Enter'].includes(code)) return materials.accent;
+  return materials.alpha;
+}
+
+rows.forEach((row, r) => {
+  const total = row.reduce((sum, k) => sum + k[2], 0);
+  const rowWidth = total * U + (row.length - 1) * GAP;
+  xCursor = -rowWidth / 2;
+  const z = -1.93 + r * .88;
+
+  row.forEach(([label, code, units]) => {
+    const width = units * U - GAP;
+    const x = xCursor + units * U / 2;
+    xCursor += units * U + GAP;
+
+    const sw = new THREE.Group();
+    sw.position.set(x, .98, z);
+    addMesh(sw, rounded(.40, .20, .40, .055, materials.switchBase));
+    addMesh(sw, rounded(.31, .16, .31, .045, materials.switchTop), 0, .15, 0);
+    addMesh(sw, rounded(.15, .12, .055, .018, materials.stem), 0, .29, 0);
+    addMesh(sw, rounded(.055, .12, .15, .018, materials.stem), 0, .29, 0);
+    layers.switches.add(sw);
+
+    const cap = new THREE.Group();
+    cap.position.set(x, 1.24, z);
+    const capMat = materialFor(label, code);
+    const body = addMesh(cap, rounded(width, .38, .69, .105, capMat, 4));
+    body.userData.key = code;
+    body.userData.label = label;
+    body.userData.baseY = 1.24;
+    body.userData.press = 0;
+    interactiveMeshes.push(body);
+    addMesh(cap, rounded(Math.max(.18, width - .10), .065, .57, .075, capMat, 3), 0, .21, -.02);
+
+    const legend = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.min(width - .1, .72), Math.min(.38, width - .1)),
+      new THREE.MeshBasicMaterial({
+        map: labelTexture(label, code === 'Enter' || code === 'Space'),
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      })
+    );
+    legend.rotation.x = -Math.PI / 2;
+    legend.position.set(0, .247, .015);
+    cap.add(legend);
+
+    layers.caps.add(cap);
+    const data = { sw, cap, body, x, z, index: keyData.length, seed: Math.sin(keyData.length * 9.37) };
+    keyData.push(data);
+    capByCode.set(code, data);
+  });
+});
+
+const knob = new THREE.Group();
+knob.position.set(6.72, 1.04, -1.95);
+addMesh(knob, new THREE.CylinderGeometry(.31, .34, .28, 40), 0, 0, 0);
+const knurlMat = materials.case;
+for (let i = 0; i < 24; i++) {
+  const a = i / 24 * Math.PI * 2;
+  const tooth = addMesh(knob, rounded(.045, .20, .045, .01, knurlMat, 2), Math.cos(a) * .32, 0, Math.sin(a) * .32, false);
+  tooth.rotation.y = -a;
+}
+addMesh(knob, new THREE.CylinderGeometry(.25, .25, .015, 40), 0, .16, 0);
+addMesh(knob, rounded(.025, .018, .14, .006, materials.cyan), 0, .175, -.08, false);
+keyboard.add(knob);
+
+const finalPositions = {
+  pcb: new THREE.Vector3(0,0,0),
+  foam: new THREE.Vector3(0,0,0),
+  plate: new THREE.Vector3(0,0,0),
+  case: new THREE.Vector3(0,0,0),
+  switches: new THREE.Vector3(0,0,0),
+  caps: new THREE.Vector3(0,0,0)
+};
+
+const timelines = [];
+const stageEls = {
+  title: document.getElementById('stageTitle'),
+  text: document.getElementById('stageText'),
+  index: document.getElementById('stageIndex'),
+  status: document.getElementById('statusText'),
+  progress: document.getElementById('progressFill')
+};
+
+const stages = [
+  ['BOARD ARCHITECTURE','Circuit foundation', 'A reinforced PCB establishes the structural and electrical backbone.', 0.0],
+  ['ACOUSTIC CORE','Precision foam', 'Dampened poron isolates every keystroke and removes unwanted resonance.', 1.15],
+  ['CNC CHASSIS','Unibody case', 'A weighty aluminum shell wraps the assembly with a refined, low profile.', 2.05],
+  ['SWITCH PLATE','Stabilized support', 'A rigid steel plate gives every switch a consistent, solid foundation.', 2.85],
+  ['ACTUATION','Mechanical switches', 'Hot-swap sockets receive each switch, precisely, from left to right.', 3.85],
+  ['KEYCAPS','Final interface', 'Sculpted caps lock into place to complete the tactile instrument.', 6.55]
+];
+
+function addTween(object, start, duration, from, to, easing = easeOutCubic) {
+  timelines.push({ object, start, duration, from: from.clone(), to: to.clone(), easing });
+}
+
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeInOut(t) { return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+function easeBack(t) {
+  const c = 1.15;
+  return 1 + c * Math.pow(t-1, 3) + c * Math.pow(t-1, 2);
+}
+
+function setStage(index) {
+  const s = stages[index];
+  stageEls.index.textContent = `ASSEMBLY / ${String(index + 1).padStart(2,'0')}`;
+  stageEls.title.textContent = s[1];
+  stageEls.text.textContent = s[2];
+  stageEls.status.textContent = index < 5 ? 'Positioning component layer' : 'Build complete · sound test ready';
+}
+
+function buildTimeline() {
+  timelines.length = 0;
+  addTween(layers.pcb, .05, 1.0, new THREE.Vector3(0,-5,1.5), finalPositions.pcb, easeBack);
+  addTween(layers.foam, 1.15, 1.05, new THREE.Vector3(0,4.8,-1), finalPositions.foam, easeBack);
+  addTween(layers.case, 2.05, 1.05, new THREE.Vector3(0,-3.4,2.8), finalPositions.case, easeInOut);
+  addTween(layers.plate, 2.85, 1.05, new THREE.Vector3(0,3.6,-1.7), finalPositions.plate, easeBack);
+
+  const switchStart = 3.85;
+  const switchStagger = reducedMotion ? .001 : .024;
+  keyData.forEach((d, i) => {
+    const t = switchStart + i * switchStagger;
+    addTween(d.sw, t, .9, new THREE.Vector3(d.x, 4.8 + (i%3)*.18, d.z - .7), new THREE.Vector3(d.x,.98,d.z), easeBack);
+  });
+
+  const capsStart = Math.max(switchStart + keyData.length * switchStagger + .55, 6.55);
+  const capStagger = reducedMotion ? .001 : .032;
+  keyData.forEach((d, i) => {
+    const t = capsStart + i * capStagger;
+    addTween(d.cap, t, .85, new THREE.Vector3(d.x, 3.5 + (i%4)*.22, d.z + .8), new THREE.Vector3(d.x,1.24,d.z), easeBack);
+  });
+
+  return Math.max(...timelines.map(t => t.start + t.duration)) + .3;
+}
+
+let duration = buildTimeline();
+let assemblyStart = performance.now();
+let assemblyRunning = true;
+let lastStage = -1;
+setStage(0);
+
+function resetAssembly() {
+  timelines.forEach(t => t.object.position.copy(t.from));
+  keyData.forEach(d => { d.cap.position.set(d.x, 3.8, d.z + .8); d.body.userData.press = 0; });
+  knob.visible = true;
+  assemblyStart = performance.now();
+  assemblyRunning = true;
+  lastStage = -1;
+  setStage(0);
+  document.getElementById('replay').blur();
+}
+document.getElementById('replay').addEventListener('click', resetAssembly);
+
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let audioContext = null;
+let masterGain = null;
+let muted = false;
+const soundHint = document.getElementById('soundHint');
+
+function initAudio() {
+  if (!audioContext) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    audioContext = new AC();
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = .34;
+    masterGain.connect(audioContext.destination);
+  }
+  if (audioContext.state === 'suspended') audioContext.resume();
+  soundHint.classList.add('hidden');
+}
+
+function noiseBuffer(ctx, duration) {
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  return buffer;
+}
+
+function playKey(code, label, velocity = 1) {
+  initAudio();
+  if (!audioContext || muted) return;
+  const now = audioContext.currentTime;
+  const isSpace = code === 'Space';
+  const isEnter = code === 'Enter';
+  const isBack = code === 'Backspace';
+  const isModifier = ['ShiftLeft','ShiftRight','ControlLeft','ControlRight','AltLeft','AltRight','MetaLeft','MetaRight','Tab','CapsLock'].includes(code);
+  const base = isSpace ? 72 : isEnter ? 155 : isBack ? 210 : isModifier ? 340 : 430 + ((code.charCodeAt(code.length-1) * 17) % 150);
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(.0001, now);
+  gain.gain.exponentialRampToValueAtTime((isSpace ? .34 : isModifier ? .12 : .19) * velocity, now + .004);
+  gain.gain.exponentialRampToValueAtTime(.0001, now + (isSpace ? .18 : isModifier ? .075 : .11));
+  gain.connect(masterGain);
+
+  const osc = audioContext.createOscillator();
+  osc.type = isSpace ? 'sine' : isModifier ? 'triangle' : 'square';
+  osc.frequency.setValueAtTime(base * (isSpace ? 1.18 : 1), now);
+  osc.frequency.exponentialRampToValueAtTime(base * .54, now + (isSpace ? .16 : .09));
+  const filter = audioContext.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = isSpace ? 520 : isModifier ? 1900 : 3100;
+  filter.Q.value = .7;
+  osc.connect(filter).connect(gain);
+  osc.start(now);
+  osc.stop(now + .22);
+
+  const click = audioContext.createBufferSource();
+  click.buffer = noiseBuffer(audioContext, isSpace ? .055 : .032);
+  const clickGain = audioContext.createGain();
+  clickGain.gain.setValueAtTime(isSpace ? .07 : .13, now);
+  clickGain.gain.exponentialRampToValueAtTime(.0001, now + .04);
+  const hp = audioContext.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 900;
+  click.connect(hp).connect(clickGain).connect(masterGain);
+  click.start(now);
+}
+
+function pressCode(code, label = code) {
+  const data = capByCode.get(code);
+  if (!data || !assemblyRunning) return;
+  initAudio();
+  data.body.userData.press = 1;
+  playKey(code, label);
+}
+
+function releaseCode(code) {
+  const data = capByCode.get(code);
+  if (data) data.body.userData.press = 0;
+}
+
+renderer.domElement.addEventListener('pointerdown', event => {
+  initAudio();
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hit = raycaster.intersectObjects(interactiveMeshes, false)[0];
+  if (hit) pressCode(hit.object.userData.key, hit.object.userData.label);
+});
+
+addEventListener('pointerup', () => {
+  interactiveMeshes.forEach(m => m.userData.press = 0);
+});
+
+const aliases = {
+  ' ': 'Space',
+  Enter: 'Enter',
+  Backspace: 'Backspace',
+  Tab: 'Tab',
+  Escape: 'Escape',
+  ShiftLeft: 'ShiftLeft',
+  ShiftRight: 'ShiftRight',
+  ControlLeft: 'ControlLeft',
+  ControlRight: 'ControlRight',
+  AltLeft: 'AltLeft',
+  AltRight: 'AltRight',
+  MetaLeft: 'MetaLeft',
+  MetaRight: 'MetaRight',
+  CapsLock: 'CapsLock'
+};
+
+addEventListener('keydown', event => {
+  if (event.repeat) return;
+  let code = aliases[event.key] || aliases[event.code] || event.code;
+  if (code === 'Escape' || event.key === 'Escape') return;
+  const data = capByCode.get(code);
+  if (!data) return;
+  event.preventDefault();
+  pressCode(code, data.body.userData.label);
+});
+
+addEventListener('keyup', event => {
+  let code = aliases[event.key] || aliases[event.code] || event.code;
+  releaseCode(code);
+  interactiveMeshes.forEach(m => m.userData.press = 0);
+});
+
+const muteButton = document.getElementById('mute');
+muteButton.addEventListener('click', () => {
+  muted = !muted;
+  muteButton.textContent = muted ? '◖×' : '◖))';
+  muteButton.title = muted ? 'Audio muted' : 'Audio enabled';
+  muteButton.setAttribute('aria-label', muted ? 'Unmute audio' : 'Mute audio');
+  if (!muted) initAudio();
+  muteButton.blur();
+});
+
+let pointerTargetX = 0, pointerTargetY = 0;
+addEventListener('pointermove', event => {
+  pointerTargetX = (event.clientX / innerWidth - .5) * .05;
+  pointerTargetY = (event.clientY / innerHeight - .5) * .025;
+});
+
+function resize() {
+  const aspect = innerWidth / innerHeight;
+  camera.aspect = aspect;
+  camera.fov = aspect < .8 ? 47 : 36;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  if (aspect < .8) {
+    camera.position.set(8.8, 12.8, 22.5);
+  } else if (aspect < 1.25) {
+    camera.position.set(9.4, 11.6, 19.8);
+  } else {
+    camera.position.set(9.3, 10.5, 17.2);
+  }
+  camera.lookAt(0, .25, 0);
+}
+addEventListener('resize', resize);
+resize();
+
+const clock = new THREE.Clock();
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  if (assemblyRunning) {
+    const elapsed = (now - assemblyStart) / 1000;
+    timelines.forEach(t => {
+      const local = THREE.MathUtils.clamp((elapsed - t.start) / t.duration, 0, 1);
+      if (local > 0 || reducedMotion) t.object.position.lerpVectors(t.from, t.to, t.easing(local));
+    });
+
+    const boundaries = [0, 1.15, 2.05, 2.85, 3.85, capsStart];
+    let stage = 0;
+    boundaries.forEach((b, i) => { if (elapsed >= b) stage = i; });
+    if (stage !== lastStage) {
+      setStage(stage);
+      lastStage = stage;
+    }
+    stageEls.progress.style.width = `${Math.min(100, elapsed / duration * 100)}%`;
+
+    if (elapsed >= duration) {
+      assemblyRunning = false;
+      timelines.forEach(t => t.object.position.copy(t.to));
+      setStage(5);
+      stageEls.progress.style.width = '100%';
+    }
+  }
+
+  keyData.forEach(d => {
+    const p = d.body.userData.press;
+    d.body.userData.press += (0 - p) * Math.min(1, dt * (p ? 18 : 9));
+    d.cap.position.y = 1.24 - d.body.userData.press * .105;
+    d.cap.position.z = d.z + d.body.userData.press * .012;
+  });
+
+  keyboard.rotation.x += (pointerTargetY - keyboard.rotation.x) * .035;
+  keyboard.rotation.y += (-.12 + pointerTargetX - keyboard.rotation.y) * .035;
+  rim.intensity = 27 + Math.sin(now * .0012) * 2;
+  cyan.intensity = 21 + Math.cos(now * .001) * 1.5;
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+setTimeout(() => { if (!audioContext) soundHint.classList.remove('hidden'); }, 1600);
+</script>
+</body>
+</html>
