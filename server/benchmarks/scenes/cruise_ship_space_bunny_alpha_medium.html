@@ -330,9 +330,9 @@ camera.position.set(205, 105, 185);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -353,7 +353,7 @@ scene.add(hemi);
 const sunLight = new THREE.DirectionalLight(0xfff1d5, 3.0);
 sunLight.position.set(-130, 190, 90);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.mapSize.set(1024, 1024);
 sunLight.shadow.camera.left = -145;
 sunLight.shadow.camera.right = 145;
 sunLight.shadow.camera.top = 150;
@@ -746,7 +746,7 @@ const oceanMat=new THREE.ShaderMaterial({
       gl_FragColor=vec4(c,1.);
     }`
 });
-const oceanGeo=new THREE.PlaneGeometry(1800,1800,120,120);oceanGeo.rotateX(-Math.PI/2);
+const oceanGeo=new THREE.PlaneGeometry(1800,1800,48,48);oceanGeo.rotateX(-Math.PI/2);
 const ocean=new THREE.Mesh(oceanGeo,oceanMat);scene.add(ocean);
 
 const foamMat=new THREE.MeshBasicMaterial({color:0xd8f0f0,transparent:true,opacity:.28,depthWrite:false,side:THREE.DoubleSide});
@@ -793,7 +793,7 @@ for(let i=0;i<17;i++){
 }
 clouds.visible=false;
 
-const rainCount=2600,rainPos=new Float32Array(rainCount*3);
+const rainCount=900,rainPos=new Float32Array(rainCount*3);
 for(let i=0;i<rainCount;i++){rainPos[i*3]=(Math.random()-.5)*170;rainPos[i*3+1]=Math.random()*100;rainPos[i*3+2]=(Math.random()-.5)*170;}
 const rainGeo=new THREE.BufferGeometry();rainGeo.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
 const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xb8d5e8,size:.24,transparent:true,opacity:.65,depthWrite:false}));rain.visible=false;scene.add(rain);
