@@ -7,6 +7,7 @@ import 'package:luma_sync_server/ai_model_catalog.dart';
 import 'package:luma_sync_server/ai_price_guard.dart';
 import 'package:luma_sync_server/ai_usage_store.dart';
 import 'package:luma_sync_server/api.dart';
+import 'package:luma_sync_server/benchmark_generate.dart';
 import 'package:luma_sync_server/benchmark_repair.dart';
 import 'package:luma_sync_server/chat_store.dart';
 import 'package:luma_sync_server/family_store.dart';
@@ -154,6 +155,29 @@ void main() {
     }
   });
 
+  test(
+      'a model that reasons without answering is cut off, one that answers is not',
+      () {
+    String line(Map<String, dynamic> delta) => 'data: ${jsonEncode({
+              'choices': [
+                {'delta': delta}
+              ]
+            })}';
+    final thinking = ChatStreamAccumulator()
+      ..addLine(line({'reasoning': 'x' * (kRepairReasoningCharBudget - 10)}));
+    expect(repairStreamProblem(thinking), isNull);
+    thinking.addLine(line({'reasoning': 'x' * 20}));
+    expect(repairStreamProblem(thinking), contains('stopped early'));
+    expect(repairStreamProblem(thinking), contains('reasoning effort'));
+    final answering = ChatStreamAccumulator()
+      ..addLine(line({'reasoning': 'x' * (kRepairReasoningCharBudget * 2)}))
+      ..addLine(line({'content': '{"edits":'}));
+    expect(repairStreamProblem(answering), isNull);
+    final huge = ChatStreamAccumulator()
+      ..addLine(line({'content': 'y' * 100001}));
+    expect(repairStreamProblem(huge), contains('too large'));
+  });
+
   test('price guard handles unknown, free and expensive prices', () {
     expect(() => repairOutputLimit('source', const AiPrice(null, 1), .25),
         throwsArgumentError);
@@ -277,11 +301,15 @@ void main() {
       };
     }
 
-    Future<void> save({double limit = .25}) async {
+    Future<void> save({double limit = .25, String? effort}) async {
       final response = await request(
           'PUT', '/admin/benchmark-banners/repair/settings',
           body: {
-            'route': {'upstream': 'openrouter', 'model': 'test/model'},
+            'route': {
+              'upstream': 'openrouter',
+              'model': 'test/model',
+              if (effort != null) 'reasoningEffort': effort,
+            },
             'maxCostUsd': limit,
           });
       expect(response['httpStatus'], 200, reason: '$response');
@@ -445,6 +473,37 @@ void main() {
       await finished();
       expect(calls, 1);
       expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
+    });
+    test('repairs ask for low reasoning unless the settings say otherwise',
+        () async {
+      await save();
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      expect(sent['reasoning'], {'effort': 'low'});
+      expect(sent['provider'], isNot(contains('require_parameters')));
+      expect((sent['provider'] as Map)['max_price'],
+          {'prompt': 1.0, 'completion': 2.0});
+      for (final (effort, expected) in [
+        ('none', {'enabled': false}),
+        ('high', {'effort': 'high'}),
+      ]) {
+        await save(effort: effort);
+        final saved =
+            await request('GET', '/admin/benchmark-banners/repair/settings');
+        expect(saved['route']['reasoningEffort'], effort);
+        renderer.recordFailure(
+            'pagoda_demo', 'ReferenceError: broken is not defined');
+        await scenes.saveUpload(
+            kind: 'pagoda',
+            id: 'pagoda_demo',
+            model: 'Original model',
+            vendor: 'openai',
+            description: 'Original description',
+            bytes: utf8.encode(original));
+        await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+        await finished();
+        expect(sent['reasoning'], expected, reason: effort);
+      }
     });
     test('a model that runs out of tokens is told so, with the room it had',
         () async {

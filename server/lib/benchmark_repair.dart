@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'ai_mode_routing.dart';
 import 'ai_price_guard.dart';
+import 'benchmark_generate.dart';
 import 'util.dart';
 
 const benchmarkRepairOwner = 'aydenjue@outlook.com';
@@ -61,9 +62,31 @@ bool completeRepairPrice(AiPrice? price) =>
     price.output! >= 0;
 
 /// The most output a repair may ask for, however much the limit would buy.
-/// Reasoning counts against it, and a model that thinks first needs room to
-/// think and still answer; the price limit stays the real bound.
-const kRepairMaxOutputTokens = 32768;
+/// Reasoning counts against it; the price limit stays the real bound.
+const kRepairMaxOutputTokens = 16384;
+
+/// How much a model may reason, in characters, before it has written a word
+/// of its answer. A repair is a small patch: a model still thinking past this
+/// is not converging, and waiting out the output cap only costs minutes. The
+/// request is cut off there instead (usage so far is still recorded).
+const kRepairReasoningCharBudget = 40000;
+
+/// Reasoning effort a repair asks for when the settings don't pick one. A
+/// fix to a stack trace needs little thought, and unbounded thinking is what
+/// made repairs slow and incomplete.
+const kRepairDefaultEffort = 'low';
+
+/// Why a repair's stream should be cut off now, or null to keep reading.
+String? repairStreamProblem(ChatStreamAccumulator acc) {
+  if (acc.contentChars > 100000) return 'Repair reply too large.';
+  if (acc.contentChars == 0 &&
+      acc.reasoningChars > kRepairReasoningCharBudget) {
+    return 'The model spent ${acc.reasoningChars} characters reasoning '
+        'without answering, so it was stopped early. Lower its reasoning '
+        'effort in the cog, or pick another model. The live test was kept.';
+  }
+  return null;
+}
 
 /// Conservative input bound: one token per UTF-8 byte plus message overhead.
 /// Output includes reasoning and is capped at the provider request boundary.

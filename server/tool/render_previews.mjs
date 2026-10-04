@@ -323,9 +323,29 @@ async function shootPagoda(page, framing) {
   await sleep(1500);
 }
 
+// Waits for the scene's canvas. A scene whose script threw before it made one
+// never will, so once an uncaught error has been seen and a grace period has
+// passed with still no canvas, give up with that error instead of waiting out
+// the full timeout (which would be minutes of nothing for every broken scene).
+const SCRIPT_ERROR_GRACE_MS = 20000;
+async function waitForCanvas(page, timeout = 120000) {
+  const t0 = Date.now();
+  for (;;) {
+    if (await page.$('canvas')) return;
+    const waited = Date.now() - t0;
+    if (page.lumaErrors?.length && waited > SCRIPT_ERROR_GRACE_MS) {
+      throw new Error(`no canvas after a script error: ${page.lumaErrors[0]}`);
+    }
+    if (waited > timeout) {
+      throw new Error(`Waiting for selector \`canvas\` failed: ${timeout}ms exceeded`);
+    }
+    await sleep(250);
+  }
+}
+
 async function settleCanvas(page) {
   step(0.2, 'waiting for the canvas');
-  await page.waitForSelector('canvas', { timeout: 120000 });
+  await waitForCanvas(page);
   step(0.5, 'letting it draw');
   await sleep(5000);
 }
@@ -382,7 +402,7 @@ async function shootPc(page) {
   // exist after the Three.js CDN imports resolve, so wait for the canvas
   // plus a margin before touching the power control.
   step(0.2, 'waiting for the canvas');
-  await page.waitForSelector('canvas', { timeout: 120000 });
+  await waitForCanvas(page);
   await sleep(3000);
   step(0.4, 'powering on');
   const clickPower = () =>
@@ -667,7 +687,12 @@ async function main() {
     let pageProblem = '';
     try {
       page = await worker.browser.newPage();
-      page.on('pageerror', (e) => { pageProblem ||= `page error: ${String(e.message || e).split('\n')[0]}`; });
+      page.lumaErrors = [];
+      page.on('pageerror', (e) => {
+        const first = String(e.message || e).split('\n')[0];
+        page.lumaErrors.push(first);
+        pageProblem ||= `page error: ${first}`;
+      });
       page.on('requestfailed', (r) => {
         if (/\.(m?js)(\?|$)/.test(r.url())) pageProblem ||= `could not load ${r.url()} (${r.failure()?.errorText ?? 'failed'})`;
       });

@@ -317,13 +317,13 @@ extension BenchmarkRepairApi on Api {
         'max_tokens': maxTokens,
         'stream': true,
         'stream_options': {'include_usage': true},
+        ..._repairReasoning(route),
         if (route.upstream == AiUpstream.openrouter)
           'provider': {
             'max_price': {
               'prompt': accepted.input,
               'completion': accepted.output
             },
-            'require_parameters': true,
           },
       };
       job.detail = 'Repairing the render error (one model call)…';
@@ -379,7 +379,7 @@ extension BenchmarkRepairApi on Api {
       job.finish(
           'done',
           'Minimal repair saved; original backed up. Banner: ${published['render'] ?? 'queued'}.'
-          '${published['github'] == 'failed' ? ' GitHub: ${published['githubError']}' : ''}');
+              '${published['github'] == 'failed' ? ' GitHub: ${published['githubError']}' : ''}');
     } catch (e) {
       job.finish(
           'failed',
@@ -390,6 +390,19 @@ extension BenchmarkRepairApi on Api {
             _ => '$e',
           });
     }
+  }
+
+  /// The reasoning setting for a repair's request, spelled the way the
+  /// upstream wants it. Left unset a reasoning model thinks for as long as it
+  /// likes, which is what made repairs slow and cut off.
+  Map<String, dynamic> _repairReasoning(AiModeRoute route) {
+    final effort = route.reasoningEffort ?? kRepairDefaultEffort;
+    if (route.upstream == AiUpstream.openrouter) {
+      return {
+        'reasoning': effort == 'none' ? {'enabled': false} : {'effort': effort},
+      };
+    }
+    return {'reasoning_effort': effort};
   }
 
   /// Why a reply can't be used, in terms of what to change about it.
@@ -421,7 +434,7 @@ extension BenchmarkRepairApi on Api {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
     final deadline =
-        Timer(const Duration(minutes: 10), () => client.close(force: true));
+        Timer(const Duration(minutes: 5), () => client.close(force: true));
     try {
       final req = await client.postUrl(Uri.parse(route.upstream.endpoint));
       req.headers.set(HttpHeaders.authorizationHeader,
@@ -441,8 +454,8 @@ extension BenchmarkRepairApi on Api {
       await for (final line
           in res.transform(utf8.decoder).transform(const LineSplitter())) {
         acc.addLine(line);
-        if (acc.contentChars > 100000)
-          throw const FormatException('Repair reply too large.');
+        final problem = repairStreamProblem(acc);
+        if (problem != null) throw StateError(problem);
         if (acc.done) break;
       }
     } finally {
