@@ -130,6 +130,34 @@ void main() {
       expect(b.sizeBytes, 0);
       expect(b.updatedAt, isNull);
       expect(b.hasPreview, isFalse);
+      expect(b.hasRunStats, isFalse);
+    });
+
+    test('reads the tokens and time the run took', () {
+      final b = AiBenchmark.fromJson({
+        'id': 'pc_x',
+        'tokens': 48200,
+        'durationSec': 372,
+      });
+      expect(b.tokens, 48200);
+      expect(b.durationSec, 372);
+      expect(b.hasRunStats, isTrue);
+    });
+  });
+
+  group('run stat formatting', () {
+    test('tokens stay short', () {
+      expect(formatBenchmarkTokens(812), '812');
+      expect(formatBenchmarkTokens(8400), '8.4k');
+      expect(formatBenchmarkTokens(48200), '48k');
+      expect(formatBenchmarkTokens(245800), '246k');
+      expect(formatBenchmarkTokens(1250000), '1.3M');
+    });
+
+    test('durations read as minutes and seconds', () {
+      expect(formatBenchmarkDuration(45), '45s');
+      expect(formatBenchmarkDuration(372), '6m 12s');
+      expect(formatBenchmarkDuration(3900), '1h 05m');
     });
   });
 

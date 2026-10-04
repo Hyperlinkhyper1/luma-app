@@ -19,6 +19,8 @@ class AiBenchmark {
     this.hasPreview = false,
     this.previewSha256 = '',
     this.vendor = '',
+    this.tokens = 0,
+    this.durationSec = 0,
   });
 
   /// File stem of the scene, e.g. `pagoda_haiku45`. Also the cache key the
@@ -51,6 +53,13 @@ class AiBenchmark {
   /// (`anthropic`, `openai`, …); '' means work it out from the model name.
   final String vendor;
 
+  /// Tokens the model spent writing the scene and how long it took, in
+  /// seconds. 0 when an older server doesn't send them.
+  final int tokens;
+  final int durationSec;
+
+  bool get hasRunStats => tokens > 0 && durationSec > 0;
+
   bool get isPagoda => kind == 'pagoda';
   bool get isEngine => kind == 'engine';
   bool get isPc => kind == 'pc';
@@ -70,8 +79,26 @@ class AiBenchmark {
       hasPreview: j['hasPreview'] as bool? ?? false,
       previewSha256: j['previewSha256'] as String? ?? '',
       vendor: j['vendor'] as String? ?? '',
+      tokens: (j['tokens'] as num?)?.toInt() ?? 0,
+      durationSec: (j['durationSec'] as num?)?.toInt() ?? 0,
     );
   }
+}
+
+/// `812`, `8.4k`, `48k`, `1.2M` — a token count short enough for a card.
+String formatBenchmarkTokens(int tokens) {
+  if (tokens < 1000) return '$tokens';
+  if (tokens < 10000) return '${(tokens / 1000).toStringAsFixed(1)}k';
+  if (tokens < 1000000) return '${(tokens / 1000).round()}k';
+  return '${(tokens / 1000000).toStringAsFixed(1)}M';
+}
+
+/// `45s`, `6m 12s`, `1h 05m`.
+String formatBenchmarkDuration(int seconds) {
+  if (seconds < 60) return '${seconds}s';
+  if (seconds < 3600) return '${seconds ~/ 60}m ${seconds % 60}s';
+  final minutes = (seconds % 3600) ~/ 60;
+  return '${seconds ~/ 3600}h ${minutes.toString().padLeft(2, '0')}m';
 }
 
 /// The roster of downloadable scenes plus the generic tile artwork per test.
