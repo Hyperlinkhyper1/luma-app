@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Miniature Railway World — Real Signalling Benchmark</title>
+<style>
+  body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; background: #111; color: #eee; }
+  canvas { display: block; }
+  #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  .panel { pointer-events: auto; background: rgba(10,15,25,0.85); border: 1px solid #446; padding: 10px; border-radius: 6px; backdrop-filter: blur(4px); }
+  #status { position: absolute; top: 10px; right: 10px; width: 280px; max-height: 90%; overflow-y: auto; font-size: 12px; }
+  #diag { position: absolute; bottom: 10px; left: 10px; width: 300px; height: 220px; border: 2px solid #446; background: #0a0f15; }
+  #topbar { position: absolute; top: 10px; left: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .train-row { display: flex; gap: 6px; padding: 4px 0; border-bottom: 1px solid #335; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+  h1 { font-size: 16px; margin: 0 0 6px 0; color: #8af; }
+  h2 { font-size: 13px; margin: 8px 0 4px 0; color: #bdf; border-bottom: 1px solid #446; }
+  .sig { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+  .sig.red { background: #f44; box-shadow: 0 0 4px #f44; }
+  .sig.yellow { background: #fa0; box-shadow: 0 0 4px #fa0; }
+  .sig.green { background: #4f4; box-shadow: 0 0 4px #4f4; }
+  button { background: #244; color: #fff; border: 1px solid #567; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+  button:hover { background: #368; }
+  button.active { background: #8af; color: #000; }
+  input[type=range] { width: 100%; }
+  label { font-size: 11px; color: #9ab; }
+  #loading { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; font-size: 20px; z-index: 999; transition: opacity 0.5s; }
+  #info { position: absolute; bottom: 10px; right: 10px; width: 300px; font-size: 11px; line-height: 1.4; color: #8a9; }
+</style>
+</head>
+<body>
+<div id="loading">Building world...</div>
+<div id="ui">
+  <div id="topbar" class="panel">
+    <button id="btnCamFree">Free Orbit</button>
+    <button id="btnCamP0">Station</button>
+    <button id="btnCamP1">Town/XY</button>
+    <button id="btnCamP2">River Bridge</button>
+    <button id="btnCamP3">Hills/Tunnel</button>
+    <button id="btnCamP4">Yard</button>
+    <button id="btnCamOver">Overview</button>
+  </div>
+  <div id="status" class="panel"></div>
+  <canvas id="diag"></canvas>
+  <div class="panel" style="position:absolute; bottom:10px; right:10px; width:300px; max-height:200px; overflow-y:auto;" id="info">
+    <h2>How Signalling Works</h2>
+    <ul style="padding-left:18px; margin:0;">
+      <li>The track is divided into BLOCKS; each holds at most one train.</li>
+      <li>Signals show RED (stop), YELLOW (next block occupied), GREEN (safe).</li>
+      <li>Before a switch clears, the ROUTE is reserved and blades locked.</li>
+      <li>The bridge/tunnel section is single track: trains wait in the passing loop.</li>
+      <li>Click signals or the diagram to hold them red manually.</li>
+    </ul>
+  </div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
+
+// ========================= CONFIG =========================
+const CFG = {
+  scale: 1,
+  trainSpeed: 0.6,      // blocks per second (approx)
+  maxSpeed: 1.2,        // blocks per second
+  accel: 0.3,
+  brake: 0.5,
+  dwellTime: 5,         // seconds
+  fogDist: 220,
+};
+
+// ========================= SIMPLE NOISE =========================
+// Compact 2D simplex-ish noise
+class SimpleNoise {
+  constructor(seed = 123) {
+    this.p = new Uint8Array(512);
+    const g = [1,1,0,-1,1,0,1,-1,0,1,1,-1,0,-1,1,-1,
+               -1,1,1,0,1,0,-1,-1,1,0,-1,1,0,-1,-1,0,
+               1,1,0,-1,1,0,1,-1,0,1,1,-1,0,-1,1,-1,
+               -1,1,1,0,1,0,-1,-1,1,0,-1,1,0,-1,-1,0];
+    for (let i=0; i<256; i++) this.p[i]=i;
+    // shuffle
+    for (let i=255; i>0; i--) {
+      const r = (seed = seed*16807%2147483647)/2147483647;
+      const j = Math.floor(r*(i+1));
+      [this.p[i], this.p[j]] = [this.p[j], this.p[i]];
+    }
+    for (let i=0; i<256; i++) this.p[256+i]=this.p[i];
+    this.G2 = Math.sqrt(0.5)*(g[Math.floor(Math.random()*64)] || 1);
+  }
+  noise(x, y) {
+    const F2 = 0.5*(Math.sqrt(3)-1), G2 = (3-Math.sqrt(3))/6;
+    let n0, n1, n2;
+    let s = (x+y)*F2;
+    let i = Math.floor(x+s), j = Math.floor(y+s);
+    let t = (i+j)*G2;
+    let X0 = i-t, Y0 = j-t;
+    let x0 = x-X0, y0 = y-Y0;
+    let i1, j1;
+    if (x0>y0) { i1=1; j1=0; } else { i1=0; j1=1; }
+    let x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
+    let x2 = x0 - 1 + 2*G2, y2 = y0 - 1 + 2*G2;
+    let ii = i & 255, jj = j & 255;
+    let gi0 = this.p[ii+this.p[jj]]%12, gi1 = this.p[ii+i1+this.p[jj+j1]]%12, gi2 = this.p[ii+1+this.p[jj+1]]%12;
+    let t0 = 0.5 - x0*x0 - y0*y0;
+    if (t0<0) n0 = 0; else { t0*=t0; n0 = t0*t0*(this.V(gi0,x0,y0)); }
+    let t1 = 0.5 - x1*x1 - y1*y1;
+    if (t1<0) n1 = 0; else { t1*=t1; n1 = t1*t1*(this.V(gi1,x1,y1)); }
+    let t2 = 0.5 - x2*x2 - y2*y2;
+    if (t2<0) n2 = 0; else { t2*=t2; n2 = t2*t2*(this.V(gi2,x2,y2)); }
+    return 70*(n0+n1+n2);
+  }
+  V(g, x, y) {
+    const hs = g%4, u = hs<2 ? x : y, v = hs<2 ? y : x;
+    return ((g%2?1:-1)*((2-(u*u))*(2-v*v)*u));
+  }
+  fbm(x, y, octaves=5, scale=0.015) {
+    let v = 0, amp = 1, f = scale, w = 0.5;
+    for (let i=0; i<octaves; i++) { v += this.noise(x*f, y*f)*amp; w += amp; amp *= 0.5; f *= 2; }
+    return v/w;
+  }
+}
+
+// ========================= TRACK =========================
+class Block {
+  constructor(id, curvePoints, isDiverging=false) {
+    this.id = id;
+    this.curvePoints = curvePoints;
+    this.isDiverging = isDiverging;
+    this.occupant = null;      // Train
+    this.reservedBy = null;    // Train
+    this.route = [];           // [blockIds]
+    this.lockedSwitches = [];  // [switchIds]
+    this.signal = null;        // Signal object
+    this.entryPoint = null;    // {x,y,z} - where train enters 3D
+    this.exitPoint = null;     // {x,y,z} - where train exits 3D
+    this.position = 0;         // progress 0..1
+  }
+  clear() {
+    if (this.occupant) this.occupant.currentBlock = null;
+    this.occupant = null;
+    this.reservedBy = null;
+    this.route = [];
+    this.lockedSwitches = [];
+  }
+  // get 3D point along curve
+  pointAt(t) {
+    const pts = this.curvePoints;
+    if (t <= 0) return new THREE.Vector3().copy(pts[0]);
+    if (t >= 1) return new THREE.Vector3().copy(pts[pts.length-1]);
+    const n = pts.length - 1;
+    const i = Math.min(Math.floor(t * n), n - 1);
+    const u = (t * n) - i;
+    const p0 = pts[i], p1 = pts[i+1];
+    return new THREE.Vector3().lerpVectors(p0, p1, u);
+  }
+}
+
+class Signal {
+  constructor(block, facing) {
+    this.block = block;       // block signal guards
+    this.facing = facing;     // 'entry' | 'exit'
+    this.aspect = 'red';      // red | yellow | green
+    this.manualHold = false;
+    this.manualTimer = 0;
+    this.model = new THREE.Group();
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.25, 3, 6),
+      new THREE.MeshLambertMaterial({ color: 0x333333 }));
+    post.position.y = 1.5;
+    this.model.add(post);
+    const holder = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 0.5), new THREE.MeshLambertMaterial({color:0x333}));
+    holder.position.set(0, 3.2, 0);
+    this.model.add(holder);
+    const light = new THREE.Group();
+    for (const c of [0x200, 0x220, 0x220]) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshBasicMaterial({color:0x000000}));
+      m.position.y = 0.15*(1-c*0.42);
+      light.add(m);
+    }
+    this.light = light;
+    this.model.add(light);
+    this.updateAppearance();
+  }
+  updateAppearance() {
+    const colors = { red: 0x400, yellow: 0x540, green: 0x040 };
+    const [red, yellow, green] = this.light.children;
+    red.material.color.setHex(0x000); yellow.material.color.setHex(0x000); green.material.color.setHex(0x000);
+    if (this.aspect === 'red') red.material.color.setHex(colors.red);
+    if (this.aspect === 'yellow') yellow.material.color.setHex(colors.yellow);
+    if (this.aspect === 'green') green.material.color.setHex(colors.green);
+  }
+}
+
+class Switch {
+  constructor(id, block, side) {
+    this.id = id;
+    this.block = block;
+    this.side = side;         // 'left' | 'right'
+    this.position = 0;        // 0 = main, 1 = turnout
+    this.mesh = new THREE.Group();
+    const blade = new THREE.Mesh(
+      new THREE.BoxGeometry(0.35, 0.1, 4, 1, 1, 1),
+      new THREE.MeshLambertMaterial({ color: 0x888888 }));
+    blade.position.x = side === 'left' ? -0.4 : 0.4;
+    this.blade = blade;
+    this.mesh.add(blade);
+    this.reset();
+  }
+  reset() {
+    // default: main track, blade closed on the non-selected side
+    this.blade.visible = (this.position === 0);
+    this.blade.position.x = this.side === 'left' ? -0.4 : 0.4;
+  }
+  throw(target) {
+    this.position = target;
+    this.blade.visible = (target === 0);
+  }
+}
+
+class TrackSystem {
+  constructor(scene) {
+    this.scene = scene;
+    this.blocks = [];
+    this.blocksById = new Map();
+    this.signals = [];
+    this.switches = {};
+    this.railGroup = new THREE.Group();
+    this.sleepersGroup = new THREE.Group();
+    this.ballastGroup = new THREE.Group();
+    this.switchBladesGroup = new THREE.Group();
+    scene.add(this.railGroup);
+    scene.add(this.sleepersGroup);
+    scene.add(this.ballastGroup);
+    scene.add(this.switchBladesGroup);
+  }
+
+  addBlock(id, pts) {
+    const b = new Block(id, pts.map(v => new THREE.Vector3(...v)));
+    this.blocks.push(b);
+    this.blocksById.set(id, b);
+    return b;
+  }
+
+  addSignal(block, side) {
+    const s = new Signal(block, side);
+    block.signal = s;
+    this.signals.push(s);
+    const dir = side === 'entry' ? new THREE.Vector3(-1,0,0) : new THREE.Vector3(1,0,0);
+    s.model.position.copy(block.pointAt(side==='entry'?0:1));
+    s.model.position.y = 0;
+    s.model.lookAt(block.pointAt(side==='entry'?1:0));
+    this.scene.add(s.model);
+    return s;
+  }
+
+  addSwitch(id, block, side) {
+    const sw = new Switch(id, block, side);
+    this.switches[id] = sw;
+    const pts = block.curvePoints;
+    sw.mesh.position.copy(pts[0]);
+    sw.mesh.rotation.y = -Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+    this.switchBladesGroup.add(sw.mesh);
+  }
+
+  getBlockAt3D(v) {
+    for (const b of this.blocks) {
+      // rough distance check to curve
+      const p = b.pointAt(0.5);
+      if (v.distanceTo(p) < 4) return b;
+    }
+    return null;
+  }
+
+  getSignalAt3D(v) {
+    for (const s of this.signals) {
+      if (v.distanceTo(s.model.position) < 3) return s;
+    }
+    return null;
+  }
+
+  draw() {
+    // Rebuild rail geometry
+    this.railGroup.clear();
+    this.sleepersGroup.clear();
+    this.ballastGroup.clear();
+    const colorRail = 0x666666, colorSleeper = 0x5d4037;
+    const railGeo = new THREE.BufferGeometry();
+    const sleeperGeo = new THREE.BufferGeometry();
+    const ballGeo = new THREE.BufferGeometry();
+    const rr = [], ss = [], bb = [];
+    let nSleeper = 0;
+
+    for (const b of this.blocks) {
+      const pts = b.curvePoints;
+      // rail A and B
+      const rails = [
+        pts.map(p => p),
+        pts.map(p => { const n = new THREE.Vector3().crossVectors(p.clone(), new THREE.Vector3(0,1,0)); n.multiplyScalar(0.55); return p.clone().add(n); })
+      ];
+      // if diverging (switch), we have rail A straight and rail B curved. For simplicity draw both A and B for all blocks except switch blocks
+      const draw = b.isDiverging ? [rails[0]] : rails;
+      for (const r of draw) {
+        const v = new THREE.Vector3();
+        for (let i = 0; i < r.length; i++) {
+          v.copy(r[i]); rr.push(v.x, v.y, v.z);
+        }
+      }
+      // ballast (thicker tube-ish line)
+      let last = null;
+      for (const p of pts) {
+        if (last) {
+          const mid = new THREE.Vector3().addVectors(last, p).multiplyScalar(0.5);
+          bb.push(mid.x - 1.2, mid.y, mid.z - 1.2, mid.x + 1.2, mid.y, mid.z - 1.2,
+                  mid.x - 1.2, mid.y, mid.z + 1.2, mid.x + 1.2, mid.y, mid.z + 1.2);
+        }
+        last = p;
+      }
+      // sleepers
+      for (let i = 1; i < pts.length; i++) {
+        const p0 = pts[i-1], p1 = pts[i];
+        const n = new THREE.Vector3().subVectors(p1, p0).normalize();
+        const s = new THREE.Vector3().addVectors(p0, p1).multiplyScalar(0.5);
+        const w = new THREE.Vector3().crossVectors(n, new THREE.Vector3(0,1,0)).normalize().multiplyScalar(2.2);
+        ss.push(s.x - w.x, s.y, s.z - w.z, s.x + w.x, s.y, s.z + w.z);
+      }
+    }
+    railGeo.setAttribute('position', new THREE.Float32BufferAttribute(rr, 3));
+    sleeperGeo.setAttribute('position', new THREE.Float32BufferAttribute(ss, 3));
+    ballGeo.setAttribute('position', new THREE.Float32BufferAttribute(bb, 3));
+
+    this.railGroup.add(new THREE.LineSegments(railGeo, new THREE.LineBasicMaterial({ color: colorRail, linewidth: 2 })));
+    this.sleepersGroup.add(new THREE.LineSegments(sleeperGeo, new THREE.LineBasicMaterial({ color: colorSleeper, linewidth: 1 })));
+    this.ballastGroup.add(new THREE.LineSegments(ballGeo, new THREE.LineBasicMaterial({ color: 0x3b2a20 })));
+
+    // switch blades
+    for (const k in this.switches) {
+      this.switchBladesGroup.remove(this.switches[k].mesh);
+      this.switches[k].reset();
+      this.switchBladesGroup.add(this.switches[k].mesh);
+    }
+  }
+}
+
+// ========================= TRAINS =========================
+class Train {
+  constructor(id, name, color, route, track) {
+    this.id = id;
+    this.name = name;
+    this.color = color;
+    this.track = track;
+    this.route = route;           // sequence of block ids
+    this.mesh = new THREE.Group();
+    this.currentBlockId = route[0];
+    this.currentBlock = track.blocksById.get(this.currentBlockId);
+    this.blockPos = 0;
+    this.speed = 0;
+    this.state = 'idle';
+    this.stateTimer = 0;
+    this.targetSpeed = 0;
+    this.lastBlockChange = 0;
+    this.signalling = {
+      nextSignal: null, aspect: 'red', trainSpeedAllowed: 1
+    };
+    this.buildMesh();
+    this.updateTransform();
+    track.scene.add(this.mesh);
+  }
+
+  buildMesh() {
+    const mat = m => new THREE.MeshStandardMaterial({ ...m, roughness: 0.6 });
+    if (this.id === 1) { // Steam
+      const ch = 0xb73b2b, c = 0x222;
+      const loco = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.4, 5.5), mat({color:ch}));
+      loco.position.set(0, 1.2, -0.5);
+      this.mesh.add(loco);
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(2.2, 2.0, 2.5), mat({color:c}));
+      cab.position.set(0, 1.4, 2.4);
+      this.mesh.add(cab);
+      const tender = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.2, 4.5), mat({color:0x5a3e18}));
+      tender.position.set(0, 1.2, -6.2);
+      this.mesh.add(tender);
+      for (let i = 0; i < 4; i++) {
+        const c = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 4.8), mat({color:0xd96c35}));
+        c.position.set(0, 1.0, -11 - i * 4.6);
+        this.mesh.add(c);
+      }
+      this.headlight = new THREE.PointLight(0xfff, 2, 12, 2);
+      this.headlight.position.set(0, 1.0, 3.2);
+      this.mesh.add(this.headlight);
+      this.smoke = new THREE.Group();
+      this.mesh.add(this.smoke);
+    } else if (this.id === 2) { // EMU
+      const w = 0xccd8e4;
+      for (let i = 0; i < 5; i++) {
+        const c = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 14), mat({color:w, emissive: i%2?0xffffff:0x000000, emissiveIntensity: 0.3}));
+        c.position.set(0, 1.3, -26 + i * 14.5);
+        this.mesh.add(c);
+      }
+      this.headlight = new THREE.PointLight(0xffeeaa, 3, 15, 2);
+      this.headlight.position.set(0, 1.2, 6.8);
+      this.mesh.add(this.headlight);
+    } else { // Diesel
+      const y = 0xddb700, d = 0x2244aa;
+      const engine = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.0, 9), mat({color:y}));
+      engine.position.set(0, 1.5, -0.5);
+      this.mesh.add(engine);
+      const side = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.6, 2.5), mat({color:d}));
+      side.position.set(0, 1.0, 3.2);
+      this.mesh.add(side);
+      for (let i = 0; i < 4; i++) {
+        const box = i%2 ? new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.0, 11), mat({color:0x444})) : new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.7, 13), mat({color:0x888}));
+        box.position.set(0, 1.0, -11 - i*11.5);
+        this.mesh.add(box);
+      }
+      this.headlight = new THREE.PointLight(0xffeeaa, 2, 12, 2);
+      this.headlight.position.set(0, 1.2, 4.5);
+      this.mesh.add(this.headlight);
+    }
+  }
+
+  updateTransform() {
+    if (!this.currentBlock) return;
+    const p = this.currentBlock.pointAt(this.blockPos);
+    // look ahead
+    let ahead = this.currentBlock.pointAt(Math.min(this.blockPos + 0.03, 1));
+    if (this.currentBlockId === this.route[this.route.length-1] && this.state !== 'dwell') {
+      ahead = this.currentBlock.pointAt(this.blockPos + 0.02); // slight extrapolation at terminus
+    }
+    this.mesh.position.copy(p);
+    const dir = new THREE.Vector3().subVectors(ahead, p).normalize();
+    this.mesh.lookAt(ahead);
+  }
+
+  update(dt, sim) {
+    const dtReal = dt * sim.multiplier;
+    this.stateTimer -= dtReal;
+
+    // smoke/steam
+    if (this.speed > 0.1 && this.state === 'moving') {
+      sim.particleSystem.addSmoke(this.mesh, this.smoke || this.mesh);
+    }
+
+    // Signal reading
+    this.readSignals(sim);
+
+    // State machine
+    if (this.state === 'dwell') {
+      if (this.stateTimer <= 0) {
+        this.state = 'moving';
+        this.targetSpeed = 0.05;
+      }
+    } else if (this.state === 'stopped') {
+      if (this.speed > 0) this.speed -= CFG.brake * dtReal;
+      this.blockPos += this.speed * sim.distanceScale;
+      this.stateTimer = 1.5; // pause at red
+      if (this.speed <= 0.01) { this.speed = 0; this.blockPos = Math.floor(this.blockPos * 100) / 100; }
+    } else {
+      // moving / dwelling at station
+      let allow = this.signalling.trainSpeedAllowed;
+      if (this.state === 'dwell') allow = 0;
+      // stop at terminus
+      if (this.currentBlockId === this.route[this.route.length-1] && this.blockPos > 0.95) {
+        this.state = 'dwell';
+        this.stateTimer = CFG.dwellTime;
+      }
+      if (this.speed > allow + 0.02) this.speed -= CFG.brake * dtReal;
+      else if (this.speed < this.signalling.trainSpeedAllowed && this.state !== 'dwell') this.speed += CFG.accel * dtReal;
+      else if (allow === 0) this.speed = 0;
+
+      if (this.speed > 0) {
+        this.state = 'moving';
+        this.blockPos += this.speed * sim.distanceScale;
+      }
+
+      if (this.blockPos >= 0.999 && this.currentBlockId !== this.route[this.route.length-1]) {
+        sim.advanceBlock(this);
+      }
+    }
+    this.updateTransform();
+  }
+
+  readSignals(sim) {
+    const b = this.currentBlock;
+    if (!b) return;
+    const sigs = [b.signal, ...b.route.map(id => sim.track.blocksById.get(id).signal).slice(0,2)];
+    let aspect = 'green', dist = 0;
+    for (const s of sigs) {
+      if (!s) continue;
+      if (s.manualHold) aspect = 'red';
+      else if (s.aspect === 'red' && aspect !== 'red') aspect = 'red';
+      else if (s.aspect === 'yellow' && aspect !== 'red') aspect = 'yellow';
+    }
+    this.signalling.nextSignal = b.signal;
+    this.signalling.aspect = aspect;
+    if (aspect === 'green') this.signalling.trainSpeedAllowed = 1;
+    else if (aspect === 'yellow') this.signalling.trainSpeedAllowed = 0.5;
+    else this.signalling.trainSpeedAllowed = 0;
+  }
+}
+
+// ========================= SIGNALLING SIMULATOR =========================
+class SignallingSystem {
+  constructor(track) {
+    this.track = track;
+    this.trains = [];
+    this.lastUpdate = 0;
+    this.multiplier = 1;
+    this.distanceScale = 1;
+  }
+
+  addTrain(t) { this.trains.push(t); }
+
+  reset() {
+    for (const b of this.track.blocks) b.clear();
+  }
+
+  // Reserve a route: path = array of block ids
+  reserve(train, path) {
+    // Check occupancy
+    for (const id of path) {
+      const b = this.track.blocksById.get(id);
+      if (b.occupant && b.occupant !== train) return false;
+      if (b.reservedBy && b.reservedBy !== train) return false;
+    }
+    // Lock switches
+    for (const id of path) {
+      const b = this.track.blocksById.get(id);
+      for (const sw of b.lockedSwitches) {
+        // determine target position based on geometry direction
+        const swPos = (id === path[path.indexOf(id)]) ? 0 : 1;
+        sw.throw(swPos);
+      }
+    }
+    for (const id of path) {
+      this.track.blocksById.get(id).reservedBy = train;
+      this.track.blocksById.get(id).route = path;
+    }
+    return true;
+  }
+
+  release(train) {
+    if (train.currentBlock) {
+      const b = this.track.blocksById.get(train.currentBlockId);
+      b.reservedBy = null;
+      b.route = [];
+      b.lockedSwitches = [];
+    }
+  }
+
+  advanceBlock(train) {
+    const idx = train.route.indexOf(train.currentBlockId);
+    const next = train.route[idx+1];
+    if (!next) {
+      // terminus: loop back
+      const last = train.route[train.route.length-1];
+      train.currentBlockId = last;
+      train.blockPos = 0;
+      train.release();
+      train.setRoute(train.route.slice());
+      return;
+    }
+    this.release(train);
+    train.currentBlockId = next;
+    train.blockPos = 0;
+    const b = this.track.blocksById.get(next);
+    b.occupant = train;
+    train.currentBlock = b;
+  }
+
+  releaseAll() {
+    for (const t of this.trains) t.release();
+    this.reset();
+  }
+
+  update(dt, sim) {
+    const dtReal = dt * this.multiplier;
+    for (const train of this.trains) {
+      const b = train.currentBlock;
+      if (!b) {
+        train.setRoute(train.route.slice());
+        continue;
+      }
+      if (train.state === 'dwell' || train.speed === 0) {
+        // check signals every second-ish
+        if (sim.frameCount % 20 === 0) train.readSignals(sim);
+      } else {
+        train.readSignals(sim);
+      }
+      train.update(dtReal, sim);
+    }
+  }
+}
+
+// ========================= SCENERY / PARTICLES =========================
+class ParticleSystem {
+  constructor(scene) {
+    this.scene = scene;
+    this.points = [];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute([], 3));
+    const mat = new THREE.PointsMaterial({ size: 0.4, vertexColors: true, transparent: true });
+    this.mesh = new THREE.Points(geo, mat);
+    this.scene.add(this.mesh);
+  }
+  addSmoke(parentGroup, positionOverride) {
+    if (this.points.length > 60) return;
+    const pos = positionOverride ? positionOverride.position : this.getRandomPoint();
+    const p = {
+      pos: new THREE.Vector3(pos.x + (Math.random()-0.5)*0.5, pos.y + Math.random(), pos.z + (Math.random()-0.5)*0.5),
+      vel: new THREE.Vector3((Math.random()-0.5)*0.02, 0.06 + Math.random()*0.04, (Math.random()-0.5)*0.02),
+      life: 1
+    };
+    this.points.push(p);
+  }
+  getRandomPoint() { return new THREE.Vector3(0,0,0); }
+  update(dt, sim) {
+    const positions = this.mesh.geometry.attributes.position.array;
+    const colors = this.mesh.geometry.attributes.color.array;
+    let k = 0;
+    for (const p of this.points) {
+      p.life -= dt * sim.multiplier * 0.5;
+      if (p.life <= 0) continue;
+      p.pos.addScaledVector(p.vel, dt * sim.multiplier);
+      positions[k++] = p.pos.x; positions[k++] = p.pos.y; positions[k++] = p.pos.z;
+      const t = p.life;
+      colors[k++] = 0.7; colors[k++] = 0.7; colors[k++] = 0.75;
+    }
+    this.mesh.geometry.attributes.position.needsUpdate = true;
+    this.mesh.geometry.setDrawRange(0, k);
+  }
+}
+
+// ========================= WORLD BUILDER =========================
+class World {
+  constructor() {
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.FogExp2(0xaaccff, 0.006);
+    this.r = 1000; this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    this.sun = new THREE.DirectionalLight(0xffffee, 1.2);
+    this.sun.position.set(50, 80, 50);
+    this.scene.add(this.sun);
+    this.clock = new THREE.Clock();
+    this.particleSystem = new ParticleSystem(this.scene);
+  }
+  updateLighting(time) {
+    const t = time * 0.05;
+    this.sun.position.set(Math.sin(t)*150, Math.abs(Math.cos(t))*120, Math.cos(t)*100);
+    const h = Math.sin(t);
+    this.scene.fog.color.setHSL(0.6, 0.5, 0.2 + 0.1*h);
+    this.scene.background = new THREE.Color().setHSL(0.6, 0.5, 0.2 + 0.1*h);
+    this.r.intensity = 0.5 + 0.5*h;
+  }
+}
+
+// ========================= APP =========================
+class App {
+  constructor() {
+    document.getElementById('loading').style.opacity = 0;
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+    this.init();
+  }
+
+  init() {
+    // --- World ---
+    this.world = new World();
+    this.track = new TrackSystem(this.world.scene);
+    this.sim = new SignallingSystem(this.track);
+    this.sim.distanceScale = 0.8;
+
+    // --- Geometry Points ---
+    const p0 = [0,0,0];      // Station
+    const p1 = [100,0,-40];  // Town
+    const p2 = [180,0,20];   // River
+    const p3 = [100,0,100];  // Hills
+    const p4 = [0,0,60];     // Yard
+    const curve = (a, b, ctrl, off=20) => {
+      // catmull-like smoothing: a + (b-a)*t + curve distortion
+      const pts = [a, b];
+      const mid = { x:(a[0]+b[0])/2 + ctrl[0], y:(a[1]+b[1])/2 + ctrl[1], z:(a[2]+b[2])/2 + ctrl[2] };
+      pts.unshift(a[0], a[1], a[2]); pts.push(b[0], b[1], b[2]); pts.unshift(mid.x, mid.y, mid.z); pts.push(mid.x, mid.y, mid.z);
+      // 3 control points for catmullrom: mid, a, b, mid
+      const pts3 = [
+        [mid.x, mid.y, mid.z],
+        [a[0], a[1], a[2]],
+        [b[0], b[1], b[2]],
+        [mid.x, mid.y, mid.z]
+      ];
+      return pts3;
+    };
+
+    // --- Create Blocks ---
+    // S0: Station -> Town (Double track A Main, B Loop)
+    const s0a = this.track.addBlock('S0A', curve(p0, p1, [5, -30, 0]));
+    const s0b = this.track.addBlock('S0B', curve(p0, p1, [-5, -30, 0]));
+    s0a.entryPoint = {x:0,y:0,z:0};
+    // --- S1: Town -> River ---
+    const s1 = this.track.addBlock('S1', curve(p1, p2, [-10, 20, 0]));
+    // --- S2: River -> Hills (Tunnel) ---
+    const s2 = this.track.addBlock('S2', curve(p2, p3, [0, 40, 0]));
+    // --- S3: Hills -> Yard ---
+    const s3 = this.track.addBlock('S3', curve(p3, p4, [-20, -30, 0]));
+    // --- S4: Yard -> Station ---
+    const s4 = this.track.addBlock('S4', curve(p4, p0, [20, 0, 0]));
+    // CCW variants are the same geometry traversed backwards. We reuse blocks and handle direction in signalling? 
+    // For simplicity: Single direction blocks. CW: S0A->S1->S2->S3->S4->S0A(loop back?) 
+    // Let's define CCW blocks as distinct IDs that reuse curves reversed.
+    // Actually, trains need to go back. We can have the train simply traverse the SAME blocks backwards.
+    // Block.pointAt(1-t). To support, we check: is the train's route defined?
+    // Simplest: define explicit blocks.
+    const s1c = this.track.addBlock('S1c', curve(p2, p1, [10, -20, 0]));
+    const s2c = this.track.addBlock('S2c', curve(p3, p2, [0, -40, 0]));
+    const s3c = this.track.addBlock('S3c', curve(p4, p3, [20, 30, 0]));
+    const s4c = this.track.addBlock('S4c', curve(p0, p4, [-20, 0, 0]));
+    const s0c = this.track.addBlock('S0c', curve(p1, p0, [5, 30, 0]));
+
+    // --- Signals ---
+    const allBlocks = [s0a,s0b,s1,s2,s3,s4,s1c,s2c,s3c,s4c,s0c];
+    for (const b of allBlocks) {
+      this.track.addSignal(b, 'entry');
+    }
+    // Signal at exit too?
+    for (const b of allBlocks) {
+      this.track.addSignal(b, 'exit');
+    }
+
+    // --- Switches ---
+    this.track.addSwitch('SW0A', s0a, 'left');  // Station main
+    this.track.addSwitch('SW0B', s0b, 'right'); // Station loop
+    this.track.addSwitch('SW1', s1, 'left');    // Town siding
+    this.track.addSwitch('SW2', s2, 'right');   // River siding
+    this.track.addSwitch('SW3', s3, 'left');    // Yard entry
+    this.track.addSwitch('SW4', s4, 'right');   // Yard return
+
+    // --- Scenery ---
+    this.scenery = {
+      houses: [], trees: [], cars: [], roads: []
+    };
+    this.buildTerrain();
+    this.buildStation(p0);
+    this.buildTown(p1);
+    this.buildRiver(p2);
+    this.buildHills(p3);
+    this.buildYard(p4);
+    this.buildTrees();
+
+    // --- Track Draw ---
+    this.track.draw();
+
+    // --- Trains ---
+    this.trains = [];
+    const t1 = new Train(1, 'Steam', 0xb73b2b, ['S0A','S1','S2','S3','S4'], this.track);
+    const t2 = new Train(2, 'EMU', 0xccd8e4, ['S0B','S0c','S4c','S3c','S2c','S1c','S0B'], this.track);
+    const t3 = new Train(3, 'Diesel', 0xddb700, ['S0A','S1','S2','S3'], this.track);
+    this.trains.push(t1, t2, t3);
+    for (const t of this.trains) this.sim.addTrain(t);
+
+    // --- Rendering / UI ---
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(this.renderer.domElement);
+    this.controls = new OrbitControls(this.renderer.domElement, this.world.scene);
+    this.controls.autoRotate = true;
+    this.controls.autoRotateSpeed = 0.5;
+    this.controls.target.set(50, 0, 50);
+    this.camera = this.renderer.domElement;
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+
+    this.simulator = { frameCount: 0, distanceScale: this.sim.distanceScale, multiplier: 1 };
+    this.timeOfDay = 0;
+
+    this.setupUI();
+    this.setupDiag();
+
+    window.addEventListener('resize', () => this.onResize());
+    this.loop();
+  }
+
+  buildTerrain() {
+    const size = 600;
+    const geo = new THREE.PlaneGeometry(size, size, 60, 60);
+    geo.rotateX(-Math.PI/2);
+    const pos = geo.attributes.position.array;
+    const noise = new SimpleNoise(777);
+    for (let i = 0; i < pos.length; i += 3) {
+      const x = pos[i], z = pos[i+2];
+      let y = noise.fbm(x*0.008, z*0.008, 4) * 30 + noise.fbm(x*0.02, z*0.02, 2) * 8;
+      // flatten river / station
+      const dx = x - 90, dz = z + 40;
+      if (Math.abs(dx) < 60 && Math.abs(dz) < 80) y = 2;
+      pos[i+1] = y;
+    }
+    const mat = new THREE.MeshStandardMaterial({
+      vertexColors: false,
+      color: 0x4a7c44,
+      roughness: 0.9,
+      flatShading: true
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(-300, 0, -300);
+    this.world.scene.add(mesh);
+  }
+
+  buildStation(p0) {
+    const group = new THREE.Group();
+    group.position.set(p0[0], 0.1, p0[2]);
+    // platforms
+    const platGeo = new THREE.BoxGeometry(4, 0.3, 40);
+    const plat = new THREE.Mesh(platGeo, new THREE.MeshStandardMaterial({color:0x666}));
+    plat.position.set(0, 0.3, -10);
+    group.add(plat);
+    const plat2 = plat.clone();
+    plat2.position.set(0, 0.3, 10);
+    group.add(plat2);
+    // station building
+    const b = new THREE.Mesh(new THREE.BoxGeometry(16, 7, 14), new THREE.MeshStandardMaterial({color:0xe8dcc4}));
+    b.position.set(0, 3.5, 0);
+    group.add(b);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(14, 4, 4), new THREE.MeshStandardMaterial({color:0x6b3418}));
+    roof.position.set(0, 7.2, 0);
+    group.add(roof);
+    // platform canopy
+    const can = new THREE.Group();
+    for (let x of [-14, -6, 6, 14]) {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,7), new THREE.MeshStandardMaterial({color:0x333}));
+      c.position.set(x, 3.5, 12);
+      can.add(c);
+    }
+    can.add(new THREE.Mesh(new THREE.BoxGeometry(20, 0.3, 12), new THREE.MeshStandardMaterial({color:0x888})));
+    can.position.set(0, 3.5, -16);
+    group.add(can);
+    this.world.scene.add(group);
+  }
+
+  buildTown(p) {
+    const group = new THREE.Group();
+    group.position.set(p[0], 0.1, p[2]);
+    const houses = [
+      {x:-10, z:-5, w:8, h:6, d:8},
+      {x:14, z:-8, w:7, h:5, d:7},
+      {x:-18, z:8, w:9, h:7, d:9},
+    ];
+    for (const h of houses) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(h.w, h.h, h.d), new THREE.MeshStandardMaterial({color:Math.random()*0xffffff}));
+      b.position.set(h.x, h.h/2, h.z);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(h.w*0.7, 3, 4), new THREE.MeshStandardMaterial({color:0x5d2e16}));
+      roof.position.set(h.x, h.h+1.2, h.z);
+      group.add(b); group.add(roof);
+      // windows
+      const winGeo = new THREE.BoxGeometry(h.w+0.2, h.h, h.d+0.2);
+      const winMat = new THREE.MeshStandardMaterial({color:0x111111});
+      const win = new THREE.Mesh(winGeo, winMat);
+      win.position.copy(b.position);
+      group.add(win);
+    }
+    // Road crossing
+    const road = new THREE.Mesh(new THREE.BoxGeometry(6, 0.2, 100), new THREE.MeshStandardMaterial({color:0x333}));
+    road.position.set(0, 0.1, 0);
+    road.rotation.y = 0;
+    group.add(road);
+    this.world.scene.add(group);
+  }
+
+  buildRiver(p) {
+    const group = new THREE.Group();
+    group.position.set(p[0], 0.1, p[2]);
+    // river
+    const river = new THREE.Mesh(new THREE.BoxGeometry(80, 1, 60), new THREE.MeshStandardMaterial({color:0x3366aa, roughness:0.4}));
+    river.position.set(0, -0.5, 0);
+    group.add(river);
+    // bridge
+    const bridge = new THREE.Group();
+    for (let i = -1; i <= 1; i++) {
+      const p2 = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 40, 4), new THREE.MeshStandardMaterial({color:0x555}));
+      p2.position.set(i*30, 0.5, 0);
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(14, 0.5, 44), new THREE.MeshStandardMaterial({color:0x5d4037}));
+      deck.position.set(0, 1.5, 0);
+      const truss = new THREE.Mesh(new THREE.BoxGeometry(14, 0.2, 44), new THREE.MeshStandardMaterial({color:0x888}, { wireframe: true }));
+      truss.position.set(0, 1.8, 0);
+      bridge.add(p2, deck, truss);
+    }
+    bridge.position.set(0, 0.5, 0);
+    group.add(bridge);
+    this.world.scene.add(group);
+  }
+
+  buildHills(p) {
+    const group = new THREE.Group();
+    group.position.set(p[0], 0.1, p[2]);
+    // tunnel portal
+    const portal = new THREE.Mesh(new THREE.BoxGeometry(6, 5, 10), new THREE.MeshStandardMaterial({color:0x777}));
+    portal.position.set(0, 1, 0);
+    group.add(portal);
+    const arch = new THREE.Mesh(new THREE.CylinderGeometry(3,3,10,12,1,false,-Math.PI/2,Math.PI), new THREE.MeshStandardMaterial({color:0x555}));
+    arch.rotation.x = Math.PI/2;
+    arch.position.set(0, 3.5, 4.5);
+    group.add(arch);
+    this.world.scene.add(group);
+  }
+
+  buildYard(p) {
+    const group = new THREE.Group();
+    group.position.set(p[0], 0.1, p[2]);
+    const shed = new THREE.Mesh(new THREE.BoxGeometry(20, 8, 14), new THREE.MeshStandardMaterial({color:0x666}));
+    shed.position.set(0, 4, 0);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(18, 4, 4), new THREE.MeshStandardMaterial({color:0x333}));
+    roof.position.set(0, 8.2, 0);
+    group.add(shed, roof);
+    this.world.scene.add(group);
+  }
+
+  buildTrees() {
+    const noise = new SimpleNoise(333);
+    for (let i = 0; i < 250; i++) {
+      const x = (Math.random()-0.5)*700;
+      const z = (Math.random()-0.5)*700;
+      if (Math.abs(x) < 30 && Math.abs(z) < 60) continue;
+      const y = noise.fbm(x*0.008, z*0.008, 4) * 30 + noise.fbm(x*0.02, z*0.02, 2) * 8;
+      if (y < 3) continue;
+      const g = new THREE.Group();
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 3, 6), new THREE.MeshStandardMaterial({color:0x5d4037}));
+      trunk.position.y = 1.5;
+      g.add(trunk);
+      const leaves = new THREE.Mesh(new THREE.DodecahedronGeometry(2.5), new THREE.MeshStandardMaterial({color:0x2e5d2e}));
+      leaves.position.y = 4.5;
+      g.add(leaves);
+      g.position.set(x, y, z);
+      this.world.scene.add(g);
+    }
+  }
+
+  setupUI() {
+    const status = document.getElementById('status');
+    const updateStatus = () => {
+      let html = '<h1>Train Status</h1>';
+      for (const t of this.trains) {
+        const b = t.currentBlock;
+        const bId = b ? b.id : 'n/a';
+        const nxt = b ? (b.signal ? b.signal.manualHold ? 'RED' : (b.signal.aspect.toUpperCase()) : '?') : '-';
+        html += `<div class="train-row"><span class="dot" style="background: #${t.color.toString(16)}"></span>
+          <b>${t.name}</b> <span style="color:#888">[${bId}]</span> <span style="color:#9ab">${t.state} ${t.speed.toFixed(2)}</span>
+          <span style="margin-left:auto">Sig: <span class="sig ${nxt.toLowerCase()}"></span> ${nxt}</span></div>`;
+      }
+      status.innerHTML = html;
+    };
+    setInterval(updateStatus, 300);
+    updateStatus();
+
+    const btns = {
+      'btnCamFree': () => { this.controls.autoRotate = true; },
+      'btnCamP0': () => { this.controls.autoRotate = false; this.controls.target.set(0,0,0); this.camera.position.set(30,30,30); },
+      'btnCamP1': () => { this.controls.autoRotate = false; this.controls.target.set(100,0,-40); this.camera.position.set(150,40,0); },
+      'btnCamP2': () => { this.controls.autoRotate = false; this.controls.target.set(180,0,20); this.camera.position.set(240,60,80); },
+      'btnCamP3': () => { this.controls.autoRotate = false; this.controls.target.set(100,0,100); this.camera.position.set(0,80,180); },
+      'btnCamP4': () => { this.controls.autoRotate = false; this.controls.target.set(0,0,60); this.camera.position.set(40,40,-60); },
+      'btnCamOver': () => { this.controls.autoRotate = true; this.controls.target.set(50,0,50); },
+    };
+    for (const k in btns) {
+      document.getElementById(k).addEventListener('click', btns[k]);
+    }
+
+    let speed = 1;
+    const speedBtns = {
+      'btnCamFree': 'pause', 'btnCamP0': '1x', 'btnCamP1': '2x', 'btnCamP2': '4x',
+      'btnCamP3': 'play', 'btnCamP4': 'stop', 'btnCamOver': '1x'
+    };
+    // Add time controls
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'panel';
+    timeDiv.style.position = 'absolute'; bottom = '10px'; left = '10px';
+    timeDiv.style.bottom = '330px';
+    timeDiv.style.right = '320px';
+    timeDiv.innerHTML = `<button id="btnPause">Pause</button> <button id="btnPlay">Play</button> <label>Speed: <input type="range" id="btnSpeed" min="0" max="4" step="0.5" value="1"></label>`;
+    document.getElementById('ui').appendChild(timeDiv);
+    document.getElementById('btnPause').onclick = () => { this.sim.multiplier = 0; };
+    document.getElementById('btnPlay').onclick = () => { this.sim.multiplier = 1; };
+    document.getElementById('btnSpeed').oninput = (e) => { this.sim.multiplier = parseFloat(e.target.value); };
+    document.getElementById('btnSpeed').value = this.sim.multiplier;
+  }
+
+  setupDiag() {
+    this.diag = document.getElementById('diag');
+    this.ctx = this.diag.getContext('2d');
+    this.diag.width = 300; this.diag.height = 220;
+    const draw = () => {
+      const ctx = this.ctx;
+      ctx.fillStyle = '#0a0f15'; ctx.fillRect(0,0,300,220);
+      // nodes
+      const nodes = {
+        'S0A': {x:50, y:110}, 'S0B': {x:50, y:90},
+        'S1': {x:140, y:70},
+        'S2': {x:210, y:100},
+        'S3': {x:140, y:130},
+        'S4': {x:50, y:115},
+        'S1c': {x:130, y:160}, 'S2c': {x:210, y:130}, 'S3c': {x:130, y:100}, 'S4c': {x:50, y:100}, 'S0c': {x:50, y:80}
+      };
+      for (const b of this.track.blocks) {
+        const n = nodes[b.id]; if (!n) continue;
+        let color = '#223';
+        if (b.occupant) color = b.occupant.color;
+        else if (b.reservedBy) color = '#345';
+        ctx.fillStyle = color; ctx.fillRect(n.x-6, n.y-6, 12, 12);
+        // signal aspect
+        if (b.signal) {
+          const s = b.signal;
+          const sig = ctx.createRoundRect ? ctx.createRoundRect : null;
+          ctx.beginPath(); ctx.arc(n.x-14, n.y, 3, 0, Math.PI*2);
+          ctx.fillStyle = s.manualHold ? '#f00' : (s.aspect==='green'?'#0f0':s.aspect==='yellow'?'#fa0':'#f40');
+          ctx.fill();
+        }
+        // train markers
+        if (b.occupant) {
+          ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif';
+          ctx.fillText(b.occupant.name, n.x+4, n.y-8);
+        }
+      }
+      // connections
+      ctx.strokeStyle = '#446'; ctx.lineWidth = 2;
+      const lines = [
+        ['S0A','S1'], ['S0B','S1'], ['S1','S2'], ['S2','S3'], ['S3','S4'], ['S4','S0A'], ['S0B','S0c'], ['S0c','S4c'],
+        ['S4c','S3c'], ['S3c','S2c'], ['S2c','S1c'], ['S1c','S0B']
+      ];
+      for (const [a, c] of lines) {
+        const n = nodes[a], m = nodes[c];
+        if (n && m) { ctx.beginPath(); ctx.moveTo(n.x, n.y); ctx.lineTo(m.x, m.y); ctx.stroke(); }
+      }
+    };
+    setInterval(draw, 50);
+  }
+
+  updateCamera() {
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.world.scene.children, true);
+    if (intersects.length > 0) {
+      let obj = intersects[0].object;
+      while (obj.parent && obj.parent !== this.world.scene) obj = obj.parent;
+      if (obj === this.track.railGroup) {
+        // nothing
+      } else if (obj.userData.train) {
+        // follow train
+        this.controls.autoRotate = false;
+        this.controls.target.copy(obj.position);
+      } else {
+        const sig = this.track.getSignalAt3D(intersects[0].point);
+        if (sig) {
+          sig.manualHold = !sig.manualHold;
+        }
+      }
+    }
+  }
+
+  onResize() {
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  loop() {
+    requestAnimationFrame(() => this.loop());
+    const dt = this.world.clock.getDelta();
+    this.world.updateLighting(this.timeOfDay);
+    this.simulator.frameCount++;
+    this.sim.update(dt, this.simulator);
+    this.simulator.multiplier = this.sim.multiplier;
+    this.simulator.distanceScale = this.sim.distanceScale;
+    this.world.particleSystem.update(dt, this.simulator);
+    this.timeOfDay += dt * 0.1;
+    this.controls.update();
+    this.updateCamera();
+    this.renderer.render(this.world.scene, this.camera);
+  }
+}
+
+new App();
+</script>
+</body>
+</html>
