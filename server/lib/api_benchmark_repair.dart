@@ -130,9 +130,16 @@ extension BenchmarkRepairApi on Api {
           'Only HTML render errors can be repaired. Binary GLB files require a source repair.');
     }
     final scene = await aiBenchmarks.readScene(id);
-    if (scene == null || scene.bytes.length > 200000) {
-      throw _RepairRefusal('source_size',
-          'No HTML source, or the source is over the 200 kB repair limit.');
+    if (scene == null) {
+      throw _RepairRefusal(
+          'source_size', 'There is no HTML source for this test.');
+    }
+    if (scene.bytes.length > 200000) {
+      throw _RepairRefusal(
+          'source_size',
+          'The source is ${(scene.bytes.length / 1000).round()} kB, over the '
+              '200 kB limit for model repairs: it would not fit a model\'s '
+              'context along with the fix.');
     }
     final entry = matches.first;
     final syntax = await previewRenders.findSyntaxError(scene.bytes);
@@ -140,6 +147,7 @@ extension BenchmarkRepairApi on Api {
       diagnostic = 'Syntax error at line ${syntax.line}:${syntax.column}: '
           '${syntax.message}. The renderer reported: $diagnostic';
     }
+    diagnostic = explainRenderError(utf8.decode(scene.bytes), diagnostic);
     final job = BenchmarkRepairJob(id,
         name: entry['model'] as String? ?? id,
         kind: entry['kind'] as String? ?? '');
@@ -314,6 +322,7 @@ extension BenchmarkRepairApi on Api {
       // The cost limit covers the whole scene, not each call.
       var base = original;
       var error = diagnostic;
+      int? focus;
       final tried = <String>[];
       var spent = 0.0;
       var modelAttempts = 0;
@@ -348,7 +357,7 @@ extension BenchmarkRepairApi on Api {
               'renderError': error,
               if (attempt > 1) 'originalError': diagnostic,
               if (tried.isNotEmpty) 'previousAttempts': tried,
-              if (errorLineOf(error) case final line?) ...{
+              if (errorLineOf(error) ?? focus case final line?) ...{
                 'errorLine': line,
                 'errorLines': errorLinesOf(base, line, radius: 25),
               },
@@ -420,7 +429,9 @@ extension BenchmarkRepairApi on Api {
         try {
           candidate = applyBenchmarkRepair(base, acc.content);
         } on FormatException catch (e) {
-          problem = 'Your reply could not be applied: ${e.message}';
+          problem = 'Your reply could not be applied: ${e.message} Copy '
+              'before exactly from html, or use a startLine/endLine edit.';
+          focus = nearestLineOf(base, acc.content) ?? focus;
         }
         if (candidate != null) {
           final bytes = utf8.encode(candidate);
@@ -428,7 +439,8 @@ extension BenchmarkRepairApi on Api {
             problem = 'Syntax error at line ${broken.line}:${broken.column}: '
                 '${broken.message}.';
             base = candidate;
-            error = problem;
+            error = explainRenderError(candidate, problem);
+            focus = null;
           } else {
             job.detail = attempt == 1
                 ? 'Checking the repaired test in the banner renderer…'
@@ -441,7 +453,8 @@ extension BenchmarkRepairApi on Api {
             } else {
               problem = 'It did not render: $renderError';
               base = candidate;
-              error = renderError;
+              error = explainRenderError(candidate, renderError);
+              focus = null;
             }
           }
         }

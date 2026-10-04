@@ -385,6 +385,22 @@ async function shootKeyboard(page) {
 
 async function shootCruiseShip(page) {
   step(0.2, 'waiting for the ship');
+  // Only the hand-built ship (cruise_ship_gpt6_astra_ultra) has a debug API to
+  // pose the camera and clock. Every other ship is a model's own page, which
+  // never defines one, so it is shot like any other canvas scene: once it has
+  // drawn. Waiting for an API that can't exist failed all of them.
+  await waitForCanvas(page, 90000);
+  const seen = Date.now();
+  let hooked = false;
+  while (!hooked && Date.now() - seen < 20000) {
+    hooked = await page.evaluate(() => Boolean(window.cruiseDebug));
+    if (!hooked) await sleep(250);
+  }
+  if (!hooked) {
+    step(0.5, 'letting it draw');
+    await sleep(5000);
+    return;
+  }
   await page.waitForFunction(() => window.cruiseDebug?.ready === true || window.cruiseDebug?.error,
     { timeout: 90000, polling: 100 });
   await page.evaluate(() => {

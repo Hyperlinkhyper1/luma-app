@@ -98,10 +98,71 @@ const kRepairReasoningCharBudget = 40000;
   );
 }
 
+/// Where a name the error complains about is declared, which is what a
+/// "Cannot access 'X' before initialization" or "'X' has already been declared"
+/// fix turns on and what a model otherwise has to hunt a whole page for.
+String? declarationHint(String source, String error) {
+  final name = RegExp(r"Cannot access '(\w+)' before initialization")
+          .firstMatch(error)
+          ?.group(1) ??
+      RegExp(r"Identifier '(\w+)' has already been declared")
+          .firstMatch(error)
+          ?.group(1);
+  if (name == null) return null;
+  final id = RegExp.escape(name);
+  final declared = RegExp('\\b(?:const|let|var|class|function)\\s+$id\\b'
+      '|\\b(?:const|let|var)\\s*[{\\[][^=;]*\\b$id\\b');
+  final lines = source.split('\n');
+  final at = [
+    for (var i = 0; i < lines.length; i++)
+      if (declared.hasMatch(lines[i])) i + 1,
+  ];
+  if (at.isEmpty) return null;
+  final where = at.take(8).join(', ');
+  return error.contains('before initialization')
+      ? "'$name' is declared at line $where; the failing line runs before "
+          'that declaration does, so move the declaration earlier or the use later.'
+      : "'$name' is declared at lines $where; keep one and remove or rename the other.";
+}
+
+/// [error] with a hint appended when [source] can say more about it.
+String explainRenderError(String source, String error) {
+  final hint = declarationHint(source, error);
+  return hint == null ? error : '$error Hint: $hint';
+}
+
+/// The line of [source] that the first `before` in a reply points at, when
+/// the reply's text doesn't match exactly: its first non-trivial line, found
+/// again trimmed. Lets the next attempt be shown the right code to copy.
+int? nearestLineOf(String source, String reply) {
+  try {
+    var text = reply.trim();
+    if (text.startsWith('```')) {
+      text = text
+          .replaceFirst(RegExp(r'^```(?:json)?\s*'), '')
+          .replaceFirst(RegExp(r'\s*```$'), '');
+    }
+    final edits = (jsonDecode(text) as Map)['edits'];
+    final lines = source.split('\n');
+    for (final edit in edits as List) {
+      final before = (edit as Map)['before'];
+      if (before is! String) continue;
+      for (final candidate in before.split('\n').map((l) => l.trim())) {
+        if (candidate.length < 12) continue;
+        final i = lines.indexWhere((l) => l.contains(candidate));
+        if (i >= 0) return i + 1;
+      }
+    }
+  } catch (_) {
+    // A reply that isn't even JSON has no line to point at.
+  }
+  return null;
+}
+
 /// How many times a repair may try before giving up. Each attempt edits what
 /// the last left and is told what is still wrong; the cost limit covers all of
 /// them together.
-const kRepairMaxAttempts = 3;
+const kRepairMaxAttempts = 4;
 
 /// Reasoning effort a repair asks for when the settings don't pick one. A
 /// fix to a stack trace needs little thought, and unbounded thinking is what

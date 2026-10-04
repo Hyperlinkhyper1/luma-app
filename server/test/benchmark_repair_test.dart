@@ -90,6 +90,53 @@ void main() {
             })),
         throwsFormatException);
   });
+  test('errors about a declaration are told where the name is declared', () {
+    const page = 'const A = 1;\n'
+        'function run() {\n'
+        '  return G + A;\n'
+        '}\n'
+        'const G = 2;\n'
+        'const { X, Y } = obj;\n'
+        'let Y = 3;\n';
+    expect(
+        explainRenderError(
+            page, "Cannot access 'G' before initialization (at line 3:10)"),
+        allOf(
+            startsWith("Cannot access 'G' before initialization"),
+            contains("Hint: 'G' is declared at line 5;"),
+            contains('move the declaration earlier')));
+    expect(explainRenderError(page, "Identifier 'Y' has already been declared"),
+        contains("'Y' is declared at lines 6, 7;"));
+    expect(explainRenderError(page, 'ReferenceError: nope'),
+        'ReferenceError: nope');
+    expect(explainRenderError(page, "Cannot access 'Z' before initialization"),
+        "Cannot access 'Z' before initialization");
+  });
+
+  test('a reply whose text does not match is pointed at the nearest line', () {
+    const page =
+        'one\n  const material = new THREE.MeshStandardMaterial();\ntwo\n';
+    String reply(String before) => jsonEncode({
+          'edits': [
+            {'before': before, 'after': 'x'}
+          ]
+        });
+    expect(
+        nearestLineOf(
+            page,
+            reply(
+                'const  material = new THREE.MeshStandardMaterial({ color: 1 });')),
+        isNull);
+    expect(
+        nearestLineOf(
+            page,
+            reply(
+                '// setup\nconst material = new THREE.MeshStandardMaterial();')),
+        2);
+    expect(nearestLineOf(page, 'not json at all'), isNull);
+    expect(nearestLineOf(page, reply('tiny')), isNull);
+  });
+
   test('a missing import map for three is a known fix, and only that', () {
     const error =
         'Failed to resolve module specifier "three". Relative references must start with either "/", "./", or "../".';
@@ -610,6 +657,24 @@ void main() {
           utf8.decode(utf8.encode(original)).split('\n')[0].trimRight());
       expect(api.benchmarkRepairJobs['pagoda_demo']!.state, 'done');
     });
+    test('an oversized source says how big it is', () async {
+      await save();
+      await scenes.saveUpload(
+          kind: 'pagoda',
+          id: 'pagoda_demo',
+          model: 'Original model',
+          vendor: 'openai',
+          description: 'Original description',
+          bytes: utf8.encode(
+              '<html><body><canvas></canvas><script>${'a' * 250000}</script></body></html>'));
+      final result =
+          await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      expect(result['httpStatus'], 409);
+      expect(result['error'], 'source_size');
+      expect(result['message'], contains('250 kB'));
+      expect(result['message'], contains('200 kB'));
+      expect(calls, 0);
+    });
     test('a missing import map is added without asking the model', () async {
       await save();
       await saveModulePage();
@@ -636,7 +701,7 @@ void main() {
       renderer.validationError = 'initThree.js is not a function';
       await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
       await finished();
-      expect(calls, 3);
+      expect(calls, kRepairMaxAttempts);
       final user =
           jsonDecode((sent['messages'] as List).last['content'] as String)
               as Map;
@@ -727,9 +792,10 @@ void main() {
       await finished();
       final job = api.benchmarkRepairJobs['pagoda_demo']!;
       expect(job.state, 'failed');
-      expect(job.detail, contains('Gave up after 3 attempts'));
+      expect(
+          job.detail, contains('Gave up after $kRepairMaxAttempts attempts'));
       expect(renderer.validations, 0);
-      expect(calls, 3);
+      expect(calls, kRepairMaxAttempts);
       expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
           original);
       expect(renderer.rendered, isEmpty);
@@ -789,8 +855,8 @@ void main() {
       expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
           original);
       expect(renderer.rendered, isEmpty);
-      expect(calls, 3);
-      expect(usage.usageCalls('owner'), hasLength(3));
+      expect(calls, kRepairMaxAttempts);
+      expect(usage.usageCalls('owner'), hasLength(kRepairMaxAttempts));
     });
     test('provider failure is not retried and reported usage is retained',
         () async {
@@ -936,14 +1002,14 @@ void main() {
       });
 
       test(
-          'a scene that never renders gets three attempts, then the run moves on',
+          'a scene that never renders gets all its attempts, then the run moves on',
           () async {
         await save();
         await failScenes(3);
         renderer.validationError = 'Still cannot render';
         await request('POST', '/admin/benchmark-banners/repair-all');
         await allDone();
-        expect(calls, 12);
+        expect(calls, 4 * kRepairMaxAttempts);
         expect(api.benchmarkRepairJobs.values.map((j) => j.state).toSet(),
             {'failed'});
         expect(renderer.rendered, isEmpty);
