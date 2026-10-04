@@ -42,8 +42,11 @@
 <div id="toast"></div>
 <div id="modal"><div class="modal-card"><div class="modal-head"><div><div class="kicker">CONCEPTUAL ARCHITECTURAL PROFILE</div><h2>ARCHETYPE COMPARISON</h2></div><button id="closeModal">CLOSE ✕</button></div><div class="modal-body"><table class="matrix" id="matrix"></table><div class="note"><b>Interpretation:</b> These normalized indicators describe relative design emphasis, not measured benchmarks. GPU systems emphasize acceleration, power and airflow; storage systems emphasize drive density and backplane I/O; database systems prioritize CPU, memory bandwidth and low-latency fabric.</div></div></div></div>
 </div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -302,10 +305,10 @@ let healthTime=0;function updateHealth(){
  if(f){$('#status').className='bad';$('#status').textContent='FAULT INJECTED · '+f.type+' · Redundant systems remain available; operator intervention required.'}else{$('#status').className='';$('#status').textContent='NOMINAL · All monitored subsystems within operating range.'}
 }
 function injectFailure(){let type=$('#failureType').value;if(!type){toast('Choose a failure type first.');return}failure={type,age:0};if(mode==='slice'){updateFailureMaterials();buildOverlaysIfOn()}updateHealth();toast(type+' injected. Observe redundant response and telemetry.');}
-function updateFailureMaterials(){sliceGroup.traverse(o=>{if(o.userData.component){let c=o.userData.component,n=c.name;if(failure?.type==='FAN FAILURE'&&n.includes('FAN'))c.power='STOPPED / FAULT';if(failure?.type==='PSU FAILURE'&&n==='PSU 2')c.power='FAILED / OFFLINE — PSU 1 carries load';if(failure?.type==='DRIVE FAILURE'&&n==='DRIVE 04')c.status='FAILED — array DEGRADED; rebuild/capacity online';if(failure?.type==='GPU OVERHEAT'&&n.includes('#7'))c.temperature='96–101 °C — thermal throttling active';if(failure?.type==='NETWORK LINK FAILURE'&&(n.includes('NIC')||n==='PORT'))c.status='LINK DOWN — failover active';}})
+function updateFailureMaterials(){sliceGroup.traverse(o=>{if(o.userData.component){let c=o.userData.component,n=c.name;if(failure?.type==='FAN FAILURE'&&n.includes('FAN'))c.power='STOPPED / FAULT';if(failure?.type==='PSU FAILURE'&&n==='PSU 2')c.power='FAILED / OFFLINE — PSU 1 carries load';if(failure?.type==='DRIVE FAILURE'&&n==='DRIVE 04')c.status='FAILED — array DEGRADED; rebuild/capacity online';if(failure?.type==='GPU OVERHEAT'&&n.includes('#7'))c.temperature='96–101 °C — thermal throttling active';if(failure?.type==='NETWORK LINK FAILURE'&&(n.includes('NIC')||n==='PORT'))c.status='LINK DOWN — failover active';}})}
 function buildOverlaysIfOn(){if(airOn)overlays('air');else if(powerOn)overlays('power');else if(dataOn)overlays('data')}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(window.toastT);window.toastT=setTimeout(()=>$('#toast').classList.remove('show'),2800)}
-function reset(){failure=null;$('#failureType').value='';exploded=false;applyExplode();setExplodeButton();cutaway=false;sliceGroup.traverse(o=>{if(o.userData.zone===='base'){o.children.forEach(c=>{if(c.geometry?.attributes?.position?.count===24&&c.scale.y>.7)c.visible=true})}});$('#cutawayBtn').classList.remove('active');coverOpen=true;coverRemoved=false;coverTween={v:0,target:1};applyCover();clearOverlays();updateFailureMaterials();if(mode==='slice')setView('whole');else setRackView('three');toast('Simulation reset. Views, cover, paths and failure state restored.');}
+function reset(){failure=null;$('#failureType').value='';exploded=false;applyExplode();setExplodeButton();cutaway=false;sliceGroup.traverse(o=>{if(o.userData.zone==='base'){o.children.forEach(c=>{if(c.geometry?.attributes?.position?.count===24&&c.scale.y>.7)c.visible=true})}});$('#cutawayBtn').classList.remove('active');coverOpen=true;coverRemoved=false;coverTween={v:0,target:1};applyCover();clearOverlays();updateFailureMaterials();if(mode==='slice')setView('whole');else setRackView('three');toast('Simulation reset. Views, cover, paths and failure state restored.');}
 function selectComponent(c){
  c.archetype=c.archetype||servers[selectedIndex];let fields=[['Type',c.type],['Role',c.role],['Connection / Path',c.connection],['Socket / Location',c.socket],['Capacity / Fabric',c.capacity],['Approx. power',c.power],['Input / status',c.input||c.status],['Cooling',c.cooling],['Archetype',c.archetype.arch+' / '+c.archetype.h+'U']];$('#component').innerHTML=`<div class="component-name">${c.name}</div><div class="component-desc">${fields.filter(x=>x[1]).map(x=>`<div class="row"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('')}</div>`;
 }
