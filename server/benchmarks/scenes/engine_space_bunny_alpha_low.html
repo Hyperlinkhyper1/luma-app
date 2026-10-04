@@ -25,8 +25,11 @@
 </div>
 <div id="legend"><div><span class="sw" style="background:#9eb1bd"></span>CROSS-PLANE CRANK</div><div><span class="sw" style="background:#d0d9df"></span>PISTON / ROD</div><div><span class="sw" style="background:#ef5c25"></span>COMBUSTION</div></div></div>
 
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import * as THREE from 'three';
 import {OrbitControls} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0x090d12); scene.fog=new THREE.Fog(0x090d12,15,35);
@@ -70,7 +73,7 @@ const crank=new THREE.Group();engine.add(crank);
 for(const x of [-3.25,-1.98,-.66,.66,1.98,3.25])cylX(crank,mat.steel,x,.18,2.65);
 const crankPlanes=[-2.62,-1.31,0,1.31,2.62];
 const throwByPlane=[];
-for(let p=0;p<4;p++){let gp=new THREE.Group();gp.position.x=crankPlanes[p];crank.add(gp);let ids=[];for(let b=0;b<2;b++){let id=b*4+(p<2?p:3-p);let phase=cyclePhase[id]*Math.PI/180;let d=bankDirs[b],t=V(0,-d.z,d.y),v=d.clone().multiplyScalar(Math.cos(phase)).addScaledVector(t,Math.sin(phase));throwByPlane.push({id,gp,v});cylX(gp,mat.steel,0,.19,.42);let q=box(gp,mat.steel,v.x,v.y,v.z,.28,.72,.68);q.quaternion.setFromUnitVectors(X,v);let c=box(gp,mat.cut,v.clone().multiplyScalar(-1.8),.25,.28,.34,.78,.62)}}}
+for(let p=0;p<4;p++){let gp=new THREE.Group();gp.position.x=crankPlanes[p];crank.add(gp);let ids=[];for(let b=0;b<2;b++){let id=b*4+(p<2?p:3-p);let phase=cyclePhase[id]*Math.PI/180;let d=bankDirs[b],t=V(0,-d.z,d.y),v=d.clone().multiplyScalar(Math.cos(phase)).addScaledVector(t,Math.sin(phase));throwByPlane.push({id,gp,v});cylX(gp,mat.steel,0,.19,.42);let q=box(gp,mat.steel,v.x,v.y,v.z,.28,.72,.68);q.quaternion.setFromUnitVectors(X,v);let c=box(gp,mat.cut,v.clone().multiplyScalar(-1.8),.25,.28,.34,.78,.62)}}
 
 // Head bank systems
 for(let b=0;b<2;b++){
