@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timeline of the World — SVG Animation Benchmark</title>
+<style>
+  :root { --bar: #1a1a2a; --accent: #4cc9f0; --text: #ffffff; --ui-bg: rgba(10,10,20,0.8); }
+  * { box-sizing: border-box; user-select: none; }
+  body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: system-ui, -apple-system, sans-serif; color: var(--text); }
+  svg { display: block; width: 100vw; height: 100vh; }
+  #controls {
+    position: absolute; bottom: 20px; left: 20px; right: 20px; height: 140px;
+    background: var(--ui-bg); backdrop-filter: blur(8px); border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1); padding: 10px 15px; display: flex; flex-direction: column; gap: 6px;
+    z-index: 100; transition: transform 0.3s;
+  }
+  #controls.hidden { transform: translateY(160px); }
+  #timeline-track {
+    position: relative; height: 24px; background: rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer; overflow: hidden;
+  }
+  #scale-bars { display: flex; height: 4px; background: transparent; position: absolute; top: 2px; left: 0; right: 0; }
+  #scale-bar-main { height: 100%; background: #333; width: 100%; position: relative; }
+  #scale-bar-human { height: 100%; background: #333; position: absolute; right: 0; top: 0; }
+  #playhead {
+    position: absolute; top: -4px; width: 6px; height: 32px; background: var(--accent); border-radius: 3px; transform: translateX(-50%); pointer-events: none; z-index: 10;
+    box-shadow: 0 0 10px var(--accent); transition: left 0.05s linear;
+  }
+  #date-display { position: absolute; top: -26px; background: #000; padding: 2px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; pointer-events: none; left: 50%; transform: translateX(-50%); border: 1px solid var(--accent); }
+  #era-label { position: absolute; bottom: -22px; font-size: 10px; color: #aaa; width: 100%; text-align: center; pointer-events: none; }
+  .chapter-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.3); cursor: pointer; }
+  .chapter-tick:hover { background: var(--accent); }
+  .chapter-tick::after { content: attr(data-label); position: absolute; top: 100%; left: 50%; transform: translateX(-50%); font-size: 9px; white-space: nowrap; opacity: 0; transition: opacity 0.2s; color: #fff; pointer-events: none; }
+  .chapter-tick:hover::after { opacity: 1; }
+  
+  #hud { position: absolute; top: 20px; left: 20px; z-index: 90; max-width: 500px; pointer-events: none; }
+  #chapter-title { font-size: 28px; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.8); margin: 0 0 6px 0; opacity: 1; transition: opacity 0.5s; }
+  #chapter-caption { font-size: 14px; line-height: 1.4; color: #ddd; text-shadow: 0 1px 4px rgba(0,0,0,0.9); opacity: 0.9; transition: opacity 0.5s; }
+  
+  #button-row { display: flex; gap: 12px; align-items: center; }
+  button {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;
+    width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+  }
+  button:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  #speed { font-size: 13px; font-weight: bold; color: #fff; width: 50px; text-align: center; pointer-events: none; }
+  
+  #progress-bar-bg { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  #progress-bar-fill { height: 100%; background: var(--accent); width: 0%; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <h1 id="chapter-title">Loading...</h1>
+  <p id="chapter-caption"></p>
+</div>
+
+<svg id="stage" viewBox="0 0 1200 675" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- SKY GRADIENTS -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop id="sky-top" offset="0%"/>
+      <stop id="sky-bottom" offset="100%"/>
+    </linearGradient>
+    <linearGradient id="sunGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="40%" stop-color="#ffaa00"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
+    <!-- SMOG / ATMOSPHERE FILTER -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-smoke" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <!-- GROUND GRADIENT -->
+    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop id="ground-top" offset="0%" style="stop-color:#3a2e1a"/>
+      <stop id="ground-mid" offset="100%" style="stop-color:#1a1208"/>
+    </linearGradient>
+  </defs>
+
+  <!-- SPACE LAYER -->
+  <g id="layer-space" opacity="0.9">
+    <g id="stars"></g>
+    <circle id="moon-obj" cx="900" cy="120" r="40" fill="#999"/>
+    <circle id="sun-obj" cx="150" cy="150" r="60" fill="url(#sunGrad)"/>
+  </g>
+
+  <!-- SCENERY LAYER (Sky/Mountains/Water) -->
+  <g id="layer-scenery">
+    <rect id="sky-bg" x="0" y="0" width="1200" height="675" fill="url(#skyGrad)"/>
+    <g id="mountains">
+       <!-- Mountain range path is interpolated -->
+       <path id="mountain-path" fill="url(#groundGrad)"/>
+    </g>
+    <g id="ocean" opacity="0.9">
+      <path id="ocean-path" d="" fill="#004e7c"/>
+      <g id="waves" opacity="0.8">
+        <path id="wave-1" d="" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+        <path id="wave-2" d="" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- GROUND / PLATES LAYER -->
+  <g id="layer-ground" transform="translate(0, 0)">
+    <path id="ground-main" d="" fill="url(#groundGrad)"/>
+    <path id="crater" d="" fill="rgba(20,20,20,0.9)" stroke="rgba(255,0,0,0.3)" stroke-width="2"/>
+  </g>
+
+  <!-- LIFE & EVENTS LAYER -->
+  <g id="layer-life" transform="translate(0,0)">
+    <!-- Terrain features (trees, rocks) -->
+    <g id="vegetation"/>
+    <!-- Dinosaurs / People / Cities / Ships / Planes / Rocket -->
+    <g id="characters"/>
+  </g>
+  
+  <!-- EFFECTS LAYER -->
+  <g id="layer-effects" opacity="0.9">
+    <g id="asteroid-trail"/>
+    <g id="impact-fx" opacity="0">
+       <circle r="1" fill="#fff" filter="url(#glow)"/>
+    </g>
+    <g id="smoke"/>
+    <g id="snow"/>
+    <g id="city-lights"/>
+  </g>
+
+</svg>
+
+<div id="controls">
+  <div id="progress-bar-bg"><div id="progress-bar-fill"></div></div>
+  <div id="timeline-track">
+    <div id="scale-bars">
+      <div id="scale-bar-main"></div>
+      <div id="scale-bar-human"></div>
+    </div>
+    <div id="chapter-ticks"></div>
+    <div id="playhead"><div id="date-display"></div></div>
+  </div>
+  <div id="button-row">
+    <button id="btn-prev" title="Previous Chapter (Left Arrow)">&#9664;</button>
+    <button id="btn-play" title="Space to Play/Pause">▶</button>
+    <button id="btn-next" title="Next Chapter (Right Arrow)">&#9654;</button>
+    <button id="btn-restart" title="Restart">↻</button>
+    <span id="speed">1.0x</span>
+  </div>
+  <div id="era-label">4.54 billion years ago — Present Day</div>
+</div>
+
+<script>
+/**
+ * WORLD TIMELINE ENGINE
+ */
+
+// --- DATA: Chapters ---
+// dates are "years ago" (positive). 
+const C = {
+  BYA: 1e9, MYA: 1e6, YE: 1, BCE: 1,
+  ch: (yago, title, cap, era, color, objectsOn, objectsOff) => ({ yago, title, cap, era, color, objectsOn, objectsOff })
+};
+
+const CHAPTERS = [
+  C.ch(4.54e9, "Formation of Earth", "The solar system is a chaotic nursery of dust and gas. Gravity pulls rocky debris together, and a runaway heating process melts the young Earth into a global magma ocean.", "Hadean", "#8a1c1c", [], []),
+  C.ch(4.50e9, "The Moon-Forming Impact (Theia)", "About 4.5 billion years ago, a Mars-sized protoplanet named Theia slams into the proto-Earth. The debris is blasted into orbit and coalesces to form the Moon.", "Hadean", "#8a1c1c", [], []),
+  C.ch(4.45e9, "Cooling Crust & First Oceans", "Earth expands and cools. The magma ocean solidifies into a fragile, dark crust. Water vapor from volcanic outgassing condenses in the first super-heavy rains, forming the primeval oceans.", "Hadean", "#2a5a7a", [], []),
+  C.ch(3.7e9, "First Life", "In the warm, mineral-rich oceans, self-replicating molecules evolve into the first simple, single-celled organisms (prokaryotes).", "Archean", "#3a7d44", [], []),
+  C.ch(3.5e9, "Stromatolites & Microbial Mats", "Cyanobacteria form layered sedimentary structures called stromatolites in shallow seas. They begin the slow work of photosynthesis.", "Archean", "#3a7d44", [], []),
+  C.ch(2.4e9, "The Great Oxidation Event", "Oxygen produced by cyanobacteria floods the atmosphere, turning it blue and killing off much anaerobic life, but paving the way for complex cells.", "Proterozoic", "#5e9fd6", [], []),
+  C.ch(2.0e9, "First Eukaryotes", "Complex cells with nuclei evolve. Simple multicellular life begins to appear.", "Proterozoic", "#5e9fd6", [], []),
+  C.ch(720e6, "Snowball Earth", "The planet plunges into a deep freeze, with ice sheets covering the equator. Life survives in volcanic hotspots and thin ice.", "Proterozoic", "#ffffff", [], []),
+  C.ch(538e6, "The Cambrian Explosion", "In a relatively short burst, almost all major animal phyla appear in the fossil record: trilobites, early fish, and shelled predators.", "Paleozoic", "#00648a", [], []),
+  C.ch(480e6, "Life Moves to Land", "Hardy algae and plants colonize the rocks. The first land animals, simple arthropods, follow their trail of food.", "Paleozoic", "#3a7d44", [], []),
+  C.ch(400e6, "First Forests & Amphibians", "Giant ferns and horsetails create the first forests. Fish evolve legs and crawl onto land to become amphibians.", "Paleozoic", "#2d5a27", [], []),
+  C.ch(300e6, "Pangaea Assembles", "All continents collide to form the supercontinent Pangea, surrounded by the global ocean Panthalassa.", "Mesozoic", "#3a7d44", [], []),
+  C.ch(252e6, "The Permian-Triassic Extinction", "The 'Great Dying': volcanic eruptions wipe out 90% of species. Life barely hangs on.", "Mesozoic", "#5e2a00", [], []),
+  C.ch(230e6, "Age of Dinosaurs Begins", "Dinosaurs rise to dominate the land. The first mammals are tiny, shrew-like creatures hiding in the shadows.", "Mesozoic", "#4a7d4a", [], []),
+  C.ch(150e6, "Birds & Flowers", "Birds evolve from theropod dinosaurs. Flowering plants bloom, driving a co-evolutionary arms race with insects.", "Mesozoic", "#6b9d6b", [], []),
+  C.ch(66e6, "The Asteroid Impact", "A 10km asteroid strikes the Yucatan Peninsula. A global fireball, tsunamis, and 'impact winter' end the reign of the dinosaurs.", "Mesozoic", "#6a1b1b", [], []),
+  C.ch(65e6, "Rise of Mammals", "With the dinosaurs gone, mammals rapidly diversify, filling empty ecological niches.", "Cenozoic", "#4a9d6a", [], []),
+  C.ch(60e6, "Gigantothermy & Grasslands", "Mammals grow enormous and return to the sea. Grasses spread, leading to grazing animals.", "Cenozoic", "#6bbd8b", [], []),
+  C.ch(5e6, "First Hominids", "Early hominids in Africa begin to walk upright, freeing their hands to use tools.", "Cenozoic", "#a85a32", [], []),
+  C.ch(300e3, "Homo Sapiens", "Anatomically modern humans emerge in Africa. Fire is mastered, tools sharpen, and art begins.", "Cenozoic", "#c88a4a", [], []),
+  C.ch(12e3, "Last Glacial Maximum Ends", "The great ice sheets retreat, warming the planet. This warming allows the first settlements.", "Cenozoic", "#c8aacc", [], []),
+  C.ch(10e3, "The Agricultural Revolution", "Humans settle down, domesticating wheat and barley. Population explodes as food becomes reliable.", "Cenozoic", "#8b9d4a", [], []),
+  C.ch(5e3, "Early Civilizations: Mesopotamia & Egypt", "The first cities rise: Uruk and Memphis. Writing (cuneiform) and the wheel are invented.", "Bronze Age", "#b89d4a", [], []),
+  C.ch(2.6e3, "The Great Pyramid of Giza", "The Pharaoh Khufu commissions the Great Pyramid, a tomb of impossible precision for a god-king.", "Bronze Age", "#d9b24a", [], []),
+  C.ch(2.4e3, "Classical Antiquity", "Democracy is born in Athens, and the Roman Republic begins its rise across the Mediterranean.", "Classical", "#4a6b8b", [], []),
+  C.ch(2.2e3, "Han China & Pax Romana", "The Silk Road connects Rome and China. Technology and trade flourish across Eurasia.", "Classical", "#4a6b8b", [], []),
+  C.ch(500, "The Medieval World", "The Roman Empire collapses. Monasteries preserve knowledge while new empires rise in the Islamic world, China, and Europe.", "Medieval", "#5a5a5a", [], []),
+  C.ch(1450, "The Printing Press", "Gutenberg's movable type spreads knowledge faster than ever before. The world begins to shrink.", "Early Modern", "#8a6a4a", [], []),
+  C.ch(1492, "The Age of Exploration", "Columbus crosses the Atlantic. Global trade networks (and diseases) connect the Old and New Worlds.", "Early Modern", "#4a8a9a", [], []),
+  C.ch(1760, "The Industrial Revolution", "Steam engines power factories. Coal smoke blankets the cities as humanity masters fossil fuels.", "Industrial", "#5a4a3a", [], []),
+  C.ch(1903, "Powered Flight", "The Wright brothers lift off at Kitty Hawk, shrinking the globe to hours of travel.", "20th C", "#3a5a7a", [], []),
+  C.ch(1945, "The Atomic Age", "World War II ends with the first use of nuclear weapons, changing the nature of conflict forever.", "20th C", "#6a3a3a", [], []),
+  C.ch(1969, "Humans on the Moon", "Apollo 11 lands on the Moon. Neil Armstrong takes one small step for mankind.", "20th C", "#2a4a6a", [], []),
+  C.ch(1971, "The Digital Age", "ARPANET connects computers. The internet grows, connecting billions of minds instantly.", "Digital", "#2a8a6a", [], []),
+  C.ch(0, "Today", "We stand on the edge of the unknown, holding the power to heal the planet or harm it, looking back 4.5 billion years.", "Anthropocene", "#2a6a4a", [], [])
+];
+
+// --- ART DATA: Paths & Sprites ---
+// Path coordinates are for 1200x675 viewBox
+// groundMain: Interpolated shape of the landmass horizon
+const PATHS = {
+  pangaean: "M0,675 L0,480 Q150,400 300,460 T600,430 T950,490 Q1100,520 1200,460 L1200,675 Z",
+  modern:   "M0,675 L0,450 Q100,480 200,420 T400,450 T700,400 T1000,460 Q1150,500 1200,440 L1200,675 Z",
+  // Mountains (behind ground)
+  mtn_pangaean: "M0,350 Q150,200 300,300 T600,220 T900,320 Q1100,380 1200,300 L1200,675 Z",
+  mtn_modern:  "M0,300 Q100,150 250,250 T500,180 T800,280 Q1000,340 1200,260 L1200,675 Z",
+  // Ocean wave lines
+  waves: [
+    "M0,675 Q300,650 600,675 T1200,660",
+    "M0,675 Q200,640 500,675 T1100,640"
+  ]
+};
+
+// --- UTILS ---
+const lerp = (a,b,t) => a + (b-a)*t;
+const mapScale = (yago) => {
+  // Returns a position 0..1 representing the date
+  // Compress deep time, expand recent time
+  const total = 4.54e9;
+  if (yago > 1e7) {
+    // Logarithmic compression for > 10 million years ago
+    const maxLog = Math.log10(total);
+    const minLog = Math.log10(1e7);
+    const valLog = Math.log10(yago);
+    return ((maxLog - valLog) / (maxLog - minLog)) * 0.92;
+  } else {
+    // Linear expansion for the last 10 million years
+    return 0.92 + ((1e7 - yago) / 1e7) * 0.08;
+  }
+};
+
+const unmapScale = (x) => {
+  if (x < 0.92) {
+    const maxLog = Math.log10(4.54e9);
+    const minLog = Math.log10(1e7);
+    const valLog = maxLog - (x / 0.92) * (maxLog - minLog);
+    return Math.pow(10, valLog);
+  } else {
+    return 1e7 * (1 - (x - 0.92) / 0.08);
+  }
+};
+
+const fmtDate = (yago) => {
+  if (yago === 0) return "Present Day";
+  if (yago >= 1e9) return (yago / 1e9).toFixed(2) + " billion years ago";
+  if (yago >= 1e6) return (yago / 1e6).toFixed(1) + " million years ago";
+  if (yago >= 1e3) return Math.round(yago) + " years ago";
+  // BCE logic: years ago > 1 is BCE
+  if (yago > 1) return Math.round(yago-1) + " BCE";
+  return Math.round(yago) + " CE";
+};
+
+// Path Data Interpolation (string interpolation for SVG d attribute)
+const parsePath = (d) => {
+  // Normalize: replace commas with spaces, split into tokens
+  return d.split(/[\s,]+/);
+};
+
+const formatPath = (tokens) => {
+  let str = "";
+  tokens.forEach((tok, i) => {
+    if (i === 0) { str += tok; return; }
+    if (!isNaN(parseFloat(tok))) {
+      str += (parseFloat(tok).toFixed(2));
+    } else {
+      str += tok; // keep commands like M, C, L
+    }
+    str += " ";
+  });
+  return str.trim();
+};
+
+const interpolatePath = (p1, p2) => {
+  const t1 = parsePath(p1);
+  const t2 = parsePath(p2);
+  return formatPath(t1.map((tok, i) => {
+    const a = parseFloat(tok);
+    const b = parseFloat(t2[i]);
+    return isNaN(a) || isNaN(b) ? tok : lerp(a, b, P.current);
+  }));
+};
+
+// --- DOM CACHE ---
+const svg = document.getElementById('stage');
+const layers = { space: document.getElementById('layer-space'), scenery: document.getElementById('layer-scenery'), ground: document.getElementById('layer-ground'), life: document.getElementById('layer-life'), effects: document.getElementById('layer-effects') };
+
+const dom = {
+  skyTop: document.getElementById('sky-top'), skyBot: document.getElementById('sky-bottom'),
+  groundTop: document.getElementById('ground-top'), groundMid: document.getElementById('ground-mid'),
+  mtn: document.getElementById('mountain-path'), ocean: document.getElementById('ocean'), oceanPath: document.getElementById('ocean-path'),
+  ground: document.getElementById('ground-main'), crater: document.getElementById('crater'),
+  moon: document.getElementById('moon-obj'), sun: document.getElementById('sun-obj'),
+  starField: document.getElementById('stars'),
+  wave1: document.getElementById('wave-1'), wave2: document.getElementById('wave-2'),
+  veg: document.getElementById('vegetation'), chars: document.getElementById('characters'),
+  smoke: document.getElementById('smoke'), snow: document.getElementById('snow'),
+  impact: document.getElementById('impact-fx'), impactCircle: document.getElementById('impact-circle'),
+  trail: document.getElementById('asteroid-trail'),
+  title: document.getElementById('chapter-title'),
+  caption: document.getElementById('chapter-caption')
+};
+
+// --- SPRITE GENERATORS (Inline SVG paths as functions returning HTML strings or appending to DOM) ---
+// We append elements once and toggle visibility/scaling to keep DOM light.
+// Instead of appending raw HTML strings every frame, we create elements once.
+
+const sprites = []; // { id, el, active, state }
+
+function createSprite(parentId, type, params) {
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  const svgNS = "http://www.w3.org/2000/svg";
+  p.setAttribute("id", params.id);
+  
+  if (type === 'dino') {
+    const d = document.createElementNS(svgNS, "path");
+    d.setAttribute("fill", "#3a5a3a");
+    d.setAttribute("d", "M10,40 L40,25 L55,30 L70,20 L85,25 L95,10 L100,15 L90,35 L110,40 L120,30 L130,45 L115,60 L100,55 L95,65 L70,60 L60,70 L30,65 L15,50 Z");
+    p.appendChild(d);
+  } else if (type === 'fish') {
+    const body = document.createElementNS(svgNS, "ellipse");
+    body.setAttribute("cx","0"); body.setAttribute("cy","0"); body.setAttribute("rx","10"); body.setAttribute("ry","4"); body.setAttribute("fill","#44aacc");
+    const tail = document.createElementNS(svgNS, "path");
+    tail.setAttribute("d","M-8,0 L-16,-6 L-16,6 Z"); tail.setAttribute("fill","#44aacc");
+    p.appendChild(tail); p.appendChild(body);
+  } else if (type === 'tree') {
+    const tr = document.createElementNS(svgNS, "line");
+    tr.setAttribute("x1","0"); tr.setAttribute("y1","0"); tr.setAttribute("x2","0"); tr.setAttribute("y2","15"); tr.setAttribute("stroke","#4a3a2a"); tr.setAttribute("stroke-width","3");
+    const leaves = document.createElementNS(svgNS, "ellipse");
+    leaves.setAttribute("cx","0"); leaves.setAttribute("cy","-8"); leaves.setAttribute("rx","12"); leaves.setAttribute("ry","18"); leaves.setAttribute("fill","#3a7d44");
+    p.appendChild(tr); p.appendChild(leaves);
+  } else if (type === 'city') {
+    const skyline = document.createElementNS(svgNS, "path");
+    skyline.setAttribute("fill", "#0d121e");
+    skyline.setAttribute("d", "M0,675 L0,480 L40,480 L40,520 L70,520 L70,460 L100,460 L100,530 L130,530 L130,450 L160,450 L160,500 L200,500 L200,675 Z");
+    p.appendChild(skyline);
+  } else if (type === 'citywin') {
+    const win = document.createElementNS(svgNS, "rect");
+    win.setAttribute("fill", "#ffcc00"); win.setAttribute("width","4"); win.setAttribute("height","6");
+    p.appendChild(win);
+  } else if (type === 'boat') {
+    const h = document.createElementNS(svgNS, "path");
+    h.setAttribute("fill","#8b5a2b"); h.setAttribute("d","M-20,0 L20,0 L0,-8 Z");
+    const m = document.createElementNS(svgNS, "path");
+    m.setAttribute("fill","#e0e0e0"); m.setAttribute("d","M0,0 L0,-25 L-10,-20 Z");
+    p.appendChild(h); p.appendChild(m);
+  } else if (type === 'plane') {
+    const b = document.createElementNS(svgNS, "path");
+    b.setAttribute("fill","#ccc"); b.setAttribute("d","M-10,0 L30,0 L20,10 L10,10 L10,20 L0,10 L-20,10 Z");
+    p.appendChild(b);
+  } else if (type === 'rocket') {
+    const body = document.createElementNS(svgNS, "path");
+    body.setAttribute("fill","white"); body.setAttribute("d","M-8,30 L-12,-10 L-8,-25 L-2,-25 L-2,-10 L8,-10 L8,30 Z");
+    const flame = document.createElementNS(svgNS, "path");
+    flame.setAttribute("fill","#ffaa00"); flame.setAttribute("d","M-4,30 L0,50 L4,30 Z");
+    p.appendChild(body); p.appendChild(flame);
+  }
+
+  layers[parentId].appendChild(p);
+  sprites.push({ id: params.id, el: p, active: false, t: 0, w: params.w || 50, h: params.h || 30, v: 0 });
+  return p;
+}
+
+// --- INITIAL SCENE SETUP ---
+// Draw Starfield
+let stars = "";
+for(let i=0; i<150; i++) {
+  stars += `<circle cx="${Math.random()*1200}" cy="${Math.random()*300}" r="${Math.random()*1.5}" fill="#fff" opacity="${Math.random()}" />`;
+}
+dom.starField.innerHTML = stars;
+
+// Create Ocean Path
+dom.oceanPath.setAttribute('d', interpolatePath(PATHS.pangaean, PATHS.modern));
+
+// Create Sprites (Hidden initially)
+createSprite('life', 'dino', {id:'t-rex', w:160, h:70});
+createSprite('life', 'dino', {id:'t-rex2', w:140, h:60});
+createSprite('life', 'fish', {id:'fish1', w:20, h:8});
+createSprite('life', 'fish', {id:'fish2', w:20, h:8});
+createSprite('life', 'tree', {id:'tree1'});
+createSprite('life', 'city', {id:'city1', w:240, h:240});
+createSprite('life', 'citywin', {id:'win1'});
+createSprite('life', 'citywin', {id:'win2'});
+createSprite('life', 'boat', {id:'viking', w:60, h:30});
+createSprite('life', 'plane', {id:'plane1', w:40, h:20});
+createSprite('life', 'rocket', {id:'rocket1', w:20, h:50});
+
+// --- CHRONOLOGIC CONTROLLER ---
+
+const UI = {
+  track: document.getElementById('timeline-track'),
+  ticks: document.getElementById('chapter-ticks'),
+  playhead: document.getElementById('playhead'),
+  date: document.getElementById('date-display'),
+  eraLabel: document.getElementById('era-label'),
+  controls: document.getElementById('controls'),
+  btnPlay: document.getElementById('btn-play'),
+  speed: document.getElementById('speed'),
+  progressFill: document.getElementById('progress-bar-fill')
+};
+
+let P = {
+  activeIdx: 0,    // Index in CHAPTERS array
+  progress: 0.0,   // 0..1 between active and next chapter
+  totalDuration: 0,
+  elapsed: 0,
+  playing: false,
+  speed: 1.0,
+  lastFrame: 0,
+  dragged: false
+};
+
+// Precompute timings
+let chapterStarts = [0];
+for(let i=1; i<CHAPTERS.length; i++) {
+  const dur = 14000 + Math.random()*4000; // 14-18s per chapter
+  chapterStarts.push(chapterStarts[i-1] + dur);
+}
+P.totalDuration = chapterStarts[CHAPTERS.length-1] + 14000;
+P.elapsed = -14000;
+
+// Build Timeline UI (Ticks)
+function buildTimeline() {
+  let html = "";
+  CHAPTERS.forEach((ch, i) => {
+    html += `<div class="chapter-tick" style="left: ${mapScale(ch.yago)*100}%" data-label="${fmtDate(ch.yago)}" data-idx="${i}"></div>`;
+  });
+  UI.ticks.innerHTML = html;
+}
+
+UI.ticks.addEventListener('click', (e) => {
+  const idx = parseInt(e.target.dataset.idx);
+  jumpToChapter(idx);
+});
+
+function jumpToChapter(idx) {
+  P.activeIdx = idx;
+  P.progress = 0;
+  P.elapsed = chapterStarts[idx];
+  P.lastFrame = performance.now();
+  updatePlayheadUI();
+  if(idx > 0) P.playing = true;
+}
+
+// --- RENDER LOOP ---
+
+let globalAlpha = 1;
+
+function render(now) {
+  if (P.playing && !P.dragged) {
+    const dt = now - P.lastFrame;
+    P.lastFrame = now;
+    P.elapsed += dt * P.speed;
+    
+    // Loop logic
+    if (P.elapsed >= P.totalDuration + 14000) {
+      P.elapsed = -14000;
+    }
+
+    // Determine current chapter based on elapsed time
+    for(let i=0; i<CHAPTERS.length; i++) {
+      if (P.elapsed < chapterStarts[i] + 15000) {
+        P.activeIdx = i;
+        P.progress = (P.elapsed - chapterStarts[i]) / 15000;
+        break;
+      }
+    }
+    updatePlayheadUI();
+  }
+
+  const ch = CHAPTERS[P.activeIdx];
+  const next = CHAPTERS[P.activeIdx+1];
+  const t = P.progress; // interpolation between ch and next
+
+  // --- 1. Update HUD Text ---
+  if (Math.abs(t - lastRenderT) > 0.02) {
+    dom.title.innerText = ch.title;
+    dom.title.style.opacity = 1;
+    dom.caption.innerText = ch.cap;
+    dom.caption.style.opacity = 1;
+  }
+
+  // --- 2. Sky / Atmosphere Transition ---
+  // Interpolate HSL colors based on chapter index
+  // Simple fixed palette interpolation for stability
+  const colors = {
+    skyTop: ["#3a1c1c", "#1a4a7a", "#1a5a3a", "#1a5a3a", "#3a8a6a", "#2a4a6a", "#ffffff", "#ffffff", "#2a4a6a", "#2a4a2a", "#2a4a2a", "#1a3a1a", "#2a5a2a", "#3a5a3a", "#4a7a4a", "#3a2a2a", "#2a4a2a", "#3a5a3a", "#4a6a4a", "#3a4a5a", "#3a6a7a", "#3a7a5a", "#4a7a6a", "#5a6a6a", "#5a7a7a", "#4a6a6a", "#3a5a6a", "#3a4a5a", "#3a3a4a", "#3a5a6a", "#4a7a8a", "#4a7a8a", "#4a7a6a", "#2a5a4a"],
+    skyBot: ["#7a2c1c", "#2a5a7a", "#2a6a4a", "#2a6a4a", "#3a9a7a", "#2a5a7a", "#ffffff", "#ffffff", "#2a5a7a", "#2a6a5a", "#2a6a5a", "#1a4a2a", "#2a6a3a", "#3a6a3a", "#4a8a4a", "#3a2c2c", "#2a5a3a", "#3a6a4a", "#4a7a4a", "#3a4a5a", "#3a6a7a", "#3a7a5a", "#4a8a6a", "#5a7a7a", "#6a8a8a", "#5a7a7a", "#3a5a6a", "#3a4a5a", "#3a3a4a", "#3a5a6a", "#4a7a8a", "#4a7a8a", "#4a7a6a", "#2a5a4a"]
+  };
+  const i = Math.floor(P.activeIdx);
+  const i1 = Math.min(i+1, colors.skyTop.length-1);
+  const r1 = h => parseInt(h.slice(1,3),16), g1 = h => parseInt(h.slice(3,5),16), b1 = h => parseInt(h.slice(5,7),16);
+  const cT = [
+    lerp(r1(colors.skyTop[i]), r1(colors.skyTop[i1]), t),
+    lerp(g1(colors.skyTop[i]), g1(colors.skyTop[i1]), t),
+    lerp(b1(colors.skyTop[i]), b1(colors.skyTop[i1]), t)
+  ];
+  const cB = [
+    lerp(r1(colors.skyBot[i]), r1(colors.skyBot[i1]), t),
+    lerp(g1(colors.skyBot[i]), g1(colors.skyBot[i1]), t),
+    lerp(b1(colors.skyBot[i]), b1(colors.skyBot[i1]), t)
+  ];
+  dom.skyTop.setAttribute("stop-color", `rgb(${cT[0]},${cT[1]},${cT[2]})`);
+  dom.skyBot.setAttribute("stop-color", `rgb(${cB[0]},${cB[1]},${cB[2]})`);
+
+  // --- 3. Ground Morphing ---
+  dom.mtn.setAttribute('d', interpolatePath(PATHS.mtn_pangaean, PATHS.mtn_modern));
+  dom.ground.setAttribute('d', interpolatePath(PATHS.pangaean, PATHS.modern));
+  dom.oceanPath.setAttribute('d', interpolatePath(PATHS.pangaean, PATHS.modern));
+  dom.wave1.setAttribute('d', interpolatePath(PATHS.waves[0], PATHS.waves[1]));
+  dom.wave2.setAttribute('d', interpolatePath(PATHS.waves[1], PATHS.waves[0]));
+
+  // Moon/Sun sizing based on era
+  dom.moon.setAttribute('r', lerp(40, 15, t));
+  dom.moon.setAttribute('cx', lerp(900, 300, t));
+
+  // --- 4. Era Specific Effects & Sprites ---
+  
+  // Helper to show/hide sprites
+  function toggleSprite(id, show, x, y, s, rot) {
+    const s = sprites.find(sp => sp.id === id);
+    if (!s) return;
+    if (show !== s.active) {
+      s.el.setAttribute('opacity', show ? 1 : 0);
+      s.active = show;
+    }
+    if (s.active) {
+      s.el.setAttribute('transform', `translate(${x},${y}) scale(${s.w/50},${s.h/30}) rotate(${rot||0})`);
+    }
+  }
+
+  // Snowball Earth
+  dom.snow.style.opacity = (P.activeIdx >= 7 && P.activeIdx <= 8) ? 1 : 0;
+  
+  // Impacts
+  dom.crater.setAttribute('opacity', (P.activeIdx >= 5 && P.activeIdx <= 6) ? 1 : 0);
+  // Impact Animation for ch 6 (66 Mya)
+  if (P.activeIdx === 6) {
+     dom.impact.setAttribute('opacity', 1);
+     // Expand shockwave
+     const s = dom.impact;
+     const sz = 50 + t*2000;
+     s.querySelector('circle').setAttribute('r', sz);
+  } else {
+     dom.impact.setAttribute('opacity', 0);
+  }
+
+  // --- Sprites Timeline ---
+  // Hadean: Asteroid
+  const trail = document.getElementById('asteroid-trail');
+  if (P.activeIdx === 1) { // Moon impact
+    trail.setAttribute('opacity', 1);
+    trail.innerHTML = `<path d="M100,50 Q300,200 900,150" fill="none" stroke="#ffaa00" stroke-width="4" stroke-linecap="round"/>`;
+  } else if (P.activeIdx === 6) { // Dinosaur impact
+     trail.innerHTML = `<path d="M1100,50 Q1150,250 600,450" fill="none" stroke="#ff4444" stroke-width="4" stroke-linecap="round"/>`;
+     trail.setAttribute('opacity', 1);
+  } else {
+     trail.setAttribute('opacity', 0);
+  }
+
+  // --- Object Lifecycle ---
+  // Trees: Land plants (480mya) -> Forests (400mya) -> Dying (300mya) -> Gone (Dino is actually trees fine, then industrial deforestation... simple: show 480-66, reappear 65+)
+  toggleSprite('tree1', P.activeIdx >= 9 && P.activeIdx <= 15, 200, 530, 1, 0);
+  toggleSprite('tree1', P.activeIdx >= 16, 200, 530, 1, 0);
+
+  // Dinosaurs: 230mya -> 66mya
+  toggleSprite('t-rex', P.activeIdx >= 13 && P.activeIdx <= 15, 400, 560, 1, 0);
+  toggleSprite('t-rex2', P.activeIdx === 14, 850, 590, 0.8, 0);
+  toggleSprite('t-rex', P.activeIdx >= 13, true, 0, 0); // keep active state ref
+
+  // Fish: Cambrian -> Modern
+  toggleSprite('fish1', P.activeIdx >= 8 && P.activeIdx <= 12, 300, 610, 1, 0);
+  toggleSprite('fish2', P.activeIdx >= 8 && P.activeIdx <= 12, 600, 620, 1, 0);
+
+  // Viking Ship: Exploration
+  toggleSprite('viking', P.activeIdx >= 29 && P.activeIdx <= 30, 600, 615, 1, 0);
+
+  // City: Classical/Industrial/Modern
+  toggleSprite('city1', P.activeIdx >= 23 && P.activeIdx <= 34, 110, 580, 1, 0);
+
+  // Windows (city lights): Modern / Industrial
+  toggleSprite('win1', P.activeIdx >= 32, 130, 505, 1, 0);
+  toggleSprite('win2', P.activeIdx >= 34, 100, 470, 1, 0);
+  if (P.activeIdx >= 34) {
+    // Twinkle lights
+    if (Math.random() > 0.9) {
+      document.getElementById('win1').setAttribute('fill', Math.random()>0.5?'#fff8dc':'#000');
+      document.getElementById('win2').setAttribute('fill', Math.random()>0.5?'#fff8dc':'#000');
+    }
+  }
+
+  // Airplane: 1903 -> Modern (fly across top)
+  toggleSprite('plane1', P.activeIdx >= 31 && P.activeIdx <= 34, 0, 120, 1, 0);
+  if (P.activeIdx >= 31 && P.activeIdx <= 34 && sprites.find(s=>s.id==='plane1').active) {
+     plane1Transform();
+  }
+
+  // Rocket: 1969
+  toggleSprite('rocket1', P.activeIdx === 33, 700, 550, 1, 90);
+  const r = sprites.find(s=>s.id==='rocket1');
+  if (r && r.active) {
+    r.el.setAttribute('transform', `translate(700,${550 - t*300}) scale(1,1) rotate(85)`);
+    const f = r.querySelector('path');
+    f.setAttribute('d', `M-4,30 L0,${50 + t*40} L4,30 Z`);
+  }
+
+  // Smoke: Industrial
+  const smoke = document.getElementById('smoke');
+  if (P.activeIdx >= 30 && P.activeIdx <= 32) {
+    smoke.setAttribute('opacity', 1);
+    // Draw some puffs
+    if (!smoke.hasChildNodes() || smoke.childNodes.length < 3) {
+      for(let k=0; k<5; k++) {
+        const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        p.setAttribute("cx", 300 + Math.random()*400); p.setAttribute("cy", 200 + Math.random()*100);
+        p.setAttribute("r", 10 + Math.random()*30); p.setAttribute("fill", "#3a3a3a"); p.setAttribute("filter", "url(#glow-smoke)");
+        smoke.appendChild(p);
+      }
+    }
+  } else {
+    smoke.setAttribute('opacity', 0);
+  }
+
+  lastRenderT = t;
+  requestAnimationFrame(render);
+}
+
+let lastRenderT = 0;
+requestAnimationFrame(render);
+
+function plane1Transform() {
+  const r = sprites.find(s=>s.id==='plane1');
+  if (r.active) {
+    const x = (Date.now() / 4) % 1200;
+    r.el.setAttribute('transform', `translate(${x},150) scale(1,1) rotate(-10)`);
+  }
+}
+
+// --- UI LOGIC ---
+
+function updatePlayheadUI() {
+  const total = P.totalDuration + 14000; // +14s loop tail
+  let pos;
+  if (P.elapsed < 0) pos = 0;
+  else pos = P.elapsed / total;
+  
+  const x = P.dragged ? (Math.min(1, Math.max(0, P.draggedX))) : pos; // if dragging
+  UI.playhead.style.left = (x*100) + "%";
+  const dateVal = unmapScale(x);
+  UI.date.innerText = fmtDate(dateVal);
+  UI.eraLabel.innerText = `Timeline: ${CHAPTERS[P.activeIdx].era} era — ${CHAPTERS[P.activeIdx].title}`;
+  UI.progressFill.style.width = (P.elapsed > 0 ? (P.elapsed/total)*100 : 0) + "%";
+}
+
+// Play/Pause Button
+UI.btnPlay.addEventListener('click', () => { P.playing = !P.playing; UI.btnPlay.innerText = P.playing ? "⏸" : "▶"; });
+
+// Speed
+UI.speed.addEventListener('click', () => {
+  const speeds = [0.5, 1.0, 2.0];
+  const next = speeds[(speeds.indexOf(P.speed)+1)%3];
+  P.speed = next;
+  UI.speed.innerText = next + "x";
+});
+
+// Restart
+document.getElementById('btn-restart').addEventListener('click', () => {
+  P.elapsed = -14000;
+  P.activeIdx = 0;
+  P.progress = 0;
+  P.playing = true;
+  updatePlayheadUI();
+});
+
+// Keyboard
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault(); P.playing = !P.playing; UI.btnPlay.innerText = P.playing?"⏸":"▶";
+  } else if (e.code === 'ArrowRight') {
+    jumpToChapter(Math.min(CHAPTERS.length-1, P.activeIdx+1)); P.playing = true;
+  } else if (e.code === 'ArrowLeft') {
+    jumpToChapter(Math.max(0, P.activeIdx-1)); P.playing = true;
+  }
+});
+
+// Dragging the Playhead
+let isDragging = false;
+UI.track.addEventListener('mousedown', (e) => { isDragging = true; P.dragged = true; P.draggedX = (e.offsetX / UI.track.clientWidth); });
+window.addEventListener('mouseup', () => { if(isDragging) { isDragging=false; P.dragged=null; P.playing=false; UI.btnPlay.innerText='▶'; updatePlayheadUI(); }});
+UI.track.addEventListener('mousemove', (e) => {
+  if (isDragging) {
+    P.draggedX = (e.offsetX / UI.track.clientWidth);
+    updatePlayheadUI();
+  }
+});
+// Touch support
+UI.track.addEventListener('touchstart', (e) => { isDragging = true; P.dragged = true; P.draggedX = (e.touches[0].clientX / window.innerWidth); });
+window.addEventListener('touchend', () => { if(isDragging){ isDragging=false; P.dragged=null; P.playing=false; UI.btnPlay.innerText='▶'; updatePlayheadUI(); }});
+UI.track.addEventListener('touchmove', (e) => {
+  if (isDragging) {
+    P.draggedX = (e.touches[0].clientX / window.innerWidth);
+    updatePlayheadUI();
+  }
+});
+
+buildTimeline();
+UI.playhead.style.left = "0%";
+
+// Initial auto-start after short delay for "app" context
+setTimeout(() => { P.playing = true; UI.btnPlay.innerText='⏸'; }, 1000);
+
+</script>
+</body>
+</html>
