@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MSC Virtuosa - Deck 7 Experience</title>
+<style>
+  body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #ui {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    background: rgba(0,0,0,0.7); color: white; z-index: 10;
+    transition: opacity 0.5s; pointer-events: none;
+  }
+  #ui h1 { font-size: 40px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; text-shadow: 0 0 10px rgba(255,255,255,0.8); }
+  #ui p { font-size: 18px; color: #ccc; }
+  #ui .key { border: 1px solid #fff; padding: 2px 8px; border-radius: 4px; margin: 0 2px; }
+  #debug {
+    position: absolute; bottom: 10px; right: 10px; color: rgba(255,255,255,0.5); font-size: 12px; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>MSC Virtuosa</h1>
+  <p>Deck 7 — Outside Promenade</p>
+  <p>Click anywhere to enter</p>
+  <p style="font-size: 14px; margin-top: 20px;">
+    <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> to Walk &nbsp;|&nbsp; 
+    <span class="key">SHIFT</span> Sprint &nbsp;|&nbsp; 
+    <span class="key">Mouse</span> Look &nbsp;|&nbsp; 
+    <span class="key">SPACE</span> to Look Down (Water)
+  </p>
+</div>
+
+<div id="debug">MSC Virtuosa &bull; Virtual Simulation &bull; All geometry generated</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/PointerLockControls.js';
+
+// ============================================================
+// CONFIG & GLOBALS
+// ============================================================
+const CONFIG = {
+  shipLength: 340,
+  shipBeam: 48,       // Width
+  shipDraft: 18,      // Submerged depth
+  shipHeight: 88,     // Keel to top
+  deck7Height: 22,    // Height of deck 7 from keel
+  dayDuration: 120,   // seconds for full cycle
+  fogDensity: 0.0025
+};
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x1b2a3c, CONFIG.fogDensity);
+
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+// Time
+let clock = new THREE.Clock();
+let time = 0;
+
+// ============================================================
+// LIGHTING & ATMOSPHERE
+// ============================================================
+const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x3b261c, 0.4);
+scene.add(hemiLight);
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+sunLight.position.set(50, 80, 100);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 500;
+sunLight.shadow.camera.left = -200;
+sunLight.shadow.camera.right = 200;
+sunLight.shadow.camera.top = 200;
+sunLight.shadow.camera.bottom = -200;
+scene.add(sunLight);
+
+// Ambient color controller
+const colors = {
+  day: new THREE.Color(0x1b2a3c), // deep blue dusk-ish
+  night: new THREE.Color(0x05070a),
+  sun: new THREE.Color(0xffffff),
+  sunNight: new THREE.Color(0x5555ff)
+};
+const waterColor = new THREE.Color(0x021526);
+
+// Stars
+const starGeo = new THREE.BufferGeometry();
+const starCount = 2000;
+const starPos = new Float32Array(starCount * 3);
+for(let i=0; i<starCount*3; i++) starPos[i] = (Math.random() - 0.5) * 800;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.7, transparent: true, opacity: 0});
+const stars = new THREE.Points(starGeo, starMat);
+scene.add(stars);
+
+// ============================================================
+// OCEAN SHADER
+// ============================================================
+const waterVertex = `
+  uniform float uTime;
+  varying vec2 vUv;
+  varying float vElev;
+  void main() {
+    vUv = uv;
+    vec3 p = position;
+    // Multi-layer swell
+    float swell = sin(p.x * 0.08 + uTime * 0.9) * 0.8 + cos(p.z * 0.12 + uTime * 0.7) * 0.8;
+    float chop  = sin(p.x * 0.3 - uTime * 1.5) * 0.15 + cos(p.z * 0.2 - uTime * 1.2) * 0.15;
+    p.y += swell + chop;
+    vElev = p.y;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }
+`;
+const waterFragment = `
+  uniform vec3 uColor;
+  varying float vElev;
+  void main() {
+    // Specular streak
+    float spec = pow(max(0.0, vElev), 4.0) * 2.5;
+    // Deep water base
+    vec3 col = uColor + spec * 0.5;
+    // Foam on peaks
+    col += step(vElev, 0.2) * vec3(0.2, 0.3, 0.4) * 0.6;
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+const waterGeo = new THREE.PlaneGeometry(2000, 2000, 200, 200);
+const waterMat = new THREE.ShaderMaterial({
+  vertexShader: waterVertex,
+  fragmentShader: waterFragment,
+  uniforms: {
+    uTime: { value: 0 },
+    uColor: { value: waterColor }
+  },
+  transparent: true,
+  wireframe: false
+});
+const ocean = new THREE.Mesh(waterGeo, waterMat);
+ocean.rotation.x = -Math.PI / 2;
+ocean.position.y = -0.5;
+scene.add(ocean);
+
+// Rain
+const rainGeo = new THREE.BufferGeometry();
+const rainCount = 15000;
+const rainPos = new Float32Array(rainCount * 3);
+for(let i=0; i<rainCount*3; i++) rainPos[i] = (Math.random() - 0.5) * 900;
+rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+const rainMat = new THREE.PointsMaterial({
+  color: 0xaaccff, size: 0.15, transparent: true, opacity: 0.6
+});
+const rain = new THREE.Points(rainGeo, rainMat);
+scene.add(rain);
+
+// ============================================================
+// THE SHIP MODEL
+// ============================================================
+const shipGroup = new THREE.Group();
+scene.add(shipGroup);
+
+// Materials
+const WHITE = 0xf2f2f2;
+const WHITE_ROUGH = { map: null, color: WHITE, roughness: 0.7, metalness: 0.0 };
+const GLASS = { color: 0x88ccff, roughness: 0.05, metalness: 0.8, transparent: true, opacity: 0.6 };
+const BLUE = 0x1a4b8c;
+const HULL_GLOW = new THREE.Color(0x112244); // Anti-fouling bottom
+
+// --- Hull Geometry (Organic) ---
+function buildHullMesh() {
+  const pointsPerLength = 80;
+  const pointsPerHeight = 25;
+  const widthArr = [];
+  const depthArr = [];
+
+  for (let i = 0; i <= pointsPerLength; i++) {
+    const t = i / pointsPerLength; // 0 = bow, 1 = stern
+    const x = (t - 0.5) * CONFIG.shipLength;
+
+    // Length profile: bulbous bow, long flat, tapered stern
+    let lenFactor = 1.0;
+    if (t < 0.35) {
+      // Bulbous bow - widen then narrow
+      const tb = t / 0.35;
+      lenFactor = Math.sin(tb * Math.PI * 0.5); 
+    } else if (t > 0.85) {
+      // Stern taper
+      const ts = (t - 0.85) / 0.15;
+      lenFactor = 1.0 - (ts * ts * 0.9);
+    }
+
+    // Height profile (side view): flat keel, rising mid, curved top
+    const yMax = CONFIG.shipDraft + CONFIG.shipHeight * Math.cos((t - 0.5) * Math.PI / 2);
+    
+    // Deck levels to attach things
+    widthArr.push({ x, lenFactor, yMax });
+  }
+
+  const shape = new THREE.Shape();
+  // We will do manual triangulation for full control
+  const geo = new THREE.BufferGeometry();
+  const vertices = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+
+  // --- 1. The Deck Plane (Walkable surface) ---
+  const deckH = CONFIG.deck7Height;
+  const walkZ = CONFIG.shipBeam / 2 + 2; // Slightly outside the hull
+  
+  // Generate walkable plane vertices
+  // We use a separate mesh for the deck so we can raycast/collide precisely,
+  // and position railings.
+  const walkGeo = new THREE.PlaneGeometry(CONFIG.shipLength + 40, CONFIG.shipBeam + 30);
+  const walkMesh = new THREE.Mesh(walkGeo, new THREE.MeshStandardMaterial({ 
+    color: 0xd1d5db, roughness: 0.9, metalness: 0.1 
+  }));
+  walkMesh.rotation.x = -Math.PI/2;
+  walkMesh.position.set(0, deckH, -CONFIG.shipBeam/2 - 2); // Wait, PlaneGeometry XY plane -> rotate x, position
+  // Plane is on XZ by default? No, XY. PlaneGeometry(width, height). Default normal +Y.
+  walkMesh.rotation.x = -Math.PI/2; // lies on XZ
+  walkMesh.position.set(0, deckH, -CONFIG.shipBeam/2 - 2); 
+  walkMesh.receiveShadow = true;
+  walkMesh.castShadow = true;
+  shipGroup.add(walkMesh);
+
+  // --- 2. Hull Side & Volume Geometry via Extrusion-ish logic ---
+  // Build the side surface (X-Z) then revolve/stack. 
+  // To keep it robust and organic, let's create the hull by joining quads based on width profile.
+  
+  // Profile of width at each height for a given X slice
+  // Width max is at beam, narrowing at bow/stern and keel.
+  
+  // Let's build the full surface with vertex colors or simple shading later.
+  // Simplified organic approach: 
+  // Main block = extruded polygon.
+  
+  // Actually, let's construct the main hull using a custom vertex grid loop:
+  const rows = 40; // height
+  const cols = 80; // length
+  const vh = new Float32Array((rows+1)*(cols+1)*3);
+  const vn = new Float32Array((rows+1)*(cols+1)*3);
+  // We build the LEFT side of the hull for collision/visual, but for a full hull we need all around.
+  // Full hull construction:
+  const hullPoints = [];
+  for(let r=0; r<=rows; r++) {
+    for(let c=0; c<=cols; c++) {
+      const y = (r/rows) * CONFIG.shipHeight; // 0 at top of hull to bottom
+      const x = (c/cols - 0.5) * CONFIG.shipLength;
+      const t = c/cols;
+      
+      // Width logic
+      let lw = 0; // left half width
+      if(t < 0.35) { lw = Math.sin((t/0.35)*Math.PI/2) * CONFIG.shipBeam/2; }
+      else if (t > 0.85) { let ts=(t-0.85)/0.15; lw = CONFIG.shipBeam/2 * (1 - ts*ts*0.95); }
+      else { lw = CONFIG.shipBeam/2; }
+      
+      // Vertical profile: Keel is rounded, beam is max, deck is narrower
+      let v = 1.0; // vertical factor
+      if(y < CONFIG.shipDraft) {
+        // keel bulb: narrow
+        v = y / CONFIG.shipDraft * 0.25;
+      } else {
+        // hull side: straight up mostly
+        v = 1.0 - ( (y-CONFIG.shipDraft)/CONFIG.shipHeight * 0.3 ); // slight outward bulge at mid
+      }
+      
+      hullPoints.push({x, y: -y, w: lw*v, h: -y});
+    }
+  }
+
+  // Triangulate the hull surface (side view + top view + bottom)
+  // We will actually just create 4 meshes for the hull to look right, simpler than 1 complex mesh.
+  
+  // --- A. Main Hull Side (Left) ---
+  const sideGeom = new THREE.BufferGeometry();
+  const sv = []; const sn = [];
+  for(let r=0; r<=rows; r++) {
+    for(let c=0; c<=cols; c++) {
+      const p = hullPoints[r*(cols+1)+c];
+      sv.push(p.x, p.y, -p.w); // Left side
+      sv.push(p.x, p.y, p.w);  // Right side
+      sn.push(0,1,0); sn.push(0,1,0);
+    }
+  }
+  sideGeom.setFromPoints(new THREE.Vector3().setFromArray(sv)); // hacky reset, cleaner below
+  sideGeom.setAttribute('position', new THREE.Float32BufferAttribute(sv,3));
+  sideGeom.setAttribute('normal', new THREE.Float32BufferAttribute(sn,3));
+  const sideMesh = new THREE.Mesh(sideGeom, new THREE.MeshStandardMaterial({...WHITE_ROUGH, color: WHITE}));
+  sideMesh.receiveShadow = true;
+  sideMesh.castShadow = true;
+  shipGroup.add(sideMesh);
+  
+  // --- B. Keel/Bottom (Round) ---
+  const bottomPoints = [];
+  for(let c=0; c<=cols; c++) {
+    for(let r=0; r<=rows; r++) {
+      const p = hullPoints[r*(cols+1)+c];
+      // interpolate between left (-w) and right (+w) around a curve
+      const t = r/rows; 
+      const angle = -Math.PI/2 * (1 - t); // -90 deg at bottom, 0 at top
+      const rad = p.w;
+      bottomPoints.push(
+        p.x, p.y + Math.cos(angle)*rad, Math.sin(angle)*rad,
+        p.x, p.y + Math.cos(angle)*rad, -Math.sin(angle)*rad
+      );
+    }
+  }
+  const bottomGeom = new THREE.BufferGeometry();
+  bottomGeom.setAttribute('position', new THREE.Float32BufferAttribute(bottomPoints,3));
+  const bottomMesh = new THREE.Mesh(bottomGeom, new THREE.MeshStandardMaterial({...WHITE_ROUGH, color: 0x8899bb})); // grey-ish bottom
+  bottomMesh.receiveShadow = true;
+  shipGroup.add(bottomMesh);
+
+  // --- C. Deck Line / Top Edge ---
+  // The hull stops at the keel+height. The deck 7 is the walkable plane we created above.
+  // But we need the SUPERSTRUCTURE above deck 7.
+}
+
+buildHullMesh();
+
+// --- SUPERSTRUCTURE ---
+// A series of stacked boxes, narrowing as they go up, with glass fronts.
+const deckCount = 13; // Decks 7 to ~20
+const startX = 0;
+const endX = -140; // Main block is mid-ship
+const bridgeStart = -120;
+
+// Deck 7 Walkable platform is already created in buildHullMesh (walkMesh)
+
+for (let d = 8; d <= deckCount + 5; d++) {
+  const height = (d - 7) * 3.8 + CONFIG.deck7Height;
+  // Superstructure gets narrower going up
+  let w = CONFIG.shipBeam * 0.95;
+  let len = CONFIG.shipLength * 0.55;
+  let frontZ = -w/2 - 0.5;
+  let backZ = w/2 + 0.5;
+  
+  if (d > deckCount) { w *= 0.9; len *= 0.8; } // top decks narrower
+
+  // Side walls
+  const boxGeo = new THREE.BoxGeometry(len, 3.8, w);
+  const mat = d === 20 ? GLASS : new THREE.MeshStandardMaterial({...WHITE_ROUGH, color: 0xffffff});
+  const box = new THREE.Mesh(boxGeo, mat);
+  box.position.set(-20, height, 0);
+  box.castShadow = true;
+  box.receiveShadow = true;
+  shipGroup.add(box);
+
+  // Detail: Windows on this deck (thin dark strips)
+  if (d < 18) {
+    const winGeo = new THREE.BoxGeometry(len + 1, 0.6, w + 1);
+    const win = new THREE.Mesh(winGeo, new THREE.MeshStandardMaterial({color: 0x112233, roughness: 0.2, metalness: 0.6}));
+    win.position.set(-20, height + 1.5, 0);
+    shipGroup.add(win);
+  }
+
+  // Lifeboats on Deck 12-14 area (mid section) and deck 7 area?
+  // Virtuosa lifeboats are mounted on the side of the mid-superstructure.
+  if ([9, 10, 11, 12, 13].includes(d)) {
+    createLifeboats(height, len);
+  }
+}
+
+// --- The Funnel ---
+const funnelShape = new THREE.Shape();
+funnelShape.moveTo(0,0);
+funnelShape.lineTo(6,0);
+funnelShape.lineTo(4, 45);
+funnelShape.lineTo(-4, 45);
+funnelShape.lineTo(-6,0);
+const extrudeSettings = { steps: 1, depth: 14, bevelEnabled: false };
+const funGeom = new THREE.ExtrudeGeometry(funnelShape, extrudeSettings);
+const funMesh = new THREE.Mesh(funGeom, new THREE.MeshStandardMaterial({color: WHITE, flatShading: true}));
+funMesh.rotation.y = Math.PI / 2;
+funMesh.position.set(-55, 55, 14); // mounted on roof
+shipGroup.add(funMesh);
+// MSC stripe (blue)
+const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2, 45), new THREE.MeshStandardMaterial({color: 0x000000, roughness: 0.5}));
+stripe.position.set(-55, 55, 20.1);
+stripe.rotation.y = Math.PI/2;
+shipGroup.add(stripe);
+
+// --- Lifeboats ---
+function createLifeboats(y, len) {
+  // A row of lifeboats along the starboard side at a z offset
+  const boatCount = 12;
+  const step = len / (boatCount + 1);
+  for(let i=0; i<boatCount; i++) {
+    const bx = -20 - (i+1)*step;
+    const bz = CONFIG.shipBeam/2 + 1.2; // slightly outside the superstructure box
+    const b = new THREE.Group();
+    
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(8.5, 2.5, 4),
+      new THREE.MeshStandardMaterial({color: 0xffff00, roughness: 0.6}) // Bright yellow hull
+    );
+    body.position.set(0, 1.2, 0);
+    
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 1, 4.2),
+      new THREE.MeshStandardMaterial({color: 0xffffff})
+    );
+    roof.position.set(0, 2.5, 0);
+
+    const cranes = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 3.5, 0.8),
+      new THREE.MeshStandardMaterial({color: 0x333333})
+    );
+    cranes.position.set(0, 4.2, 0);
+
+    b.add(body, roof, cranes);
+    // Mount it to a small arm sticking out
+    const arm = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 0.8, 2.5),
+      new THREE.MeshStandardMaterial({color: 0xaaaaaa})
+    );
+    arm.position.set(0, 1.5, 0);
+    const armBase = new THREE.Mesh(
+      new THREE.BoxGeometry(0.6, 2.5, 1),
+      new THREE.MeshStandardMaterial({color: 0xcccccc})
+    );
+    armBase.position.set(0, 0.5, 0.5);
+
+    b.add(arm);
+    b.add(armBase);
+
+    b.position.set(bx, y - 1, bz);
+    b.castShadow = true;
+    shipGroup.add(b);
+  }
+}
+
+// --- Railings around Deck 7 walkway ---
+const railGroup = new THREE.Group();
+const rH = 1.1;
+const rD = 0.06;
+// Forward railing
+const f1 = new THREE.Mesh(new THREE.CylinderGeometry(rD, rD, CONFIG.shipLength + 40, 8), new THREE.MeshStandardMaterial({color: 0xcccccc, metalness: 0.6}));
+f1.position.set(0, CONFIG.deck7Height + rH, -CONFIG.shipBeam/2 - 17);
+// Port railing
+const f2 = new THREE.Mesh(new THREE.CylinderGeometry(rD, rD, CONFIG.shipBeam + 30, 8), new THREE.MeshStandardMaterial({color: 0xcccccc, metalness: 0.6}));
+f2.position.set(0, CONFIG.deck7Height + rH, -CONFIG.shipBeam/2 - 2);
+// Stbd railing (next to lifeboats) - lower to simulate gap
+const f3 = new THREE.Mesh(new THREE.CylinderGeometry(rD, rD, CONFIG.shipBeam + 30, 8), new THREE.MeshStandardMaterial({color: 0xdddddd, metalness: 0.6}));
+f3.position.set(0, CONFIG.deck7Height + rH, CONFIG.shipBeam/2 + 2);
+railGroup.add(f1, f2, f3);
+shipGroup.add(railGroup);
+
+// --- Decor: Deck furniture/chairs on upper deck ---
+for(let k=0; k<20; k++) {
+  const c = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.5), new THREE.MeshStandardMaterial({color: 0xffffff}));
+  c.position.set(
+    -50 + Math.random() * 100,
+    (CONFIG.deckCount+2)*3.8,
+    -5 + Math.random() * 10 - 12
+  );
+  shipGroup.add(c);
+}
+
+// ============================================================
+// CONTROLS & MOVEMENT
+// ============================================================
+const controls = new PointerLockControls(camera, document.body);
+const instructions = document.getElementById('ui');
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false, sprint = false, lookDown = false;
+let velocity = new THREE.Vector3();
+let direction = new THREE.Vector3();
+let isLocked = false;
+
+document.addEventListener('click', () => {
+  if(!isLocked) controls.lock();
+});
+
+controls.addEventListener('lock', () => {
+  isLocked = true;
+  instructions.style.opacity = 0;
+});
+controls.addEventListener('unlock', () => {
+  isLocked = false;
+  instructions.style.opacity = 1;
+});
+
+document.addEventListener('keydown', (e) => {
+  switch(e.code) {
+    case 'KeyW': moveForward = true; break;
+    case 'KeyA': moveLeft = true; break;
+    case 'KeyS': moveBackward = true; break;
+    case 'KeyD': moveRight = true; break;
+    case 'ShiftLeft': sprint = true; break;
+    case 'Space': lookDown = true; break;
+  }
+});
+document.addEventListener('keyup', (e) => {
+  switch(e.code) {
+    case 'KeyW': moveForward = false; break;
+    case 'KeyA': moveLeft = false; break;
+    case 'KeyS': moveBackward = false; break;
+    case 'KeyD': moveRight = false; break;
+    case 'ShiftLeft': sprint = false; break;
+    case 'Space': lookDown = false; break;
+  }
+});
+
+// Deck collision plane (raycast target)
+const deckCollider = new THREE.Plane(new THREE.Vector3(0,1,0), -CONFIG.deck7Height);
+const raycaster = new THREE.Raycaster();
+raycaster.far = 10;
+
+// Initial camera position (megalophobic): On deck, looking up at the superstructure
+camera.position.set(0, CONFIG.deck7Height + 1.6, -CONFIG.shipBeam/2 - 2);
+camera.lookAt(0, 45, 0); // Look up
+
+// ============================================================
+// ANIMATION LOOP
+// ============================================================
+function animate() {
+  requestAnimationFrame(animate);
+  const delta = Math.min(clock.getDelta(), 0.1);
+  time += delta;
+
+  // 1. Ship Movement (gentle sway on waves)
+  shipGroup.position.y = Math.sin(time * 0.4) * 0.3;
+  shipGroup.rotation.z = Math.sin(time * 0.3) * 0.01;
+  shipGroup.rotation.x = Math.sin(time * 0.2) * 0.005;
+
+  // 2. Water Shader
+  waterMat.uniforms.uTime.value = time;
+
+  // 3. Rain Movement
+  const p = rain.geometry.attributes.position.array;
+  for(let i=1; i<p.length; i+=3) {
+    p[i] -= 2.5; // fall speed
+    if(p[i] < 0) p[i] = 60; // respawn high
+  }
+  rain.geometry.attributes.position.needsUpdate = true;
+  rain.material.opacity = 0.3 + Math.sin(time)*0.1; // stormy flicker
+
+  // 4. Day/Night Cycle
+  const cycle = (time / CONFIG.dayDuration) * Math.PI * 2;
+  const sunY = Math.sin(cycle);
+  const sunX = Math.cos(cycle);
+  sunLight.position.set(sunX * 300, sunY * 300, 100);
+  
+  // Sky color interpolation
+  let skyDark;
+  if(sunY > 0.1) {
+    skyDark = colors.day; // Day
+    sunLight.intensity = 1.3;
+    starMat.opacity = 0;
+    rain.material.opacity = 0; // No rain in sun
+  } else {
+    skyDark = colors.night; // Night
+    sunLight.intensity = 0.1;
+    starMat.opacity = 0.8;
+    rain.material.opacity = 0.7;
+  }
+  scene.fog.color.lerp(skyDark, 0.05);
+  hemiLight.color.lerp(skyDark.clone().multiplyScalar(0.6), 0.05);
+
+  // 5. Player Movement
+  if (isLocked) {
+    if (lookDown) {
+      camera.rotation.x += delta * 1.5; // Look straight down
+      if (camera.rotation.x > Math.PI/2) camera.rotation.x = Math.PI/2;
+    } else {
+      // Return camera to horizon slowly if holding space too long? 
+      // Actually just clamp.
+      camera.rotation.x = THREE.MathUtils.clamp(camera.rotation.x, -Math.PI/4, Math.PI/2);
+    }
+    
+    controls.getDirection(direction);
+    const speed = sprint ? 18 : 9;
+    
+    direction.y = 0; // don't fly, keep on deck
+    direction.normalize();
+
+    // Move forward/back
+    if (moveForward) camera.position.addScaledVector(direction, speed * delta);
+    if (moveBackward) camera.position.addScaledVector(direction, -speed * delta);
+    // Strafe
+    const strafe = new THREE.Vector3(direction.z, 0, -direction.x).normalize();
+    if (moveRight) camera.position.addScaledVector(strafe, speed * delta);
+    if (moveLeft) camera.position.addScaledVector(strafe, -speed * delta);
+
+    // Clamp movement bounds (stay on the walkway)
+    camera.position.x = THREE.MathUtils.clamp(camera.position.x, -175, 175);
+    camera.position.z = THREE.MathUtils.clamp(camera.position.z, -40, 30); // z range of the walkway
+
+    // Deck collision (feet level)
+    const feetPos = new THREE.Vector3(camera.position.x, camera.position.y - 1.6, camera.position.z);
+    raycaster.set(feetPos, new THREE.Vector3(0, -1, 0));
+    const intersects = raycaster.intersectObject(walkMesh);
+    if (intersects.length > 0) {
+      camera.position.y = CONFIG.deck7Height; // Keep camera at eye height
+    } else {
+      // If walked off the edge (shouldn't happen due to clamp, but for safety)
+      if (camera.position.y > -20) camera.position.y -= 10 * delta; // fall off
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
