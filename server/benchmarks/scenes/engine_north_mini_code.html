@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Procedural V8 Engine</title>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+        canvas { display: block; }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .control-row { margin: 5px 0; display: flex; align-items: center; }
+        label { min-width: 100px; display: inline-block; }
+        input[type=range] { width: 100px; }
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin: 2px;
+        }
+        button:hover { background: #555; }
+        .active { background: #666; }
+        #cylinder-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: none;
+        }
+        .highlight { background: rgba(255,255,0,0.3); }
+        #fps { position: absolute; bottom: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 3px; }
+        #rpm-display { position: absolute; bottom: 10px; right: 10px; color: white; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 3px; }
+        .preset-btn { background: #2a7; }
+        .preset-btn:hover { background: #3a8; }
+    </style>
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div id="controls">
+        <div style="font-weight: bold; margin-bottom: 10px;">Engine Controls</div>
+        
+        <div class="control-row">
+            <label>Engine State:</label>
+            <button id="pause-btn">Pause</button>
+            <button id="idle-btn" class="preset-btn">IDLE</button>
+            <button id="2000rpm-btn" class="preset-btn">2000 RPM</button>
+            <button id="4000rpm-btn" class="preset-btn">4000 RPM</button>
+            <button id="6000rpm-btn" class="preset-btn">6000 RPM</button>
+            <button id="8000rpm-btn" class="preset-btn">8000 RPM</button>
+            <button id="stop-btn">STOP</button>
+        </div>
+        
+        <div class="control-row">
+            <label>Speed:</label>
+            <button id="normal-speed">1×</button>
+            <button id="slow-speed">0.25×</button>
+            <button id="very-slow-speed">0.05×</button>
+        </div>
+        
+        <div class="control-row">
+            <label>Crank Angle:</label>
+            <input type="range" id="crank-slider" min="0" max="720" value="0" step="1">
+        </div>
+        
+        <div class="control-row">
+            <label>Manual Mode:</label>
+            <button id="manual-crank">ON</button>
+        </div>
+        
+        <div style="margin: 10px 0; border-top: 1px solid #444; padding-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Inspection</div>
+            <div class="control-row">
+                <label>Select Cylinder:</label>
+                <select id="cylinder-select">
+                    <option value="0">Cylinder 1</option>
+                    <option value="1">Cylinder 2</option>
+                    <option value="2">Cylinder 3</option>
+                    <option value="3">Cylinder 4</option>
+                    <option value="4">Cylinder 5</option>
+                    <option value="5">Cylinder 6</option>
+                    <option value="6">Cylinder 7</option>
+                    <option value="7">Cylinder 8</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <button id="highlight-btn">Highlight</button>
+                <button id="show-info-btn">Info</button>
+            </div>
+        </div>
+        
+        <div style="margin: 10px 0; border-top: 1px solid #444; padding-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">View Presets</div>
+            <div class="control-row">
+                <button onclick="resetCamera('hero')">Hero</button>
+                <button onclick="resetCamera('front')">Front</button>
+                <button onclick="resetCamera('side')">Side</button>
+                <button onclick="resetCamera('top')">Top</button>
+                <button onclick="resetCamera('internal')">Internal</button>
+            </div>
+        </div>
+        
+        <div style="margin: 10px 0; border-top: 1px solid #444; padding-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Visibility</div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-block" checked>
+                <label for="toggle-block">Block</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-pistons" checked>
+                <label for="toggle-pistons">Pistons</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-rods" checked>
+                <label for="toggle-rods">Rods</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-crankshaft" checked>
+                <label for="toggle-crankshaft">Crankshaft</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-valves" checked>
+                <label for="toggle-valves">Valve Train</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-intake" checked>
+                <label for="toggle-intake">Intake</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-exhaust" checked>
+                <label for="toggle-exhaust">Exhaust</label>
+            </div>
+            <div class="control-row">
+                <input type="checkbox" id="toggle-timing" checked>
+                <label for="toggle-timing">Timing</label>
+            </div>
+        </div>
+        
+        <div style="margin: 10px 0; border-top: 1px solid #444; padding-top: 10px;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Exploded View</div>
+            <div class="control-row">
+                <label>Separation:</label>
+                <input type="range" id="explode-slider" min="0" max="100" value="0" step="1">
+            </div>
+        </div>
+    </div>
+    
+    <div id="cylinder-info">
+        <div style="font-weight: bold; margin-bottom: 5px;">Cylinder <span id="info-cylinder">1</span></div>
+        <div id="info-details"></div>
+    </div>
+    
+    <div id="fps">FPS: 0</div>
+    <div id="rpm-display">RPM: 700</div>
+
+    <script type="module">
+        import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+        // Global variables
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        const controls = new OrbitControls(camera, renderer.domElement);
+        
+        // Engine state
+        const engineState = {
+            rpm: 700,
+            crankAngle: 0, // in degrees, 0-720 for full 4-stroke cycle
+            isRunning: true,
+            isPaused: false,
+            isManualMode: false,
+            speedMultiplier: 1.0,
+            currentTime: 0,
+            lastTime: 0,
+            cycleAngle: 0, // current angle within 0-720
+            prevCycleAngle: 0
+        };
+        
+        // Engine configuration
+        const engineConfig = {
+            cylinders: 8,
+            bankAngle: 90, // degrees between banks
+            firingOrder: [1, 8, 4, 3, 6, 5, 7, 2], // V8 firing order
+            stroke: 90, // mm
+            bore: 85, // mm
+            rodLength: 150, // mm
+            crankRadius: engineConfig.stroke / 2,
+            mainBearingDiameter: 50,
+            mainBearingLength: 30,
+            blockLength: 300,
+            blockHeight: 250,
+            blockWidth: 200,
+            headHeight: 50,
+            valveLift: 10,
+            valveDuration: 180, // degrees
+            combustionDuration: 10, // degrees
+            powerEventDuration: 30, // degrees
+        };
+        
+        // Materials factory
+        const materials = {
+            steel: new THREE.MeshPhysicalMaterial({ 
+                color: 0x888888, 
+                metalness: 0.8, 
+                roughness: 0.2,
+                envMapIntensity: 1.0
+            }),
+            aluminum: new THREE.MeshPhysicalMaterial({ 
+                color: 0xc0c0c0, 
+                metalness: 0.9, 
+                roughness: 0.1,
+                envMapIntensity: 1.5
+            }),
+            castIron: new THREE.MeshPhysicalMaterial({ 
+                color: 0x444444, 
+                metalness: 0.6, 
+                roughness: 0.3,
+                envMapIntensity: 0.5
+            }),
+            chrome: new THREE.MeshPhysicalMaterial({ 
+                color: 0xffffff, 
+                metalness: 1.0, 
+                roughness: 0.05,
+                envMapIntensity: 2.0
+            }),
+            bronze: new THREE.MeshPhysicalMaterial({ 
+                color: 0xffa500, 
+                metalness: 0.8, 
+                roughness: 0.2,
+                envMapIntensity: 1.0
+            }),
+            orange: new THREE.MeshPhysicalMaterial({ 
+                color: 0xff6600, 
+                metalness: 0.7, 
+                roughness: 0.3,
+                envMapIntensity: 1.0,
+                emissive: 0xff3300,
+                emissiveIntensity: 0.5
+            }),
+            yellow: new THREE.MeshPhysicalMaterial({ 
+                color: 0xffff00, 
+                metalness: 0.9, 
+                roughness: 0.1,
+                envMapIntensity: 2.0,
+                emissive: 0xffff00,
+                emissiveIntensity: 1.0
+            })
+        };
+        
+        // Global lighting setup
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        // Environment map for reflections
+        const cubeLoader = new THREE.CubeTextureLoader();
+        const envMap = cubeLoader.load([
+            'https://unpkg.com/three@0.160.0/examples/textures/environment/cube/SwedishRoyalCastle/px.jpg',
+            'https://unpkg.com/three@0.160.0/examples/textures/environment/cube/SwedishRoyalCastle/nx.jpg',
+            'https://unpkg.com/three@0.160.0/examples/textures/environment/cube/SwedishRoyalCastle/py.jpg',
+            'https://unpkg.com/three@0.160.0/examples/textures/environment/cube/SwedishRoyalCastle/ny.jpg',
+            'https://unpkg.com/three@0.160.0/examples/textures/environment/cube/SwedishRoyalCastle/pz.jpg',
+            'https://unpkg.com/three@0.160.0/examples/textures/environment/cube/SwedishRoyalCastle/nz.jpg'
+        ]);
+        
+        // Apply environment map to all materials
+        Object.values(materials).forEach(mat => {
+            if (mat) mat.envMap = envMap;
+        });
+        
+        // Floor
+        const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
+        const floorMaterial = new THREE.MeshPhysicalMaterial({ 
+            color: 0x333333, 
+            metalness: 0.9, 
+            roughness: 0.1,
+            envMap: envMap,
+            envMapIntensity: 0.5
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+        
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(1000, 50, 0x444444, 0x222222);
+        scene.add(gridHelper);
+        
+        // Camera preset positions
+        const cameraPresets = {
+            hero: { pos: new THREE.Vector3(0, 300, 500), lookAt: new THREE.Vector3(0, 0, 0) },
+            front: { pos: new THREE.Vector3(0, 100, 400), lookAt: new THREE.Vector3(0, 0, 0) },
+            side: { pos: new THREE.Vector3(400, 100, 0), lookAt: new THREE.Vector3(0, 0, 0) },
+            top: { pos: new THREE.Vector3(0, 400, 0), lookAt: new THREE.Vector3(0, 0, 0) },
+            internal: { pos: new THREE.Vector3(0, 100, 50), lookAt: new THREE.Vector3(0, 0, 0) }
+        };
+        
+        // Initialize camera
+        camera.position.copy(cameraPresets.hero.pos);
+        camera.lookAt(cameraPresets.hero.lookAt);
+        controls.target.copy(cameraPresets.hero.lookAt);
+        
+        // Set up renderer
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        
+        // Performance monitoring
+        let fps = 0, fpsInterval = 1000, fpsStart = 0, fpsNow = 0;
+        function startFPSMonitor() {
+            fpsStart = performance.now();
+            setTimeout(function loop() {
+                fpsNow = performance.now();
+                fps = Math.round(1000 / (fpsNow - fpsStart));
+                document.getElementById('fps').textContent = `FPS: ${fps}`;
+                setTimeout(loop, fpsInterval);
+            }, fpsInterval);
+        }
+        startFPSMonitor();
+        
+        // Update RPM display
+        function updateRPMDisplay() {
+            document.getElementById('rpm-display').textContent = `RPM: ${engineState.rpm}`;
+        }
+        
+        // Math utilities
+        const math = {
+            toRad: (deg) => deg * Math.PI / 180,
+            toDeg: (rad) => rad * 180 / Math.PI,
+            clamp: (value, min, max) => Math.max(min, Math.min(max, value)),
+            normalizeAngle: (angle, min, max) => {
+                while (angle < min) angle += (max - min);
+                while (angle >= max) angle -= (max - min);
+                return angle;
+            },
+            lerp: (a, b, t) => a + (b - a) * t,
+            distance: (a, b) => Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2))
+        };
+        
+        // Crankshaft system
+        class Crankshaft {
+            constructor() {
+                this.angle = 0; // master crank angle in degrees
+                this.geometry = null;
+                this.mesh = null;
+                this.mainShafts = [];
+                this.rodJournals = [];
+                this.counterweights = [];
+                this.webs = [];
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Main crankweb geometry (cross-plane V8: 90° throw)
+                const mainShaftGeometry = new THREE.CylinderGeometry(8, 8, 60, 32);
+                mainShaftGeometry.rotateZ(Math.PI / 2);
+                
+                const rodJournalGeometry = new THREE.CylinderGeometry(4, 4, 40, 32);
+                rodJournalGeometry.rotateZ(Math.PI / 2);
+                
+                const counterweightGeometry = new THREE.BoxGeometry(30, 20, 20);
+                counterweightGeometry.translate(0, -10, 0);
+                
+                // Create crank webs at 0°, 90°, 180°, 270° for cross-plane
+                const throwAngle = 90; // degrees for cross-plane
+                
+                for (let i = 0; i < 4; i++) {
+                    const webAngle = i * throwAngle;
+                    const webRotation = math.toRad(webAngle);
+                    
+                    // Web geometry (crank throw)
+                    const webGeometry = new THREE.BoxGeometry(60, 8, 8);
+                    webGeometry.translate(0, 30, 0);
+                    const webMesh = new THREE.Mesh(webGeometry, materials.steel);
+                    webMesh.rotation.z = webRotation;
+                    webMesh.position.set(
+                        Math.cos(webRotation) * 25,
+                        Math.sin(webRotation) * 25,
+                        0
+                    );
+                    this.webs.push(webMesh);
+                }
+                
+                // Create 8 rod journals (2 per crank throw)
+                const journals = [];
+                for (let bank = 0; bank < 2; bank++) {
+                    for (let cylinder = 0; cylinder < 4; cylinder++) {
+                        const journalAngle = bank * 180 + cylinder * 90;
+                        const journalRotation = math.toRad(journalAngle);
+                        
+                        const journalMesh = new THREE.Mesh(rodJournalGeometry.clone(), materials.chrome);
+                        journalMesh.rotation.z = journalRotation;
+                        journalMesh.position.set(
+                            Math.cos(journalRotation) * 45,
+                            Math.sin(journalRotation) * 45,
+                            0
+                        );
+                        this.rodJournals.push(journalMesh);
+                        journals.push(journalMesh);
+                    }
+                }
+                
+                // Create 4 main shafts (crank bearings)
+                for (let i = 0; i < 4; i++) {
+                    const shaftRotation = math.toRad(i * 90);
+                    const shaftMesh = new THREE.Mesh(mainShaftGeometry.clone(), materials.steel);
+                    shaftMesh.rotation.z = shaftRotation;
+                    shaftMesh.position.set(
+                        Math.cos(shaftRotation) * 20,
+                        Math.sin(shaftRotation) * 20,
+                        0
+                    );
+                    this.mainShafts.push(shaftMesh);
+                }
+                
+                // Create counterweights
+                for (let i = 0; i < 8; i++) {
+                    const weightAngle = i * 45;
+                    const weightRotation = math.toRad(weightAngle);
+                    const weightMesh = new THREE.Mesh(counterweightGeometry.clone(), materials.steel);
+                    weightMesh.rotation.z = weightRotation;
+                    weightMesh.position.set(
+                        Math.cos(weightRotation) * 60,
+                        Math.sin(weightRotation) * 60,
+                        0
+                    );
+                    this.counterweights.push(weightMesh);
+                }
+                
+                // Main crank assembly
+                this.geometry = new THREE.Group();
+                this.geometry.add(new THREE.Mesh(mainShaftGeometry.clone().translate(0, -30, 0), materials.steel));
+                this.geometry.add(new THREE.Mesh(mainShaftGeometry.clone().translate(0, 30, 0), materials.steel));
+                
+                // Add webs
+                this.webs.forEach(web => this.geometry.add(web));
+                
+                // Add rod journals
+                this.rodJournals.forEach(journal => this.geometry.add(journal));
+                
+                // Add counterweights
+                this.counterweights.forEach(weight => this.geometry.add(weight));
+                
+                // Create flywheel
+                const flywheelGroup = new THREE.Group();
+                
+                // Flywheel rim
+                const rimGeometry = new THREE.TorusGeometry(120, 15, 32, 64);
+                const rimMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.2,
+                    envMap: envMap,
+                    envMapIntensity: 0.5
+                });
+                const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+                rim.rotation.x = Math.PI / 2;
+                flywheelGroup.add(rim);
+                
+                // Flywheel hub
+                const hubGeometry = new THREE.CylinderGeometry(40, 40, 20, 32);
+                const hub = new THREE.Mesh(hubGeometry, materials.steel);
+                hub.position.y = 10;
+                flywheelGroup.add(hub);
+                
+                // Bolt pattern
+                for (let i = 0; i < 6; i++) {
+                    const boltAngle = (i / 6) * Math.PI * 2;
+                    const boltGeometry = new THREE.CylinderGeometry(3, 3, 25, 8);
+                    const bolt = new THREE.Mesh(boltGeometry, materials.chrome);
+                    bolt.rotation.x = Math.PI / 2;
+                    bolt.position.set(
+                        Math.cos(boltAngle) * 40,
+                        Math.sin(boltAngle) * 40,
+                        10
+                    );
+                    flywheelGroup.add(bolt);
+                }
+                
+                // Ring gear teeth
+                for (let i = 0; i < 40; i++) {
+                    const toothAngle = (i / 40) * Math.PI * 2;
+                    const toothGeometry = new THREE.BoxGeometry(8, 30, 5);
+                    const tooth = new THREE.Mesh(toothGeometry, materials.steel);
+                    tooth.position.set(
+                        Math.cos(toothAngle) * 120,
+                        Math.sin(toothAngle) * 120,
+                        0
+                    );
+                    tooth.rotation.z = toothAngle + Math.PI / 2;
+                    flywheelGroup.add(tooth);
+                }
+                
+                this.flywheel = flywheelGroup;
+                this.flywheel.position.y = -80;
+            }
+            
+            update(deltaTime) {
+                if (engineState.isPaused && !engineState.isManualMode) return;
+                
+                // Update master crankshaft angle
+                if (engineState.isManualMode) {
+                    // Manual scrub mode - angle comes from slider
+                    this.angle = engineState.crankAngle;
+                } else if (engineState.isRunning) {
+                    // Auto rotation based on RPM
+                    const rotationsPerSecond = engineState.rpm / 60;
+                    const angleIncrement = rotationsPerSecond * 360 * deltaTime * engineState.speedMultiplier;
+                    this.angle += angleIncrement;
+                    
+                    // Normalize to 0-720 range for 4-stroke cycle
+                    this.angle = math.normalizeAngle(this.angle, 0, 720);
+                }
+                
+                engineState.crankAngle = this.angle;
+                
+                // Update all components based on crank angle
+                const angleRad = math.toRad(this.angle);
+                
+                // Rotate main assembly
+                this.geometry.rotation.z = angleRad;
+                
+                // Update flywheel (rotates with crankshaft)
+                this.flywheel.rotation.z = angleRad;
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+                scene.add(this.flywheel);
+            }
+        }
+        
+        // Piston system
+        class Piston {
+            constructor(bank, cylinder, index) {
+                this.bank = bank; // 0 for left bank, 1 for right bank
+                this.cylinder = cylinder; // 0-7
+                this.index = index; // 0-7 overall
+                this.angleOffset = 0; // crank angle offset for this cylinder
+                
+                // State
+                this.position = new THREE.Vector3();
+                this.rotation = new THREE.Quaternion();
+                this.cyclePhase = 0; // 0-720 degrees
+                
+                // Components
+                this.crown = null;
+                this.skirt = null;
+                this.rings = [];
+                this.wristpin = null;
+                this.connectingRod = null;
+                this.pistonGroup = new THREE.Group();
+                
+                // Physical properties
+                this.stroke = engineConfig.stroke;
+                this.bore = engineConfig.bore;
+                this.rodLength = engineConfig.rodLength;
+                this.crankRadius = engineConfig.crankRadius;
+                
+                // Calculate firing order and phase
+                const firingOrder = engineConfig.firingOrder;
+                this.fireOrderIndex = firingOrder.indexOf(this.index);
+                if (this.fireOrderIndex === -1) this.fireOrderIndex = 0;
+                
+                // Calculate cylinder phase offset (cross-plane V8)
+                // Cylinders on same bank fire 90° apart
+                // Banks offset by 180° for smooth firing
+                if (this.bank === 0) {
+                    // Left bank: 0°, 90°, 180°, 270°
+                    this.angleOffset = (this.cylinder * 90) % 360;
+                } else {
+                    // Right bank: 180°, 270°, 0°, 90° (180° offset)
+                    this.angleOffset = ((this.cylinder * 90 + 180) % 360);
+                }
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Piston crown
+                const crownGeometry = new THREE.BoxGeometry(85, 15, 30);
+                crownGeometry.translate(0, -7.5, 0);
+                this.crown = new THREE.Mesh(crownGeometry, materials.aluminum);
+                this.crown.castShadow = true;
+                this.crown.receiveShadow = true;
+                
+                // Piston skirt
+                const skirtGeometry = new THREE.CylinderGeometry(85 / 2, 85 / 2, 40, 32);
+                skirtGeometry.translate(0, -30, 0);
+                this.skirt = new THREE.Mesh(skirtGeometry, materials.aluminum);
+                this.skirt.castShadow = true;
+                this.skirt.receiveShadow = true;
+                
+                // Piston rings (3 rings)
+                const ringGeometry = new THREE.TubeGeometry(
+                    new THREE.CircleGeometry(84.5 / 2, 16),
+                    2,
+                    8,
+                    Math.PI * 2,
+                    false
+                );
+                for (let i = 0; i < 3; i++) {
+                    const ring = new THREE.Mesh(ringGeometry, materials.steel);
+                    ring.position.y = -20 + i * 10;
+                    ring.rotation.x = Math.PI / 2;
+                    ring.castShadow = true;
+                    ring.receiveShadow = true;
+                    this.rings.push(ring);
+                    this.crown.add(ring);
+                }
+                
+                // Wrist pin
+                const pinGeometry = new THREE.BoxGeometry(20, 15, 15);
+                pinGeometry.translate(0, -5, 0);
+                this.wristpin = new THREE.Mesh(pinGeometry, materials.chrome);
+                this.wristpin.castShadow = true;
+                this.wristpin.receiveShadow = true;
+                
+                // Add components to piston group
+                this.pistonGroup.add(this.skirt);
+                this.pistonGroup.add(this.crown);
+                this.pistonGroup.add(this.wristpin);
+            }
+            
+            update(crankAngle) {
+                // Calculate piston position using slider-crank kinematics
+                const angleRad = math.toRad(crankAngle + this.angleOffset);
+                
+                // Crank position
+                const crankX = this.crankRadius * Math.cos(angleRad);
+                const crankY = this.crankRadius * Math.sin(angleRad);
+                
+                // Connecting rod length squared
+                const rodSq = this.rodLength * this.rodLength;
+                const crankSq = this.crankRadius * this.crankRadius;
+                const sinTerm = this.crankRadius * Math.sin(angleRad);
+                const sinSq = sinTerm * sinTerm;
+                
+                // Piston position relative to crankshaft axis
+                const pistonX = crankX + Math.sqrt(Math.max(0, rodSq - sinSq));
+                const pistonY = crankY;
+                
+                // Cylinder axis direction depends on bank
+                let cylAxisX, cylAxisY, cylAxisZ;
+                if (this.bank === 0) {
+                    // Left bank: cylinders point backward
+                    cylAxisX = -1;
+                    cylAxisY = 0;
+                    cylAxisZ = 0;
+                } else {
+                    // Right bank: cylinders point forward  
+                    cylAxisX = 1;
+                    cylAxisY = 0;
+                    cylAxisZ = 0;
+                }
+                
+                // Convert to world coordinates
+                this.position.set(pistonX, pistonY, 0);
+                this.cylinderAxis = new THREE.Vector3(cylAxisX, cylAxisY, cylAxisZ);
+                
+                // Calculate rotation to align with cylinder axis
+                const direction = new THREE.Vector3(pistonX, pistonY, 0).normalize();
+                const target = new THREE.Vector3(cylAxisX, cylAxisY, cylAxisZ);
+                const axis = new THREE.Vector3().crossVectors(direction, target);
+                const angle = Math.acos(Math.max(-1, Math.min(1, direction.dot(target))));
+                
+                if (axis.length() > 0.001) {
+                    axis.normalize();
+                    this.rotation.setFromAxisAngle(axis, angle);
+                } else {
+                    this.rotation.set(0, 0, 0, 1);
+                }
+                
+                // Apply transforms
+                this.pistonGroup.position.copy(this.position);
+                this.pistonGroup.quaternion.copy(this.rotation);
+                
+                // Update cycle phase (0-720 degrees)
+                this.cyclePhase = math.normalizeAngle(crankAngle + this.angleOffset, 0, 720);
+                
+                // Check if firing this cycle
+                this.isFiring = false;
+                if (this.fireOrderIndex === 0) {
+                    // First in firing order - fire at 360° (top dead center)
+                    const phaseIn360 = math.normalizeAngle(crankAngle + this.angleOffset, 0, 360);
+                    if (phaseIn360 >= 358 && phaseIn360 <= 362) {
+                        this.isFiring = true;
+                    }
+                }
+            }
+            
+            addToScene(scene, rodsGroup, bankGroups) {
+                this.pistonGroup.name = `Piston_${this.index}`;
+                scene.add(this.pistonGroup);
+                
+                // Add to bank group
+                bankGroups[this.bank].add(this.pistonGroup);
+                
+                // Connect to connecting rod
+                if (this.connectingRod) {
+                    // This will be set externally
+                    this.updateRodConnection();
+                }
+                
+                return this.pistonGroup;
+            }
+            
+            updateRodConnection() {
+                // Update connection point (wrist pin)
+                const wristPinWorldPos = new THREE.Vector3();
+                this.pistonGroup.getWorldPosition(wristPinWorldPos);
+                
+                if (this.connectingRod) {
+                    this.connectingRod.updateEndpoints(
+                        this.index,
+                        wristPinWorldPos,
+                        this.cylinderAxis
+                    );
+                }
+            }
+        }
+        
+        // Connecting rod system
+        class ConnectingRod {
+            constructor(bank, cylinder, index, pistonRef) {
+                this.bank = bank;
+                this.cylinder = cylinder;
+                this.index = index;
+                this.pistonRef = pistonRef; // reference to piston for updates
+                
+                // Components
+                this.rodBody = null;
+                this.cap = null;
+                this.bolt = null;
+                this.rodGroup = new THREE.Group();
+                
+                // State
+                this.crankJournalPosition = new THREE.Vector3();
+                this.wristPinPosition = new THREE.Vector3();
+                this.currentLength = 0;
+                this.currentAngle = 0;
+                this.rotation = new THREE.Quaternion();
+                
+                // Physical properties
+                this.rodLength = engineConfig.rodLength;
+                this.crankRadius = engineConfig.crankRadius;
+                
+                // Calculate crank journal angle for this cylinder
+                const journalAngle = this.bank === 0 
+                    ? (this.cylinder * 90) % 360 
+                    : ((this.cylinder * 90 + 180) % 360);
+                this.journalAngle = journalAngle;
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Main rod body
+                const rodGeometry = new THREE.BoxGeometry(12, 200, 12);
+                rodGeometry.translate(0, 100, 0);
+                this.rodBody = new THREE.Mesh(rodGeometry, materials.forgedSteel);
+                this.rodBody.castShadow = true;
+                this.rodBody.receiveShadow = true;
+                
+                // Rod cap
+                const capGeometry = new THREE.BoxGeometry(25, 30, 15);
+                capGeometry.translate(0, -15, 0);
+                this.cap = new THREE.Mesh(capGeometry, materials.steel);
+                this.cap.castShadow = true;
+                this.cap.receiveShadow = true;
+                
+                // Connecting bolt
+                const boltGeometry = new THREE.CylinderGeometry(3, 3, 20, 8);
+                const bolt = new THREE.Mesh(boltGeometry, materials.chrome);
+                bolt.rotation.x = Math.PI / 2;
+                bolt.position.y = -10;
+                this.bolt = bolt;
+                this.cap.add(bolt);
+                
+                // Add to group
+                this.rodGroup.add(this.rodBody);
+                this.rodGroup.add(this.cap);
+            }
+            
+            updateEndpoints(cylinderIndex, wristPinPos, cylinderAxis) {
+                // Calculate crank journal position
+                const crankAngle = engineState.crankAngle + this.journalAngle;
+                const angleRad = math.toRad(crankAngle);
+                
+                const crankX = this.crankRadius * Math.cos(angleRad);
+                const crankY = this.crankRadius * Math.sin(angleRad);
+                this.crankJournalPosition.set(crankX, crankY, 0);
+                
+                // Set wrist pin position
+                this.wristPinPosition.copy(wristPinPos);
+                
+                // Calculate rod length
+                this.currentLength = math.distance(this.crankJournalPosition, this.wristPinPosition);
+                
+                // Calculate rod rotation
+                const direction = new THREE.Vector3().subVectors(this.wristPinPosition, this.crankJournalPosition);
+                const distance = direction.length();
+                
+                if (distance > 0.001) {
+                    direction.normalize();
+                    
+                    // Create rotation to align rod with direction
+                    const up = new THREE.Vector3(0, 0, 1);
+                    const axis = new THREE.Vector3().crossVectors(up, direction);
+                    const angle = Math.acos(Math.max(-1, Math.min(1, up.dot(direction))));
+                    
+                    if (axis.length() > 0.001) {
+                        axis.normalize();
+                        this.rotation.setFromAxisAngle(axis, angle);
+                    } else {
+                        this.rotation.set(0, 0, 0, 1);
+                        if (direction.y < 0) {
+                            this.rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI));
+                        }
+                    }
+                    
+                    // Position and rotate rod group
+                    const midpoint = new THREE.Vector3().addVectors(this.crankJournalPosition, this.wristPinPosition).multiplyScalar(0.5);
+                    this.rodGroup.position.copy(midpoint);
+                    this.rodGroup.quaternion.copy(this.rotation);
+                }
+                
+                // Update visual rod length
+                this.rodBody.scale.y = this.currentLength / 200;
+                this.rodBody.position.y = this.currentLength / 2;
+                this.cap.position.y = this.currentLength / 2 - 15;
+                this.bolt.position.y = this.currentLength / 2 - 10;
+                
+                // Add slight rotation for realism
+                const cylinderAngle = cylinderIndex * 90;
+                const bankRotation = this.bank === 0 ? Math.PI : 0;
+                this.rodGroup.rotation.z = math.toRad(cylinderAngle + bankRotation);
+            }
+            
+            addToScene(scene, rodsGroup) {
+                rodsGroup.add(this.rodGroup);
+            }
+        }
+        
+        // Valve system
+        class Valve {
+            constructor(cylinderIndex, isIntake, bank) {
+                this.cylinderIndex = cylinderIndex;
+                this.isIntake = isIntake;
+                this.bank = bank;
+                this.lift = 0;
+                this.targetLift = 0;
+                this.currentPhase = 0;
+                
+                // Components
+                this.head = null;
+                this.stem = null;
+                this.spring = null;
+                this.valveGroup = new THREE.Group();
+                
+                // State
+                this.isOpen = false;
+                this.isRetreating = false;
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Valve head
+                const headGeometry = new THREE.CylinderGeometry(12, 12, 25, 8);
+                this.head = new THREE.Mesh(headGeometry, materials.steel);
+                this.head.castShadow = true;
+                this.head.receiveShadow = true;
+                
+                // Valve stem
+                const stemGeometry = new THREE.CylinderGeometry(3, 3, 80, 8);
+                this.stem = new THREE.Mesh(stemGeometry, materials.chrome);
+                this.stem.position.y = -40;
+                this.stem.castShadow = true;
+                this.stem.receiveShadow = true;
+                
+                // Valve spring (helical)
+                this.createSpring();
+                
+                // Add components
+                this.valveGroup.add(this.head);
+                this.valveGroup.add(this.stem);
+                this.valveGroup.add(this.spring);
+            }
+            
+            createSpring() {
+                const springGeometry = new THREE.TubeGeometry(
+                    new THREE.CircleGeometry(2.5, 8),
+                    100,
+                    8,
+                    Math.PI * 2,
+                    false
+                );
+                this.spring = new THREE.Mesh(springGeometry, materials.steel);
+                this.spring.position.y = -90;
+                this.spring.rotation.x = Math.PI / 2;
+                this.spring.castShadow = true;
+                this.spring.receiveShadow = true;
+            }
+            
+            update(lift) {
+                this.targetLift = lift;
+                this.currentPhase = engineState.crankAngle % 360;
+                
+                // Smooth lift animation
+                const liftSpeed = 5.0; // units per second
+                const deltaLift = (this.targetLift - this.lift) * liftSpeed * engineState.speedMultiplier;
+                this.lift = Math.max(0, Math.min(engineConfig.valveLift, this.lift + deltaLift));
+                
+                // Position valve
+                this.valveGroup.position.y = this.lift;
+                this.head.position.y = this.lift + 12.5;
+                this.stem.position.y = this.lift - 40;
+                this.spring.scale.y = (engineConfig.valveLift - this.lift) / 100;
+                this.spring.position.y = this.lift - 90;
+                
+                // Determine if valve should be open
+                this.isOpen = this.lift > 0;
+            }
+            
+            addToScene(scene, valveGroup) {
+                valveGroup.add(this.valveGroup);
+            }
+        }
+        
+        // Camshaft system
+        class Camshaft {
+            constructor(bank) {
+                this.bank = bank;
+                this.angle = 0; // camshaft angle (half of crankshaft)
+                this.lobes = [];
+                this.geometry = new THREE.Group();
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Main camshaft shaft
+                const shaftGeometry = new THREE.CylinderGeometry(6, 6, 200, 16);
+                shaftGeometry.rotateZ(Math.PI / 2);
+                const shaft = new THREE.Mesh(shaftGeometry, materials.steel);
+                this.geometry.add(shaft);
+                
+                // Bearing supports
+                for (let i = 0; i < 4; i++) {
+                    const bearingGeometry = new THREE.CylinderGeometry(8, 8, 15, 16);
+                    bearingGeometry.rotateZ(Math.PI / 2);
+                    const bearing = new THREE.Mesh(bearingGeometry, materials.steel);
+                    bearing.position.y = (i - 1.5) * 50;
+                    this.geometry.add(bearing);
+                }
+                
+                // Cam lobes (simplified - just eccentric circles)
+                for (let i = 0; i < 4; i++) {
+                    const lobeGeometry = new THREE.BoxGeometry(40, 20, 30);
+                    const lobe = new THREE.Mesh(lobeGeometry, materials.chrome);
+                    
+                    // Position lobes along shaft
+                    lobe.position.y = i * 50 - 75;
+                    
+                    // Apply eccentric offset for valve lift
+                    const offset = 5; // mm
+                    lobe.position.x = this.bank === 0 ? offset : -offset;
+                    
+                    this.geometry.add(lobe);
+                    this.lobes.push(lobe);
+                }
+                
+                // Timing gear
+                const gearGeometry = new THREE.CylinderGeometry(20, 20, 15, 32);
+                const gear = new THREE.Mesh(gearGeometry, materials.steel);
+                gear.position.y = -100;
+                gear.rotation.z = Math.PI / 2;
+                this.geometry.add(gear);
+            }
+            
+            update(crankAngle) {
+                // Camshaft rotates at half crankshaft speed
+                this.angle = crankAngle / 2;
+                this.geometry.rotation.z = math.toRad(this.angle);
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+            }
+        }
+        
+        // Timing system
+        class TimingSystem {
+            constructor() {
+                this.geometry = new THREE.Group();
+                
+                // Crank timing gear
+                const crankGearGeometry = new THREE.CylinderGeometry(15, 15, 10, 32);
+                const crankGear = new THREE.Mesh(crankGearGeometry, materials.steel);
+                crankGear.position.set(0, 0, 0);
+                this.geometry.add(crankGear);
+                
+                // Cam timing gear (2x diameter)
+                const camGearGeometry = new THREE.CylinderGeometry(30, 30, 10, 32);
+                const camGear = new THREE.Mesh(camGearGeometry, materials.steel);
+                camGear.position.set(0, 0, 0);
+                this.geometry.add(camGear);
+                
+                // Chain/belt
+                this.createTimingChain();
+            }
+            
+            createTimingChain() {
+                // Timing chain links
+                for (let i = 0; i < 20; i++) {
+                    const linkGeometry = new THREE.BoxGeometry(5, 2, 2);
+                    const link = new THREE.Mesh(linkGeometry, materials.steel);
+                    const angle = (i / 20) * Math.PI * 2;
+                    link.position.set(
+                        Math.cos(angle) * 45,
+                        Math.sin(angle) * 45,
+                        0
+                    );
+                    link.rotation.z = angle;
+                    this.geometry.add(link);
+                }
+            }
+            
+            update(crankAngle) {
+                // Chain rotates with crankshaft
+                this.geometry.rotation.z = math.toRad(crankAngle);
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+            }
+        }
+        
+        // Cylinder block
+        class Block {
+            constructor() {
+                this.geometry = new THREE.Group();
+                this.banks = [];
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Main block (simplified V8 block shape)
+                const blockGeometry = new THREE.BoxGeometry(300, 200, 350);
+                blockGeometry.translate(0, 0, -175);
+                const block = new THREE.Mesh(blockGeometry, materials.castIron);
+                block.castShadow = true;
+                block.receiveShadow = true;
+                this.geometry.add(block);
+                
+                // Create cylinder banks
+                for (let bank = 0; bank < 2; bank++) {
+                    const bankGroup = new THREE.Group();
+                    
+                    // Bank-specific positioning
+                    if (bank === 0) {
+                        // Left bank (intake on top)
+                        bankGroup.rotation.y = Math.PI / 2;
+                        bankGroup.position.x = -150;
+                    } else {
+                        // Right bank (exhaust on top) 
+                        bankGroup.rotation.y = -Math.PI / 2;
+                        bankGroup.position.x = 150;
+                    }
+                    
+                    // Create cylinders in bank
+                    const bankCylinders = [];
+                    for (let cylinder = 0; cylinder < 4; cylinder++) {
+                        const cylinderIndex = bank * 4 + cylinder;
+                        const cylinderGroup = new THREE.Group();
+                        
+                        // Bore geometry (cylinder liner)
+                        const boreGeometry = new THREE.CylinderGeometry(85 / 2, 85 / 2, 350, 32);
+                        boreGeometry.rotateX(Math.PI / 2);
+                        const bore = new THREE.Mesh(boreGeometry, materials.steel);
+                        bore.castShadow = true;
+                        bore.receiveShadow = true;
+                        cylinderGroup.add(bore);
+                        
+                        // Add to bank
+                        bankGroup.add(cylinderGroup);
+                        bankCylinders.push(cylinderGroup);
+                    }
+                    
+                    this.banks.push(bankGroup);
+                    this.geometry.add(bankGroup);
+                }
+                
+                // Main oil pan
+                const panGeometry = new THREE.BoxGeometry(400, 50, 400);
+                panGeometry.translate(0, -100, 0);
+                const pan = new THREE.Mesh(panGeometry, materials.castIron);
+                pan.castShadow = true;
+                pan.receiveShadow = true;
+                this.geometry.add(pan);
+                
+                // Main bearing caps (simplified)
+                for (let i = 0; i < 4; i++) {
+                    const capGeometry = new THREE.BoxGeometry(60, 20, 30);
+                    const cap = new THREE.Mesh(capGeometry, materials.steel);
+                    cap.position.set(
+                        Math.cos(math.toRad(i * 90)) * 80,
+                        Math.sin(math.toRad(i * 90)) * 80,
+                        0
+                    );
+                    cap.rotation.y = math.toRad(i * 90);
+                    this.geometry.add(cap);
+                }
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+            }
+        }
+        
+        // Cylinder head
+        class CylinderHead {
+            constructor(bank) {
+                this.bank = bank;
+                this.geometry = new THREE.Group();
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Head structure (simplified)
+                const headGeometry = new THREE.BoxGeometry(200, 50, 100);
+                headGeometry.translate(0, 80, 0);
+                
+                if (this.bank === 0) {
+                    // Left bank head - intake on top
+                    headGeometry.translate(0, 25, 0);
+                } else {
+                    // Right bank head - exhaust on top
+                    headGeometry.translate(0, -25, 0);
+                }
+                
+                const head = new THREE.Mesh(headGeometry, materials.aluminum);
+                head.castShadow = true;
+                head.receiveShadow = true;
+                this.geometry.add(head);
+                
+                // Valve covers
+                for (let i = 0; i < 4; i++) {
+                    const coverGeometry = new THREE.BoxGeometry(180, 20, 30);
+                    const cover = new THREE.Mesh(coverGeometry, materials.steel);
+                    cover.position.y = 25;
+                    cover.rotation.x = -Math.PI / 4;
+                    this.geometry.add(cover);
+                }
+                
+                // Bolts
+                for (let i = 0; i < 8; i++) {
+                    const boltGeometry = new THREE.CylinderGeometry(2, 2, 30, 8);
+                    const bolt = new THREE.Mesh(boltGeometry, materials.chrome);
+                    bolt.rotation.x = Math.PI / 2;
+                    const angle = (i / 8) * Math.PI * 2;
+                    bolt.position.set(
+                        Math.cos(angle) * 80,
+                        Math.sin(angle) * 80,
+                        45
+                    );
+                    this.geometry.add(bolt);
+                }
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+            }
+        }
+        
+        // Intake system
+        class IntakeSystem {
+            constructor() {
+                this.geometry = new THREE.Group();
+                this.manifold = null;
+                this.runners = [];
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Main intake manifold
+                const manifoldGeometry = new THREE.BoxGeometry(150, 80, 40);
+                manifoldGeometry.translate(0, 0, 20);
+                this.manifold = new THREE.Mesh(manifoldGeometry, materials.aluminum);
+                this.manifold.castShadow = true;
+                this.manifold.receiveShadow = true;
+                this.geometry.add(this.manifold);
+                
+                // Throttle body
+                const throttleGeometry = new THREE.BoxGeometry(60, 40, 30);
+                throttleGeometry.translate(75, 0, 20);
+                const throttle = new THREE.Mesh(throttleGeometry, materials.steel);
+                throttle.castShadow = true;
+                throttle.receiveShadow = true;
+                this.geometry.add(throttle);
+                
+                // Plenum
+                const plenumGeometry = new THREE.BoxGeometry(100, 60, 60);
+                plenumGeometry.translate(-60, 0, 20);
+                const plenum = new THREE.Mesh(plenumGeometry, materials.aluminum);
+                plenum.castShadow = true;
+                plenum.receiveShadow = true;
+                this.geometry.add(plenum);
+                
+                // Runners (one per cylinder)
+                for (let i = 0; i < 8; i++) {
+                    const runnerGeometry = new THREE.TubeGeometry(
+                        new THREE.CircleGeometry(15 / 2, 8),
+                        200,
+                        8,
+                        Math.PI * 2,
+                        false
+                    );
+                    const runner = new THREE.Mesh(runnerGeometry, materials.aluminum);
+                    runner.position.set(0, 40, 20);
+                    
+                    // Rotate runner to point to appropriate cylinder
+                    const cylinderAngle = (i * 90) % 360;
+                    runner.rotation.y = math.toRad(cylinderAngle);
+                    if (i >= 4) runner.rotation.y += Math.PI / 2;
+                    
+                    this.geometry.add(runner);
+                    this.runners.push(runner);
+                }
+            }
+            
+            update() {
+                // Simple animation for intake system
+                const time = engineState.currentTime;
+                this.geometry.rotation.z = Math.sin(time * 0.5) * 0.02;
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+            }
+        }
+        
+        // Exhaust system
+        class ExhaustSystem {
+            constructor() {
+                this.geometry = new THREE.Group();
+                this.headers = [];
+                
+                this.createGeometry();
+            }
+            
+            createGeometry() {
+                // Main header collector's
+                const collectorGeometry = new THREE.BoxGeometry(200, 60, 80);
+                collectorGeometry.translate(0, 0, 20);
+                const collector = new THREE.Mesh(collectorGeometry, materials.steel);
+                collector.castShadow = true;
+                collector.receiveShadow = true;
+                this.geometry.add(collector);
+                
+                // Exhaust headers (one per cylinder)
+                for (let i = 0; i < 8; i++) {
+                    const headerGeometry = new THREE.TubeGeometry(
+                        new THREE.CircleGeometry(20 / 2, 8),
+                        180,
+                        8,
+                        Math.PI * 2,
+                        false
+                    );
+                    const header = new THREE.Mesh(headerGeometry, materials.steel);
+                    header.position.set(100, 0, 20);
+                    
+                    // Rotate header to point to appropriate cylinder
+                    const cylinderAngle = (i * 90) % 360;
+                    header.rotation.y = math.toRad(cylinderAngle);
+                    if (i >= 4) header.rotation.y += Math.PI / 2;
+                    
+                    this.geometry.add(header);
+                    this.headers.push(header);
+                }
+                
+                // Catalytic converter
+                const converterGeometry = new THREE.SphereGeometry(40, 16, 16);
+                const converter = new THREE.Mesh(converterGeometry, materials.steel);
+                converter.position.set(-80, 0, 20);
+                this.geometry.add(converter);
+                
+                // Muffler
+                const mufflerGeometry = new THREE.BoxGeometry(60, 40, 40);
+                mufflerGeometry.translate(-140, 0, 20);
+                const muffler = new THREE.Mesh(mufflerGeometry, materials.steel);
+                muffler.castShadow = true;
+                muffler.receiveShadow = true;
+                this.geometry.add(muffler);
+            }
+            
+            update() {
+                // Simple animation for exhaust system
+                const time = engineState.currentTime;
+                this.geometry.rotation.z = Math.sin(time * 0.3) * 0.02;
+            }
+            
+            addToScene(scene) {
+                scene.add(this.geometry);
+            }
+        }
+        
+        // Combustion effects
+        class CombustionEffects {
+            constructor() {
+                this.particles = [];
+                this.flashGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                this.flashMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff6600,
+                    emissive: 0xff3300,
+                    emissiveIntensity: 2.0
+                });
+            }
+            
+            update(firingPistons) {
+                // Create combustion flashes for firing cylinders
+                firingPistons.forEach((piston, index) => {
+                    if (piston.isFiring && Math.random() > 0.7) {
+                        const flash = new THREE.Mesh(this.flashGeometry, this.flashMaterial);
+                        flash.position.copy(piston.position);
+                        flash.position.z = 5;
+                        scene.add(flash);
+                        
+                        // Animate flash
+                        const animateFlash = () => {
+                            const startTime = Date.now();
+                            const animate = () => {
+                                const elapsed = Date.now() - startTime;
+                                if (elapsed < 200) {
+                                    const scale = 1 - elapsed / 200;
+                                    flash.scale.set(scale, scale, scale);
+                                    flash.material.emissiveIntensity = 2.0 * scale;
+                                    requestAnimationFrame(animate);
+                                } else {
+                                    scene.remove(flash);
+                                }
+                            };
+                            animate();
+                        };
+                        animateFlash();
+                    }
+                });
+            }
+        }
+        
+        // Main engine application
+        const engine = {
+            crankshaft: null,
+            pistons: [],
+            rods: [],
+            valves: [],
+            camshafts: [],
+            timingSystem: null,
+            block: null,
+            heads: [],
+            intakeSystem: null,
+            exhaustSystem: null,
+            combustionEffects: null,
+            groups: {
+                banks: [],
+                rods: null,
+                valves: []
+            },
+            
+            init() {
+                // Initialize crankshaft
+                this.crankshaft = new Crankshaft();
+                this.crankshaft.addToScene(scene);
+                
+                // Initialize block
+                this.block = new Block();
+                this.block.addToScene(scene);
+                
+                // Initialize cylinder banks
+                for (let bank = 0; bank < 2; bank++) {
+                    const bankGroup = new THREE.Group();
+                    bankGroup.name = `Bank_${bank}`;
+                    scene.add(bankGroup);
+                    this.groups.banks.push(bankGroup);
+                }
+                
+                // Initialize connecting rods group
+                this.groups.rods = new THREE.Group();
+                this.groups.rods.name = 'Rods';
+                scene.add(this.groups.rods);
+                
+                // Initialize camshafts
+                for (let bank = 0; bank < 2; bank++) {
+                    const camshaft = new Camshaft(bank);
+                    camshaft.addToScene(scene);
+                    this.camshafts.push(camshaft);
+                }
+                
+                // Initialize timing system
+                this.timingSystem = new TimingSystem();
+                this.timingSystem.addToScene(scene);
+                
+                // Initialize cylinder heads
+                for (let bank = 0; bank < 2; bank++) {
+                    const head = new CylinderHead(bank);
+                    head.addToScene(scene);
+                    this.heads.push(head);
+                }
+                
+                // Initialize intake system
+                this.intakeSystem = new IntakeSystem();
+                this.intakeSystem.addToScene(scene);
+                
+                // Initialize exhaust system
+                this.exhaustSystem = new ExhaustSystem();
+                this.exhaustSystem.addToScene(scene);
+                
+                // Initialize combustion effects
+                this.combustionEffects = new CombustionEffects();
+                
+                // Initialize pistons and rods
+                for (let bank = 0; bank < 2; bank++) {
+                    for (let cylinder = 0; cylinder < 4; cylinder++) {
+                        const index = bank * 4 + cylinder;
+                        
+                        // Create piston
+                        const piston = new Piston(bank, cylinder, index);
+                        this.pistons.push(piston);
+                        
+                        // Create connecting rod
+                        const rod = new ConnectingRod(bank, cylinder, index, piston);
+                        this.rods.push(rod);
+                        
+                        // Connect rod to piston
+                        piston.connectingRod = rod;
+                        
+                        // Add piston to bank group
+                        piston.addToScene(scene, this.groups.rods, this.groups.banks);
+                        
+                        // Add rod to rods group
+                        rod.addToScene(scene, this.groups.rods);
+                        
+                        // Create valves
+                        const intakeValve = new Valve(index, true, bank);
+                        const exhaustValve = new Valve(index, false, bank);
+                        
+                        intakeValve.addToScene(scene, this.groups.valves);
+                        exhaustValve.addToScene(scene, this.groups.valves);
+                        
+                        this.valves.push(intakeValve, exhaustValve);
+                    }
+                }
+                
+                // Group valves
+                const valvesGroup = new THREE.Group();
+                valvesGroup.name = 'Valves';
+                this.groups.valves.forEach(valve => valvesGroup.add(valve.valveGroup));
+                scene.add(valvesGroup);
+                
+                // Add exploded view slider
+                this.setupExplodedView();
+            },
+            
+            update(deltaTime) {
+                // Update crankshaft (master state)
+                if (this.crankshaft) {
+                    this.crankshaft.update(deltaTime);
+                }
+                
+                // Update camshafts
+                const crankAngle = engineState.crankAngle;
+                this.camshafts.forEach(camshaft => {
+                    camshaft.update(crankAngle);
+                });
+                
+                // Update timing system
+                if (this.timingSystem) {
+                    this.timingSystem.update(crankAngle);
+                }
+                
+                // Update pistons and rods
+                this.pistons.forEach(piston => {
+                    piston.update(crankAngle);
+                });
+                
+                // Update connecting rods
+                this.rods.forEach((rod, index) => {
+                    const bank = Math.floor(index / 4);
+                    const cylinder = index % 4;
+                    const wristPinPos = this.pistons[index].position;
+                    const cylinderAxis = this.pistons[index].cylinderAxis;
+                    rod.updateEndpoints(index, wristPinPos, cylinderAxis);
+                });
+                
+                // Update valve timing and lift
+                this.valves.forEach(valve => {
+                    // Determine valve lift based on cycle phase
+                    let targetLift = 0;
+                    const cyclePhase = valve.cylinderIndex * 90; // Each cylinder fires 90° apart
+                    const relativePhase = math.normalizeAngle(crankAngle + cyclePhase, 0, 360);
+                    
+                    // Intake valve timing
+                    if (valve.isIntake) {
+                        if (relativePhase >= 340 || relativePhase <= 20) {
+                            // Open near TDC on intake stroke
+                            targetLift = engineConfig.valveLift * 
+                                Math.sin(math.toRad((relativePhase - (relativePhase >= 340 ? 360 : 0)) * 2));
+                        }
+                    } else {
+                        // Exhaust valve timing
+                        if (relativePhase >= 160 && relativePhase <= 200) {
+                            // Open near TDC on exhaust stroke
+                            targetLift = engineConfig.valveLift * 
+                                Math.sin(math.toRad((relativePhase - 160) * 2));
+                        }
+                    }
+                    
+                    valve.update(targetLift);
+                });
+                
+                // Update intake and exhaust systems
+                if (this.intakeSystem) this.intakeSystem.update();
+                if (this.exhaustSystem) this.exhaustSystem.update();
+                
+                // Check for combustion
+                const firingPistons = this.pistons.filter(piston => piston.isFiring);
+                if (this.combustionEffects) {
+                    this.combustionEffects.update(firingPistons);
+                }
+                
+                // Update engine state time
+                engineState.currentTime += deltaTime;
+            },
+            
+            setupExplodedView() {
+                const explodeSlider = document.getElementById('explode-slider');
+                if (!explodeSlider) return;
+                
+                explodeSlider.addEventListener('input', (event) => {
+                    const separation = parseInt(event.target.value);
+                    const separationFactor = separation / 100;
+                    
+                    // Apply exploded view to components
+                    this.crankshaft.geometry.position.y = separationFactor * 50;
+                    this.block.geometry.position.y = -separationFactor * 30;
+                    
+                    // Separate heads
+                    this.heads.forEach((head, index) => {
+                        const offset = (index === 0 ? -1 : 1) * separationFactor * 40;
+                        head.geometry.position.x = offset;
+                    });
+                    
+                    // Separate intake and exhaust
+                    if (this.intakeSystem) {
+                        this.intakeSystem.geometry.position.z = separationFactor * 60;
+                    }
+                    if (this.exhaustSystem) {
+                        this.exhaustSystem.geometry.position.z = -separationFactor * 60;
+                    }
+                });
+            }
+        };
+        
+        // Control setup
+        function setupControls() {
+            // Pause/Stop buttons
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                engineState.isPaused = !engineState.isPaused;
+                const btn = document.getElementById('pause-btn');
+                btn.textContent = engineState.isPaused ? 'Resume' : 'Pause';
+            });
+            
+            document.getElementById('stop-btn').addEventListener('click', () => {
+                engineState.isPaused = true;
+                engineState.rpm = 700;
+                engineState.crankAngle = 0;
+                document.getElementById('pause-btn').textContent = 'Resume';
+                updateRPMDisplay();
+            });
+            
+            // RPM preset buttons
+            document.getElementById('idle-btn').addEventListener('click', () => {
+                engineState.rpm = 700;
+                updateRPMDisplay();
+            });
+            
+            document.getElementById('2000rpm-btn').addEventListener('click', () => {
+                engineState.rpm = 2000;
+                updateRPMDisplay();
+            });
+            
+            document.getElementById('4000rpm-btn').addEventListener('click', () => {
+                engineState.rpm = 4000;
+                updateRPMDisplay();
+            });
+            
+            document.getElementById('6000rpm-btn').addEventListener('click', () => {
+                engineState.rpm = 6000;
+                updateRPMDisplay();
+            });
+            
+            document.getElementById('8000rpm-btn').addEventListener('click', () => {
+                engineState.rpm = 8000;
+                updateRPMDisplay();
+            });
+            
+            // Speed multiplier buttons
+            document.getElementById('normal-speed').addEventListener('click', () => {
+                engineState.speedMultiplier = 1.0;
+                document.getElementById('normal-speed').classList.add('active');
+                document.getElementById('slow-speed').classList.remove('active');
+                document.getElementById('very-slow-speed').classList.remove('active');
+            });
+            
+            document.getElementById('slow-speed').addEventListener('click', () => {
+                engineState.speedMultiplier = 0.25;
+                document.getElementById('normal-speed').classList.remove('active');
+                document.getElementById('slow-speed').classList.add('active');
+                document.getElementById('very-slow-speed').classList.remove('active');
+            });
+            
+            document.getElementById('very-slow-speed').addEventListener('click', () => {
+                engineState.speedMultiplier = 0.05;
+                document.getElementById('normal-speed').classList.remove('active');
+                document.getElementById('slow-speed').classList.remove('active');
+                document.getElementById('very-slow-speed').classList.add('active');
+            });
+            
+            // Crank slider
+            const crankSlider = document.getElementById('crank-slider');
+            crankSlider.addEventListener('input', (event) => {
+                if (engineState.isManualMode) {
+                    engineState.crankAngle = parseInt(event.target.value);
+                }
+            });
+            
+            // Manual crank mode
+            document.getElementById('manual-crank').addEventListener('click', () => {
+                engineState.isManualMode = !engineState.isManualMode;
+                const btn = document.getElementById('manual-crank');
+                btn.classList.toggle('active');
+                
+                if (engineState.isManualMode) {
+                    // Lock engine state updates to manual slider
+                    engineState.isPaused = true;
+                    document.getElementById('pause-btn').textContent = 'Resume';
+                }
+            });
+            
+            // Cylinder inspection
+            document.getElementById('cylinder-select').addEventListener('change', (event) => {
+                const cylinderIndex = parseInt(event.target.value);
+                highlightCylinder(cylinderIndex);
+            });
+            
+            document.getElementById('highlight-btn').addEventListener('click', () => {
+                const cylinderIndex = parseInt(document.getElementById('cylinder-select').value);
+                highlightCylinder(cylinderIndex);
+            });
+            
+            document.getElementById('show-info-btn').addEventListener('click', () => {
+                const cylinderInfo = document.getElementById('cylinder-info');
+                cylinderInfo.style.display = cylinderInfo.style.display === 'none' ? 'block' : 'none';
+            });
+            
+            // Visibility toggles
+            const visibilityToggles = {
+                'toggle-block': () => engine.block.geometry.visible = !engine.block.geometry.visible,
+                'toggle-pistons': () => engine.pistons.forEach(p => p.pistonGroup.visible = !p.pistonGroup.visible),
+                'toggle-rods': () => engine.groups.rods.visible = !engine.groups.rods.visible,
+                'toggle-crankshaft': () => engine.crankshaft.geometry.visible = !engine.crankshaft.geometry.visible,
+                'toggle-valves': () => {
+                    const valvesGroup = scene.children.find(obj => obj.name === 'Valves');
+                    if (valvesGroup) valvesGroup.visible = !valvesGroup.visible;
+                },
+                'toggle-intake': () => engine.intakeSystem.geometry.visible = !engine.intakeSystem.geometry.visible,
+                'toggle-exhaust': () => engine.exhaustSystem.geometry.visible = !engine.exhaustSystem.geometry.visible,
+                'toggle-timing': () => {
+                    const timingGroup = scene.children.find(obj => obj.name === 'TimingSystem');
+                    if (timingGroup) timingGroup.visible = !timingGroup.visible;
+                }
+            };
+            
+            // Apply visibility toggles
+            Object.entries(visibilityToggles).forEach(([id, toggleFunc]) => {
+                const checkbox = document.getElementById(id);
+                if (checkbox) {
+                    checkbox.addEventListener('change', toggleFunc);
+                }
+            });
+            
+            // Camera presets
+            window.resetCamera = function(preset) {
+                const presetData = cameraPresets[preset];
+                if (presetData) {
+                    camera.position.copy(presetData.pos);
+                    controls.target.copy(presetData.lookAt);
+                    controls.update();
+                }
+            };
+        }
+        
+        function highlightCylinder(cylinderIndex) {
+            // Remove previous highlights
+            scene.traverse(obj => {
+                if (obj.userData.isHighlighted) {
+                    obj.material = obj.userData.originalMaterial;
+                    obj.userData.isHighlighted = false;
+                }
+            });
+            
+            // Highlight selected cylinder
+            const piston = engine.pistons[cylinderIndex];
+            if (piston && piston.pistonGroup) {
+                piston.pistonGroup.traverse(obj => {
+                    if (obj.isMesh) {
+                        obj.userData = obj.userData || {};
+                        obj.userData.originalMaterial = obj.material;
+                        obj.material = new THREE.MeshPhysicalMaterial({
+                            color: 0xffff00,
+                            metalness: 0.9,
+                            roughness: 0.1,
+                            envMap: envMap,
+                            envMapIntensity: 2.0,
+                            emissive: 0xffff00,
+                            emissiveIntensity: 0.5
+                        });
+                        obj.userData.isHighlighted = true;
+                    }
+                });
+            }
+            
+            // Show cylinder info
+            const info = document.getElementById('info-cylinder');
+            const details = document.getElementById('info-details');
+            if (info && details) {
+                info.textContent = `Cylinder ${cylinderIndex + 1}`;
+                
+                const cyclePhase = piston ? piston.cylinderIndex * 90 : 0;
+                const relativePhase = math.normalizeAngle(engineState.crankAngle + cyclePhase, 0, 360);
+                let strokeState = 'Unknown';
+                
+                if (relativePhase >= 0 && relativePhase < 90) strokeState = 'Exhaust';
+                else if (relativePhase >= 90 && relativePhase < 180) strokeState = 'Intake';
+                else if (relativePhase >= 180 && relativePhase < 270) strokeState = 'Compression';
+                else if (relativePhase >= 270 && relativePhase < 360) strokeState = 'Power';
+                
+                details.innerHTML = `
+                    <div>Stroke: ${strokeState}</div>
+                    <div>Piston Position: ${piston ? piston.position.y.toFixed(1) : 0} mm</div>
+                    <div>Cycle Phase: ${relativePhase.toFixed(1)}°</div>
+                    <div>Firing Order: ${engineConfig.firingOrder[cylinderIndex]}</div>
+                `;
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const currentTime = Date.now();
+            const deltaTime = (currentTime - engineState.lastTime) / 1000;
+            engineState.lastTime = currentTime;
+            
+            // Update engine simulation
+            engine.update(deltaTime);
+            
+            // Update crank slider if in manual mode
+            if (engineState.isManualMode) {
+                document.getElementById('crank-slider').value = Math.round(engineState.crankAngle);
+            }
+            
+            // Render scene
+            renderer.render(scene, camera);
+            controls.update();
+        }
+        
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize everything
+        function init() {
+            // Initialize Three.js scene
+            engine.init();
+            setupControls();
+            
+            // Start animation loop
+            engineState.lastTime = Date.now();
+            animate();
+        }
+        
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
