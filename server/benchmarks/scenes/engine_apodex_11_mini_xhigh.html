@@ -100,9 +100,17 @@
     <span style="color:#4f9">MECHANICS:</span> <span id="physicsText">READY</span>
 </div>
 
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ============================================================
 // CONSTANTS & CONFIG
@@ -161,7 +169,7 @@ const G = {
     r: 1.4,      // Crank radius
     l: 4.8,      // Rod length
     bore: 1.5,   // Bore diameter
-    stroke: 2*G.r,
+    stroke: 2.8,
     deck: 5.5,   // Deck height above crank center
     banksAngle: 90,
     rods: { width: 0.7, depth: 0.6 },
@@ -454,8 +462,9 @@ const app = {
         // --- 5. PUSHRODS / VALVETRAIN (Attached to heads, animated in loop) ---
         this.pushrods = [];
         CYL_ORDER_IN_THROWS.forEach(def => {
-            const pr = this.buildPushrod(def);
-            this.pushrods.push(pr);
+            const pr = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.5, 8), this.mats.crankWeb);
+            this.pushrods[def.id] = pr;
+            this.groups.valves.add(pr);
         });
 
         // --- 6. TIMING DRIVE (Front of engine) ---
@@ -513,7 +522,7 @@ const app = {
 
     buildCrankshaft() {
         const eng = this.engine;
-        const cx = eng.groups.crank;
+        const cx = this.groups.crank;
         const throwLen = 3.2;
         
         // Main journals (3) + End
@@ -906,8 +915,8 @@ const app = {
             // Let's simplify to rigid link (free joint math).
             // Valve lift curve from phase.
             const cycle = cycleState(eff);
-            const lift = this.getValveLift(eff); // 0..1
-            const vL = lift * 0.6;
+            const lift = this.getValveLift(eff);
+            const vL = Math.max(lift.il, lift.el) * 0.6;
             
             // Valve position: stem moves along -z (into head) roughly.
             // Intake valve (bank inner) moves -vDir (towards chamber)
@@ -945,7 +954,7 @@ const app = {
             const vm = this.valveMeshes[def.id];
             const vmPos = v3A.copy(valveBase).add(vDir.clone().multiplyScalar(0.4 + vL));
             vm.position.copy(vmPos);
-            vm.rotation.copy(vDir.angleTo(new THREE.Vector3(0,1,0)) ? ... ) 
+            // Valve orientation is applied via the quaternion below.
             // Simple: align valve stem to vDir. Valve geometry built with stem along +Y.
             const rot = new THREE.Quaternion();
             rot.setFromUnitVectors(new THREE.Vector3(0,1,0), vDir);
@@ -1066,6 +1075,8 @@ const app = {
         cGearB.rotation.y = Math.PI/2;
         cGearB.position.set(4, 5.5, -5.2);
         this.groups.timing.add(cGear, cGearB);
+        this.cGear = cGear;
+        this.cGearB = cGearB;
         
         // Belt from crank to cam gears (visual cylinders)
         const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06, 12, 8), this.mats.belt);
@@ -1250,10 +1261,10 @@ const app = {
         // Cameras
         document.querySelectorAll('.cam-btn').forEach(b => {
             b.addEventListener('click', () => {
-                const pos = b.dataset.cam === 'hero' ? [8,6,12] : 
-                            b.dataset.cam === 'front' ? [0, 5, 10] :
-                            b.dataset.cam === 'side' ? [10, 4, 0] :
-                            b.dataset.cam === 'top' ? [0, 20, 0] : [0, 5, 5];
+                const pos =                            b.dataset.view === 'hero' ? [8,6,12] : 
+                            b.dataset.view === 'front' ? [0, 5, 10] :
+                            b.dataset.view === 'side' ? [10, 4, 0] :
+                            b.dataset.view === 'top' ? [0, 20, 0] : [0, 5, 5];
                 this.camera.position.set(...pos);
                 this.controls.target.set(0, 3, 0);
             });
@@ -1276,12 +1287,6 @@ const app = {
 };
 
 // Fix map usage (CYL_ORDER_IN_THROWS must be global)
-const CYL_ORDER_IN_THROWS = [
-    { id: 1, throwIdx: 0, bank: 'A' }, { id: 6, throwIdx: 0, bank: 'B' },
-    { id: 8, throwIdx: 1, bank: 'B' }, { id: 5, throwIdx: 1, bank: 'A' },
-    { id: 3, throwIdx: 2, bank: 'A' }, { id: 2, throwIdx: 2, bank: 'B' },
-    { id: 4, throwIdx: 3, bank: 'B' }, { id: 7, throwIdx: 3, bank: 'A' },
-];
 
 // Patch app methods to reference global CYL_ORDER_IN_THROWS
 Engine.prototype.init = function() {
