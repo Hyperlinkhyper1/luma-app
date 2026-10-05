@@ -10,7 +10,7 @@ import 'groceries_repository.dart';
 import 'groceries_scope.dart';
 import 'product_search_page.dart';
 
-/// Entry point for the Groceries List plugin — a Nova-exclusive feature.
+/// Entry point for the Groceries List plugin — an Orbit-and-up feature.
 /// Shows an upgrade prompt for other plans, otherwise the list overview.
 class GroceriesPage extends StatefulWidget {
   const GroceriesPage({super.key});
@@ -41,18 +41,18 @@ class _GroceriesPageState extends State<GroceriesPage> {
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
 
-    if (settings.selectedPlanId != 'nova') {
+    if (!planAtLeast(settings.selectedPlanId, 'orbit')) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: LumaEmptyState(
           icon: Icons.auto_awesome_rounded,
-          title: 'Groceries List is a Nova exclusive',
+          title: 'Groceries List comes with Orbit and Nova',
           subtitle:
               'Search Jumbo, Albert Heijn, Hoogvliet and Lidl prices side by side, '
               'and build shopping lists that split themselves by store '
-              'and aisle with running totals — included free with Nova.',
+              'and aisle with running totals — included free with Orbit and Nova.',
           action: LumaPrimaryButton(
-            label: 'Upgrade to ${planById('nova').name}',
+            label: 'Upgrade to ${planById('orbit').name}',
             icon: Icons.auto_awesome_rounded,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PlanSelectionPage()),

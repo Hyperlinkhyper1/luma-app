@@ -14,10 +14,18 @@ const String kOpenRouterModelsUrl = 'https://openrouter.ai/api/v1/models';
 
 /// Artificial Analysis' data API. Optional — set LUMA_AA_API_KEY to fill in
 /// the reasoning column, the per-effort measurements and the speed figures
-/// that OpenRouter doesn't carry. Free tier is 1000 requests/day; a refresh
-/// spends exactly one.
+/// that OpenRouter doesn't carry. The free tier is 100 requests per 24 hours
+/// and pages 200 models at a time, so a refresh spends one request per page
+/// (four or so), never more than [kArtificialAnalysisMaxPages].
+///
+/// This replaces the legacy `/api/v2/data/llms/models`, which Artificial
+/// Analysis retires on 2026-11-04.
 const String kArtificialAnalysisUrl =
-    'https://artificialanalysis.ai/api/v2/data/llms/models';
+    'https://artificialanalysis.ai/api/v2/language/models/free';
+
+/// Hard stop on pages fetched in one refresh, so a pagination bug can't burn
+/// the day's request allowance.
+const int kArtificialAnalysisMaxPages = 5;
 
 /// Where an open-weight model's real licence and parameter count come from.
 const String kHuggingFaceModelUrl = 'https://huggingface.co/api/models/';
@@ -245,20 +253,27 @@ class AiCatalogFetcher {
   Future<({List<AiModel> overlays, AiRefreshSourceResult result})>
       fetchArtificialAnalysis(String apiKey, List<AiModel> known) async {
     try {
-      final decoded = await _getJson(
-        Uri.parse(kArtificialAnalysisUrl),
-        headers: {'x-api-key': apiKey},
-      );
-      final raw = (decoded is Map<String, dynamic> ? decoded['data'] : null);
-      if (raw is! List) {
-        return (
-          overlays: <AiModel>[],
-          result: const AiRefreshSourceResult(
-            source: 'artificial-analysis',
-            ok: false,
-            error: 'Unexpected response shape (no "data" array).',
-          ),
+      final raw = <Object?>[];
+      for (var page = 1; page <= kArtificialAnalysisMaxPages; page++) {
+        final decoded = await _getJson(
+          Uri.parse(kArtificialAnalysisUrl)
+              .replace(queryParameters: {'page': '$page'}),
+          headers: {'x-api-key': apiKey},
         );
+        final data = (decoded is Map<String, dynamic> ? decoded['data'] : null);
+        if (data is! List) {
+          return (
+            overlays: <AiModel>[],
+            result: const AiRefreshSourceResult(
+              source: 'artificial-analysis',
+              ok: false,
+              error: 'Unexpected response shape (no "data" array).',
+            ),
+          );
+        }
+        raw.addAll(data);
+        final pagination = _map((decoded as Map<String, dynamic>)['pagination']);
+        if (pagination['has_more'] != true || data.isEmpty) break;
       }
 
       final merged = aaOverlays(raw, known);
@@ -991,6 +1006,9 @@ List<AiModel> aaOverlays(List<Object?> raw, List<AiModel> known) {
     if (match == null) continue;
 
     final evals = _map(entry['evaluations']);
+    // The v2 language API nests speed and latency under `performance`; the
+    // flat keys are what the retired /api/v2/data route returned.
+    final perf = _map(entry['performance']);
     final intelligence = _num(evals['artificial_analysis_intelligence_index']);
 
     final row = AiModel(
@@ -1006,13 +1024,14 @@ List<AiModel> aaOverlays(List<Object?> raw, List<AiModel> known) {
       // 0–1 fraction to the 0–100 the other columns use so the four sort
       // against each other sensibly.
       reasoningIndex: _num(evals['artificial_analysis_reasoning_index']) ??
-          _asIndex(_num(evals['gpqa'])),
+          _asIndex(_num(evals['gpqa_diamond']) ?? _num(evals['gpqa'])),
       codingIndex: _num(evals['artificial_analysis_coding_index']),
       agentIndex: _num(evals['artificial_analysis_agentic_index']),
       mathIndex: _num(evals['artificial_analysis_math_index']),
-      speedTokensPerSec: _num(entry['median_output_tokens_per_second']),
-      latencyMs:
-          _secondsToMs(_num(entry['median_time_to_first_token_seconds'])),
+      speedTokensPerSec: _num(perf['median_output_tokens_per_second'] ??
+          entry['median_output_tokens_per_second']),
+      latencyMs: _secondsToMs(_num(perf['median_time_to_first_token_seconds'] ??
+          entry['median_time_to_first_token_seconds'])),
       sources: const ['artificial-analysis'],
     );
 

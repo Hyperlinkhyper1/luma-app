@@ -8,7 +8,7 @@ import 'device_share_repository.dart';
 /// so files keep arriving from the user's other devices while they are
 /// somewhere else in the app — a folder that only syncs while you are looking
 /// at it isn't a synced folder. Null until it has been built, and while the
-/// plan is below Nova.
+/// plan is below Orbit.
 class DeviceShareScope extends InheritedNotifier<DeviceShareRepository> {
   const DeviceShareScope({
     super.key,

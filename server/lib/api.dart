@@ -199,7 +199,7 @@ class ServerConfig {
   bool get groceriesAdminEnabled =>
       groceriesAdminKey != null && groceriesAdminKey!.isNotEmpty;
 
-  /// Optional Artificial Analysis data-API key (free tier, 1000 requests a
+  /// Optional Artificial Analysis data-API key (free tier, 100 requests a
   /// day) used only while refreshing the AI model leaderboard. Without it the
   /// catalogue still builds from OpenRouter and Hugging Face; the reasoning
   /// column, the speed figures and the per-effort measurements are what go
@@ -2509,25 +2509,23 @@ class Api {
   Response _aiStatus(Request request, StoredUser user) {
     int pct(int used, int limit) =>
         ((used * 100) / limit).clamp(0, 100).round();
-    Map<String, int> modeUsage(String mode) {
-      final budget = aiTokenBudget(user.planId, mode);
-      final fiveHourUsed = aiUsage.tokensUsed(user.id,
-          const Duration(hours: 5), mode: mode);
-      final weeklyUsed = aiUsage.tokensUsed(user.id,
-          const Duration(days: 7), mode: mode);
-      return {
-        'fiveHourUsed': fiveHourUsed,
-        'fiveHourLimit': budget.fiveHour,
-        'fiveHourPct': pct(fiveHourUsed, budget.fiveHour),
-        'weeklyUsed': weeklyUsed,
-        'weeklyLimit': budget.weekly,
-        'weeklyPct': pct(weeklyUsed, budget.weekly),
-      };
-    }
-
+    // One allowance for every mode. Shipped apps read a block per mode, so
+    // each mode carries the same shared numbers.
+    final budget = aiTokenBudget(user.planId);
+    final fiveHourUsed =
+        aiUsage.unitsUsed(user.id, const Duration(hours: 5));
+    final weeklyUsed = aiUsage.unitsUsed(user.id, const Duration(days: 7));
+    final shared = <String, int>{
+      'fiveHourUsed': fiveHourUsed,
+      'fiveHourLimit': budget.fiveHour,
+      'fiveHourPct': pct(fiveHourUsed, budget.fiveHour),
+      'weeklyUsed': weeklyUsed,
+      'weeklyLimit': budget.weekly,
+      'weeklyPct': pct(weeklyUsed, budget.weekly),
+    };
     final modes = {
       for (final mode in kAiModeNames.keys)
-        if (mode != 'smartest' || user.planId == 'nova') mode: modeUsage(mode),
+        if (mode != 'smartest' || user.planId == 'nova') mode: shared,
     };
     return jsonResponse(200, {
       'mistralConfigured': config.mistralKeyConfigured,
@@ -2536,9 +2534,12 @@ class Api {
       'googleConfigured': config.configuredAiUpstreams.isNotEmpty,
       'modeVersions': aiModeRoutes.versions,
       'usage': {
-        'fiveHourPct': modes['normal']!['fiveHourPct'],
-        'weeklyPct': modes['normal']!['weeklyPct'],
+        'fiveHourPct': shared['fiveHourPct'],
+        'weeklyPct': shared['weeklyPct'],
         'modes': modes,
+        'modeWeights': {
+          for (final mode in modes.keys) mode: aiModeWeightTenths(mode) / 10,
+        },
         'supportUsed': aiUsage.supportMessagesUsed(user.id),
         'supportLimit': kSupportMessagesPerDay,
         'webSearchUsed': aiUsage.webSearchesUsed(user.id),
@@ -3125,10 +3126,9 @@ class Api {
       return errorResponse(
           403, 'plan_required', 'Pulsar requires a Nova (\$6/month) plan.');
     }
-    final budget = aiTokenBudget(user.planId, meteredMode);
-    if (!aiUsage.canSpend(user.id, meteredMode, budget)) {
-      if (aiUsage.tokensUsed(user.id, const Duration(hours: 5),
-              mode: meteredMode) >=
+    final budget = aiTokenBudget(user.planId);
+    if (!aiUsage.canSpend(user.id, budget)) {
+      if (aiUsage.unitsUsed(user.id, const Duration(hours: 5)) >=
           budget.fiveHour) {
         return errorResponse(
             429,
@@ -3566,10 +3566,9 @@ class Api {
     final used = aiUsage.aiChecksUsed(user.id);
     final exchange = used >= included;
     final exchangePct = aiCheckerExchangePercentForPlan(user.planId);
-    final budget = aiTokenBudget(user.planId, meteredMode);
+    final budget = aiTokenBudget(user.planId);
     final exchangeCost = budget.weekly * exchangePct ~/ 100;
-    if (exchange &&
-        !aiUsage.canAfford(user.id, meteredMode, budget, exchangeCost)) {
+    if (exchange && !aiUsage.canAfford(user.id, budget, exchangeCost)) {
       return errorResponse(
           429,
           'usage_limit',
@@ -3747,8 +3746,8 @@ class Api {
           'That book is too long for the reviewer — keep it under about 4,000 words.');
     }
     const meteredMode = 'normal';
-    final budget = aiTokenBudget(user.planId, meteredMode);
-    if (!aiUsage.canSpend(user.id, meteredMode, budget)) {
+    final budget = aiTokenBudget(user.planId);
+    if (!aiUsage.canSpend(user.id, budget)) {
       return errorResponse(
           429,
           'usage_limit',
@@ -3855,8 +3854,8 @@ class Api {
 
   /// The Assistant's picture mode: draws one image with the operator's
   /// picture model. Each picture costs a flat share of the user's weekly
-  /// budget for the mode they have selected ([kAiImageWeeklyPercent]),
-  /// rather than its token count, since image models bill per picture.
+  /// allowance ([kAiImageWeeklyPercent]), rather than its token count, since
+  /// image models bill per picture.
   Future<Response> _aiImage(Request request, StoredUser user) async {
     final pct = aiImageWeeklyPercentForPlan(user.planId);
     if (pct == null) {
@@ -3888,9 +3887,9 @@ class Api {
         : 'normal';
     if (mode == 'smartest' && user.planId != 'nova') mode = 'normal';
 
-    final budget = aiTokenBudget(user.planId, mode);
+    final budget = aiTokenBudget(user.planId);
     final cost = budget.weekly * pct ~/ 100;
-    if (!aiUsage.canAfford(user.id, mode, budget, cost)) {
+    if (!aiUsage.canAfford(user.id, budget, cost)) {
       return errorResponse(429, 'usage_limit',
           "There isn't enough of your usage limit left for a picture — it "
               'frees up again over time, or buy extra credits.');

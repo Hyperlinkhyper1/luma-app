@@ -4,8 +4,8 @@ import 'dart:io';
 import 'ai_mode_routing.dart';
 import 'util.dart';
 
-/// Share of the selected mode's weekly token budget one picture costs, per
-/// plan. Plans missing here can't use picture mode at all.
+/// Share of the weekly usage allowance one picture costs, per plan. Plans
+/// missing here can't use picture mode at all.
 const Map<String, int> kAiImageWeeklyPercent = {
   'orbit': 7,
   'nova': 3,

@@ -524,14 +524,14 @@ class _LumaAppState extends State<LumaApp> {
 
   // The SFTP plugin's shared folder, mirrored device-to-device over the same
   // LAN links. Lives here rather than in the plugin page so files keep
-  // arriving while the user is elsewhere in the app. Nova-only, and null
+  // arriving while the user is elsewhere in the app. Orbit and up, and null
   // until it has been built.
   DeviceShareRepository? _deviceShare;
   bool _startingDeviceShare = false;
 
   Future<void> _syncDeviceShareWithPlan() async {
-    final isNova = planById(widget.settings.selectedPlanId).id == 'nova';
-    if (!isNova) {
+    final included = planAtLeast(widget.settings.selectedPlanId, 'orbit');
+    if (!included) {
       final existing = _deviceShare;
       if (existing == null) return;
       _peerSync.detachShareDelegate(existing);
@@ -777,7 +777,7 @@ class _LumaAppState extends State<LumaApp> {
   /// mirror.
   void _onSettingsChanged() {
     unawaited(_aiUsageRepository.refreshBackendUsage());
-    // The shared folder is Nova-only, so an upgrade has to start the mirror
+    // The shared folder is Orbit and up, so an upgrade has to start the mirror
     // and a downgrade has to stop it.
     unawaited(_syncDeviceShareWithPlan());
   }

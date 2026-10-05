@@ -71,7 +71,8 @@ Fast, simple notes — no folders or formatting to fight with.
 A built-in AI chat with three modes — **Aurora** (fast), **Nebula**
 (smarter) and **Pulsar** (smartest) — served through luma's own proxy. If a
 server operator has configured a shared key, it works out of the box with a
-fair per-user allowance, weighted per mode (Nebula counts ×5, Pulsar ×20) so
+fair per-user allowance — one 5-hour and one weekly limit shared by every
+mode, drained faster by the better ones (Nebula counts ×1.5, Pulsar ×2.5) so
 one expensive reply isn't billed like a cheap one.
 
 You can also bring your own API key for **Anthropic**, **OpenAI**,

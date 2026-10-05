@@ -32,8 +32,9 @@ int aiCheckerWeeklyChecksForPlan(String? planId) =>
 int aiCheckerExchangePercentForPlan(String? planId) =>
     kAiCheckerExchangePercent[planId] ?? kAiCheckerExchangePercent['core']!;
 
-/// A one-time pack of extra Luma AI tokens. Credits never expire and are only
-/// drawn on once the plan's rolling 5-hour or weekly budget is used up.
+/// A one-time pack of extra Luma AI usage units. Credits never expire and are
+/// only drawn on once the plan's rolling 5-hour or weekly allowance is used
+/// up, at the same mode weights as the allowance.
 class AiCreditPack {
   const AiCreditPack(this.id, this.tokens, this.priceCents);
 
@@ -56,6 +57,9 @@ AiCreditPack? aiCreditPackById(String? id) {
   return null;
 }
 
+/// One allowance of usage units per plan, shared by every Luma AI mode. A
+/// unit is one Aurora token; the better modes drain it faster
+/// ([kAiModeWeightTenths]).
 class AiTokenBudget {
   const AiTokenBudget(this.weekly);
 
@@ -63,23 +67,33 @@ class AiTokenBudget {
   int get fiveHour => weekly * 15 ~/ 100;
 }
 
-/// Rolling token allowances for the shared Luma AI key. Pulsar is Nova-only.
-AiTokenBudget aiTokenBudget(String? planId, String mode) {
-  if (mode == 'smartest') return const AiTokenBudget(4000000);
-  final base = mode == 'smarter' ? 500000 : 750000;
-  final multiplier = switch (planId) {
-    'orbit' => 5,
-    'nova' => 15,
-    _ => 1,
-  };
-  return AiTokenBudget(base * multiplier);
-}
+/// Rolling usage allowance for the shared Luma AI keys. Pulsar is Nova-only.
+AiTokenBudget aiTokenBudget(String? planId) => AiTokenBudget(switch (planId) {
+      'orbit' => 5000000,
+      'nova' => 14000000,
+      _ => 1000000,
+    });
+
+/// How fast each mode drains the shared allowance, in tenths of a unit per
+/// token: Aurora 1x, Nebula 1.5x, Pulsar 2.5x.
+const Map<String, int> kAiModeWeightTenths = {
+  'normal': 10,
+  'smarter': 15,
+  'smartest': 25,
+};
+
+int aiModeWeightTenths(String mode) => kAiModeWeightTenths[mode] ?? 10;
+
+/// The usage units [tokens] of [mode] take out of the allowance.
+int aiUsageUnits(int tokens, String mode) =>
+    (tokens * aiModeWeightTenths(mode) + 5) ~/ 10;
 
 /// Per-user AI usage bookkeeping for the shared, operator-funded keys:
 ///
-/// * Google ("Luma AI" modes) chats burn **tokens**, tracked as
-///   (timestamp, tokens, mode) events so both rolling windows — 5 hours and
-///   7 days — can be summed exactly for each mode.
+/// * Luma AI chats burn **usage units** from one allowance shared by every
+///   mode, tracked as (timestamp, tokens, mode, units) events so both rolling
+///   windows — 5 hours and 7 days — can be summed exactly. A mode's weight
+///   ([kAiModeWeightTenths]) turns its tokens into units.
 /// * Mistral ("Luma Support") chats burn **messages** — [kSupportMessagesPerDay]
 ///   per rolling day, counted separately from the token budget.
 /// * Web searches use each plan's rolling weekly allowance.
@@ -106,7 +120,7 @@ class AiUsageStore {
   /// How many days back [callSummary]'s `daily` series reaches.
   static const dailyDays = 30;
 
-  /// userId -> {'tokens': [[ms, tokens, mode], ...], 'support': [ms, ...],
+  /// userId -> {'tokens': [[ms, tokens, mode, units], ...], 'support': [ms, ...],
   ///             'webSearches': [ms, ...]}
   final Map<String, dynamic> _data;
 
@@ -138,7 +152,9 @@ class AiUsageStore {
   Map<String, dynamic> _entry(String userId) =>
       (_data[userId] as Map<String, dynamic>?) ?? {};
 
-  List<(int, int, String)> _tokenEvents(String userId) {
+  /// (ms, raw tokens, mode, usage units). Events stored before units existed
+  /// have no fourth field; they are weighted by their mode as they are read.
+  List<(int, int, String, int)> _tokenEvents(String userId) {
     final raw = _entry(userId)['tokens'] as List? ?? const [];
     final cutoff = DateTime.now().subtract(_tokenWindow).millisecondsSinceEpoch;
     return [
@@ -151,7 +167,11 @@ class AiUsageStore {
           (
             (e[0] as num).toInt(),
             (e[1] as num).toInt(),
-            e.length > 2 && e[2] is String ? e[2] as String : 'normal'
+            e.length > 2 && e[2] is String ? e[2] as String : 'normal',
+            e.length > 3 && e[3] is num
+                ? (e[3] as num).toInt()
+                : aiUsageUnits((e[1] as num).toInt(),
+                    e.length > 2 && e[2] is String ? e[2] as String : 'normal'),
           ),
     ];
   }
@@ -166,12 +186,24 @@ class AiUsageStore {
     ];
   }
 
-  /// Total Google tokens this user consumed within the trailing [window].
+  /// Raw tokens this user consumed within the trailing [window], optionally
+  /// of one [mode]. What the allowance sees is [unitsUsed].
   int tokensUsed(String userId, Duration window, {String? mode}) {
     final cutoff = DateTime.now().subtract(window).millisecondsSinceEpoch;
     var sum = 0;
     for (final e in _tokenEvents(userId)) {
       if (e.$1 > cutoff && (mode == null || e.$3 == mode)) sum += e.$2;
+    }
+    return sum;
+  }
+
+  /// Usage units this user spent, across every mode, within the trailing
+  /// [window] — the number the plan's allowance is measured in.
+  int unitsUsed(String userId, Duration window) {
+    final cutoff = DateTime.now().subtract(window).millisecondsSinceEpoch;
+    var sum = 0;
+    for (final e in _tokenEvents(userId)) {
+      if (e.$1 > cutoff) sum += e.$4;
     }
     return sum;
   }
@@ -231,13 +263,20 @@ class AiUsageStore {
     return true;
   }
 
+  /// Logs [tokens] of [mode]. [units] is what they cost the allowance; it
+  /// defaults to the mode's weight times the tokens.
   Future<void> recordTokens(String userId, int tokens,
-      {String mode = 'normal'}) async {
+      {String mode = 'normal', int? units}) async {
     if (tokens <= 0) return;
     final entry = Map<String, dynamic>.from(_entry(userId));
     entry['tokens'] = [
-      for (final e in _tokenEvents(userId)) [e.$1, e.$2, e.$3],
-      [DateTime.now().millisecondsSinceEpoch, tokens, mode],
+      for (final e in _tokenEvents(userId)) [e.$1, e.$2, e.$3, e.$4],
+      [
+        DateTime.now().millisecondsSinceEpoch,
+        tokens,
+        mode,
+        units ?? aiUsageUnits(tokens, mode),
+      ],
     ];
     _data[userId] = entry;
     await _save();
@@ -265,43 +304,40 @@ class AiUsageStore {
     await _save();
   }
 
-  bool _windowsOpen(String userId, String mode, AiTokenBudget budget) =>
-      tokensUsed(userId, const Duration(hours: 5), mode: mode) <
-          budget.fiveHour &&
-      tokensUsed(userId, const Duration(days: 7), mode: mode) < budget.weekly;
+  bool _windowsOpen(String userId, AiTokenBudget budget) =>
+      unitsUsed(userId, const Duration(hours: 5)) < budget.fiveHour &&
+      unitsUsed(userId, const Duration(days: 7)) < budget.weekly;
 
-  bool _windowsFit(
-          String userId, String mode, AiTokenBudget budget, int cost) =>
-      tokensUsed(userId, const Duration(hours: 5), mode: mode) + cost <=
-          budget.fiveHour &&
-      tokensUsed(userId, const Duration(days: 7), mode: mode) + cost <=
-          budget.weekly;
+  bool _windowsFit(String userId, AiTokenBudget budget, int cost) =>
+      unitsUsed(userId, const Duration(hours: 5)) + cost <= budget.fiveHour &&
+      unitsUsed(userId, const Duration(days: 7)) + cost <= budget.weekly;
 
-  /// Whether a request may start: the plan's budget has room, or purchased
+  /// Whether a request may start: the plan's allowance has room, or purchased
   /// credits can cover it.
-  bool canSpend(String userId, String mode, AiTokenBudget budget) =>
-      _windowsOpen(userId, mode, budget) || creditBalance(userId) > 0;
+  bool canSpend(String userId, AiTokenBudget budget) =>
+      _windowsOpen(userId, budget) || creditBalance(userId) > 0;
 
-  /// Whether a flat-priced action costing [cost] tokens can be paid for.
-  bool canAfford(String userId, String mode, AiTokenBudget budget, int cost) =>
-      _windowsFit(userId, mode, budget, cost) || creditBalance(userId) >= cost;
+  /// Whether a flat-priced action costing [cost] units can be paid for.
+  bool canAfford(String userId, AiTokenBudget budget, int cost) =>
+      _windowsFit(userId, budget, cost) || creditBalance(userId) >= cost;
 
-  /// Charges [tokens] to the plan's budget while it has room, and to
-  /// purchased credits once it does not.
+  /// Charges [tokens] of [mode] to the plan's allowance while it has room,
+  /// and to purchased credits once it does not. Either way the better modes
+  /// cost more: the charge is the tokens times the mode's weight.
   Future<void> charge(
       String userId, int tokens, String mode, AiTokenBudget budget) async {
-    if (_windowsOpen(userId, mode, budget) || creditBalance(userId) <= 0) {
+    if (_windowsOpen(userId, budget) || creditBalance(userId) <= 0) {
       return recordTokens(userId, tokens, mode: mode);
     }
-    return _spendCredits(userId, tokens);
+    return _spendCredits(userId, aiUsageUnits(tokens, mode));
   }
 
-  /// Like [charge] for a flat [cost] that must fit whole in the budget.
+  /// Like [charge] for a flat [cost], already in usage units, that must fit
+  /// whole in the allowance. The mode only labels the event; it adds no weight.
   Future<void> chargeFlat(
       String userId, int cost, String mode, AiTokenBudget budget) async {
-    if (_windowsFit(userId, mode, budget, cost) ||
-        creditBalance(userId) < cost) {
-      return recordTokens(userId, cost, mode: mode);
+    if (_windowsFit(userId, budget, cost) || creditBalance(userId) < cost) {
+      return recordTokens(userId, cost, mode: mode, units: cost);
     }
     return _spendCredits(userId, cost);
   }

@@ -327,7 +327,7 @@ class _Unavailable extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Text(
-        'The shared folder is not running on this device. It comes with Nova '
+        'The shared folder is not running on this device. It comes with Orbit and Nova '
         'and needs device sync switched on under Settings → Sync & account, '
         'on this device and the one you want to send to.',
         style: TextStyle(color: luma.textSecondary, fontSize: 12.5, height: 1.5),

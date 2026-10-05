@@ -123,37 +123,34 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
             else if (status == null)
               _Note(t.assistantUsageUnavailable)
             else
-              for (final mode in AiMode.values.where(
-                (mode) => mode.availableForPlan(plan.id),
-              ))
-                _Section(
-                  title:
-                      'Luma ${mode.displayNameFor(status.modeVersions[mode.name])}',
-                  child: Column(
-                    children: [
-                      _UsageRow(
-                        label: t.assistantUsageCurrentSession,
-                        caption: t.assistantUsageRollingFiveHours,
-                        fraction: status.usageFor(mode.name).fiveHourPct / 100,
-                        trailing: _tokenUsageLabel(
-                          status.usageFor(mode.name).fiveHourUsed,
-                          status.usageFor(mode.name).fiveHourLimit,
-                          status.usageFor(mode.name).fiveHourPct,
-                        ),
+              _Section(
+                title: 'Luma AI',
+                subtitle: _drainSubtitle(status, plan.id),
+                child: Column(
+                  children: [
+                    _UsageRow(
+                      label: t.assistantUsageCurrentSession,
+                      caption: t.assistantUsageRollingFiveHours,
+                      fraction: status.shared.fiveHourPct / 100,
+                      trailing: _tokenUsageLabel(
+                        status.shared.fiveHourUsed,
+                        status.shared.fiveHourLimit,
+                        status.shared.fiveHourPct,
                       ),
-                      _UsageRow(
-                        label: t.assistantUsageThisWeek,
-                        caption: t.assistantUsageRollingWeek,
-                        fraction: status.usageFor(mode.name).weeklyPct / 100,
-                        trailing: _tokenUsageLabel(
-                          status.usageFor(mode.name).weeklyUsed,
-                          status.usageFor(mode.name).weeklyLimit,
-                          status.usageFor(mode.name).weeklyPct,
-                        ),
+                    ),
+                    _UsageRow(
+                      label: t.assistantUsageThisWeek,
+                      caption: t.assistantUsageRollingWeek,
+                      fraction: status.shared.weeklyPct / 100,
+                      trailing: _tokenUsageLabel(
+                        status.shared.weeklyUsed,
+                        status.shared.weeklyLimit,
+                        status.shared.weeklyPct,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+              ),
             const SizedBox(height: 20),
             Divider(height: 1, color: luma.border),
             const SizedBox(height: 8),
@@ -218,6 +215,22 @@ class _AssistantUsageViewState extends State<AssistantUsageView> {
     );
   }
 }
+
+/// "Nebula ×1.5 · Pulsar ×2.5": how much faster each better mode drains the
+/// one shared allowance than Aurora. Null when the server reports no weights.
+String? _drainSubtitle(AiServerStatus status, String planId) {
+  final parts = [
+    for (final mode in AiMode.values)
+      if (mode.availableForPlan(planId) &&
+          (status.modeWeights[mode.name] ?? 1) != 1)
+        '${mode.baseName} ×${_weightLabel(status.modeWeights[mode.name]!)}',
+  ];
+  return parts.isEmpty ? null : parts.join(' · ');
+}
+
+String _weightLabel(double weight) => weight == weight.roundToDouble()
+    ? weight.toStringAsFixed(0)
+    : weight.toStringAsFixed(1);
 
 String _tokenUsageLabel(int used, int limit, int percent) => limit > 0
     ? '${compactTokens(used)} / ${compactTokens(limit)} · $percent%'

@@ -1921,6 +1921,7 @@ class AiServerStatus {
     required this.webSearchUsed,
     required this.webSearchLimit,
     this.modes = const {},
+    this.modeWeights = const {},
     this.modeVersions = const {},
     this.pictureConfigured = false,
     this.pictureWeeklyPct,
@@ -1966,7 +1967,14 @@ class AiServerStatus {
   final int webSearchUsed;
   final int webSearchLimit;
   final Map<String, AiModeUsage> modes;
+
+  /// How fast each mode drains the one shared allowance, as a multiple of
+  /// Aurora (1.0). The usage numbers in [modes] are the same for every mode.
+  final Map<String, double> modeWeights;
   final Map<String, String> modeVersions;
+
+  /// The allowance's current numbers: the shared usage every mode reports.
+  AiModeUsage get shared => usageFor('normal');
 
   /// Whether the operator set up a model for the Assistant's picture mode.
   final bool pictureConfigured;
@@ -2015,6 +2023,12 @@ class AiServerStatus {
           for (final entry in rawModes.entries)
             if (entry.key is String && entry.value is Map)
               entry.key as String: AiModeUsage.fromJson(entry.value as Map),
+      },
+      modeWeights: {
+        if (usage['modeWeights'] case final Map rawWeights)
+          for (final entry in rawWeights.entries)
+            if (entry.key is String && entry.value is num)
+              entry.key as String: (entry.value as num).toDouble(),
       },
     );
   }

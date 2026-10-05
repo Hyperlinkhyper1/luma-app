@@ -70,7 +70,7 @@ class HostClient {
 /// screen, so a page-owned server died whenever the user opened anything
 /// else. Hosting therefore survives navigating away — a transfer should not
 /// die because the user looked at something else — and ends when the user
-/// presses Stop, the plan drops below Nova, or luma closes.
+/// presses Stop, the plan drops below Orbit, or luma closes.
 class SftpHostServer extends ChangeNotifier {
   SftpHostServer();
 

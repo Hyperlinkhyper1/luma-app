@@ -24,8 +24,8 @@ extension ClassroomApi on Api {
       return errorResponse(
           403, 'plan_required', 'The classroom is part of the Nova plan.');
     }
-    final budget = aiTokenBudget(user.planId, _meteredMode);
-    if (!aiUsage.canSpend(user.id, _meteredMode, budget)) {
+    final budget = aiTokenBudget(user.planId);
+    if (!aiUsage.canSpend(user.id, budget)) {
       return errorResponse(
           429,
           'usage_limit',
@@ -140,7 +140,7 @@ extension ClassroomApi on Api {
           }
         } catch (_) {}
         await aiUsage.charge(user.id, tokens > 0 ? tokens : 800, _meteredMode,
-            aiTokenBudget(user.planId, _meteredMode));
+            aiTokenBudget(user.planId));
         final parsed = content == null ? null : parse(content);
         if (parsed != null) return parsed;
         stderr.writeln('[luma] classroom tutor: $model sent an unusable '

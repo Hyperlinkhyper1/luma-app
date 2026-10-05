@@ -582,6 +582,28 @@ void main() {
       expect(out.single.effortProfiles, hasLength(1));
     });
 
+    test('reads speed, latency and GPQA from the v2 language API shape', () {
+      final out = aaOverlays([
+        {
+          'name': 'GPT-6 Astra',
+          'evaluations': {
+            'artificial_analysis_intelligence_index': 45.0,
+            'gpqa_diamond': 0.8,
+          },
+          'performance': {
+            'median_output_tokens_per_second': 120.5,
+            'median_time_to_first_token_seconds': 0.65,
+          },
+        },
+      ], [
+        known('openai/gpt-6-astra', 'GPT-6 Astra')
+      ]);
+
+      expect(out.single.speedTokensPerSec, 120.5);
+      expect(out.single.latencyMs, 650);
+      expect(out.single.reasoningIndex, 80);
+    });
+
     test('rows for models the catalogue does not carry are dropped', () {
       expect(aaOverlays([row('Some Other Model (max)', 40)], []), isEmpty);
     });

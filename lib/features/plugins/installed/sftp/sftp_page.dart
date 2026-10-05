@@ -31,7 +31,7 @@ import 'sftp_transfer_queue.dart';
 
 /// The SFTP plugin: a two-pane file transfer client for your own servers.
 ///
-/// Nova-exclusive, like the other paid plugins, and entirely peer-to-server —
+/// Orbit and up, like the other paid plugins, and entirely peer-to-server —
 /// the SSH connection is opened by this device straight to the host the user
 /// typed. No luma server is involved at any point, so nothing here goes
 /// through `SyncService` or `GatedServerClient`.
@@ -1030,7 +1030,9 @@ class _SftpPageState extends State<SftpPage> {
   @override
   Widget build(BuildContext context) {
     final settings = SettingsScope.of(context);
-    if (settings.selectedPlanId != 'nova') return const _NovaUpsell();
+    if (!planAtLeast(settings.selectedPlanId, 'orbit')) {
+      return const _PlanUpsell();
+    }
 
     final session = _session;
     return LayoutBuilder(
@@ -1570,9 +1572,9 @@ class _MobileTransferBar extends StatelessWidget {
   }
 }
 
-/// What Core and Orbit see instead of the browser.
-class _NovaUpsell extends StatelessWidget {
-  const _NovaUpsell();
+/// What Core sees instead of the browser.
+class _PlanUpsell extends StatelessWidget {
+  const _PlanUpsell();
 
   @override
   Widget build(BuildContext context) {
@@ -1580,14 +1582,14 @@ class _NovaUpsell extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: LumaEmptyState(
         icon: Icons.auto_awesome_rounded,
-        title: 'SFTP is a Nova exclusive',
+        title: 'SFTP comes with Orbit and Nova',
         subtitle:
             'Connect to your own servers with a host, username, password and '
             'port, browse both sides at once, and drag files across. The '
             'connection goes straight from this device to your server — '
             'nothing passes through a luma server.',
         action: LumaPrimaryButton(
-          label: 'Upgrade to ${planById('nova').name}',
+          label: 'Upgrade to ${planById('orbit').name}',
           icon: Icons.auto_awesome_rounded,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const PlanSelectionPage()),
