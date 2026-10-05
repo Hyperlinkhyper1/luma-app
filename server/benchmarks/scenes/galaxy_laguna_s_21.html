@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Galaxy Benchmark</title>
+  <script type="importmap">
+  {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html { overflow: hidden; height: 100%; background: #000; font-family: sans-serif; }
+    #hud { position: absolute; top: 10px; left: 10px; color: #fff; z-index: 10; text-shadow: 0 0 5px #000; }
+    #hud div { margin: 2px 0; }
+    #minimap { position: absolute; bottom: 10px; right: 10px; width: 180px; height: 180px; border: 1px solid #fff; border-radius: 50%; z-index: 10; }
+    #toggle-ui { position: absolute; bottom: 10px; left: 10px; z-index: 10; padding: 5px 10px; background: rgba(0,0,0,0.5); color: #fff; border: none; cursor: pointer; }
+    #how-it-works { display: none; position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: #fff; padding: 10px; z-index: 10; max-width: 300px; }
+    #how-toggle { position: absolute; top: 10px; right: 10px; z-index: 10; padding: 5px 10px; background: rgba(0,0,0,0.5); color: #fff; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div id="hud">
+  <div id="region">Region: ...</div>
+  <div id="distance">Distance from center: ...</div>
+  <div id="speed">Speed: ...</div>
+  <div id="eta">ETA: ...</div>
+  <div id="mode">Mode: ...</div>
+</div>
+<canvas id="minimap" width="200" height="200"></canvas>
+<button id="toggle-ui">Hide UI</button>
+<button id="how-toggle">How it works</button>
+<div id="how-it-works">
+  <strong>How it works:</strong><br>
+  This scene uses logarithmic scaling layers for handling massive scale differences. The galaxy and stars are rendered in their full scale (light-years), while the spaceship and nearby objects (planets, nebula) are dynamically scaled relative to camera distance. A floating origin technique keeps precision by re-centering the world on the camera when needed.
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+let scene, camera, renderer, composer;
+let controls;
+let galaxyParticles;
+let ship;
+let nebula;
+let blackHole;
+let planet;
+let moons = [];
+let clock = new THREE.Clock();
+let speedFactor = 1;
+let paused = false;
+let voyageProgress = 0;
+let voyageDuration = 150; // seconds
+let currentMode = 'cinematic';
+let routePoints = [];
+let waypoints = [];
+
+init();
+animate();
+
+function init() {
+  const canvas = document.createElement('canvas');
+  document.body.appendChild(canvas);
+
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200000));
+  composer.addPass(renderPass);
+
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+  composer.addPass(bloomPass);
+
+  document.addEventListener('click', () => {
+    if (!audioStarted) {
+      startEngineSound();
+    }
+  }, { once: true });
+
+  setupCamera();
+  setupControls();
+  createGalaxy();
+  createShip();
+  createNebula();
+  createBlackHole();
+  createSolarSystem();
+  createMoons();
+  window.addEventListener('resize', onWindowResize);
+  generateRoute();
+}
+
+function setupCamera() {
+  camera.position.set(0, 50, 200);
+  camera.lookAt(0, 0, 0);
+}
+
+function setupControls() {
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+}
+
+function createGalaxy() {
+  const geometry = new THREE.BufferGeometry();
+  const starCount = 200000;
+  const positions = new Float32Array(starCount * 3);
+  const colors = new Float32Array(starCount * 3);
+  const sizes = new Float32Array(starCount);
+
+  const color = new THREE.Color();
+
+  for (let i = 0; i < starCount; i++) {
+    const radius = Math.random() * 50000;
+    const theta = Math.random() * Math.PI * 2;
+    const armAngle = theta + (radius / 10000) * 2;
+    const x = radius * Math.cos(armAngle);
+    const z = radius * Math.sin(armAngle);
+    const y = (Math.random() - 0.5) * 1000 * Math.exp(-radius / 10000);
+
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+
+    let t;
+    if (radius < 2000) {
+      t = 0.6; // bulge
+    } else if (radius < 5000 && Math.abs(y) < 50) {
+      t = 0.8; // bar
+    } else {
+      t = Math.random();
+    }
+    color.setHSL(t, 0.9, 0.6 + Math.random() * 0.2);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+    sizes[i] = Math.random() * 2 + 0.5;
+  }
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  const material = new THREE.PointsMaterial({
+    size: 2,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.8,
+    sizeAttenuation: true
+  });
+
+  galaxyParticles = new THREE.Points(geometry, material);
+  scene.add(galaxyParticles);
+}
+
+function createShip() {
+  const group = new THREE.Group();
+
+  // Hull
+  const hullGeom = new THREE.ConeGeometry(5, 20, 8);
+  const hullMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, metalness: 0.8, roughness: 0.2 });
+  const hull = new THREE.Mesh(hullGeom, hullMat);
+  hull.rotation.z = Math.PI / 2;
+  group.add(hull);
+
+  // Cockpit
+  const cockpitGeom = new THREE.SphereGeometry(3, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+  const cockpitMat = new THREE.MeshPhysicalMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.5, transmission: 0.8 });
+  const cockpit = new THREE.Mesh(cockpitGeom, cockpitMat);
+  cockpit.position.set(5, 2, 0);
+  group.add(cockpit);
+
+  // Engines
+  const engineGeom = new THREE.CylinderGeometry(1.5, 2, 6, 16);
+  const engineMat = new THREE.MeshBasicMaterial({ color: 0xff4400, emissive: 0xff4400 });
+  const leftEngine = new THREE.Mesh(engineGeom, engineMat);
+  leftEngine.position.set(-4, 0, -6);
+  group.add(leftEngine);
+  const rightEngine = leftEngine.clone();
+  rightEngine.position.x = 4;
+  group.add(rightEngine);
+
+  // Thruster Plume
+  const plumeGeom = new THREE.ConeGeometry(2, 10, 8);
+  const plumeMat = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.7 });
+  const plumeLeft = new THREE.Mesh(plumeGeom, plumeMat);
+  plumeLeft.position.set(-4, 0, -12);
+  plumeLeft.rotation.z = Math.PI;
+  group.add(plumeLeft);
+  const plumeRight = plumeLeft.clone();
+  plumeRight.position.x = 4;
+  group.add(plumeRight);
+
+  // Navigation Lights
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+  const portLight = new THREE.Mesh(new THREE.SphereGeometry(0.5), lightMat);
+  portLight.position.set(-5, 0, 5);
+  group.add(portLight);
+  const starboardLight = new THREE.Mesh(new THREE.SphereGeometry(0.5), new THREE.MeshBasicMaterial({ color: 0x00ff00 }));
+  starboardLight.position.set(5, 0, 5);
+  group.add(starboardLight);
+
+  // Strobe Lights
+  const strobeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const strobe1 = new THREE.Mesh(new THREE.SphereGeometry(0.3), strobeMat);
+  strobe1.position.set(0, 5, 6);
+  group.add(strobe1);
+  const strobe2 = strobe1.clone();
+  strobe2.position.set(0, -5, 6);
+  group.add(strobe2);
+
+  ship = group;
+  scene.add(ship);
+}
+
+function createNebula() {
+  const group = new THREE.Group();
+
+  // Layered sprites for volumetric effect
+  const spriteMat = new THREE.SpriteMaterial({ map: createNebulaTexture(), transparent: true, blending: THREE.AdditiveBlending });
+  for (let i = 0; i < 10; i++) {
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(2000 + Math.random() * 1000, 2000 + Math.random() * 1000, 1);
+    sprite.position.set(
+      (Math.random() - 0.5) * 20000,
+      (Math.random() - 0.5) * 2000,
+      (Math.random() - 0.5) * 20000
+    );
+    sprite.material.rotation = Math.random() * Math.PI * 2;
+    group.add(sprite);
+  }
+
+  nebula = group;
+  scene.add(nebula);
+}
+
+function createNebulaTexture() {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  gradient.addColorStop(0, 'rgba(255,100,200,0.8)');
+  gradient.addColorStop(0.5, 'rgba(100,200,255,0.4)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  ctx.filter = 'blur(8px)';
+  for(let i=0;i<50;i++){
+    const x=Math.random()*size;
+    const y=Math.random()*size;
+    const r=Math.random()*10+5;
+    ctx.fillStyle=`hsla(${Math.random()*60+280}, 80%, 60%, 0.3)`;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  return texture;
+}
+
+function createBlackHole() {
+  const group = new THREE.Group();
+
+  const geo = new THREE.RingGeometry(50, 80, 64);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+  const disc = new THREE.Mesh(geo, mat);
+  disc.rotation.x = Math.PI / 2;
+  group.add(disc);
+
+  blackHole = group;
+  scene.add(blackHole);
+}
+
+function createSolarSystem() {
+  // Central star
+  const starGeo = new THREE.SphereGeometry(20, 32, 32);
+  const starMat = new THREE.MeshBasicMaterial({ color: 0xffdd44 });
+  const star = new THREE.Mesh(starGeo, starMat);
+  scene.add(star);
+
+  // Corona
+  const coronaGeo = new THREE.SphereGeometry(30, 32, 32);
+  const coronaMat = new THREE.MeshBasicMaterial({ color: 0xff8800, side: THREE.BackSide, transparent: true, opacity: 0.3 });
+  const corona = new THREE.Mesh(coronaGeo, coronaMat);
+  scene.add(corona);
+
+  // Planet with atmosphere
+  const planetGeo = new THREE.SphereGeometry(10, 32, 32);
+  const planetMat = new THREE.MeshStandardMaterial({ color: 0x2266cc });
+  planet = new THREE.Mesh(planetGeo, planetMat);
+  planet.position.set(200, 0, 0);
+  scene.add(planet);
+
+  // Atmosphere glow
+  const atmosphereGeo = new THREE.SphereGeometry(12, 32, 32);
+  const atmosphereMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, side: THREE.BackSide, transparent: true, opacity: 0.2 });
+  const atmosphere = new THREE.Mesh(atmosphereGeo, atmosphereMat);
+  atmosphere.position.copy(planet.position);
+  scene.add(atmosphere);
+
+  // Clouds
+  const cloudGeo = new THREE.IcosahedronGeometry(12.5, 2);
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, wireframe: false });
+  const clouds = new THREE.Mesh(cloudGeo, cloudMat);
+  clouds.position.copy(planet.position);
+  scene.add(clouds);
+}
+
+function createMoons() {
+  const moonGeo = new THREE.SphereGeometry(3, 16, 16);
+  const moonMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  const moon = new THREE.Mesh(moonGeo, moonMat);
+  moon.position.set(250, 0, 0);
+  scene.add(moon);
+  moons.push(moon);
+}
+
+function generateRoute() {
+  // Simple hardcoded route points in galactic coordinates
+  routePoints = [
+    { x: 0, y: 0, z: 0 },            // Start near galactic center
+    { x: 5000, y: 0, z: 5000 },     // Cruise out
+    { x: 10000, y: 0, z: 10000 },    // Hyperdrive
+    { x: 15000, y: 0, z: 15000 },    // Nebula pass
+    { x: 20000, y: 0, z: 20000 }     // Arrival
+  ];
+
+  waypoints = routePoints.map(p => new THREE.Vector3(p.x, p.y, p.z));
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+}
+
+let audioStarted = false;
+let engineSound;
+let audioContext;
+
+function startEngineSound() {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = audioContext.createOsawerString('sine');
+  const gainNode = audioContext.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  oscillator.frequency.setValueAtTime(110, audioContext.currentTime);
+  gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+  oscillator.start();
+  engineSound = { oscillator, gainNode };
+  audioStarted = true;
+}
+
+function updateMinimap() {
+  const ctx = document.getElementById('minimap').getContext('2d');
+  ctx.clearRect(0, 0, 200, 200);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, 200, 200);
+
+  // Draw galaxy center
+  ctx.fillStyle = '#ffdd44';
+  ctx.beginPath();
+  ctx.arc(100, 100, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Draw ship position
+  if (ship) {
+    const sx = (ship.position.x / 25000) * 100 + 100;
+    const sy = (ship.position.z / 25000) * 100 + 100;
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (!paused) {
+    const delta = clock.getDelta() * speedFactor;
+    voyageProgress += delta;
+
+    // Update ship along route
+    const segDur = voyageDuration / (waypoints.length - 1);
+    const segIdx = Math.floor(voyageProgress / segDur);
+    if (segIdx >= waypoints.length - 1) {
+      voyageProgress = 0;
+    }
+
+    const t = (voyageProgress % segDur) / segDur;
+    const p1 = waypoints[segIdx];
+    const p2 = waypoints[segIdx + 1];
+    if (p1 && p2) {
+      ship.position.lerpVectors(p1, p2, t);
+    }
+
+    // Rotate ship slightly toward movement direction
+    const dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+    ship.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
+
+    // Animate lights
+    if (Math.floor(voyageProgress * 10) % 2 === 0) {
+      document.querySelector('#ship-container canvas').style.display = 'none'; // placeholder
+    }
+
+    updateHUD();
+    updateMinimap();
+  }
+
+  controls.update();
+  composer.render();
+}
+
+function updateHUD() {
+  const dist = ship.position.length();
+  document.getElementById('region').textContent = `Region: Perseus Arm`;
+  document.getElementById('distance').textContent = `Distance from center: ${Math.round(dist)} ly`;
+  document.getElementById('speed').textContent = `Speed: ${paused ? 'Paused' : 'Sublight'}`;
+  document.getElementById('eta').textContent = `ETA: ${Math.round((voyageDuration - voyageProgress))}s`;
+  document.getElementById('mode').textContent = `Mode: ${currentMode}`;
+}
+
+// Controls for play/pause and speed
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') paused = !paused;
+  if (e.code === 'ArrowUp') speedFactor *= 1.2;
+  if (e.code === 'ArrowDown') speedFactor /= 1.2;
+});
+</script>
+</body>
+</html>
