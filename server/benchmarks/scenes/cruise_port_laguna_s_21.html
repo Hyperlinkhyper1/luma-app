@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Cruise Port Benchmark - Lisbon</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+        #ui { position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px; color: white; }
+        button, input[type=range] { margin: 5px; }
+        #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; }
+    </style>
+</head>
+<body>
+    <div id="loading">Generating Scene...</div>
+    <div id="ui" style="display:none;">
+        <div>
+            <button id="btnMiradouro">MIRADOURO</button>
+            <button id="btnWaterfront">WATERFRONT</button>
+            <button id="btnAerial">AERIAL</button>
+            <button id="btnRiver">FROM THE RIVER</button>
+            <button id="btnDeck">SHIP'S DECK</button>
+            <button id="btnWalk">WALK MODE</button>
+            <button id="btnHideUI">HIDE UI</button>
+        </div>
+        <div>
+            <label>Time of Day: <input type="range" id="timeSlider" min="0" max="24" step="0.1" value="18"></label>
+            <button id="btnPlayPause">PLAY</button>
+        </div>
+        <div>
+            <button id="btnDepart">DEPARTURE</button>
+            <button id="btnReturn">RETURN</button>
+        </div>
+        <div><button id="btnWeather">WEATHER: CLEAR</button></div>
+    </div>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+    </script>
+
+    <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { Water } from 'three/addons/objects/Water.js';
+    import { Sky } from 'three/addons/objects/Sky.js';
+
+    let scene, camera, renderer, controls;
+    let composer;
+    let clock = new THREE.Clock();
+    let timeOfDay = 18.0; // Start at golden hour
+    let isPlaying = false;
+    let weather = 'CLEAR';
+    let walkMode = false;
+    let uiVisible = true;
+
+    let ship; // Reference to the cruise ship
+    let isMoving = false;
+    let moveProgress = 0;
+    let departing = false;
+
+    const loadingScreen = document.getElementById('loading');
+    const ui = document.getElementById('ui');
+
+    init();
+    animate();
+
+    function init() {
+        // Scene setup
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 50, 150);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setAnimationLoop(() => requestAnimationFrame(animate));
+        document.body.appendChild(renderer.domElement);
+
+        // Composer for post-processing
+        composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        composer.addPass(bloomPass);
+
+        // Environment
+        setupSky();
+        setupLighting();
+
+        // Controls
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Generate scene elements
+        setTimeout(() => {
+            try {
+                createTerrain();
+                createLisbonLandmarks();
+                createCruiseTerminal();
+                createCruiseShip();
+                createPortLife();
+                createWater();
+                createAtmosphere();
+
+                setupEventListeners();
+                loadingScreen.style.display = 'none';
+                ui.style.display = 'block';
+            } catch (e) {
+                console.error("Error generating scene:", e);
+                loadingScreen.textContent = "Failed to generate scene.";
+            }
+        }, 100);
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function setupSky() {
+        const sky = new Sky();
+        sky.scale.set(10000, 10000, 10000);
+        scene.add(sky);
+
+        const uniforms = sky.material.uniforms;
+        uniforms['turbidity'].value = 10;
+        uniforms['rayleigh'].value = 2;
+        uniforms['mieCoefficient'].value = 0.1;
+        uniforms['mieDirectionalG'].value = 0.95;
+    }
+
+    function setupLighting() {
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directional.position.set(100, 200, 100);
+        scene.add(directionalLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
+        scene.add(hemiLight);
+    }
+
+    function updateLighting() {
+        const hour = timeOfDay % 24;
+        let lightColor, lightIntensity, skyColor, groundColor;
+
+        if (hour >= 6 && hour < 18) {
+            // Daytime
+            lightColor = new THREE.Color(0xffffff);
+            lightIntensity = 0.8;
+            skyColor = new THREE.Color(0x87CEEB);
+            groundColor = new THREE.Color(0x87CEFA);
+        } else {
+            // Night
+            lightColor = new THREE.Color(0xffaa88);
+            lightIntensity = 0.3;
+            skyColor = new THREE.Color(0x001133);
+            groundColor = new THREE.Color(0x002244);
+        }
+
+        const directionalLight = scene.children.find(l => l.type === 'DirectionalLight');
+        directionalLight.color.copy(lightColor);
+        directionalLight.intensity = lightIntensity;
+
+        const sky = scene.children.find(s => s.type === 'Sky');
+        if (sky) {
+            sky.material.uniforms['sun'].value.set(
+                Math.cos(hour * Math.PI / 12) * 100,
+                Math.sin(hour * Math.PI / 12) * 100,
+                100
+            ).normalize();
+        }
+    }
+
+    function createTerrain() {
+        const geometry = new THREE.PlaneGeometry(500, 500);
+        const texture = new THREE.CanvasTexture(generateCheckerboardCanvas());
+        const material = new THREE.MeshStandardMaterial({ map: texture });
+        const ground = new THREE.Mesh(geometry, material);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -1;
+        scene.add(ground);
+    }
+
+    function generateCheckerboardCanvas() {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ddd';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#bbb';
+        ctx.fillRect(0, 0, size/2, size/2);
+        ctx.fillRect(size/2, size/2, size/2, size/2);
+        return canvas;
+    }
+
+    function createLisbonLandmarks() {
+        // Simplified Alfama district with tiled buildings
+        const alfamaGroup = new THREE.Group();
+        
+        for (let i = 0; i < 20; i++) {
+            const height = 10 + Math.random() * 20;
+            const geometry = new THREE.BoxGeometry(5, height, 5);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: Math.random() > 0.5 ? 0xD2B48C : 0xF5DEB3,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const building = new THREE.Mesh(geometry, material);
+            
+            // Add terracotta roof
+            const roofGeometry = new THREE.ConeGeometry(4, 2, 4);
+            const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xB87333 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.y = height + 1;
+            
+            const buildingGroup = new THREE.Group();
+            buildingGroup.add(building);
+            buildingGroup.add(roof);
+            
+            buildingGroup.position.set(
+                -80 + Math.random() * 60,
+                0,
+                -50 + Math.random() * 40
+            );
+            
+            alfamaGroup.add(buildingGroup);
+        }
+        scene.add(alfamaGroup);
+
+        // São Jorge Castle
+        const castleGeometry = new THREE.CylinderGeometry(10, 10, 30, 8);
+        const castleMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        const castle = new THREE.Mesh(castleGeometry, castleMaterial);
+        castle.position.set(-60, 50, -30);
+        scene.add(castle);
+
+        // National Pantheon dome
+        const pantheonGeometry = new THREE.SphereGeometry(8, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+        const pantheonMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xFFFFFF,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.9
+        });
+        const pantheon = new THREE.Mesh(pantheonGeometry, pantheonMaterial);
+        pantheon.position.set(-20, 30, -10);
+        pantheon.rotation.y = -Math.PI / 4;
+        scene.add(pantheon);
+
+        // Se Cathedral towers
+        const towerGeometry = new THREE.BoxGeometry(4, 30, 4);
+        const towerMaterial = new THREE.MeshStandardMaterial({ color: 0xDDDDDD });
+        
+        const leftTower = new THREE.Mesh(towerGeometry, towerMaterial);
+        leftTower.position.set(-45, 15, 5);
+        scene.add(leftTower);
+
+        const rightTower = new THREE.Mesh(towerGeometry, towerMaterial);
+        rightTower.position.set(-35, 15, 5);
+        scene.add(rightTower);
+
+        // 25 de Abril Bridge
+        const bridgeGeometry = new THREE.CylinderGeometry(1, 1, 200, 8);
+        const bridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x8B0000 });
+        
+        const leftTower = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+        leftTower.position.set(-100, 85, -150);
+        scene.add(leftTower);
+
+        const rightTower = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+        rightTower.position.set(100, 85, -150);
+        scene.add(rightTower);
+
+        // Bridge deck
+        const deckGeometry = new THREE.BoxGeometry(210, 3, 8);
+        const deckMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+        const deck = new THREE.Mesh(deckGeometry, deckMaterial);
+        deck.position.set(0, 5, -150);
+        scene.add(deck);
+
+        // Cristo Rei statue
+        const christGeometry = new THREE.ConeGeometry(3, 15, 8);
+        const christMaterial = new THREE.MeshStandardMaterial({ color: 0xFFD700 });
+        const christ = new THREE.Mesh(christGeometry, christMaterial);
+        christ.position.set(0, 40, -180);
+        christ.rotation.z = Math.PI;
+        scene.add(christ);
+    }
+
+    function createCruiseTerminal() {
+        // Terminal building
+        const geometry = new THREE.BoxGeometry(40, 15, 20);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0xADD8E6,
+            roughness: 0.7,
+            metalness: 0.2
+        });
+        const terminal = new THREE.Mesh(geometry, material);
+        terminal.position.set(0, 7.5, 0);
+        scene.add(terminal);
+
+        // Terminal roof overhang
+        const roofGeometry = new THREE.BoxGeometry(45, 2, 25);
+        const roof = new THREE.Mesh(roofGeometry, material);
+        roof.position.set(0, 16, 0);
+        scene.add(roof);
+    }
+
+    function createCruiseShip() {
+        ship = new THREE.Group(); // Container for the entire ship
+
+        // === Hull ===
+        // Main hull using a lathe geometry for a smooth, realistic shape
+        const hullPoints = [];
+        for (let i = 0; i <= 20; i++) {
+            const t = i / 20;
+            const y = t * 38;
+            const x = 15 + Math.sin(t * Math.PI) * 15;
+            hullPoints.push(new THREE.Vector2(x, y));
+        }
+        const hullGeometry = new THREE.LatheGeometry(hullPoints, 32);
+        hullGeometry.rotateX(Math.PI / 2);
+        
+        // Extrude to make it long
+        const fullHull = new THREE.Shape();
+        fullHull.moveTo(0, 0);
+        fullHull.lineTo(150, 0);
+        fullHull.lineTo(150, 5);
+        fullHull.lineTo(0, 5);
+        fullHull.lineTo(0, 0);
+        
+        const extrudeSettings = { depth: 38, bevelEnabled: true, steps: 10 };
+        const hullShape = new THREE.ExtrudeGeometry(fullHull, extrudeSettings);
+        hullShape.rotateX(Math.PI / 2);
+        
+        const hullMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x1a1a1a,
+            metalness: 0.7,
+            roughness: 0.3
+        });
+        const hull = new THREE.Mesh(hullShape, hullMaterial);
+        hull.position.set(0, -5, 0);
+        ship.add(hull);
+
+        // Bulbous bow
+        const bowGeometry = new THREE.SphereGeometry(8, 16, 16);
+        const bowMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.7, roughness: 0.3 });
+        const bow = new THREE.Mesh(bowGeometry, bowMaterial);
+        bow.position.set(-80, -3, 0);
+        ship.add(bow);
+
+        // === Superstructure ===
+        // Multiple levels of the superstructure
+        const superStructureMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.4 });
+        const superStructureMaterials = [
+            new THREE.MeshStandardMaterial({ color: 0x444444 }),
+            new THREE.MeshStandardMaterial({ color: 0x555555 }),
+            new THREE.MeshStandardMaterial({ color: 0x666666 })
+        ];
+
+        for (let deck = 0; deck < 10; deck++) {
+            const deckHeight = 3;
+            const deckWidth = deck % 2 === 0 ? 35 : 32;
+            const deckLength = deck === 0 ? 280 : 260;
+            
+            const deckGeometry = new THREE.BoxGeometry(deckLength, deckHeight, deckWidth);
+            const deckMesh = new THREE.Mesh(deckGeometry, superStructureMaterials[deck % 3]);
+            deckMesh.position.set(0, deck * deckHeight, 0);
+            ship.add(deckMesh);
+        }
+
+        // === Bow and Stern Details ===
+        // Ship's name on bow
+        const nameGeometry = new THREE.PlaneGeometry(20, 5);
+        const nameCanvas = document.createElement('canvas');
+        nameCanvas.width = 200;
+        nameCanvas.height = 50;
+        const nameCtx = nameCanvas.getContext('2d');
+        nameCtx.fillStyle = 'white';
+        nameCtx.font = '30px Arial';
+        nameCtx.fillText('OCEAN VOYAGER', 10, 35);
+        const nameTexture = new THREE.CanvasTexture(nameCanvas);
+        const nameMaterial = new THREE.MeshBasicMaterial({ map: nameTexture, transparent: true });
+        const bowName = new THREE.Mesh(nameGeometry, nameMaterial);
+        bowName.position.set(-120, 10, 0);
+        ship.add(bowName);
+
+        const sternName = bowName.clone();
+        sternName.position.set(120, 10, 0);
+        sternName.rotation.y = Math.PI;
+        ship.add(sternName);
+
+        // Anchors
+        const anchorGeometry = new THREE.TorusGeometry(3, 1, 16, 100);
+        const anchorMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const anchor1 = new THREE.Mesh(anchorGeometry, anchorMaterial);
+        anchor1.position.set(-10, -4, -18);
+        ship.add(anchor1);
+
+        const anchor2 = anchor1.clone();
+        anchor2.position.set(-10, -4, 18);
+        ship.add(anchor2);
+
+        // === Promenade Deck with Lifeboats ===
+        const promenadeY = 10; // Height of promenade deck
+        const lifeboatGeometry = new THREE.CylinderGeometry(2, 2, 6, 16);
+        const lifeboatMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+
+        for (let side = -1; side <= 1; side += 2) {
+            for (let i = 0; i < 10; i++) {
+                const lifeboat = new THREE.Mesh(lifeboatGeometry, lifeboatMaterial);
+                lifeboat.position.set(-100 + i * 22, promenadeY + 5, side * 20);
+                ship.add(lifeboat);
+
+                // Davits (crane arms)
+                const davitGeometry = new THREE.CylinderGeometry(0.5, 0.5, 8);
+                const davitMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+                const davit1 = new THREE.Mesh(davitGeometry, davitMaterial);
+                davit1.position.set(-100 + i * 22, promenadeY + 6, side * 22);
+                davit1.rotation.z = Math.PI / 4;
+                ship.add(davit1);
+
+                const davit2 = davit1.clone();
+                davit2.rotation.z = -Math.PI / 4;
+                ship.add(davit2);
+            }
+        }
+
+        // === Bridge Deck ===
+        const bridgeY = 25;
+        const bridgeGeometry = new THREE.BoxGeometry(30, 5, 30);
+        const bridge = new THREE.Mesh(bridgeGeometry, new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        bridge.position.set(80, bridgeY, 0);
+        ship.add(bridge);
+
+        // Bridge wings
+        const wingGeometry = new THREE.BoxGeometry(10, 3, 30);
+        const leftWing = new THREE.Mesh(wingGeometry, new THREE.MeshStandardMaterial({ color: 0x222222 }));
+        leftWing.position.set(80, bridgeY + 3, -20);
+        ship.add(leftWing);
+
+        const rightWing = leftWing.clone();
+        rightWing.position.set(80, bridgeY + 3, 20);
+        ship.add(rightWing);
+
+        // Radar mast
+        const mastGeometry = new THREE.CylinderGeometry(0.5, 0.5, 20);
+        const mast = new THREE.Mesh(mastGeometry, new THREE.MeshStandardMaterial({ color: 0x333333 }));
+        mast.position.set(80, bridgeY + 12, 0);
+        ship.add(mast);
+
+        // Radar dish
+        const radarGeometry = new THREE.CylinderGeometry(3, 3, 1, 32);
+        const radar = new THREE.Mesh(radarGeometry, new THREE.MeshStandardMaterial({ color: 0x555555 }));
+        radar.position.set(80, bridgeY + 22, 0);
+        ship.add(radar);
+
+        // Funnel
+        const funnelGeometry = new THREE.CylinderGeometry(6, 8, 25, 32);
+        const funnelMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const funnel = new THREE.Mesh(funnelGeometry, funnelMaterial);
+        funnel.position.set(60, bridgeY + 20, 0);
+        ship.add(funnel);
+
+        // Funnel cap
+        const capGeometry = new THREE.ConeGeometry(7, 3, 32);
+        const cap = new THREE.Mesh(capGeometry, funnelMaterial);
+        cap.position.set(60, bridgeY + 34, 0);
+        ship.add(cap);
+
+        // Smoke from funnel (animated later)
+        const smokeGeometry = new THREE.SphereGeometry(5, 16, 16);
+        const smokeMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xaaaaaa, 
+            transparent: true, 
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+        smoke.position.set(60, bridgeY + 40, 0);
+        ship.add(smoke);
+
+        // === Pool Deck ===
+        const poolY = 38;
+        const poolGeometry = new THREE.TorusGeometry(8, 2, 16, 100);
+        const poolMaterial = new THREE.MeshStandardMaterial({ color: 0x00aaff });
+        const pool = new THREE.Mesh(poolGeometry, poolMaterial);
+        pool.position.set(0, poolY, 0);
+        pool.rotation.x = Math.PI / 2;
+        ship.add(pool);
+
+        // Water slide
+        const slideGeometry = new THREE.TubeGeometry(
+            new THREE.LineCurve3(
+                new THREE.Vector3(-20, poolY + 5, 0),
+                new THREE.Vector3(20, poolY, 10)
+            ),
+            20, 1.5, 8, false
+        );
+        const slideMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+        const slide = new THREE.Mesh(slideGeometry, slideMaterial);
+        ship.add(slide);
+
+        // Sun loungers
+        const loungerGeometry = new THREE.BoxGeometry(6, 1, 2);
+        const loungerMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+        for (let i = 0; i < 10; i++) {
+            const lounger = new THREE.Mesh(loungerGeometry, loungerMaterial);
+            lounger.position.set(-25 + i * 6, poolY - 1, 15);
+            ship.add(lounger);
+        }
+
+        // Running track
+        const trackGeometry = new THREE.RingGeometry(30, 32, 64);
+        const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        const track = new THREE.Mesh(trackGeometry, trackMaterial);
+        track.position.set(0, poolY + 2, 0);
+        track.rotation.x = -Math.PI / 2;
+        ship.add(track);
+
+        // === Balcony Cabins ===
+        const balconyGeometry = new THREE.BoxGeometry(8, 3, 0.5);
+        const balconyMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.7 });
+
+        for (let deck = 1; deck < 8; deck++) {
+            for (let side = -1; side <= 1; side += 2) {
+                for (let i = 0; i < 20; i++) {
+                    const balcony = new THREE.Mesh(balconyGeometry, balconyMaterial);
+                    balcony.position.set(
+                        -100 + i * 10,
+                        deck * 4 + 5,
+                        side * 25
+                    );
+                    balcony.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+                    ship.add(balcony);
+                }
+            }
+        }
+
+        // === Windows and Lighting ===
+        const windowGeometry = new THREE.PlaneGeometry(1, 1.5);
+        const windowMaterial = new THREE.MeshStandardMaterial({ color: 0x88ccff, emissive: 0x444444 });
+
+        for (let deck = 1; deck < 15; deck++) {
+            for (let side = -1; side <= 1; side += 2) {
+                for (let i = 0; i < 30; i++) {
+                    const windowMesh = new THREE.Mesh(windowGeometry, windowMaterial);
+                    windowMesh.position.set(
+                        -120 + i * 8,
+                        deck * 2.5,
+                        side * (10 + Math.sin(i * 0.5) * 2)
+                    );
+                    windowMesh.rotation.y = side === -1 ? Math.PI : 0;
+                    ship.add(windowMesh);
+                }
+            }
+        }
+
+        // Deck lights
+        const lightGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+        const lightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffaa });
+
+        for (let i = 0; i < 20; i++) {
+            const light = new THREE.Mesh(lightGeometry, lightMaterial);
+            light.position.set(-100 + i * 10, 8, 0);
+            ship.add(light);
+        }
+
+        // Add to scene
+        ship.position.set(0, 0, 0);
+        scene.add(ship);
+    }
+
+    function createPortLife() {
+        // Passengers (instanced)
+        const passengerGeometry = new THREE.CapsuleGeometry(0.5, 1, 4, 8);
+        const passengerMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa88 });
+        const passengerCount = 50;
+        
+        const passengerGroup = new THREE.Group();
+        for (let i = 0; i < passengerCount; i++) {
+            const passenger = new THREE.Mesh(passengerGeometry, passengerMaterial);
+            passenger.position.set(
+                -20 + Math.random() * 40,
+                0,
+                -30 + Math.random() * 60
+            );
+            passenger.userData = {
+                direction: new THREE.Vector3(
+                    Math.random() - 0.5,
+                    0,
+                    Math.random() - 0.5
+                ).normalize(),
+                speed: 0.05 + Math.random() * 0.05
+            };
+            passengerGroup.add(passenger);
+        }
+        scene.add(passengerGroup);
+
+        // Tugboat
+        const tugGeometry = new THREE.BoxGeometry(15, 5, 6);
+        const tugMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+        const tug = new THREE.Mesh(tugGeometry, tugMaterial);
+        tug.position.set(-30, 0, 20);
+        tug.userData = { type: 'tug', speed: 0.2, direction: 1 };
+        scene.add(tug);
+
+        // Pilot boat
+        const pilotGeometry = new THREE.BoxGeometry(12, 4, 5);
+        const pilotMaterial = new THREE.MeshStandardMaterial({ color: 0x0066cc });
+        const pilot = new THREE.Mesh(pilotGeometry, pilotMaterial);
+        pilot.position.set(-40, 0, -25);
+        pilot.userData = { type: 'pilot', speed: 0.15, direction: -1 };
+        scene.add(pilot);
+
+        // Ferries
+        const ferryGeometry = new THREE.BoxGeometry(30, 6, 10);
+        const ferryMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+        for (let i = 0; i < 3; i++) {
+            const ferry = new THREE.Mesh(ferryGeometry, ferryMaterial.clone());
+            ferry.material.color.setHSL(Math.random(), 0.5, 0.6);
+            ferry.position.set(
+                -50 + i * 40,
+                0,
+                -80
+            );
+            ferry.userData = { type: 'ferry', speed: 0.1 + Math.random() * 0.1, direction: 1 };
+            scene.add(ferry);
+        }
+
+        // Sailboats
+        for (let i = 0; i < 5; i++) {
+            const mastGeometry = new THREE.CylinderGeometry(0.2, 0.2, 15, 8);
+            const mastMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const mast = new THREE.Mesh(mastGeometry, mastMaterial);
+            
+            const sailGeometry = new THREE.PlaneGeometry(8, 12);
+            const sailMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffffff, 
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.9
+            });
+            const sail = new THREE.Mesh(sailGeometry, sailMaterial);
+            sail.rotation.y = Math.PI / 2;
+            
+            const boatGroup = new THREE.Group();
+            boatGroup.add(mast);
+            boatGroup.add(sail);
+            
+            // Hull
+            const hullGeometry = new THREE.ConeGeometry(2, 8, 6);
+            const hullMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+            const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+            hull.rotation.z = Math.PI;
+            boatGroup.add(hull);
+            
+            boatGroup.position.set(
+                -100 + i * 30,
+                0,
+                -60 - i * 10
+            );
+            boatGroup.userData = { type: 'sailboat', speed: 0.05 + Math.random() * 0.05, angle: Math.random() * Math.PI * 2 };
+            scene.add(boatGroup);
+        }
+
+        // Seagulls (simple triangles)
+        for (let i = 0; i < 10; i++) {
+            const gullGeometry = new THREE.ConeGeometry(1, 2, 3);
+            const gullMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const gull = new THREE.Mesh(gullGeometry, gullMaterial);
+            gull.position.set(
+                -50 + Math.random() * 100,
+                10 + Math.random() * 20,
+                -50 + Math.random() * 100
+            );
+            gull.userData = { type: 'gull', speed: 0.02 + Math.random() * 0.03, angle: Math.random() * Math.PI * 2 };
+            scene.add(gull);
+        }
+    }
+
+    function createWater() {
+        const waterGeometry = new THREE.PlaneGeometry(500, 500);
+        waterGeometry.rotateX(-Math.PI / 2);
+
+        const water = new Water(waterGeometry, {
+            color: 0x001e0536,
+            scale: 1,
+            flowDirection: new THREE.Vector2(1, 1),
+            textureWidth: 1024,
+            textureHeight: 1024
+        });
+        water.position.y = -1;
+        scene.add(water);
+
+        // Create a second water plane for Tagus river surface
+        const tagusGeometry = new THREE.PlaneGeometry(300, 200);
+        const tagusMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a3a5a,
+            transparent: true,
+            opacity: 0.8,
+            metalness: 0.9,
+            roughness: 0.1
+        });
+        const tagus = new THREE.Mesh(tagusGeometry, tagusMaterial);
+        tagus.rotation.x = -Math.PI / 2;
+        tagus.position.y = -0.5;
+        scene.add(tagus);
+    }
+
+    function createAtmosphere() {
+        // Fog for atmospheric effect
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.002);
+
+        // Stars for night
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1000;
+        const positions = new Float32Array(starCount * 3);
+        
+        for (let i = 0; i < starCount * 3; i++) {
+            positions[i] = (Math.random() - 0.5) * 1000;
+        }
+        
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+    }
+
+    function setupEventListeners() {
+        // Camera presets
+        document.getElementById('btnMiradouro').addEventListener('click', () => setCameraPreset('miradouro'));
+        document.getElementById('btnWaterfront').addEventListener('click', () => setCameraPreset('waterfront'));
+        document.getElementById('btnAerial').addEventListener('click', () => setCameraPreset('aerial'));
+        document.getElementById('btnRiver').addEventListener('click', () => setCameraPreset('river'));
+        document.getElementById('btnDeck').addEventListener('click', () => setCameraPreset('deck'));
+
+        // Walk mode
+        document.getElementById('btnWalk').addEventListener('click', toggleWalkMode);
+
+        // UI visibility
+        document.getElementById('btnHideUI').addEventListener('click', () => {
+            ui.style.display = ui.style.display === 'none' ? 'block' : 'none';
+        });
+
+        // Time controls
+        document.getElementById('timeSlider').addEventListener('input', (e) => {
+            timeOfDay = parseFloat(e.target.value);
+            isPlaying = false;
+        });
+
+        document.getElementById('btnPlayPause').addEventListener('click', toggleTimePlay);
+
+        // Weather toggle
+        document.getElementById('btnWeather').addEventListener('click', toggleWeather);
+
+        // Departure/Return
+        document.getElementById('btnDepart').addEventListener('click', startDeparture);
+        document.getElementById('btnReturn').addEventListener('click', returnToBerth);
+    }
+
+    function setCameraPreset(preset) {
+        if (walkMode) toggleWalkMode();
+
+        switch(preset) {
+            case 'miradouro':
+                camera.position.set(-60, 40, -40);
+                controls.target.set(0, 10, 0);
+                break;
+            case 'waterfront':
+                camera.position.set(0, 5, 30);
+                controls.target.set(0, 10, 0);
+                break;
+            case 'aerial':
+                camera.position.set(0, 100, 150);
+                controls.target.set(0, 0, 0);
+                break;
+            case 'river':
+                camera.position.set(50, 10, -100);
+                controls.target.set(0, 10, 0);
+                break;
+            case 'deck':
+                camera.position.set(0, 45, 10);
+                controls.target.set(0, 10, 0);
+                break;
+        }
+        controls.update();
+    }
+
+    function toggleWalkMode() {
+        walkMode = !walkMode;
+        
+        if (walkMode) {
+            controls = new PointerLockControls(camera, renderer.domElement);
+            controls.lock();
+            camera.position.set(0, 2, 20);
+        } else {
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.unlock();
+        }
+    }
+
+    function toggleTimePlay() {
+        isPlaying = !isPlaying;
+        document.getElementById('btnPlayPause').textContent = isPlaying ? 'PAUSE' : 'PLAY';
+    }
+
+    function toggleWeather() {
+        if (weather === 'CLEAR') {
+            weather = 'RAIN';
+            document.getElementById('btnWeather').textContent = 'WEATHER: RAIN';
+            scene.fog.color.set(0x333333);
+            scene.fog.density = 0.01;
+        } else {
+            weather = 'CLEAR';
+            document.getElementById('btnWeather').textContent = 'WEATHER: CLEAR';
+            scene.fog.color.set(0x87CEEB);
+            scene.fog.density = 0.002;
+        }
+    }
+
+    function startDeparture() {
+        if (isMoving) return;
+        departing = true;
+        isMoving = true;
+        moveProgress = 0;
+        
+        // Play horn sound
+        playHornSound();
+    }
+
+    function playHornSound() {
+        // Synthesized horn sound using Web Audio API
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(110, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(55, audioContext.currentTime + 3);
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 3);
+    }
+
+    function returnToBerth() {
+        if (isMoving) return;
+        departing = false;
+        isMoving = true;
+        moveProgress = 1;
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+
+        // Update time of day
+        if (isPlaying) {
+            timeOfDay += delta * 0.5; // Speed through time
+            if (timeOfDay > 24) timeOfDay = 0;
+            document.getElementById('timeSlider').value = timeOfDay;
+        }
+
+        updateLighting();
+        updateShipMovement(delta);
+        updatePortLife(delta);
+        updateSmoke();
+
+        controls.update();
+        composer.render();
+    }
+
+    function updateShipMovement(delta) {
+        if (!isMoving) return;
+
+        if (departing) {
+            moveProgress += delta * 0.05;
+            if (moveProgress >= 1) {
+                isMoving = false;
+            }
+            
+            // Move ship forward and turn slightly
+            ship.position.x += 0.5;
+            ship.rotation.y = moveProgress * 0.2;
+        } else {
+            moveProgress -= delta * 0.05;
+            if (moveProgress <= 0) {
+                isMoving = false;
+                ship.position.set(0, 0, 0);
+                ship.rotation.set(0, 0, 0);
+            } else {
+                ship.position.x -= 0.5;
+                ship.rotation.y = -moveProgress * 0.2;
+            }
+        }
+    }
+
+    function updatePortLife(delta) {
+        // Update passenger positions
+        scene.traverse((obj) => {
+            if (obj.geometry && obj.geometry.type === 'CapsuleGeometry') {
+                obj.position.add(obj.userData.direction.clone().multiplyScalar(obj.userData.speed));
+                
+                // Simple boundary check
+                if (Math.abs(obj.position.x) > 50) {
+                    obj.userData.direction.x *= -1;
+                }
+                if (Math.abs(obj.position.z) > 80) {
+                    obj.userData.direction.z *= -1;
+                }
+            } else if (obj.userData && obj.userData.type) {
+                switch(obj.userData.type) {
+                    case 'tug':
+                        if (obj.position.x < 50) {
+                            obj.position.x += obj.userData.speed;
+                        } else {
+                            obj.position.x = -30;
+                        }
+                        break;
+                    case 'pilot':
+                        if (obj.position.x > -50) {
+                            obj.position.x -= obj.userData.speed;
+                        } else {
+                            obj.position.x = -40;
+                        }
+                        break;
+                    case 'ferry':
+                        if (obj.position.z < 100) {
+                            obj.position.z += obj.userData.speed;
+                        } else {
+                            obj.position.z = -80;
+                        }
+                        break;
+                    case 'sailboat':
+                        obj.position.x += Math.cos(obj.userData.angle) * obj.userData.speed;
+                        obj.position.z += Math.sin(obj.userData.angle) * obj.userData.speed;
+                        if (obj.position.x < -150 || obj.position.x > 150 ||
+                            obj.position.z < -150 || obj.position.z > 150) {
+                            obj.userData.angle += Math.PI;
+                        }
+                        break;
+                    case 'gull':
+                        obj.position.x += Math.cos(obj.userData.angle) * obj.userData.speed;
+                        obj.position.z += Math.sin(obj.userData.angle) * obj.userData.speed;
+                        if (obj.position.x < -150 || obj.position.x > 150 ||
+                            obj.position.z < -150 || obj.position.z > 150) {
+                            obj.userData.angle += Math.PI;
+                        }
+                        break;
+                }
+            }
+        });
+    }
+
+    function updateSmoke() {
+        scene.traverse((obj) => {
+            if (obj.material && obj.material.color.getHex() === 0xaaaaaa && obj.geometry && obj.geometry.type === 'SphereGeometry') {
+                // Animate smoke by increasing size and reducing opacity
+                obj.scale.x += 0.01;
+                obj.scale.y += 0.02;
+                obj.material.opacity = Math.max(0, obj.material.opacity - 0.001);
+                
+                // Reset if too small
+                if (obj.material.opacity <= 0) {
+                    obj.material.opacity = 0.5;
+                    obj.scale.set(1, 1, 1);
+                    obj.position.y += 5;
+                }
+            }
+        });
+    }
+    </script>
+</body>
+</html>
