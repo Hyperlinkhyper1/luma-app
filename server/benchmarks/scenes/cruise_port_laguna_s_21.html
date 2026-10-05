@@ -139,7 +139,7 @@
         scene.add(ambientLight);
 
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directional.position.set(100, 200, 100);
+        directionalLight.position.set(100, 200, 100);
         scene.add(directionalLight);
 
         const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
@@ -272,13 +272,13 @@
         const bridgeGeometry = new THREE.CylinderGeometry(1, 1, 200, 8);
         const bridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x8B0000 });
         
-        const leftTower = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
-        leftTower.position.set(-100, 85, -150);
-        scene.add(leftTower);
+        const bridgeLeftTower = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+        bridgeLeftTower.position.set(-100, 85, -150);
+        scene.add(bridgeLeftTower);
 
-        const rightTower = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
-        rightTower.position.set(100, 85, -150);
-        scene.add(rightTower);
+        const bridgeRightTower = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+        bridgeRightTower.position.set(100, 85, -150);
+        scene.add(bridgeRightTower);
 
         // Bridge deck
         const deckGeometry = new THREE.BoxGeometry(210, 3, 8);
@@ -805,7 +805,7 @@
             camera.position.set(0, 2, 20);
         } else {
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.unlock();
+            if (controls.unlock) controls.unlock();
         }
     }
 
@@ -888,7 +888,7 @@
         updatePortLife(delta);
         updateSmoke();
 
-        controls.update();
+        if (controls.update) controls.update();
         composer.render();
     }
 
