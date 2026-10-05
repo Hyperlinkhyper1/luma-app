@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Timeline of the World</title>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: black;
+  font-family: sans-serif;
+  color: white;
+}
+#stage {
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+#ui {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  text-align: center;
+}
+button {
+  background: rgba(0,0,0,0.6);
+  border: 1px solid #fff;
+  color: #fff;
+  padding: 6px 12px;
+  margin: 0 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+#dateDisplay {
+  font-size: 16px;
+  margin: 5px 0;
+}
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1000 600"></svg>
+<div id="ui">
+  <div id="dateDisplay"></div>
+  <div>
+    <button onclick="playPause()">Play/Pause</button>
+    <button onclick="setSpeed(0.5)">0.5x</button>
+    <button onclick="setSpeed(1)">1x</button>
+    <button onclick="setSpeed(2)">2x</button>
+    <button onclick="restart()">Restart</button>
+  </div>
+</div>
+
+<script>
+const svg = document.getElementById('stage');
+const dateDisplay = document.getElementById('dateDisplay');
+
+// Animation state
+let currentTime = 0;
+let duration = 180; // seconds total animation
+let isPlaying = true;
+let speed = 1;
+let requestId = null;
+
+// Timeline data
+const timeline = [
+  { id: 'formation', start: 0.000, end: 0.020, title: "Formation of Earth & Moon", date: "4.54 billion years ago", desc: "Earth forms and collides with Theia, creating the Moon.", color: "#b22222" },
+  { id: 'hadean', start: 0.020, end: 0.050, title: "The Hadean", date: "4.5 - 4.0 billion years ago", desc: "A molten world cools, forming the first oceans.", color: "#ff4500" },
+  { id: 'firstlife', start: 0.050, end: 0.100, title: "First Life", date: "3.7–3.5 billion years ago", desc: "Microbial mats and stromatolites emerge.", color: "#228b22" },
+  { id: 'goe', start: 0.100, end: 0.180, title: "Great Oxidation Event", date: "2.4 billion years ago", desc: "Oxygen fills the skies and seas.", color: "#7cfc00" },
+  { id: 'snowball', start: 0.180, end: 0.250, title: "Snowball Earth", date: "720–635 million years ago", desc: "Ice sheets cover the planet.", color: "#e0f7ff" },
+  { id: 'cambrian', start: 0.250, end: 0.350, title: "Cambrian Explosion", date: "538 million years ago", desc: "Diverse marine life flourishes.", color: "#00ced1" },
+  { id: 'land', start: 0.350, end: 0.450, title: "Life on Land", date: "470–375 million years ago", desc: "Plants and early animals colonize land.", color: "#ffd700" },
+  { id: 'pangaea', start: 0.450, end: 0.650, title: "Age of Dinosaurs", date: "252–66 million years ago", desc: "PANGAEA forms then breaks apart.", color: "#8b4513" },
+  { id: 'impact', start: 0.650, end: 0.670, title: "Asteroid Impact", date: "66 million years ago", desc: "Dinosaur extinction event.", color: "#d2691e" },
+  { id: 'mammals', start: 0.670, end: 0.800, title: "Rise of Mammals", date: "66 million - 2.5 million years ago", desc: "Mammals diversify after the dinosaurs.", color: "#daa520" },
+  { id: 'humans', start: 0.800, end: 0.900, title: "Homo Sapiens", date: "300,000 years ago", desc: "Modern humans appear.", color: "#cd853f" },
+  { id: 'farming', start: 0.900, end: 0.950, title: "Farming Begins", date: "10,000 BCE", desc: "",
+    desc: "Agriculture transforms societies." },
+  { id: 'civilizations', start: 0.950, end: 0.980, title: "Early Civilizations", date: "2560 BCE", desc: "Mesopotamia and Egypt rise.", color: "#deb887" },
+  { id: 'classical', start: 0.980, end: 1.010, title: "Classical World", date: "500 BCE – 500 CE", desc: "Greece, Rome, Han China.", color: "#c0c0c0" },
+  { id: 'medieval', start: 1.010, end: 1.100, title: "Medieval World", date: "500–1500 CE", desc: "",
+    desc: "Castles, trade routes, faith." },
+  { id: 'printing', start: 1.100, end: 1.150, title: "Printing Press & Exploration", date: "1450–1492", desc: "Knowledge spreads globally.", color: "#ffb6c1" },
+  { id: 'industrial', start: 1.150, end: 1.300, title: "Industrial Revolution", date: "1760+", desc: "Steam powers change.", color: "#708090" },
+  { id: 'modern', start: 1.300, end: 1.500, title: "20th Century", date: "1903–1969", desc: "Flight, wars, space travel.", color: "#000080" },
+  { id: 'digital', start: 1.500, end: 1.600, title: "Digital Age", date: "Today", desc: "Computers connect us.", color: "#00ffff" }
+];
+
+// Convert normalized time (0..1) to real-world date string
+function formatDate(tNorm) {
+  const point = tNorm * duration;
+  const ratio = point / duration;
+  if (ratio >= timeline[0].start && ratio < timeline[0].end) return "4.54 billion years ago";
+  if (ratio >= timeline[1].start && ratio < timeline[1].end) return "4.3 billion years ago";
+  if (ratio >= timeline[2].start && ratio < timeline[2].end) return "3.5 billion years ago";
+  if (ratio >= timeline[3].start && ratio < timeline[3].end) return "2.4 billion years ago";
+  if (ratio >= timeline[4].start && ratio < timeline[4].end) return "700 million years ago";
+  if (ratio >= timeline[5].start && ratio < timeline[5].end) return "538 million years ago";
+  if (ratio >= timeline[6].start && ratio < timeline[6].end) return "450 million years ago";
+  if (ratio >= timeline[7].start && ratio < timeline[7].end) return "252–66 million years ago";
+  if (ratio >= timeline[8].start && ratio < timeline[8].end) return "66 million years ago";
+  if (ratio >= timeline[9].start && ratio < timeline[9].end) return "66 million years ago";
+  if (ratio >= timeline[10].start && ratio < timeline[10].end) return "300,000 years ago";
+  if (ratio >= timeline[11].start && ratio < timeline[11].end) return "10,000 BCE";
+  if (ratio >= timeline[12].start && ratio < timeline[12].end) return "2560 BCE";
+  if (ratio >= timeline[13].start && ratio < timeline[13].end) return "500 BCE – 500 CE";
+  if (ratio >= timeline[14].start && ratio < timeline[14].end) return "500–1500 CE";
+  if (ratio >= timeline[15].start && ratio < timeline[15].end) return "1450–1492";
+  if (ratio >= timeline[16].start && ratio < timeline[16].end) return "1760+";
+  if (ratio >= timeline[17].start && ratio < timeline[17].end) return "1903–1969";
+  return "Today";
+}
+
+// Draw scene based on normalized time
+function drawScene(tNorm) {
+  const ratio = tNorm;
+  svg.innerHTML = '';
+
+  // Background sky gradient
+  const skyGrad = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+  skyGrad.id = "skyGrad";
+  skyGrad.innerHTML = `
+    <stop offset="0%" stop-color="${ratio < 0.1 ? '#000' : ratio < 0.2 ? '#1a0a00' : ratio < 0.4 ? '#2c2c54' : '#1e90ff'}"/>
+    <stop offset="100%" stop-color="${ratio < 0.1 ? '#000' : ratio < 0.2 ? '#551a00' : ratio < 0.4 ? '#444' : '#87ceeb'}"/>
+  `;
+  svg.appendChild(skyGrad);
+
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  bg.setAttribute("width", "100%");
+  bg.setAttribute("height", "100%");
+  bg.setAttribute("fill", "url(#skyGrad)");
+  svg.appendChild(bg);
+
+  // Globe base circle
+  const globe = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  globe.setAttribute("cx", "500");
+  globe.setAttribute("cy", "300");
+  globe.setAttribute("r", "120");
+
+  if (ratio < 0.02) {
+    // Formation: molten
+    globe.setAttribute("fill", "#b22222");
+    const glow = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    glow.id = "glow";
+    glow.innerHTML = "<feGaussianBlur stdDeviation='5' result='coloredBlur'/><feMerge><feMergeNode in='coloredBlur'/><feMergeNode in='SourceGraphic'/></feMerge>";
+    svg.appendChild(glow);
+    globe.setAttribute("filter", "url(#glow)");
+    svg.appendChild(globe);
+  } else if (ratio < 0.05) {
+    // Hadean: cooling crust + oceans forming
+    const gradDef = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    gradDef.id = "hadeanGrad";
+    gradDef.innerHTML = `
+      <stop offset="0%" stop-color="#8b4513"/>
+      <stop offset="70%" stop-color="#228b22"/>
+      <stop offset="100%" stop-color="#191970"/>
+    `;
+    svg.appendChild(gradDef);
+    globe.setAttribute("fill", "url(#hadeanGrad)");
+    svg.appendChild(globe);
+  } else if (ratio < 0.1) {
+    // First life: microbial mats (green patches)
+    const mat = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    mat.setAttribute("cx", "480");
+    mat.setAttribute("cy", "310");
+    mat.setAttribute("rx", "40");
+    mat.setAttribute("ry", "20");
+    mat.setAttribute("fill", "#228b22");
+    svg.appendChild(mat);
+
+    const mat2 = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+    mat2.setAttribute("cx", "520");
+    mat2.setAttribute("cy", "290");
+    mat2.setAttribute("rx", "30");
+    mat2.setAttribute("ry", "15");
+    mat2.setAttribute("fill", "#228b22");
+    svg.appendChild(mat2);
+
+    const waterGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    waterGrad.id = "oceanGrad";
+    waterGrad.innerHTML = `
+      <stop offset="0%" stop-color="#228b22"/>
+      <stop offset="100%" stop-color="#191970"/>
+    `;
+    svg.appendChild(waterGrad);
+    globe.setAttribute("fill", "url(#oceanGrad)");
+    svg.appendChild(globe);
+  } else if (ratio < 0.18) {
+    // GOE: oxygenated blue-green
+    const goeGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    goeGrad.id = "goeGrad";
+    goeGrad.innerHTML = `
+      <stop offset="0%" stop-color="#3cb371"/>
+      <stop offset="100%" stop-color="#000080"/>
+    `;
+    svg.appendChild(goeGrad);
+    globe.setAttribute("fill", "url(#goeGrad)");
+    svg.appendChild(globe);
+  } else if (ratio < 0.25) {
+    // Snowball Earth: ice
+    const iceGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    iceGrad.id = "iceGrad";
+    iceGrad.innerHTML = `
+      <stop offset="0%" stop-color="#e0f7ff"/>
+      <stop offset="100%" stop-color="#b0e0e6"/>
+    `;
+    svg.appendChild(iceGrad);
+    globe.setAttribute("fill", "url(#iceGrad)");
+    svg.appendChild(globe);
+
+    // Snowflakes
+    for (let i = 0; i < 30; i++) {
+      const flake = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      flake.setAttribute("cx", Math.random() * 1000);
+      flake.setAttribute("cy", Math.random() * 600);
+      flake.setAttribute("r", Math.random() * 2);
+      flake.setAttribute("fill", "#ffffff");
+      svg.appendChild(flake);
+    }
+  } else if (ratio < 0.35) {
+    // Cambrian explosion: ocean full of creatures
+    const oceanGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    oceanGrad.id = "oceanGrad2";
+    oceanGrad.innerHTML = `
+      <stop offset="0%" stop-color="#00ced1"/>
+      <stop offset="100%" stop-color="#191970"/>
+    `;
+    svg.appendChild(oceanGrad);
+    globe.setAttribute("fill", "url(#oceanGrad2)");
+    svg.appendChild(globe);
+
+    // Simple trilobites
+    for (let i = 0; i < 10; i++) {
+      const creature = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      creature.setAttribute("cx", 400 + Math.sin(i) * 80);
+      creature.setAttribute("cy", 280 + Math.cos(i) * 60);
+      creature.setAttribute("rx", 10);
+      creature.setAttribute("ry", 5);
+      creature.setAttribute("fill", "#ffd700");
+      svg.appendChild(creature);
+    }
+  } else if (ratio < 0.45) {
+    // Land colonization: continents greening
+    const planetGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    planetGrad.id = "planetGrad";
+    planetGrad.innerHTML = `
+      <stop offset="0%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#228b22"/>
+    `;
+    svg.appendChild(planetGrad);
+    globe.setAttribute("fill", "url(#planetGrad)");
+    svg.appendChild(globe);
+
+    // Ferns
+    const fern = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    fern.setAttribute("d", "M450,270 C455,260 460,270 465,260");
+    fern.setAttribute("stroke", "#228b22");
+    fern.setAttribute("stroke-width", "2");
+    svg.appendChild(fern);
+  } else if (ratio < 0.65) {
+    // Age of Dinosaurs: Pangaea forming
+    const pangaeaPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    pangaeaPath.setAttribute("d", "M400,300 Q450,280 500,300 Q550,320 600,300 Q650,280 700,300");
+    pangaeaPath.setAttribute("fill", "#8b4513");
+    pangaeaPath.setAttribute("stroke", "#5d2906");
+    pangaeaPath.setAttribute("stroke-width", "1");
+
+    const oceanGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    oceanGrad.id = "pangaeaOcean";
+    oceanGrad.innerHTML = "<stop offset='0%' stop-color='#000080'/><stop offset='100%' stop-color='#191970'/>";
+    svg.appendChild(oceanGrad);
+
+    const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bgRect.setAttribute("width", "100%");
+    bgRect.setAttribute("height", "100%");
+    bgRect.setAttribute("fill", "url(#pangaeaOcean)");
+    svg.appendChild(bgRect);
+
+    svg.appendChild(pangaeaPath);
+
+    // Dinosaur silhouette
+    const dino = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    dino.setAttribute("d", "M500,280 L510,270 L520,280 L530,275 L540,285 L530,290 L520,310 L500,310 Z");
+    dino.setAttribute("fill", "#228b22");
+    svg.appendChild(dino);
+  } else if (ratio < 0.67) {
+    // Asteroid impact flash
+    const flash = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    flash.setAttribute("cx", "300");
+    flash.setAttribute("cy", "250");
+    flash.setAttribute("r", "80");
+    flash.setAttribute("fill", "#ffff00");
+
+    const flashGrad = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+    flashGrad.id = "flashGrad";
+    flashGrad.innerHTML = "<stop offset='0%' stop-color='#ffff00'/><stop offset='100%' stop-color='#000'/>";
+    svg.appendChild(flashGrad);
+    flash.setAttribute("fill", "url(#flashGrad)");
+    svg.appendChild(flash);
+  } else if (ratio < 0.8) {
+    // Rise of mammals: mammals roaming
+    const land = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    land.setAttribute("x", "300");
+    land.setAttribute("y", "350");
+    land.setAttribute("width", "400");
+    land.setAttribute("height", "100");
+    land.setAttribute("fill", "#daa520");
+    svg.appendChild(land);
+
+    // Mammal icons
+    for (let i = 0; i < 5; i++) {
+      const mammal = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      mammal.setAttribute("cx", 350 + i * 70);
+      mammal.setAttribute("cy", 340);
+      mammal.setAttribute("rx", 10);
+      mammal.setAttribute("ry", 6);
+      mammal.setAttribute("fill", "#cd853f");
+      svg.appendChild(mammal);
+
+      const leg1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      leg1.setAttribute("x1", 350 + i * 70 - 8);
+      leg1.setAttribute("y1", 346);
+      leg1.setAttribute("x2", 350 + i * 70 - 8);
+      leg1.setAttribute("y2", 360);
+      leg1.setAttribute("stroke", "#cd853f");
+      leg1.setAttribute("stroke-width", "2");
+      svg.appendChild(leg1);
+
+      const leg2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      leg2.setAttribute("x1", 350 + i * 70 + 8);
+      leg2.setAttribute("y1", 346);
+      leg2.setAttribute("x2", 350 + i * 70 + 8);
+      leg2.setAttribute("y2", 360);
+      leg2.setAttribute("stroke", "#cd853f");
+      leg2.setAttribute("stroke-width", "2");
+      svg.appendChild(leg2);
+    }
+  } else if (ratio < 0.9) {
+    // Homo sapiens: people walking
+    const savanna = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    savanna.setAttribute("x", "0");
+    savanna.setAttribute("y", "400");
+    savanna.setAttribute("width", "1000");
+    savanna.setAttribute("height", "200");
+    savanna.setAttribute("fill", "#cd853f");
+    svg.appendChild(savanna);
+
+    // Person
+    const head = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    head.setAttribute("cx", "500");
+    head.setAttribute("cy", "370");
+    head.setAttribute("r", "5");
+    head.setAttribute("fill", "#fff");
+    svg.appendChild(head);
+
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    body.setAttribute("x1", "500");
+    body.setAttribute("y1", "375");
+    body.setAttribute("x2", "500");
+    body.setAttribute("y2", "390");
+    body.setAttribute("stroke", "#fff");
+    body.setAttribute("stroke-width", "2");
+    svg.appendChild(body);
+
+    const arm1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    arm1.setAttribute("x1", "500");
+    arm1.setAttribute("y1", "380");
+    arm1.setAttribute("x2", "490");
+    arm1.setAttribute("y2", "390");
+    arm1.setAttribute("stroke", "#fff");
+    arm1.setAttribute("stroke-width", "2");
+    svg.appendChild(arm1);
+
+    const arm2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    arm2.setAttribute("x1", "500");
+    arm2.setAttribute("y1", "380");
+    arm2.setAttribute("x2", "510");
+    arm2.setAttribute("y2", "390");
+    arm2.setAttribute("stroke", "#fff");
+    arm2.setAttribute("stroke-width", "2");
+    svg.appendChild(arm2);
+
+    const leg1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    leg1.setAttribute("x1", "500");
+    leg1.setAttribute("y1", "390");
+    leg1.setAttribute("x2", "495");
+    leg1.setAttribute("y2", "410");
+    leg1.setAttribute("stroke", "#fff");
+    leg1.setAttribute("stroke-width", "2");
+    svg.appendChild(leg1);
+
+    const leg2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    leg2.setAttribute("x1", "500");
+    leg2.setAttribute("y1", "390");
+    leg2.setAttribute("x2", "505");
+    leg2.setAttribute("y2", "410");
+    leg2.setAttribute("stroke", "#fff");
+    leg2.setAttribute("stroke-width", "2");
+    svg.appendChild(leg2);
+  } else if (ratio < 0.95) {
+    // Farming: fields
+    const field = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    field.setAttribute("x", "300");
+    field.setAttribute("y", "400");
+    field.setAttribute("width", "400");
+    field.setAttribute("height", "100");
+    field.setAttribute("fill", "#ff8c00");
+    svg.appendChild(field);
+
+    // Crops
+    for (let i = 0; i < 20; i++) {
+      const crop = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      crop.setAttribute("x", 320 + i * 18);
+      crop.setAttribute("y", "380");
+      crop.setAttribute("width", "5");
+      crop.setAttribute("height", "20");
+      crop.setAttribute("fill", "#228b22");
+      svg.appendChild(crop);
+    }
+  } else if (ratio < 0.98) {
+    // Early civilizations: pyramids
+    const pyramid = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    pyramid.setAttribute("points", "450,300 500,250 550,300");
+    pyramid.setAttribute("fill", "#deb887");
+    svg.appendChild(pyramid);
+
+    const base = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    base.setAttribute("x", "430");
+    base.setAttribute("y", "300");
+    base.setAttribute("width", "140");
+    base.setAttribute("height", "100");
+    base.setAttribute("fill", "#a0522d");
+    svg.appendChild(base);
+  } else if (ratio < 1.01) {
+    // Classical world: columns
+    const ground = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    ground.setAttribute("x", "0");
+    ground.setAttribute("y", "450");
+    ground.setAttribute("width", "1000");
+    ground.setAttribute("height", "150");
+    ground.setAttribute("fill", "#c0c0c0");
+    svg.appendChild(ground);
+
+    for (let i = 0; i < 6; i++) {
+      const column = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      column.setAttribute("x", 200 + i * 120);
+      column.setAttribute("y", "300");
+      column.setAttribute("width", "20");
+      column.setAttribute("height", "150");
+      column.setAttribute("fill", "#ffffff");
+      svg.appendChild(column);
+
+      const capital = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      capital.setAttribute("x", 190 + i * 120);
+      capital.setAttribute("y", "290");
+      capital.setAttribute("width", "40");
+      capital.setAttribute("height", "15");
+      capital.setAttribute("fill", "#cccccc");
+      svg.appendChild(capital);
+    }
+  } else if (ratio < 1.1) {
+    // Medieval: castle
+    const castleBase = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    castleBase.setAttribute("x", "300");
+    castleBase.setAttribute("y", "350");
+    castleBase.setAttribute("width", "400");
+    castleBase.setAttribute("height", "150");
+    castleBase.setAttribute("fill", "#808080");
+    svg.appendChild(castleBase);
+
+    // Towers
+    for (let i = 0; i < 5; i++) {
+      const tower = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      tower.setAttribute("x", 300 + i * 100);
+      tower.setAttribute("y", "250");
+      tower.setAttribute("width", "80");
+      tower.setAttribute("height", "120");
+      tower.setAttribute("fill", "#696969");
+      svg.appendChild(tower);
+
+      const roof = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      roof.setAttribute("points", `${300+i*100},250 ${340+i*100},${200-i%2*10} ${380+i*100},250`);
+      roof.setAttribute("fill", "#2f4f4f");
+      svg.appendChild(roof);
+    }
+  } else if (ratio < 1.15) {
+    // Printing press & ships
+    const ship = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    ship.setAttribute("d", "M400,300 L500,280 L600,300 L500,320 Z");
+    ship.setAttribute("fill", "#8b4513");
+    svg.appendChild(ship);
+
+    // Waves
+    for (let i = 0; i < 5; i++) {
+      const wave = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      wave.setAttribute("d", `M${380+i*40},340 Q${400+i*40},350 ${420+i*40},340`);
+      wave.setAttribute("stroke", "#1e90ff");
+      wave.setAttribute("stroke-width", "2");
+      wave.setAttribute("fill", "none");
+      svg.appendChild(wave);
+    }
+
+    // Book icon
+    const book = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    book.setAttribute("x", "200");
+    book.setAttribute("y", "100");
+    book.setAttribute("width", "30");
+    book.setAttribute("height", "40");
+    book.setAttribute("fill", "#8b4513");
+    svg.appendChild(book);
+  } else if (ratio < 1.3) {
+    // Industrial Revolution: factories & smoke
+    const factory = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    factory.setAttribute("x", "400");
+    factory.setAttribute("y", "350");
+    factory.setAttribute("width", "100");
+    factory.setAttribute("height", "80");
+    factory.setAttribute("fill", "#708090");
+    svg.appendChild(factory);
+
+    // Chimney smoke
+    for (let i = 0; i < 10; i++) {
+      const smoke = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+      smoke.setAttribute("cx", "480");
+      smoke.setAttribute("cy", "320 - i*15");
+      smoke.setAttribute("rx", "8 + i*2");
+      smoke.setAttribute("ry", "5");
+      smoke.setAttribute("fill", "#696969");
+      smoke.setAttribute("opacity", "0.7 - i*0.05");
+      svg.appendChild(smoke);
+    }
+
+    // Rails
+    const rail = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    rail.setAttribute("x1", "300");
+    rail.setAttribute("y1", "440");
+    rail.setAttribute("x2", "700");
+    rail.setAttribute("y2", "440");
+    rail.setAttribute("stroke", "#c0c0c0");
+    rail.setAttribute("stroke-width", "3");
+    svg.appendChild(rail);
+  } else if (ratio < 1.5) {
+    // 20th century: planes, tanks, rocket
+    const plane = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    plane.setAttribute("d", "M300,200 L330,210 L360,190 L340,180 Z");
+    plane.setAttribute("fill", "#ff0000");
+    svg.appendChild(plane);
+
+    // Tank
+    const tank = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    tank.setAttribute("x", "400");
+    tank.setAttribute("y", "400");
+    tank.setAttribute("width", "60");
+    tank.setAttribute("height", "30");
+    tank.setAttribute("fill", "#228b22");
+    svg.appendChild(tank);
+
+    // Rocket
+    const rocket = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    rocket.setAttribute("d", "M700,200 L710,180 L720,200 L710,220 Z");
+    rocket.setAttribute("fill", "#ffffff");
+    svg.appendChild(rocket);
+
+    const flame = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    flame.setAttribute("d", "M710,220 L705,240 L715,240 Z");
+    flame.setAttribute("fill", "#ff4500");
+    svg.appendChild(flame);
+  } else {
+    // Digital age: city skyline with lights
+    const skyline = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    skyline.setAttribute("x", "0");
+    skyline.setAttribute("y", "400");
+    skyline.setAttribute("width", "1000");
+    skyline.setAttribute("height", "200");
+    skyline.setAttribute("fill", "#000080");
+    svg.appendChild(skyline);
+
+    // Buildings
+    for (let i = 0; i < 20; i++) {
+      const building = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      building.setAttribute("x", 100 + i * 40);
+      building.setAttribute("y", 250 - Math.random() * 150);
+      building.setAttribute("width", "30");
+      building.setAttribute("height", Math.random() * 150 + 50);
+      building.setAttribute("fill", "#19197a");
+      svg.appendChild(building);
+
+      // Lights
+      for (let j = 0; j < 5; j++) {
+        const light = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        light.setAttribute("x", 105 + i * 40);
+        light.setAttribute("y", 260 + j * 25);
+        light.setAttribute("width", "5");
+        light.setAttribute("height", "10");
+        light.setAttribute("fill", Math.random() > 0.3 ? "#ffff00" : "#333333");
+        svg.appendChild(light);
+      }
+    }
+  }
+
+  // Label overlay
+  const currentChapter = timeline.find(ch => ratio >= ch.start && ratio < ch.end) || timeline[0];
+  const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  label.setAttribute("x", "500");
+  label.setAttribute("y", "50");
+  label.setAttribute("text-anchor", "middle");
+  label.setAttribute("fill", "#ffffff");
+  label.setAttribute("font-size", "24");
+  label.textContent = currentChapter.title;
+  svg.appendChild(label);
+
+  const caption = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  caption.setAttribute("x", "500");
+  caption.setAttribute("y", "80");
+  caption.setAttribute("text-anchor", "middle");
+  caption.setAttribute("fill", "#dddddd");
+  caption.setAttribute("font-size", "14");
+  caption.textContent = currentChapter.desc;
+  svg.appendChild(caption);
+}
+
+// Timeline scrubbing
+function updateTimeline(tNorm) {
+  const bar = document.getElementById('timelineBar');
+  if (!bar) return;
+  bar.style.left = `${tNorm * 100}%`;
+}
+
+// Main animation loop
+function animate() {
+  if (isPlaying) {
+    currentTime += (1 / 60) * speed;
+    if (currentTime > duration) currentTime = 0;
+  }
+
+  const tNorm = currentTime / duration;
+  drawScene(tNorm);
+  dateDisplay.textContent = formatDate(tNorm);
+  updateTimeline(tNorm);
+
+  requestId = requestAnimationFrame(animate);
+}
+
+// Control functions
+function playPause() {
+  isPlaying = !isPlaying;
+}
+
+function setSpeed(s) {
+  speed = s;
+}
+
+function restart() {
+  currentTime = 0;
+}
+
+// Keyboard controls
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    playPause();
+  } else if (e.key === 'ArrowLeft') {
+    currentTime = Math.max(0, currentTime - 5);
+  } else if (e.key === 'ArrowRight') {
+    currentTime = Math.min(duration, currentTime + 5);
+  }
+});
+
+// Timeline bar
+const timelineEl = document.createElement('div');
+timelineEl.id = 'timelineContainer';
+timelineEl.innerHTML = `
+  <div style="width:100%; background:rgba(255,255,255,0.2); height:20px; position:relative;">
+    <div id="timelineBar" style="position:absolute; top:0; width:2px; height:20px; background:red;"></div>
+  </div>
+`;
+document.body.appendChild(timelineEl);
+
+document.getElementById('timelineContainer').addEventListener('click', (e) => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const tNorm = x / rect.width;
+  currentTime = tNorm * duration;
+});
+
+animate();
+</script>
+</body>
+</html>
