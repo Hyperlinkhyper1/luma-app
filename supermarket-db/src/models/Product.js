@@ -86,7 +86,7 @@ class Product {
     limit = 40,
     offset = 0,
   } = {}) {
-    const conditions = ['p.is_available = 1'];
+    const conditions = ['p.is_available = 1', "sm.slug <> 'picnic'"];
     const params = { limit, offset };
 
     if (query) {
@@ -161,7 +161,7 @@ class Product {
    * GET /api/products/categories.
    */
   static async categories({ marketSlugs = null } = {}) {
-    const conditions = ['p.is_available = 1', 'p.category IS NOT NULL'];
+    const conditions = ['p.is_available = 1', 'p.category IS NOT NULL', "sm.slug <> 'picnic'"];
     const params = {};
 
     if (marketSlugs && marketSlugs.length > 0) {

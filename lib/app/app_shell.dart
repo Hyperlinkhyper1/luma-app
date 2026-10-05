@@ -81,6 +81,7 @@ import '../theme/coffee_ornaments.dart';
 import '../theme/luma_theme.dart';
 import 'bottom_nav.dart';
 import 'home_widgets.dart';
+import 'lazy_indexed_stack.dart';
 import 'nav_rail.dart';
 import 'plugin_tab_bar.dart';
 import 'shell_tabs.dart';
@@ -569,59 +570,52 @@ class _AppShellState extends State<AppShell> {
               children: [
                 TickerMode(
                   enabled: activeTab < 0,
-                  // IndexedStack keeps hidden children's tickers running, so a
-                  // spinner on an unseen page would redraw the whole window at
-                  // the display's refresh rate. Only the visible page ticks.
-                  child: IndexedStack(
-                    index: index,
+                  child: LazyIndexedStack(
+                    index: activeTab < 0 ? index : null,
                     children: [
-                      for (final (i, page) in <Widget>[
-                        HomePage(
-                          key: ValueKey(_homeEditRevision),
-                          onNavigate: _selectFixed,
-                          onPlugin: _selectPlugin,
-                          startEditing: _homeEditRequested,
-                          onEditRequestConsumed: () =>
-                              _homeEditRequested = false,
-                        ),
-                        const ConverterPage(),
-                        const FinancePage(),
-                        const PasswordsPage(),
-                        const NotesPage(),
-                        ChatPage(
-                          onOpenSettings: () =>
-                              _selectFixed(NavRail.settingsIndex),
-                          onOpenPlugin: _selectPlugin,
-                          onNavigate: (destination) {
-                            switch (destination.toLowerCase()) {
-                              case 'home':
-                                _selectFixed(0);
-                              case 'converter':
-                                _selectFixed(1);
-                              case 'finance':
-                                _selectFixed(2);
-                              case 'passwords':
-                                _selectFixed(3);
-                              case 'notes':
-                                _selectFixed(4);
-                              case 'assistant':
-                                _selectFixed(5);
-                              case 'plugins':
-                                _selectFixed(6);
-                              case 'settings':
-                                _selectFixed(NavRail.settingsIndex);
-                              case 'account':
-                                _selectFixed(NavRail.accountIndex);
-                              default:
-                                _selectPlugin(destination);
-                            }
-                          },
-                        ),
-                        PluginsPage(onOpenPlugin: _selectPlugin),
-                        SettingsPage(onEditHome: _editHome),
-                        const AccountPage(),
-                      ].indexed)
-                        TickerMode(enabled: i == index, child: page),
+                      HomePage(
+                        key: ValueKey(_homeEditRevision),
+                        onNavigate: _selectFixed,
+                        onPlugin: _selectPlugin,
+                        startEditing: _homeEditRequested,
+                        onEditRequestConsumed: () => _homeEditRequested = false,
+                      ),
+                      const ConverterPage(),
+                      const FinancePage(),
+                      const PasswordsPage(),
+                      const NotesPage(),
+                      ChatPage(
+                        onOpenSettings: () =>
+                            _selectFixed(NavRail.settingsIndex),
+                        onOpenPlugin: _selectPlugin,
+                        onNavigate: (destination) {
+                          switch (destination.toLowerCase()) {
+                            case 'home':
+                              _selectFixed(0);
+                            case 'converter':
+                              _selectFixed(1);
+                            case 'finance':
+                              _selectFixed(2);
+                            case 'passwords':
+                              _selectFixed(3);
+                            case 'notes':
+                              _selectFixed(4);
+                            case 'assistant':
+                              _selectFixed(5);
+                            case 'plugins':
+                              _selectFixed(6);
+                            case 'settings':
+                              _selectFixed(NavRail.settingsIndex);
+                            case 'account':
+                              _selectFixed(NavRail.accountIndex);
+                            default:
+                              _selectPlugin(destination);
+                          }
+                        },
+                      ),
+                      PluginsPage(onOpenPlugin: _selectPlugin),
+                      SettingsPage(onEditHome: _editHome),
+                      const AccountPage(),
                     ],
                   ),
                 ),

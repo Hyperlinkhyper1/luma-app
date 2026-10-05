@@ -2,7 +2,7 @@ const { getPool } = require('../database/connection');
 
 class Supermarket {
   static async findAll() {
-    const [rows] = await getPool().query('SELECT * FROM supermarkets ORDER BY name');
+    const [rows] = await getPool().query("SELECT * FROM supermarkets WHERE slug <> 'picnic' ORDER BY name");
     return rows;
   }
 

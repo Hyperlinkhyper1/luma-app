@@ -37,6 +37,43 @@ void main() {
     });
 
     test(
+      'landing pages without a canvas are listed, editable and served as HTML',
+      () async {
+        final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
+        const kind = 'website_landing_page';
+        const id = '${kind}_demo';
+        final bytes =
+            utf8.encode('<!doctype html><html><body><main><h1>Forma</h1>'
+                '<button>Start free</button></main></body></html>');
+        await store.saveUpload(
+          kind: kind,
+          id: id,
+          model: 'Demo',
+          vendor: 'openai',
+          description: 'A landing page',
+          bytes: bytes,
+        );
+        final entry = (await store.list()).firstWhere((e) => e.id == id);
+        expect(entry.kind, kind);
+        expect(entry.vendor, 'openai');
+        expect(
+            (await store.editableEntries()).any((e) => e['id'] == id), isTrue);
+        expect((await store.readScene(id))!.bytes, bytes);
+        await store.saveUpload(
+          kind: kind,
+          id: id,
+          model: 'Demo',
+          vendor: 'openai',
+          description: 'Edited landing page',
+          bytes: null,
+        );
+        expect((await store.list()).firstWhere((e) => e.id == id).description,
+            'Edited landing page');
+        expect((await store.readScene(id))!.bytes, bytes);
+      },
+    );
+
+    test(
       'server rack uploads are listed, editable and served as HTML',
       () async {
         final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);

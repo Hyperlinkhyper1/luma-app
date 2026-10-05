@@ -23,11 +23,11 @@ class RemoteMarket {
   final String? logoUrl;
 
   factory RemoteMarket.fromJson(Map<String, dynamic> json) => RemoteMarket(
-        id: json['id'] as int,
-        slug: json['slug'] as String,
-        name: json['name'] as String,
-        logoUrl: json['logoUrl'] as String?,
-      );
+    id: json['id'] as int,
+    slug: json['slug'] as String,
+    name: json['name'] as String,
+    logoUrl: json['logoUrl'] as String?,
+  );
 }
 
 /// A product returned by a search, already joined with its latest price and
@@ -65,19 +65,19 @@ class RemoteProduct {
   final String? discountText;
 
   factory RemoteProduct.fromJson(Map<String, dynamic> json) => RemoteProduct(
-        id: '${json['id']}',
-        name: json['name'] as String,
-        brand: json['brand'] as String?,
-        category: json['category'] as String?,
-        imageUrl: json['imageUrl'] as String?,
-        market: RemoteMarket.fromJson(json['market'] as Map<String, dynamic>),
-        price: (json['price'] as num?)?.toDouble(),
-        oldPrice: (json['oldPrice'] as num?)?.toDouble(),
-        isDiscounted: json['isDiscounted'] as bool? ?? false,
-        quantity: json['quantity'] as String?,
-        discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
-        discountText: json['discountText'] as String?,
-      );
+    id: '${json['id']}',
+    name: json['name'] as String,
+    brand: json['brand'] as String?,
+    category: json['category'] as String?,
+    imageUrl: json['imageUrl'] as String?,
+    market: RemoteMarket.fromJson(json['market'] as Map<String, dynamic>),
+    price: (json['price'] as num?)?.toDouble(),
+    oldPrice: (json['oldPrice'] as num?)?.toDouble(),
+    isDiscounted: json['isDiscounted'] as bool? ?? false,
+    quantity: json['quantity'] as String?,
+    discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
+    discountText: json['discountText'] as String?,
+  );
 }
 
 /// A top-level department (e.g. "Groente, aardappelen"), for the category
@@ -89,7 +89,8 @@ class ProductCategory {
   final String name;
   final int count;
 
-  factory ProductCategory.fromJson(Map<String, dynamic> json) => ProductCategory(
+  factory ProductCategory.fromJson(Map<String, dynamic> json) =>
+      ProductCategory(
         name: json['name'] as String,
         count: (json['count'] as num).toInt(),
       );
@@ -99,11 +100,11 @@ enum ProductSort { relevance, priceAsc, priceDesc, nameAsc }
 
 extension on ProductSort {
   String get queryValue => switch (this) {
-        ProductSort.relevance => 'relevance',
-        ProductSort.priceAsc => 'price_asc',
-        ProductSort.priceDesc => 'price_desc',
-        ProductSort.nameAsc => 'name_asc',
-      };
+    ProductSort.relevance => 'relevance',
+    ProductSort.priceAsc => 'price_asc',
+    ProductSort.priceDesc => 'price_desc',
+    ProductSort.nameAsc => 'name_asc',
+  };
 }
 
 class GroceriesApiException implements Exception {
@@ -120,11 +121,12 @@ class GroceriesApiException implements Exception {
 /// deployment instead (see supermarket-db/ at the repo root).
 class GroceriesApi extends ChangeNotifier {
   GroceriesApi({http.Client? client})
-      : _client = GatedServerClient(inner: client) {
+    : _client = GatedServerClient(inner: client) {
     _load();
   }
 
   static const _defaultBaseUrl = 'https://groceries.luma-app.cc';
+  static const marketSlugs = <String>['jumbo', 'ah', 'lidl', 'hoogvliet'];
 
   /// The old placeholder default, before the hosted server existed. A saved
   /// settings file holding exactly this value was never a deliberate user
@@ -137,8 +139,9 @@ class GroceriesApi extends ChangeNotifier {
   /// localhost and private-LAN addresses (matches [SyncApi.validateServerUrl]).
   static String? validateServerUrl(String raw) {
     final trimmed = raw.trim();
-    final withoutSlash =
-        trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+    final withoutSlash = trimmed.endsWith('/')
+        ? trimmed.substring(0, trimmed.length - 1)
+        : trimmed;
     final uri = Uri.tryParse(withoutSlash);
     if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
       return 'Enter the full server address, e.g. https://groceries.example.com';
@@ -146,7 +149,8 @@ class GroceriesApi extends ChangeNotifier {
     if (uri.scheme == 'https') return null;
     if (uri.scheme != 'http') return 'Only http(s) addresses are supported.';
     final host = uri.host;
-    final isPrivate = host == 'localhost' ||
+    final isPrivate =
+        host == 'localhost' ||
         host.endsWith('.local') ||
         RegExp(r'^127\.').hasMatch(host) ||
         RegExp(r'^10\.').hasMatch(host) ||
@@ -155,7 +159,7 @@ class GroceriesApi extends ChangeNotifier {
     return isPrivate
         ? null
         : 'Plain http is only allowed for local/home-network servers. '
-            'Use https:// for servers on the internet.';
+              'Use https:// for servers on the internet.';
   }
 
   final http.Client _client;
@@ -175,9 +179,12 @@ class GroceriesApi extends ChangeNotifier {
     try {
       final file = await _getFile();
       if (await file.exists()) {
-        final raw = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+        final raw =
+            jsonDecode(await file.readAsString()) as Map<String, dynamic>;
         final stored = raw['baseUrl'] as String?;
-        if (stored != null && stored.isNotEmpty && stored != _legacyDefaultBaseUrl) {
+        if (stored != null &&
+            stored.isNotEmpty &&
+            stored != _legacyDefaultBaseUrl) {
           _baseUrl = stored;
           notifyListeners();
         }
@@ -195,9 +202,11 @@ class GroceriesApi extends ChangeNotifier {
   }
 
   Uri _uri(String path, Map<String, String> query) {
-    final base = Uri.parse(_baseUrl.endsWith('/')
-        ? _baseUrl.substring(0, _baseUrl.length - 1)
-        : _baseUrl);
+    final base = Uri.parse(
+      _baseUrl.endsWith('/')
+          ? _baseUrl.substring(0, _baseUrl.length - 1)
+          : _baseUrl,
+    );
     return base.replace(
       path: '${base.path}$path',
       queryParameters: query.isEmpty ? null : query,
@@ -209,10 +218,13 @@ class GroceriesApi extends ChangeNotifier {
     T Function(Map<String, dynamic> body) parse,
   ) async {
     try {
-      final response = await _client.get(uri).timeout(const Duration(seconds: 12));
+      final response = await _client
+          .get(uri)
+          .timeout(const Duration(seconds: 12));
       if (response.statusCode != 200) {
         throw GroceriesApiException(
-            'The groceries server returned an error (${response.statusCode}).');
+          'The groceries server returned an error (${response.statusCode}).',
+        );
       }
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return parse(body);
@@ -220,16 +232,22 @@ class GroceriesApi extends ChangeNotifier {
       rethrow;
     } on ServerAccessDeniedException {
       throw GroceriesApiException(
-          'Product search needs an approved luma account. Create one under '
-          'Settings → Sync & account — your shopping list itself keeps '
-          'working offline.');
+        'Product search needs an approved luma account. Create one under '
+        'Settings → Sync & account — your shopping list itself keeps '
+        'working offline.',
+      );
     } on TimeoutException {
-      throw GroceriesApiException('The groceries server took too long to respond.');
+      throw GroceriesApiException(
+        'The groceries server took too long to respond.',
+      );
     } on SocketException {
       throw GroceriesApiException(
-          'Could not reach the groceries server at $_baseUrl. Check the address in settings.');
+        'Could not reach the groceries server at $_baseUrl. Check the address in settings.',
+      );
     } on FormatException {
-      throw GroceriesApiException('The groceries server sent back an unexpected response.');
+      throw GroceriesApiException(
+        'The groceries server sent back an unexpected response.',
+      );
     } catch (_) {
       throw GroceriesApiException('Could not reach the groceries server.');
     }
@@ -240,6 +258,7 @@ class GroceriesApi extends ChangeNotifier {
       final list = body['markets'] as List<dynamic>? ?? const [];
       return list
           .map((e) => RemoteMarket.fromJson(e as Map<String, dynamic>))
+          .where((market) => marketSlugs.contains(market.slug))
           .toList(growable: false);
     });
   }
@@ -255,7 +274,11 @@ class GroceriesApi extends ChangeNotifier {
   }) {
     final params = <String, String>{
       if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
-      if (marketSlugs != null && marketSlugs.isNotEmpty) 'market': marketSlugs.join(','),
+      'market':
+          (marketSlugs == null || marketSlugs.isEmpty
+                  ? GroceriesApi.marketSlugs
+                  : marketSlugs)
+              .join(','),
       if (category != null && category.isNotEmpty) 'category': category,
       if (onlyDeals) 'onlyDeals': 'true',
       'sort': sort.queryValue,
@@ -266,6 +289,9 @@ class GroceriesApi extends ChangeNotifier {
       final list = body['products'] as List<dynamic>? ?? const [];
       return list
           .map((e) => RemoteProduct.fromJson(e as Map<String, dynamic>))
+          .where(
+            (product) => GroceriesApi.marketSlugs.contains(product.market.slug),
+          )
           .toList(growable: false);
     });
   }
@@ -275,7 +301,11 @@ class GroceriesApi extends ChangeNotifier {
   /// actually has.
   Future<List<ProductCategory>> fetchCategories({List<String>? marketSlugs}) {
     final params = <String, String>{
-      if (marketSlugs != null && marketSlugs.isNotEmpty) 'market': marketSlugs.join(','),
+      'market':
+          (marketSlugs == null || marketSlugs.isEmpty
+                  ? GroceriesApi.marketSlugs
+                  : marketSlugs)
+              .join(','),
     };
     return _get(_uri('/api/products/categories', params), (body) {
       final list = body['categories'] as List<dynamic>? ?? const [];

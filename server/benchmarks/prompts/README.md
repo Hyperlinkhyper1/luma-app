@@ -22,3 +22,4 @@ so a reply to it can be uploaded to the same test.
 | Fluid Simulation | `fluid_sim` | [fluid_sim.md](fluid_sim.md) |
 | Galaxy Voyage | `galaxy` | [galaxy.md](galaxy.md) |
 | Cruise Port | `cruise_port` | [cruise_port.md](cruise_port.md) |
+| Website landing page | `website_landing_page` | [website_landing_page.md](website_landing_page.md) |

@@ -108,6 +108,7 @@ class AiBenchmarkStore {
     'fluid_sim',
     'galaxy',
     'cruise_port',
+    'website_landing_page',
   ];
 
   static final RegExp vendorPattern = RegExp(r'^[a-z0-9-]{0,40}$');

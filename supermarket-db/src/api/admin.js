@@ -43,14 +43,19 @@ async function collectStatus() {
   await SyncLog.failStaleRuns();
   const [[productCounts]] = await pool.query(
     `SELECT COUNT(*) AS total, COALESCE(SUM(is_available), 0) AS available
-     FROM products`
+     FROM products p INNER JOIN supermarkets sm ON sm.id = p.supermarket_id
+     WHERE sm.slug <> 'picnic'`
   );
   const [[priceCounts]] = await pool.query(
-    'SELECT COUNT(*) AS total FROM product_prices'
+    `SELECT COUNT(*) AS total FROM product_prices pp
+     INNER JOIN products p ON p.id = pp.product_id
+     INNER JOIN supermarkets sm ON sm.id = p.supermarket_id
+     WHERE sm.slug <> 'picnic'`
   );
   const [perMarket] = await pool.query(
     `SELECT sm.slug, sm.name, COUNT(p.id) AS total
      FROM supermarkets sm LEFT JOIN products p ON p.supermarket_id = sm.id
+     WHERE sm.slug <> 'picnic'
      GROUP BY sm.id ORDER BY sm.slug`
   );
   const logs = await SyncLog.findRecent({ limit: 20 });

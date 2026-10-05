@@ -129,6 +129,21 @@ void main() {
   });
 
   group('prompts', () {
+    test('landing page brief exceeds 3000 characters and allows scrolling', () {
+      const kind = 'website_landing_page';
+      expect(kBenchmarkPrompts[kind]!.prompt.trim().length, greaterThan(3000));
+      expect(kBenchmarkManualKinds, isNot(contains(kind)));
+      final prompt = benchmarkPromptFor(kind);
+      expect(prompt, contains('entire website must be coffee related'));
+      expect(prompt, contains('Ember & Bean'));
+      expect(prompt, contains('roast selector'));
+      expect(prompt, isNot(contains('Forma')));
+      expect(prompt, contains('normal vertical document scrolling'));
+      expect(prompt, isNot(contains('no page scrollbars')));
+      expect(prompt, contains('320 CSS pixels'));
+      expect(benchmarkPromptFor('pagoda'), contains('no page scrollbars'));
+    });
+
     test('every test has a prompt ending in the output contract', () {
       for (final kind in kBenchmarkPrompts.keys) {
         expect(AiBenchmarkStore.kinds, contains(kind));

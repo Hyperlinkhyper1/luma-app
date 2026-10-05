@@ -54,18 +54,25 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
     // Try to match merchant by name.
     if (entry.merchantName != null) {
       final match = widget.merchants
-          .where((m) => m.name.toLowerCase() == entry.merchantName!.toLowerCase())
+          .where(
+            (m) => m.name.toLowerCase() == entry.merchantName!.toLowerCase(),
+          )
           .firstOrNull;
       if (match != null) {
         _merchant = match;
-        if (match.defaultCategoryId != null) _categoryId = match.defaultCategoryId;
+        if (match.defaultCategoryId != null) {
+          _categoryId = match.defaultCategoryId;
+        }
       }
     }
 
     // Try to match category by suggestion.
     if (_categoryId == null && entry.categorySuggestion != null) {
       final match = widget.categories
-          .where((c) => c.name.toLowerCase() == entry.categorySuggestion!.toLowerCase())
+          .where(
+            (c) =>
+                c.name.toLowerCase() == entry.categorySuggestion!.toLowerCase(),
+          )
           .firstOrNull;
       if (match != null) _categoryId = match.id;
     }
@@ -136,7 +143,10 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: luma.accentSubtle,
                   borderRadius: BorderRadius.circular(8),
@@ -181,7 +191,9 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                               icon: entry.isIncome
                                   ? Icons.south_west_rounded
                                   : Icons.north_east_rounded,
-                              color: entry.isIncome ? luma.success : luma.danger,
+                              color: entry.isIncome
+                                  ? luma.success
+                                  : luma.danger,
                               size: 34,
                             ),
                             const SizedBox(width: 12),
@@ -192,7 +204,9 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                                   Text(
                                     entry.typeLabel,
                                     style: TextStyle(
-                                      color: entry.isIncome ? luma.success : luma.danger,
+                                      color: entry.isIncome
+                                          ? luma.success
+                                          : luma.danger,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -212,10 +226,19 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        _DetailRow(label: 'Date', value: _formatDate(entry.date)),
+                        _DetailRow(
+                          label: 'Date',
+                          value: _formatDate(entry.date),
+                        ),
                         if (entry.merchantName != null)
-                          _DetailRow(label: 'Merchant', value: entry.merchantName!),
-                        _DetailRow(label: 'Description', value: entry.description),
+                          _DetailRow(
+                            label: 'Merchant',
+                            value: entry.merchantName!,
+                          ),
+                        _DetailRow(
+                          label: 'Description',
+                          value: entry.description,
+                        ),
                         if (entry.iban != null)
                           _DetailRow(label: 'IBAN', value: entry.iban!),
                         if (entry.bic != null)
@@ -247,7 +270,9 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                     selected: _merchant,
                     onPicked: (m) => setState(() {
                       _merchant = m;
-                      if (m?.defaultCategoryId != null) _categoryId = m!.defaultCategoryId;
+                      if (m?.defaultCategoryId != null) {
+                        _categoryId = m!.defaultCategoryId;
+                      }
                     }),
                   ),
                   const SizedBox(height: 16),
@@ -257,18 +282,19 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
           ),
           // Buttons pinned at bottom
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            alignment: WrapAlignment.end,
             children: [
               LumaGhostButton(
                 label: 'Skip',
-                onTap: _skipCurrent,
+                onTap: _saving ? null : _skipCurrent,
               ),
-              const Spacer(),
               LumaGhostButton(
                 label: 'Cancel',
                 onTap: () => Navigator.of(context).pop(),
               ),
-              const SizedBox(width: 10),
               LumaPrimaryButton(
                 label: 'Add & next',
                 icon: Icons.check_rounded,
@@ -328,16 +354,16 @@ class _FieldLabel extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: context.luma.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: context.luma.textSecondary,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
 }
 
 class _PotDropdown extends StatelessWidget {
@@ -376,8 +402,11 @@ class _PotDropdown extends StatelessWidget {
                 value: p.id,
                 child: Row(
                   children: [
-                    Icon(materialIcon(p.iconCodepoint),
-                        size: 16, color: Color(p.colorValue)),
+                    Icon(
+                      materialIcon(p.iconCodepoint),
+                      size: 16,
+                      color: Color(p.colorValue),
+                    ),
                     const SizedBox(width: 8),
                     Text(p.name, style: TextStyle(color: luma.textPrimary)),
                   ],
@@ -416,21 +445,28 @@ class _CategoryDropdown extends StatelessWidget {
           isExpanded: true,
           value: value,
           dropdownColor: luma.surface,
-          hint: Text('No category',
-              style: TextStyle(color: luma.textMuted, fontSize: 14)),
+          hint: Text(
+            'No category',
+            style: TextStyle(color: luma.textMuted, fontSize: 14),
+          ),
           items: [
             DropdownMenuItem<int?>(
               value: null,
-              child: Text('No category',
-                  style: TextStyle(color: luma.textMuted)),
+              child: Text(
+                'No category',
+                style: TextStyle(color: luma.textMuted),
+              ),
             ),
             for (final c in categories)
               DropdownMenuItem<int?>(
                 value: c.id,
                 child: Row(
                   children: [
-                    Icon(materialIcon(c.iconCodepoint),
-                        size: 16, color: Color(c.colorValue)),
+                    Icon(
+                      materialIcon(c.iconCodepoint),
+                      size: 16,
+                      color: Color(c.colorValue),
+                    ),
                     const SizedBox(width: 8),
                     Text(c.name, style: TextStyle(color: luma.textPrimary)),
                   ],
@@ -488,7 +524,11 @@ class _MerchantPicker extends StatelessWidget {
             if (selected != null)
               GestureDetector(
                 onTap: () => onPicked(null),
-                child: Icon(Icons.close_rounded, size: 16, color: luma.textMuted),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: luma.textMuted,
+                ),
               )
             else
               Icon(Icons.search_rounded, size: 16, color: luma.textMuted),
@@ -535,8 +575,10 @@ class _MerchantSearchDialogState extends State<_MerchantSearchDialog> {
                   hintStyle: TextStyle(color: luma.textMuted),
                   filled: true,
                   fillColor: luma.background,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(color: luma.border),
@@ -557,8 +599,10 @@ class _MerchantSearchDialogState extends State<_MerchantSearchDialog> {
                     final m = filtered[i];
                     return ListTile(
                       dense: true,
-                      title: Text(m.name,
-                          style: TextStyle(color: luma.textPrimary)),
+                      title: Text(
+                        m.name,
+                        style: TextStyle(color: luma.textPrimary),
+                      ),
                       onTap: () => Navigator.of(context).pop(m),
                     );
                   },

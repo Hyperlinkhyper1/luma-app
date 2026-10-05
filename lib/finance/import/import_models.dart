@@ -54,6 +54,7 @@ class SupportedBank {
     required this.name,
     required this.allowedExtensions,
     required this.icon,
+    this.exportHint,
   });
 
   final String id;
@@ -63,10 +64,10 @@ class SupportedBank {
   /// The first entry is treated as the primary one for display.
   final List<String> allowedExtensions;
   final String icon; // emoji or simple identifier
+  final String? exportHint;
 
   /// Human-readable description of the accepted file types, e.g. ".xlsx or .csv".
-  String get fileTypeLabel =>
-      allowedExtensions.map((e) => '.$e').join(' or ');
+  String get fileTypeLabel => allowedExtensions.map((e) => '.$e').join(' or ');
 }
 
 const supportedBanks = [
@@ -81,5 +82,40 @@ const supportedBanks = [
     name: 'ING',
     allowedExtensions: ['xlsx', 'csv'],
     icon: '🦁',
+  ),
+  SupportedBank(
+    id: 'abn_amro',
+    name: 'ABN AMRO',
+    allowedExtensions: ['tab', 'txt'],
+    icon: '🏦',
+    exportHint: 'Download transactions as TXT (tab-separated).',
+  ),
+  SupportedBank(
+    id: 'rabobank',
+    name: 'Rabobank',
+    allowedExtensions: ['csv'],
+    icon: '🏦',
+    exportHint: 'Download the CSV transaction overview.',
+  ),
+  SupportedBank(
+    id: 'bunq',
+    name: 'bunq',
+    allowedExtensions: ['csv'],
+    icon: '🌈',
+    exportHint: 'Export a EUR account statement as CSV.',
+  ),
+  SupportedBank(
+    id: 'sns',
+    name: 'SNS',
+    allowedExtensions: ['csv'],
+    icon: '🏦',
+    exportHint: 'Download transactions from Mijn SNS as CSV.',
+  ),
+  SupportedBank(
+    id: 'knab',
+    name: 'Knab',
+    allowedExtensions: ['csv'],
+    icon: '🏦',
+    exportHint: 'Use Search and download to export CSV.',
   ),
 ];

@@ -8,12 +8,12 @@ import 'groceries_api.dart';
 import 'groceries_scope.dart';
 import 'market_style.dart';
 
-const _marketSlugs = <String>['jumbo', 'ah', 'lidl', 'hoogvliet', 'picnic'];
-const _marketLabels = <String>['Jumbo', 'Albert Heijn', 'Lidl', 'Hoogvliet', 'Picnic'];
+const _marketSlugs = GroceriesApi.marketSlugs;
+const _marketLabels = <String>['Jumbo', 'Albert Heijn', 'Lidl', 'Hoogvliet'];
 const _sortOptions = [ProductSort.relevance, ProductSort.priceAsc, ProductSort.priceDesc];
 const _sortLabels = ['Relevance', 'Price ↑', 'Price ↓'];
 
-/// Search Jumbo/Albert Heijn/Lidl/Hoogvliet/Picnic products (via the
+/// Search Jumbo/Albert Heijn/Lidl/Hoogvliet products (via the
 /// supermarket-db API), filter by store, sort by price, and add results
 /// straight onto [listId].
 class ProductSearchPage extends StatefulWidget {

@@ -997,9 +997,7 @@ class _LumaAppState extends State<LumaApp> {
   }
 }
 
-/// Holds the [SplashScreen] over the (already-building) [AppShell] until both
-/// the splash animation and the startup [bootstrap] work have finished, then
-/// crossfades the splash away to reveal the warm app.
+/// Prepares the shell offstage while the static splash covers startup work.
 class _BootGate extends StatefulWidget {
   const _BootGate({required this.bootstrap, required this.accent});
 
@@ -1022,8 +1020,15 @@ class _BootGateState extends State<_BootGate> {
     final plan = planById(SettingsScope.of(context).selectedPlanId);
     final edition = plan.id == 'core' ? 'Free edition' : '${plan.name} edition';
     return Stack(
+      fit: StackFit.expand,
       children: [
-        const AppShell(),
+        TickerMode(
+          enabled: !_showSplash,
+          child: Offstage(
+            offstage: _showSplash,
+            child: const RepaintBoundary(child: AppShell()),
+          ),
+        ),
         // An admin-forced password reset layers over the (already built) app
         // rather than replacing it: the shell keeps its state, and the moment
         // the new password is set this comes down again. See

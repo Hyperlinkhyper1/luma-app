@@ -538,8 +538,22 @@ async function shootSvgScene(page) {
 }
 
 const SCENE_KINDS = ['engine', 'pc', 'cathedral', 'keyboard', 'cruise_ship', 'server_rack',
-  'sports_car', 'train_world', 'world_timeline', 'fluid_sim', 'galaxy', 'cruise_port'];
+  'sports_car', 'train_world', 'world_timeline', 'fluid_sim', 'galaxy', 'cruise_port', 'website_landing_page'];
 const CANVAS_SCENE_KINDS = new Set(['sports_car', 'train_world', 'fluid_sim', 'galaxy', 'cruise_port']);
+
+async function shootWebsiteLandingPage(page) {
+  step(0.2, 'waiting for the landing page');
+  await page.waitForFunction(
+    () => document.readyState === 'complete' && document.body.innerText.trim().length > 0,
+    { timeout: 60000, polling: 250 },
+  );
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    window.scrollTo(0, 0);
+  });
+  step(0.5, 'letting the hero settle');
+  await sleep(2000);
+}
 
 async function shootKeyboard(page) {
   step(0.2, 'waiting for the page');
@@ -957,6 +971,7 @@ async function main() {
         else if (kind === 'keyboard') await shootKeyboard(page);
         else if (kind === 'cruise_ship') await shootCruiseShip(page);
         else if (kind === 'world_timeline') await shootSvgScene(page);
+        else if (kind === 'website_landing_page') await shootWebsiteLandingPage(page);
         else if (CANVAS_SCENE_KINDS.has(kind)) await shootCanvasScene(page);
         else await shootPc(page);
         if (framing) note(`framing: ${(await applyFraming(page, framing)).camera}`);

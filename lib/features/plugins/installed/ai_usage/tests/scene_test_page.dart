@@ -36,6 +36,12 @@ class SceneTest {
 /// shows their tiles.
 const kSceneTests = <SceneTest>[
   SceneTest(
+    kind: 'website_landing_page',
+    title: 'Website landing page',
+    blurb: 'A responsive coffee landing page with working interactions.',
+    icon: Icons.web_rounded,
+  ),
+  SceneTest(
     kind: 'sports_car',
     title: 'Sports Car Test',
     blurb: 'An original sports car: studio configurator and test drive.',
@@ -177,7 +183,11 @@ class _SceneTestPageState extends State<SceneTestPage> {
               onChanged: (v) => setState(() => _query = v),
             ),
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 Text(
                   'Select a Model',
@@ -187,7 +197,6 @@ class _SceneTestPageState extends State<SceneTestPage> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Spacer(),
                 LumaSegmentedTabs(
                   tabs: const ['List', 'Banners'],
                   selectedIndex: _bannerView ? 1 : 0,

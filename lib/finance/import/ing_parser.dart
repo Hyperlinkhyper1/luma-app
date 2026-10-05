@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
 
 import 'import_models.dart';
+import 'statement_text.dart';
 
 /// Parses an ING transaction export into [ParsedBankEntry] rows.
 ///
@@ -23,7 +24,9 @@ class IngParser {
     final lower = path.toLowerCase();
     final List<List<String>> rows;
     if (lower.endsWith('.csv')) {
-      rows = _readCsv(await File(path).readAsString(encoding: utf8));
+      rows = StatementText.rows(
+        StatementText.decode(await File(path).readAsBytes()),
+      );
     } else {
       rows = _readXlsx(await File(path).readAsBytes());
     }
@@ -86,22 +89,27 @@ class IngParser {
         if (memo.isNotEmpty) memo,
       ];
       var description = descParts.join(' — ');
-      if (description.isEmpty) description = type.isNotEmpty ? type : 'ING transaction';
+      if (description.isEmpty) {
+        description = type.isNotEmpty ? type : 'ING transaction';
+      }
 
       // Merchant: the counterparty name, taken from the "Naam:" field in the
       // memo when present, otherwise the name column.
-      final merchantName = _extractMerchantName(memo) ??
+      final merchantName =
+          _extractMerchantName(memo) ??
           (name.isNotEmpty && name != '{naam/omschrijving}' ? name : null);
 
-      entries.add(ParsedBankEntry(
-        date: date,
-        description: description,
-        iban: iban,
-        merchantName: merchantName,
-        isIncome: isIncome,
-        amountCents: amountCents,
-        categorySuggestion: _guessCategory('$name $memo $type'),
-      ));
+      entries.add(
+        ParsedBankEntry(
+          date: date,
+          description: description,
+          iban: iban,
+          merchantName: merchantName,
+          isIncome: isIncome,
+          amountCents: amountCents,
+          categorySuggestion: _guessCategory('$name $memo $type'),
+        ),
+      );
     }
 
     entries.sort((a, b) => b.date.compareTo(a.date));
@@ -140,17 +148,22 @@ class IngParser {
     }
 
     // Gather all worksheet parts and pick the one containing the header.
-    final sheetFiles = archive.files
-        .where((f) =>
-            f.name.startsWith('xl/worksheets/') && f.name.endsWith('.xml'))
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final sheetFiles =
+        archive.files
+            .where(
+              (f) =>
+                  f.name.startsWith('xl/worksheets/') &&
+                  f.name.endsWith('.xml'),
+            )
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
     List<List<String>> best = [];
     for (final f in sheetFiles) {
       final rows = _parseWorksheet(content(f), sharedStrings);
-      final hasHeader =
-          rows.any((r) => r.any((c) => c.trim().toLowerCase() == 'datum'));
+      final hasHeader = rows.any(
+        (r) => r.any((c) => c.trim().toLowerCase() == 'datum'),
+      );
       if (hasHeader) return rows;
       if (rows.length > best.length) best = rows;
     }
@@ -158,7 +171,9 @@ class IngParser {
   }
 
   static List<List<String>> _parseWorksheet(
-      String xml, List<String> sharedStrings) {
+    String xml,
+    List<String> sharedStrings,
+  ) {
     final doc = XmlDocument.parse(xml);
     final rows = <List<String>>[];
 
@@ -208,64 +223,6 @@ class IngParser {
       }
     }
     return idx - 1;
-  }
-
-  // ---- CSV reading -----------------------------------------------------------
-
-  /// Parses ING's CSV (`;`-separated, `"`-quoted) into rows.
-  static List<List<String>> _readCsv(String text) {
-    final rows = <List<String>>[];
-    var row = <String>[];
-    final field = StringBuffer();
-    var inQuotes = false;
-
-    void endField() {
-      row.add(field.toString());
-      field.clear();
-    }
-
-    void endRow() {
-      endField();
-      rows.add(row);
-      row = <String>[];
-    }
-
-    final chars = text.split('');
-    for (var i = 0; i < chars.length; i++) {
-      final ch = chars[i];
-      if (inQuotes) {
-        if (ch == '"') {
-          if (i + 1 < chars.length && chars[i + 1] == '"') {
-            field.write('"');
-            i++;
-          } else {
-            inQuotes = false;
-          }
-        } else {
-          field.write(ch);
-        }
-      } else {
-        switch (ch) {
-          case '"':
-            inQuotes = true;
-            break;
-          case ';':
-          case ',':
-            // ING uses ';'; tolerate ',' too as long as it's a separator.
-            endField();
-            break;
-          case '\r':
-            break;
-          case '\n':
-            endRow();
-            break;
-          default:
-            field.write(ch);
-        }
-      }
-    }
-    if (field.isNotEmpty || row.isNotEmpty) endRow();
-    return rows;
   }
 
   // ---- Field parsing ---------------------------------------------------------
@@ -321,8 +278,9 @@ class IngParser {
 
   /// ING memos start with `Naam: <counterparty> Omschrijving: ...`.
   static String? _extractMerchantName(String memo) {
-    final match = RegExp(r'Naam:\s*(.+?)(?:\s+(?:Omschrijving|IBAN|Kenmerk):|$)')
-        .firstMatch(memo);
+    final match = RegExp(
+      r'Naam:\s*(.+?)(?:\s+(?:Omschrijving|IBAN|Kenmerk):|$)',
+    ).firstMatch(memo);
     final name = match?.group(1)?.trim();
     if (name == null || name.isEmpty) return null;
     return name;
@@ -346,31 +304,107 @@ class IngParser {
     ])) {
       return 'Groceries';
     }
-    if (has(['mcdonald', 'kfc', 'domino', 'starbucks', 'thuisbezorgd', 'uber eats', 'restaurant', 'cafe', 'café'])) {
+    if (has([
+      'mcdonald',
+      'kfc',
+      'domino',
+      'starbucks',
+      'thuisbezorgd',
+      'uber eats',
+      'restaurant',
+      'cafe',
+      'café',
+    ])) {
       return 'Eating out';
     }
-    if (has(['eneco', 'vattenfall', 'essent', 'greenchoice', 'oasen', 'water', 'energie', 'berkman'])) {
+    if (has([
+      'eneco',
+      'vattenfall',
+      'essent',
+      'greenchoice',
+      'oasen',
+      'water',
+      'energie',
+      'berkman',
+    ])) {
       return 'Utilities';
     }
-    if (has(['kpn', 'youfone', 'vodafone', 'odido', 't-mobile', 'ziggo', 'spotify', 'netflix', 'disney'])) {
+    if (has([
+      'kpn',
+      'youfone',
+      'vodafone',
+      'odido',
+      't-mobile',
+      'ziggo',
+      'spotify',
+      'netflix',
+      'disney',
+    ])) {
       return 'Subscriptions';
     }
-    if (has(['vgz', 'zilveren kruis', 'cz ', 'menzis', 'zorgverzekeraar', 'apotheek', 'podotherapie', 'hans anders', 'tandarts', 'huisarts'])) {
+    if (has([
+      'vgz',
+      'zilveren kruis',
+      'cz ',
+      'menzis',
+      'zorgverzekeraar',
+      'apotheek',
+      'podotherapie',
+      'hans anders',
+      'tandarts',
+      'huisarts',
+    ])) {
       return 'Health & care';
     }
-    if (has(['woonpartners', 'huur', 'hypotheek', 'vve ', 'woningcorporatie'])) {
+    if (has([
+      'woonpartners',
+      'huur',
+      'hypotheek',
+      'vve ',
+      'woningcorporatie',
+    ])) {
       return 'Housing';
     }
-    if (has(['ns ', 'ns-', 'ov-chipkaart', 'ovpay', 'shell', 'bp ', 'esso', 'tango', 'tankstation', 'q-park', 'parking'])) {
+    if (has([
+      'ns ',
+      'ns-',
+      'ov-chipkaart',
+      'ovpay',
+      'shell',
+      'bp ',
+      'esso',
+      'tango',
+      'tankstation',
+      'q-park',
+      'parking',
+    ])) {
       return 'Transport';
     }
     if (has(['action', 'hema', 'bol.com', 'coolblue', 'mediamarkt', 'ikea'])) {
       return 'Shopping';
     }
-    if (has(['steam', 'valve', 'playstation', 'xbox', 'nintendo', 'pathe', 'pathé', 'cinema', 'bioscoop'])) {
+    if (has([
+      'steam',
+      'valve',
+      'playstation',
+      'xbox',
+      'nintendo',
+      'pathe',
+      'pathé',
+      'cinema',
+      'bioscoop',
+    ])) {
       return 'Entertainment';
     }
-    if (has(['h&m', 'zara', 'nike', 'zalando', 'primark', 'uniqlo', 'kleding'])) {
+    if (has([
+      'h&m',
+      'zara',
+      'nike',
+      'zalando',
+      'primark',
+      'uniqlo',
+      'kleding',
+    ])) {
       return 'Clothing';
     }
     return null;

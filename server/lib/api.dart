@@ -7243,6 +7243,11 @@ class Api {
       form = Uri.splitQueryString(await request.readAsString());
     } catch (_) {}
     final market = form['market'];
+    if (market != null &&
+        market.isNotEmpty &&
+        !const ['jumbo', 'ah', 'lidl', 'hoogvliet'].contains(market)) {
+      return errorResponse(400, 'unknown_market', 'Unknown groceries market.');
+    }
 
     final httpClient = HttpClient();
     try {
@@ -10654,7 +10659,6 @@ syncToolbar();
           ('ah', 'Albert Heijn'),
           ('lidl', 'Lidl'),
           ('hoogvliet', 'Hoogvliet'),
-          ('picnic', 'Picnic'),
         ].map((m) => '<form method="post" action="/admin/groceries/sync">'
             '<input type="hidden" name="market" value="${m.$1}">'
             '<button type="submit" class="chip">${m.$2}</button></form>').join()}'
@@ -10732,7 +10736,7 @@ syncToolbar();
         '</div>'
         '<div class="tab-panel" id="panel-tests">'
         '${_panelHead('Tests', 'Score models as the classroom tutor, and add '
-            'models\' runs of the AI Usage plugin\'s 3D tests — generated '
+            'models\' runs of the AI Usage plugin\'s scene and website tests — generated '
             'here on the server\'s keys, or uploaded by hand.')}'
         '${_sectionLabel('AI benchmarks')}'
         '<div class="maint-grid">'
@@ -12896,9 +12900,11 @@ window.lumaAskReason = function (form, message) {
       + s.products.available + ' available), '
       + s.priceSnapshots + ' price snapshots'
       + (s.running ? ' — <strong>sync running…</strong>' : '');
-    rows.innerHTML = s.syncs.length === 0
+    const syncs = s.syncs.filter((r) =>
+      ['jumbo', 'ah', 'lidl', 'hoogvliet'].includes(r.market));
+    rows.innerHTML = syncs.length === 0
       ? '<tr><td colspan="9" class="muted">No syncs yet.</td></tr>'
-      : s.syncs.map((r) => {
+      : syncs.map((r) => {
           const cls = r.status === 'success' ? 'ok'
             : r.status === 'running' ? 'warn' : 'err';
           return '<tr><td>' + esc(r.marketName) + '</td>'
@@ -13075,6 +13081,7 @@ window.lumaAskReason = function (form, message) {
     'fluid_sim': 'Fluid Simulation (.html)',
     'galaxy': 'Galaxy Voyage (.html)',
     'cruise_port': 'Cruise Port (.html)',
+    'website_landing_page': 'Website landing page (.html)',
     'cathedral': 'Cathedral (3D model, .glb)',
   };
 
@@ -13175,7 +13182,7 @@ window.lumaAskReason = function (form, message) {
   let idEdited = false;
   let maxBytes = 60 * 1024 * 1024;
   let entries = [];
-  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port' };
+  const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port', website_landing_page: 'Website landing page' };
 
   function editing() {
     return entries.find(function (e) { return e.id === entryPick.value; }) || null;
@@ -14013,7 +14020,7 @@ window.lumaAskReason = function (form, message) {
     const selCount = $('bnSelCount');
     const renderSel = $('bnRenderSelected');
     const countLine = $('bnCatalogCount');
-    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port' };
+    const KIND_LABEL = { pagoda: 'Pagoda', engine: 'Engine', pc: 'PC', cathedral: 'Cathedral', keyboard: 'Keyboard', cruise_ship: 'Cruise Ship', server_rack: 'Server Rack', sports_car: 'Sports Car', train_world: 'Train World', world_timeline: 'World Timeline', fluid_sim: 'Fluid Sim', galaxy: 'Galaxy', cruise_port: 'Cruise Port', website_landing_page: 'Website landing page' };
     let scenes = [];
     let kind = 'all';
     const selected = new Set();

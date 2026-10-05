@@ -5,8 +5,7 @@ import '../../app/widgets.dart';
 import '../data/database.dart';
 import '../finance_repository.dart';
 import '../../theme/luma_theme.dart';
-import 'buut_parser.dart';
-import 'ing_parser.dart';
+import 'bank_statement_importer.dart';
 import 'import_models.dart';
 import 'import_review_dialog.dart';
 
@@ -62,8 +61,10 @@ Future<void> showImportFlow(
           maxWidth: 520,
           // Clamp so a minimized window (height 0) can't produce a negative
           // constraint, which would throw during layout.
-          maxHeight:
-              (MediaQuery.of(dialogContext).size.height - 48).clamp(240.0, 760.0),
+          maxHeight: (MediaQuery.of(dialogContext).size.height - 48).clamp(
+            240.0,
+            760.0,
+          ),
         ),
         child: ImportReviewDialog(
           repo: repo,
@@ -102,23 +103,14 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
       );
 
       if (result == null || result.files.single.path == null) {
+        if (!mounted) return;
         setState(() => _picking = false);
         return;
       }
 
       final path = result.files.single.path!;
-      List<ParsedBankEntry> entries;
-
-      switch (bank.id) {
-        case 'buut':
-          entries = await BuutParser.parseFile(path);
-          break;
-        case 'ing':
-          entries = await IngParser.parseFile(path);
-          break;
-        default:
-          throw UnsupportedError('Bank ${bank.name} is not yet implemented.');
-      }
+      final entries = await BankStatementImporter.parseFile(bank, path);
+      if (!mounted) return;
 
       if (entries.isEmpty) {
         setState(() {
@@ -136,7 +128,8 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
       if (!mounted) return;
       setState(() {
         _picking = false;
-        _error = 'Failed to read file: ${e.toString().replaceAll('Exception: ', '')}';
+        _error =
+            'Failed to read file: ${e.toString().replaceAll('Exception: ', '')}';
       });
     }
   }
@@ -161,7 +154,7 @@ class _BankSelectionBodyState extends State<_BankSelectionBody> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Select your bank to import transactions from a statement file.',
+            'Select your bank and an exported statement. Review transactions before adding them.',
             style: TextStyle(color: luma.textMuted, fontSize: 13),
           ),
           const SizedBox(height: 20),
@@ -222,7 +215,9 @@ class _BankTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final luma = context.luma;
     return MouseRegion(
-      cursor: onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      cursor: onTap != null
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -252,6 +247,13 @@ class _BankTile extends StatelessWidget {
                       '${bank.fileTypeLabel} file',
                       style: TextStyle(color: luma.textMuted, fontSize: 12),
                     ),
+                    if (bank.exportHint != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        bank.exportHint!,
+                        style: TextStyle(color: luma.textMuted, fontSize: 12),
+                      ),
+                    ],
                   ],
                 ),
               ),

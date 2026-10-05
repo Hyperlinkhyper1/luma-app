@@ -89,6 +89,7 @@ class SyncLog {
       `SELECT sl.*, sm.name AS supermarket_name, sm.slug AS supermarket_slug
        FROM sync_logs sl
        INNER JOIN supermarkets sm ON sm.id = sl.supermarket_id
+       WHERE sm.slug <> 'picnic'
        ORDER BY sl.started_at DESC, sl.id DESC
        LIMIT :limit`,
       { limit }
