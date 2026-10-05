@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Fluid Simulation</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 5px;
+      font-family: sans-serif;
+    }
+    canvas { display: block; } /* Fill the page */
+  </style>
+  <script type="importmap">
+    {"imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <div id="ui">
+    <div id="stats"></div>
+  </div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // Basic Scene Setup
+    let scene, camera, renderer, clock;
+    let tank, particles, particleGroup;
+    let simulation, stats = { fps: 0, particleCount: 0, densityError:0 };
+    const gridSize = 16;
+    const cellSize = 0.1;
+    let particleCount = 8000; // Adjust for particle count
+    const particleTexture = new THREE.DataTexture(
+      new Float32Array(particleCount * 4), // x, y, z, w
+      particleCount, 1, THREE.RGBAFormat, THREE.FloatType
+    );
+    particleTexture.needsUpdate = true;
+
+    // Simulation Setup
+    init();
+    animate();
+
+    function init() {
+      initScene();
+      initControls();
+      initSimulation();
+      initParticles();
+
+      function initScene() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xcccccc);
+        const light = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        scene.add(light);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        dirLight.position.set(0, 1, 0);
+        scene.add(dirLight);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        const canvas = renderer.domElement;
+        document.body.appendChild(canvas);
+
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(1, 2, 3);
+        camera.lookAt(0, 1, 0);
+
+        window.addEventListener('resize', onResize);
+        function onResize() {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+      }
+
+      function initControls() {
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 1, 0);
+        controls.update();
+      }
+
+      function initSimulation() {
+        // Simplified grid setup for velocity simulation
+        simulation = new THREE.WebGLRenderTarget(gridSize, gridSize, {
+          minFilter: THREE.LinearFilter,
+          magFilter: THREE.LinearFilter,
+          format: THREE.RGBAFormat,
+          type: THREE.FloatType,
+          generateMipmaps: false,
+        });
+        // More steps needed for velocity advection and other steps
+      }
+
+      function initParticles() {
+        // Create a particle system
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+
+        // Initialize particles in a rectangular tank of size 2 units
+        for (let i = 0; i < particleCount; i++) {
+          const x = (Math.random() - 0.5) * 1.6;
+          const y = Math.random() * 1.0 + 0.5;
+          const z = (Math.random() - 0.5) * 0.5;
+          positions[i * 3 + 0] = x;
+          positions[i * 3 + 1] = y;
+          positions[i * 3 + 2] = z;
+        }
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const material = new THREE.PointsMaterial({
+          size: 0.02,
+          color: 0x0077ff,
+          transparent: true,
+          opacity: 0.7,
+        });
+        particles = new THREE.Points(geometry, material);
+        scene.add(particles);
+
+        // Tank container
+        const walls = new THREE.Group();
+        const wallGeom = new THREE.PlaneGeometry(2, 2);
+        const wallMat = new THREE.MeshPhysicalMaterial({side:THREE.DoubleSide, transparent:true, opacity:0.2, metalness:0.8, roughness:0.1});
+        const front = new THREE.Mesh(wallGeom, wallMat);
+        front.rotation.y = -Math.PI/4;
+        front.position.set(0,1,0);
+        walls.add(front);
+        const back = new THREE.Mesh(wallGeom, wallMat);
+        back.rotation.y = Math.PI/4;
+        back.position.set(0,1,1);
+        walls.add(back);
+        // Add other walls
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(2,2), wallMat);
+        floor.rotation.x = -Math.PI/2;
+        floor.position.set(0,0,0.5);
+        walls.add(floor);
+        scene.add(walls);
+      }
+    }
+
+    // Dummy simulate; real simulation requires shaders and pressure solve
+    function animate() {
+      requestAnimationFrame(animate);
+      const time = Date.now();
+
+      // Dummy force to simulate gravity downward (for demo)
+      particles.geometry.attributes.position.array.forEach((v,i)=> {
+        if (i % 3 ===1) { // Y position
+          const newVal = v - 0.005;
+          // Apply gravity to particles for testing effect
+          particles.geometry.attributes.position.setY(i,v - 0.005);
+        }
+      });
+      particles.geometry.attributes.position.needsUpdate = true;
+
+      renderer.render(scene, camera);
+      // Update stats
+      stats.fps = Math.round(1000/(time - stats.lastTime || time));
+      stats.lastTime = time;
+    }
+  </script>
+</body>
+</html>
