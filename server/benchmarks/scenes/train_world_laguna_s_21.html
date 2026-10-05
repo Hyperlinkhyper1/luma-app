@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Miniature Railway</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #schematic { display: none; }
+    </style>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+</head>
+<body>
+<div id="ui">
+    <button id="toggleSchematic">Toggle Schematic</button>
+    <button id="pause">Pause</button>
+    <button id="speed1x">1x</button>
+    <button id="speed2x">2x</button>
+    <button id="speed4x">4x</button>
+    <input type="range" id="dayNight" min="0" max="24" value="12">
+    <div id="schematic"></div>
+</div>
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
+    camera.position.set(0, 50, 100);
+    let target = new THREE.Vector3();
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target = target;
+    controls.update();
+
+    // Lighting
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1);
+    sun.position.set(50, 100, 50);
+    scene.add(sun);
+
+    // Post-processing
+    const composer = new EffectComposer(renderer);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1, 0.4, 0.85);
+    composer.addPass(bloomPass);
+
+    // Terrain
+    const terrainGeo = new THREE.PlaneGeometry(500, 500, 32, 32);
+    terrainGeo.rotateX(-Math.PI / 2);
+    terrainGeo.computeFaceNormals();
+    const terrainMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+    const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+    scene.add(terrain);
+
+    // Add water (simplified)
+    const waterGeo = new THREE.PlaneGeometry(200, 50);
+    waterGeo.rotateX(-Math.PI / 2);
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x1E90FF, transparent: true, opacity: 0.7 });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.position.y = 1;
+    scene.add(water);
+
+    // Tunnel
+    const tunnelGeo = new THREE.CylinderGeometry(10, 10, 50, 32, 1);
+    tunnelGeo.rotateZ(Math.PI / 2);
+    const tunnel = new THREE.Mesh(tunnelGeo, new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
+    tunnel.position.set(0, 5, -20);
+    scene.add(tunnel);
+
+    // Track
+    const rails = [];
+    const sleepers = [];
+
+    function createTrack(points, trackId) {
+        const path = new THREE.LineCurve3(points[0], points[1]);
+        const trackMat = new THREE.MeshStandardMaterial({ color: 0x808080 });
+        const railGeo = new THREE.BoxGeometry(0.1, 0.5, 10);
+        const s = new THREE.Mesh(railGeo, trackMat);
+        s.position.copy(path.getStart());
+        s.rotation.y = Math.atan2(points[1].x - points[0].x, points[1].z - points[0].z);
+        scene.add(s);
+        rails.push(s);
+
+        const sleeperGeo = new THREE.BoxGeometry(1, 0.1, 0.5);
+        const sleeperMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+        const slp = new THREE.Mesh(sleeperGeo, sleeperMat);
+        slp.position.copy(points[0]).add(points[1]).multiplyScalar(0.5);
+        scene.add(slp);
+        sleepers.push(slp);
+    }
+
+    createTrack(new THREE.Vector3(0, 5, 0), new THREE.Vector3(20, 5, 0));
+
+    // Signals
+    const signals = [];
+    const signalsDiv = [];
+
+    function createSignal(position, blockId) {
+        const group = new THREE.Group();
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 10), new THREE.MeshStandardMaterial({ color: 0x333 }));
+        pole.position.y = 5;
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+        lamp.position.y = 10;
+        lamp.userData.blockId = blockId;
+        group.add(pole, lamp);
+        group.position.copy(position);
+        scene.add(group);
+        signals.push(lamp);
+        signalsDiv.push(`block${blockId}`);
+    }
+
+    // Simplified: one signal for demo
+    createSignal(new THREE.Vector3(10, 5, 0), 'block1');
+
+    // Trains
+    let trains = [];
+    function createTrain(type, startPosition) {
+        const train = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.BoxGeometry(type === 'steam' ? 5 : 8, 2, 2), new THREE.MeshStandardMaterial({ color: type === 'steam' ? 0xff0000 : type === 'electric' ? 0x0000ff : 0xaaaaaa }));
+        body.position.x = -5;
+        train.add(body);
+        if (type === 'steam') {
+            const wheel = new THREE.Mesh(new THREE.CylinderGeometry(1), new THREE.MeshStandardMaterial({ color: 0x444 }));
+            wheel.rotation.z = Math.PI / 2;
+            train.add(wheel);
+        }
+        train.position.copy(startPosition);
+        scene.add(train);
+        return train;
+    }
+
+    trains.push(createTrain('steam', new THREE.Vector3(0, 5, -20)));
+    trains.push(createTrain('electric', new THREE.Vector3(-20, 5, 0)));
+    trains.push(createTrain('freight', new THREE.Vector3(20, 5, 10)));
+
+    // Controls
+    document.getElementById('dayNight').addEventListener('input', (e) => {
+        const t = e.target.value;
+        ambient.color.setHSL(t / 24, 0.1, 0.5);
+        const hour = Number(t);
+        if (hour < 6 || hour > 18) {
+            ambient.intensity = 0.3;
+        } else {
+            ambient.intensity = 0.7;
+        }
+    });
+
+    document.getElementById('toggleSchematic').addEventListener('click', () => {
+        if (schematicDiv.style.display === 'none') {
+            schematicDiv.style.display = 'block';
+        } else {
+            schematicDiv.style.display = 'none';
+        }
+    });
+
+    // Animation loop
+    let time = 0;
+    function animate() {
+        requestAnimationFrame(animate);
+        time += 0.01;
+        trains.forEach(t => t.rotation.y = time);
+        controls.update();
+        composer.render();
+    }
+    animate();
+</script>
+</body>
+</html>
