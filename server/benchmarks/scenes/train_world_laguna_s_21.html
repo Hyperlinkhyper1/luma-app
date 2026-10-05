@@ -46,6 +46,7 @@
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -71,7 +72,7 @@
     // Terrain
     const terrainGeo = new THREE.PlaneGeometry(500, 500, 32, 32);
     terrainGeo.rotateX(-Math.PI / 2);
-    terrainGeo.computeFaceNormals();
+    terrainGeo.computeVertexNormals();
     const terrainMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
     const terrain = new THREE.Mesh(terrainGeo, terrainMat);
     scene.add(terrain);
@@ -100,7 +101,7 @@
         const trackMat = new THREE.MeshStandardMaterial({ color: 0x808080 });
         const railGeo = new THREE.BoxGeometry(0.1, 0.5, 10);
         const s = new THREE.Mesh(railGeo, trackMat);
-        s.position.copy(path.getStart());
+        s.position.copy(points[0]);
         s.rotation.y = Math.atan2(points[1].x - points[0].x, points[1].z - points[0].z);
         scene.add(s);
         rails.push(s);
@@ -113,7 +114,7 @@
         sleepers.push(slp);
     }
 
-    createTrack(new THREE.Vector3(0, 5, 0), new THREE.Vector3(20, 5, 0));
+    createTrack([new THREE.Vector3(0, 5, 0), new THREE.Vector3(20, 5, 0)]);
 
     // Signals
     const signals = [];
@@ -169,6 +170,7 @@
         }
     });
 
+    const schematicDiv = document.getElementById('schematic');
     document.getElementById('toggleSchematic').addEventListener('click', () => {
         if (schematicDiv.style.display === 'none') {
             schematicDiv.style.display = 'block';
