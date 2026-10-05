@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ember & Bean</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --text: #222;
+    --primary: #6f4e37;
+    --accent: #d4a373;
+    --light: #fff;
+    --muted: #777;
+    --header-height: 60px;
+    --radius: 8px;
+    --transition: 0.2s ease;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { font-size: 100%; }
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  img { max-width: 100%; display: block; }
+  button, input, select, textarea {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+  button[disabled], input[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .skip-link {
+    position: absolute;
+    left: -999px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .skip-link:focus {
+    left: 0;
+    top: 0;
+    width: auto;
+    height: auto;
+    background: var(--bg);
+    color: var(--text);
+    padding: .5em 1em;
+    z-index: 1000;
+  }
+  .site-header {
+    position: sticky;
+    top: 0;
+    background: var(--light);
+    border-bottom: 1px solid #eee;
+    z-index: 100;
+    padding: 0 1rem;
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .wordmark {
+    width: 120px;
+    height: 30px;
+  }
+  .menu-btn {
+    display: none;
+    flex: 0 0 auto;
+    aria-label: "Open menu";
+    width: 24px;
+    height: 24px;
+    position: relative;
+  }
+  .menu-btn::before,
+  .menu-btn::after,
+  .menu-btn span {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--text);
+    transition: var(--transition);
+  }
+  .menu-btn::before { top: 0; }
+  .menu-btn::after { bottom: 0; }
+  .menu-btn span { top: 50%; transform: translateY(-50%); }
+  .nav-menu {
+    display: none;
+    flex-grow: 1;
+    justify-content: flex-end;
+  }
+  .nav-menu ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    margin: 0;
+    padding: 0;
+  }
+  .nav-menu a {
+    font-weight: 500;
+  }
+  .cta-primary,
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1.5rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .cta-primary {
+    background: var(--primary);
+    color: var(--light);
+  }
+  .cta-primary:hover { background: #5a3e2c; }
+  .cta-secondary {
+    background: transparent;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+  }
+  .cta-secondary:hover { background: rgba(111,78,55,.1); }
+  .hero {
+    padding: 4rem 1rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-content {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+  .hero h1 {
+    font-size: 2.25rem;
+    margin: 0;
+  }
+  .hero p {
+    font-size: 1.125rem;
+    margin: 0;
+    color: var(--muted);
+  }
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .freshness-note {
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  .hero-illustration {
+    width: 260px;
+    height: 180px;
+  }
+  .roast-selector {
+    display: flex;
+    gap: .75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .roast-selector button {
+    padding: .5rem 1rem;
+    border: 2px solid var(--primary);
+    background: transparent;
+    color: var(--primary);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .roast-selector button.active,
+  .roast-selector button:hover {
+    background: var(--primary);
+    color: var(--light);
+  }
+  .section {
+    padding: 4rem 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section h2 {
+    font-size: 1.75rem;
+    margin-top: 0;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  .benefits {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    text-align: center;
+  }
+  .benefit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+  }
+  .benefit svg {
+    width: 48px;
+    height: 48px;
+  }
+  .benefit h3 {
+    margin: 0;
+    font-size: 1.125rem;
+  }
+  .benefit p {
+    margin: 0;
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  .roasts {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .roast-card {
+    border: 1px solid #eee;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--light);
+    display: flex;
+    flex-direction: column;
+  }
+  .roast-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+  .roast-card .content {
+    flex: 1;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .roast-card h3 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+  .roast-card p {
+    margin: 0;
+    flex-grow: 1;
+    color: var(--muted);
+  }
+  .roast-card .choose {
+    align-self: flex-start;
+  }
+  .how-it-works .steps {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    counter-reset: step;
+  }
+  .how-it-works .step {
+    flex: 1 1 200px;
+    max-width: 260px;
+    text-align: center;
+    position: relative;
+    padding-left: 2.5rem;
+  }
+  .how-it-works .step::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--primary);
+    color: var(--light);
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+  }
+  .how-it-works .step h3 {
+    margin: .5rem 0 0;
+    font-size: 1.125rem;
+  }
+  .how-it-works .step p {
+    margin: .5rem 0 0;
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  .stories {
+    text-align: center;
+  }
+  .stories-note {
+    font-size: .9rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+  .stories blockquote {
+    margin: 2rem auto;
+    max-width: 600px;
+    font-style: italic;
+    position: relative;
+    padding-left: 1.5rem;
+  }
+  .stories blockquote::before {
+    content: "“";
+    position: absolute;
+    left: -.5rem;
+    top: 0;
+    font-size: 3rem;
+    color: rgba(111,78,55,.2);
+  }
+  .stories blockquote p {
+    margin: 0 0 .5rem;
+    font-size: 1.125rem;
+  }
+  .stories blockquote footer {
+    margin: 0;
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  .subscriptions .frequency-toggle {
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .subscriptions .frequency-toggle label {
+    font-weight: 600;
+  }
+  .subscriptions .frequency-toggle select {
+    padding: .5rem .75rem;
+    border: 2px solid var(--primary);
+    border-radius: var(--radius);
+    background: var(--light);
+    color: var(--text);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .plans {
+    display: grid;
+    gap: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .plan {
+    border: 2px solid #eee;
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    transition: var(--transition);
+  }
+  .plan:hover {
+    border-color: var(--primary);
+    background: rgba(111,78,55,.03);
+  }
+  .plan.most-popular::after {
+    content: "Most popular";
+    position: absolute;
+    top: -0.75rem;
+    right: -0.75rem;
+    background: var(--primary);
+    color: var(--light);
+    padding: .25rem .75rem;
+    border-radius: var(--radius);
+    font-size: .75rem;
+    font-weight: 600;
+  }
+  .plan .price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin: .5rem 0;
+  }
+  .plan .delivery-freq,
+  .plan .billing-freq {
+    font-size: .9rem;
+    margin: .5rem 0;
+    color: var(--muted);
+  }
+  .plan button {
+    width: 100%;
+    padding: .75rem;
+    margin-top: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .plan.choose-solo button { background: var(--primary); color: var(--light); }
+  .plan.choose-duo button { background: var(--primary); color: var(--light); }
+  .plan.choose-household button { background: var(--primary); color: var(--light); }
+  .plan.choose-solo button:hover { background: #5a3e2c; }
+  .plan.choose-duo button:hover { background: #5a3e2c; }
+  .plan.choose-household button:hover { background: #5a3e2c; }
+  .shipping-note {
+    text-align: center;
+    font-size: .9rem;
+    color: var(--muted);
+    margin-top: 2rem;
+  }
+  .faq .accordion {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .faq details {
+    border: 1px solid #eee;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    background: var(--light);
+  }
+  .faq summary {
+    padding: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: "▾";
+    font-size: .75rem;
+    transition: transform var(--transition);
+  }
+  .faq details[open] summary::after {
+    transform: rotate(180deg);
+  }
+  .faq .answer {
+    padding: 1rem;
+    font-size: .95rem;
+    color: var(--muted);
+  }
+  .final {
+    text-align: center;
+    padding: 4rem 1rem;
+    background: var(--light);
+    border-top: 1px solid #eee;
+  }
+  .final h2 {
+    font-size: 1.75rem;
+    margin-bottom 1rem;
+  }
+  .final p.brand {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1.5rem 0 .5rem;
+  }
+  .final p.copyright {
+    font-size: .875rem;
+    color: var(--muted);
+    margin-bottom 1.5rem;
+  }
+  .footer-nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+  }
+  .footer-nav a {
+    font-size: .875rem;
+    color: var(--muted);
+  }
+  .footer-nav a:hover { text-decoration: underline; }
+  /* dialog overlay */
+  #dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #dialog-overlay[aria-hidden="false"] { display: flex; }
+  #coffee-dialog {
+    background: var(--light);
+    border-radius: var(--radius);
+    width: 90%;
+    max-width: 420px;
+    max-height: 85vh;
+    overflow: auto;
+    position: relative;
+    padding: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,.2);
+    animation: fade-in .2s ease;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  #dialog-overlay[aria-hidden="true"] #coffee-dialog { animation: none; }
+  #dialog-close {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    background: transparent;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  #dialog-close:hover { color: var(--text); }
+  #dialog-form {
+    display: grid;
+    gap: 1rem;
+  }
+  #dialog-form label {
+    display: flex;
+    flex-direction: column;
+    font-size: .9rem;
+  }
+  #dialog-form input,
+  #dialog-form select {
+    padding: .5rem .75rem;
+    border: 2px solid #ddd;
+    border-radius: var(--radius);
+    font: inherit;
+  }
+  #dialog-form input:focus,
+  #dialog-form select:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .error-message {
+    color: #c00;
+    font-size: .875rem;
+    min-height: 1.2em;
+  }
+  #dialog-summary {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #f9f9f9;
+    border-radius: var(--radius);
+    font-size: .95rem;
+  }
+  #dialog-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+  }
+  #dialog-submit,
+  #dialog-cancel {
+    flex: 1;
+    padding: .75rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  #dialog-submit {
+    background: var(--primary);
+    color: var(--light);
+  }
+  #dialog-submit:hover { background: #5a3e2c; }
+  #dialog-cancel {
+    background: transparent;
+    color: var(--primary);
+    border: 2px solid var(--primary);
+  }
+  #dialog-cancel:hover { background: rgba(111,78,55,.1); }
+  /* reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.001s !important;
+      transition-duration: 0.001s !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* responsive adjustments */
+  @media (max-width: 768px) {
+    .menu-btn { display: flex; }
+    .nav-menu { position: absolute; top: var(--header-height); left: 0; right: 0; background: var(--light); border-top: 1px solid #eee; padding: 1rem; }
+    .nav-menu ul { flex-direction: column; gap: .75rem; align-items: stretch; }
+    .hero { text-align: center; }
+    .hero-content { align-items: stretch; }
+    .hero-actions { flex-direction: column; align-items: stretch; }
+    .roast-selector { justify-content: center; }
+    .benefits { grid-template-columns: 1fr; }
+    .roasts { grid-template-columns: 1fr; }
+    .how-it-works .steps { flex-direction: column; align-items: stretch; }
+    .plans { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<header class="site-header">
+  <div class="header-inner">
+    <svg class="wordmark" aria-label="Ember & Bean" viewBox="0 0 200 40">
+      <text x="10" y="30" font-size="24" fill="var(--primary)">Ember &amp; Bean</text>
+      <!-- simple coffee bean -->
+      <path d="M80 10c-6-4-14-2-18 4-4 6-2 14 4 18s14 2 18-4c4-6 2-14-4-18z" fill="var(--accent)"/>
+    </svg>
+    <button class="menu-btn" aria-controls="nav-menu" aria-expanded="false" aria-label="Open menu">
+      <span></span>
+    </button>
+    <nav id="nav-menu" class="nav-menu">
+      <ul>
+        <li><a href="#our-coffee">Our coffee</a></li>
+        <li><a href="#how-it-works">How it works</a></li>
+        <li><a href="#subscriptions">Subscriptions</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </nav>
+    <button class="cta-primary" id="header-choose-coffee">Choose your coffee</button>
+  </div>
+</header>
+
+<main id="main-content">
+<section class="hero">
+  <div class="hero-content">
+    <h1>Good mornings start with great coffee.</h1>
+    <p>Freshly roasted coffee is delivered for your favorite brewing ritual.</p>
+    <div class="hero-actions">
+      <button class="cta-primary" id="hero-choose-coffee">Choose your coffee</button>
+      <button class="cta-secondary" id="hero-meet-roasts">Meet the roasts</button>
+    </div>
+    <p class="freshness-note">Freshly roasted · Brew your way</p>
+    <svg class="hero-illustration" viewBox="0 0 400 250" aria-labelledby="hero-title" role="img">
+      <title id="hero-title">Coffee bag, cup, beans, and brewer</title>
+      <!-- bag -->
+      <g id="bag">
+        <rect x="50" y="50" width="100" height="120" rx="10" fill="#f5f5f5" stroke="#ddd" stroke-width="2"/>
+        <rect x="55" y="55" width="90" height="30" fill="var(--bag-accent, #d4a373)" id="bag-accent"/>
+        <text x="100" y="75" text-anchor="middle" fill="#fff" font-size="14" id="bag-label">Morning Light</text>
+        <path d="M50,50 L150,50 L150,70 L50,70 Z" fill="#e0e0e0"/>
+      </g>
+      <!-- cup -->
+      <g id="cup" transform="translate(200,100)">
+        <ellipse cx="0" cy="0" rx="30" ry="15" fill="#fff" stroke="#ccc" stroke-width="2"/>
+        <path d="M-30,0 Q-35,-10 -35,-25 L35,-25 Q40,-10 35,0 Z" fill="#fff" stroke="#ccc" stroke-width="2"/>
+        <rect x="-28" y="-25" width="56" height="10" fill="#fff" stroke="#ccc" stroke-width="2"/>
+      </g>
+      <!-- beans -->
+      <g id="beans" fill="#4b2e2e">
+        <circle cx="80" cy="180" r="4"/>
+        <circle cx="120" cy="190" r="3"/>
+        <circle cx="160" cy="175" r="5"/>
+        <circle cx="200" cy="185" r="4"/>
+        <circle cx="240" cy="190" r="3"/>
+      </g>
+      <!-- brewer (French press) -->
+      <g id="brewer" transform="translate(300,120)">
+        <rect x="-20" y="0" width="40" height="80" fill="#fff" stroke="#ccc" stroke-width="2"/>
+        <rect x="-18" y="-10" width="36" height="10" fill="#fff" stroke="#ccc" stroke-width="2"/>
+        <rect x="-15" y="-25" width="30" height="5" fill="#fff" stroke="#ccc" stroke-width="2"/>
+        <rect x="-12" y="-30" width="24" height="5" fill="#666"/>
+      </g>
+    </svg>
+    <div class="roast-selector">
+      <button data-roast="Morning Light">Morning Light</button>
+      <button data-roast="Daybreak">Daybreak</button>
+      <button data-roast="Nightcap Decaf">Nightcap Decaf</button>
+    </div>
+    <div class="roast-info" id="hero-roast-info">
+      <div>Roast: <span id="hero-roast-level">Medium</span></div>
+      <div>Weight: 250g</div>
+      <div>Tasting notes: <span id="hero-tasting-notes">Chocolate, caramel</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="our-coffee" class="section our-coffee">
+  <h2>Our coffee</h2>
+  <div class="benefits">
+    <div class="benefit">
+      <svg viewBox="0 0 64 64" aria-label="Roasted with care"><path d="M32 2a8 8 0 0 0-8 8v20a8 8 0 0 0 16 0V10a8 8 0 0 0-8-8z" fill="var(--primary)"/><circle cx="32" cy="30" r="6" fill="var(--accent)"/></svg>
+      <h3>Roasted with care</h3>
+      <p>Small‑batch roasting highlights each bean’s unique character.</p>
+    </div>
+    <div class="benefit">
+      <svg viewBox="0 0 64 64" aria-label="Made for your brew"><path d="M8 28h4V20h4v8h4V20h4v8h4V20h4v8H8z" fill="var(--primary)"/><rect x="16" y="12" width="32" height="16" fill="var(--accent)" rx="4"/></svg>
+      <h3>Made for your brew</h3>
+      <p>Grind options tailored to espresso, filter, or French press.</p>
+    </div>
+    <div class="benefit">
+      <svg viewBox="0 0 64 64" aria-label="Fresh coffee, on your schedule"><path d="M2 32h60M12 8v24M20 8v24M28 8v24M36 8v24M44 8v24M52 8v24" stroke="var(--primary)" stroke-width="4"/><rect x="8" y="8" width="48" height="48" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
+      <h3>Fresh coffee, on your schedule</h3>
+      <p>Recurring deliveries arrive when you need them.</p>
+    </div>
+  </div>
+  <div class="roasts">
+    <div class="roast-card">
+      <img src="data:image/svg+xml,%3Csvg viewBox='0 0 260 180' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='260' height='180' fill='%23fafafa'/%3E%3Ctext x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='18'%3EMorning Light%3C/text%3E%3C/svg%3E" alt="Morning Light bag">
+      <div class="content">
+        <h3>Morning Light</h3>
+        <p>A medium roast with sweet chocolate and caramel notes, balanced and smooth for any brew method.</p>
+        <button class="cta-primary choose" data-roast="Morning Light">Choose this roast</button>
+      </div>
+    </div>
+    <div class="roast-card">
+      <img src="data:image/svg+xml,%3Csvg viewBox='0 0 260 180' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='260' height='180' fill='%23fafafa'/%3E%3Ctext x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='18'%3EDaybreak%3C/text%3E%3C/svg%3E" alt="Daybreak bag">
+      <div class="content">
+        <h3>Daybreak</h3>
+        <p>A light roast bursting with citrus zest and honey sweetness, bright and lively.</p>
+        <button class="cta-primary choose" data-roast="Daybreak">Choose this roast</button>
+      </div>
+    </div>
+    <div class="roast-card">
+      <img src="data:image/svg+xml,%3Csvg viewBox='0 0 260 180' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='260' height='180' fill='%23fafafa'/%3E%3Ctext x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='18'%3ENightcap Decaf%3C/text%3E%3C/svg%3E" alt="Nightcap Decaf bag">
+      <div class="content">
+        <h3>Nightcap Decaf</h3>
+        <p>A decaf medium roast with cocoa richness and toasted hazelnut, perfect for evening cups.</p>
+        <button class="cta-primary choose" data-roast="Nightcap Decaf">Choose this roast</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works" class="section how-it-works">
+  <h2>How it works</h2>
+  <div class="steps">
+    <div class="step">
+      <h3>Pick your roast</h3>
+      <p>Choose from our three signature blends or rotate each delivery.</p>
+    </div>
+    <div class="step">
+      <h3>Choose your grind</h3>
+      <p>Select whole bean, filter, or espresso grind to match your equipment.</p>
+    </div>
+    <div class="step">
+      <h3>Set your rhythm</h3>
+      <p>Decide how often you’d like your coffee delivered.</p>
+    </div>
+  </div>
+</section>
+
+<section id="customer-stories" class="section stories">
+  <h2>Customer stories</h2>
+  <p class="stories-note">Illustrative stories from fictional coffee drinkers</p>
+  <blockquote>
+    <p>“Morning Light turned my first cup into my favorite ritual.”</p>
+    <footer>— Mira Chen, Home brewer</footer>
+  </blockquote>
+  <blockquote>
+    <p>“A fresh bag, the right grind, and a better espresso every morning.”</p>
+    <footer>— Alex Rivera, Espresso enthusiast</footer>
+  </blockquote>
+</section>
+
+<section id="subscriptions" class="section subscriptions">
+  <h2>Subscriptions</h2>
+  <div class="frequency-toggle">
+    <label for="freq-toggle">Delivery every:</label>
+    <select id="freq-toggle">
+      <option value="2weeks">Every 2 weeks</option>
+      <option value="monthly">Monthly</option>
+    </select>
+  </div>
+  <div class="plans">
+    <div class="plan choose-solo">
+      <div class="price">$14</div>
+      <div>Solo ritual</div>
+      <div class="delivery-freq">Delivered every 2 weeks</div>
+      <div class="billing-freq">Billed every 2 weeks</div>
+      <button type="button">Choose this plan</button>
+    </div>
+    <div class="plan choose-duo most-popular">
+      <div class="price">$26</div>
+      <div>Daily duo</div>
+      <div class="delivery-freq">Delivered every 2 weeks</div>
+      <div class="billing-freq">Billed every 2 weeks</div>
+      <button type="button">Choose this plan</button>
+    </div>
+    <div class="plan choose-household">
+      <div class="price">$48</div>
+      <div>Coffee household</div>
+      <div class="delivery-freq">Delivered every 2 weeks</div>
+      <div class="billing-freq">Billed every 2 weeks</div>
+      <button type="button">Choose this plan</button>
+    </div>
+  </div>
+  <p class="shipping-note">Shipping included in this demo pricing</p>
+</section>
+
+<section id="faq" class="section faq">
+  <h2>FAQ</h2>
+  <dl class="accordion">
+    <details>
+      <summary>How do I choose a roast?</summary>
+      <div class="answer">You can select a roast in the hero section, on each roast card, or in the coffee selection dialog. Your choice is remembered and used for the next delivery unless you change it.</div>
+    </details>
+    <details>
+      <summary>What grind options are available?</summary>
+      <div class="answer">We offer whole bean (for you to grind), filter grind (for drip/pour‑over), and espresso grind (for espresso machines). Choose your preferred grind in the selection dialog.</div>
+    </details>
+    <details>
+      <summary>Can I pause or change my next delivery?</summary>
+      <div class="answer">Yes. In the fictional service you can skip, pause, or adjust the grind, roast, or frequency of any upcoming delivery from your account.</div>
+    </details>
+    <details>
+      <summary>How does this demo work?</summary>
+      <div class="answer">This is an offline benchmark. No real orders are placed, no payments are processed, and no data is sent elsewhere. All interactions are simulated locally to showcase the UI and flows.</div>
+    </details>
+  </dl>
+</section>
+
+<section id="final-action" class="section final">
+  <h2>Find your favorite coffee</h2>
+  <button class="cta-primary" id="final-choose-coffee">Choose your coffee</button>
+  <p class="brand">Ember & Bean</p>
+  <p class="copyright">&copy; 2025 Ember & Bean. All rights reserved.</p>
+  <nav class="footer-nav">
+    <ul>
+      <li><a href="#our-coffee">Our coffee</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#subscriptions">Subscriptions</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+  </nav>
+</section>
+</main>
+
+<div id="dialog-overlay" aria-hidden="true">
+  <div id="coffee-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+    <button id="dialog-close" aria-label="Close dialog">&times;</button>
+    <h2 id="dialog-title">Select your coffee</h2>
+    <form id="dialog-form">
+      <div>
+        <label for="dialog-name">Name <span class="error-message" id="name-error"></span></label>
+        <input type="text" id="dialog-name" required placeholder="Your name">
+      </div>
+      <div>
+        <label for="dialog-email">Email <span class="error-message" id="email-error"></span></label>
+        <input type="email" id="dialog-email" required placeholder="you@example.com">
+      </div>
+      <div>
+        <label for="dialog-roast">Roast</label>
+        <select id="dialog-roast">
+          <option value="Morning Light">Morning Light</option>
+          <option value="Daybreak">Daybreak</option>
+          <option value="Nightcap Decaf">Nightcap Decaf</option>
+        </select>
+      </div>
+      <div>
+        <label for="dialog-grind">Grind</label>
+        <select id="dialog-grind">
+          <option value="whole bean">Whole bean</option>
+          <option value="filter grind">Filter grind</option>
+          <option value="espresso grind">Espresso grind</option>
+        </select>
+      </div>
+      <div>
+        <fieldset>
+          <legend>Delivery option</legend>
+          <label><input type="radio" name="dialog-option" value="solo" checked> Solo ritual (1 bag)</label><br>
+          <label><input type="radio" name="dialog-option" value="duo"> Daily duo (2 bags)</label><br>
+          <label><input type="radio" name="dialog-option" value="household"> Coffee household (4 bags)</label>
+        </fieldset>
+      </div>
+      <div>
+        <fieldset>
+          <legend>Delivery frequency</legend>
+          <label><input type="radio" name="dialog-freq" value="2weeks" checked> Every 2 weeks</label><br>
+          <label><input type="radio" name="dialog-freq" value="monthly"> Monthly</label>
+        </fieldset>
+      </div>
+    </form>
+    <div id="dialog-summary"></div>
+    <div id="dialog-actions">
+      <button type="button" id="dialog-cancel">Cancel</button>
+      <button type="submit" id="dialog-submit">Confirm demo subscription</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // State
+  let featuredRoast = 'Morning Light';
+  let deliveryFrequency = '2weeks'; // 2weeks or monthly
+  let deliveryOption = 'solo'; // solo, duo, household
+  let lastFocus = null;
+
+  // Elements
+  const headerChoose = document.getElementById('header-choose-coffee');
+  const heroChoose = document.getElementById('hero-choose-coffee');
+  const heroMeet = document.getElementById('hero-meet-roasts');
+  const finalChoose = document.getElementById('final-choose-coffee');
+  const roastButtons = document.querySelectorAll('.roast-selector button');
+  const chooseRoastButtons = document.querySelectorAll('.roast-card .choose');
+  const planButtons = document.querySelectorAll('.plans .plan button');
+  const freqToggle = document.getElementById('freq-toggle');
+  const dialogOverlay = document.getElementById('dialog-overlay');
+  const dialog = document.getElementById('coffee-dialog');
+  const dialogClose = document.getElementById('dialog-close');
+  const dialogCancel = document.getElementById('dialog-cancel');
+  const dialogSubmit = document.getElementById('dialog-submit');
+  const dialogForm = document.getElementById('dialog-form');
+  const dialogName = document.getElementById('dialog-name');
+  const dialogEmail = document.getElementById('dialog-email');
+  const dialogRoast = document.getElementById('dialog-roast');
+  const dialogGrind = document.getElementById('dialog-grind');
+  const dialogOptionRadios = document.getElementsByName('dialog-option');
+  const dialogFreqRadios = document.getElementsByName('dialog-freq');
+  const dialogSummary = document.getElementById('dialog-summary');
+  const nameError = document.getElementById('name-error');
+  const emailError = document.getElementById('email-error');
+  const bagLabel = document.getElementById('bag-label');
+  const bagAccent = document.getElementById('bag-accent');
+  const heroRoastLevel = document.getElementById('hero-roast-level');
+  const heroTastingNotes = document.getElementById('hero-tasting-notes');
+
+  // Roast data
+  const roastData = {
+    'Morning Light': { level: 'Medium', notes: 'Chocolate, caramel', accent: '#d4a373' },
+    'Daybreak': { level: 'Light', notes: 'Citrus, honey', accent: '#e8c172' },
+    'Nightcap Decaf': { level: 'Medium', notes: 'Cocoa, hazelnut', accent: '#a78f71' }
+  };
+
+  // Update hero illustration and info
+  function updateHeroRoast(roast) {
+    featuredRoast = roast;
+    const data = roastData[roast];
+    bagLabel.textContent = roast;
+    bagAccent.style.fill = data.accent;
+    heroRoastLevel.textContent = data.level;
+    heroTastingNotes.textContent = data.notes;
+    // update active button state
+    roastButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.roast === roast);
+    });
+    // update dialog roast select if dialog is not open with a pre-selected option
+    if (!dialogOverlay.hasAttribute('aria-hidden') || dialogOverlay.getAttribute('aria-hidden') === 'false') {
+      // if dialog is open, we don't want to override user's selection unless they haven't interacted yet
+      // we'll just set the select value; it's fine.
+      dialogRoast.value = roast;
+    }
+    updateSummary();
+  }
+
+  // Update delivery frequency from toggle
+  function updateFrequencyFromToggle() {
+    deliveryFrequency = freqToggle.value;
+    // update plan texts
+    const plans = document.querySelectorAll('.plans .plan');
+    plans.forEach(plan => {
+      const freqText = deliveryFrequency === '2weeks' ? 'every 2 weeks' : 'monthly';
+      plan.querySelector('.delivery-freq').textContent = `Delivered ${freqText}`;
+      plan.querySelector('.billing-freq').textContent = `Billed ${freqText}`;
+    });
+    updateSummary();
+  }
+
+  // Update summary inside dialog
+  function updateSummary() {
+    // get current selections from dialog controls (if dialog open) else fallback to state
+    let roast = dialogRoast ? dialogRoast.value : featuredRoast;
+    let grind = dialogGrind ? dialogGrind.value : 'whole bean';
+    let option = 'solo';
+    if (dialogOptionRadios[0].checked) option = 'solo';
+    else if (dialogOptionRadios[1].checked) option = 'duo';
+    else if (dialogOptionRadios[2].checked) option = 'household';
+    let freq = '2weeks';
+    if (dialogFreqRadios[0].checked) freq = '2weeks';
+    else if (dialogFreqRadios[1].checked) freq = 'monthly';
+
+    const bags = option === 'solo' ? 1 : option === 'duo' ? 2 : 4;
+    const weight = bags * 250;
+    const priceMap = { solo: 14, duo: 26, household: 48 };
+    const price = priceMap[option];
+    const freqText = freq === '2weeks' ? 'Every 2 weeks' : 'Monthly';
+    dialogSummary.innerHTML = `
+      <strong>Selected coffee:</strong> ${roast}<br>
+      <strong>Grind:</strong> ${grind}<br>
+      <strong>Bags:</strong> ${bags}<br>
+      <strong>Total weight:</strong> ${weight}g<br>
+      <strong>Price per delivery:</strong> $${price}<br>
+      <strong>Delivery every:</strong> ${freqText}
+    `;
+  }
+
+  // Open dialog
+  function openDialog(opener, preSelectRoast, preSelectOption, preSelectFreq) {
+    lastFocus = opener;
+    dialogOverlay.removeAttribute('aria-hidden');
+    dialog.setAttribute('aria-hidden', 'false');
+    dialog.focus();
+    // trap focus later via keydown listener
+    // reset form
+    dialogForm.reset();
+    dialogName.value = '';
+    dialogEmail.value = '';
+    nameError.textContent = '';
+    emailError.textContent = '';
+    // set defaults
+    if (preSelectRoast) dialogRoast.value = preSelectRoast;
+    if (preSelectOption) {
+      document.querySelector(`input[name="dialog-option"][value="${preSelectOption}"]`).checked = true;
+    }
+    if (preSelectFreq) {
+      document.querySelector(`input[name="dialog-freq"][value="${preSelectFreq}"]`).checked = true;
+    }
+    // ensure frequency radios reflect global toggle if not overridden
+    if (!preSelectFreq) {
+      document.querySelector(`input[name="dialog-freq"][value="${deliveryFrequency}"]`).checked = true;
+    }
+    updateSummary();
+  }
+
+  // Close dialog
+  function closeDialog() {
+    dialogOverlay.setAttribute('aria-hidden', 'true');
+    dialog.setAttribute('aria-hidden', 'true');
+    if (lastFocus) lastFocus.focus();
+    lastFocus = null;
+  }
+
+  // Validate form
+  function validateForm() {
+    let valid = true;
+    const name = dialogName.value.trim();
+    if (name === '') {
+      nameError.textContent = 'Please enter your name';
+      valid = false;
+    } else {
+      nameError.textContent = '';
+    }
+    const email = dialogEmail.value.trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      emailError.textContent = 'Please enter a valid email address';
+      valid = false;
+    } else {
+      emailError.textContent = '';
+    }
+    return valid;
+  }
+
+  // Show confirmation
+  function showConfirmation() {
+    // gather values
+    const roast = dialogRoast.value;
+    const grind = dialogGrind.value;
+    let option = 'solo';
+    if (dialogOptionRadios[0].checked) option = 'solo';
+    else if (dialogOptionRadios[1].checked) option = 'duo';
+    else if (dialogOptionRadios[2].checked) option = 'household';
+    let freq = '2weeks';
+    if (dialogFreqRadios[0].checked) freq = '2weeks';
+    else if (dialogFreqRadios[1].checked) freq = 'monthly';
+    const bags = option === 'solo' ? 1 : option === 'duo' ? 2 : 4;
+    const priceMap = { solo: 14, duo: 26, household: 48 };
+    const price = priceMap[option];
+    const freqText = freq === '2weeks' ? 'Every 2 weeks' : 'Monthly';
+    dialogForm.style.display = 'none';
+    dialogSummary.style.display = 'block';
+    dialogSummary.innerHTML = `
+      <strong>Demo subscription confirmed:</strong><br>
+      <strong>Coffee:</strong> ${roast}<br>
+      <strong>Grind:</strong> ${grind}<br>
+      <strong>Bags per delivery:</strong> ${bags}<br>
+      <strong>Price per delivery:</strong> $${price}<br>
+      <strong>Delivery every:</strong> ${freqText}<br><br>
+      <em>Demo only: no order was placed, no payment was taken, and no information was sent.</em>
+    `;
+    dialogActions.innerHTML = `<button id="dialog-close-confirm" class="cta-primary">Close</button>`;
+    document.getElementById('dialog-close-confirm').addEventListener('click', closeDialog);
+  }
+
+  // Event listeners
+  // Header nav menu toggle
+  const menuBtn = document.querySelector('.menu-btn');
+  const navMenu = document.getElementById('nav-menu');
+  menuBtn.addEventListener('click', () => {
+    const expanded = menuBtn.getAttribute('aria-expanded') === 'true' || false;
+    menuBtn.setAttribute('aria-expanded', String(!expanded));
+    navMenu.style.display = expanded ? 'none' : 'block';
+    if (!expanded) {
+      navMenu.querySelector('a').focus();
+    } else {
+      menuBtn.focus();
+    }
+  });
+  // Close menu on escape when open
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && navMenu.style.display === 'block') {
+      menuBtn.click();
+    }
+  });
+  // Nav links close menu
+  navMenu.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => {
+      if (navMenu.style.display === 'block') {
+        menuBtn.click();
+      }
+    });
+  });
+
+  // Roast selector buttons
+  roastButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      updateHeroRoast(btn.dataset.roast);
+    });
+  });
+
+  // Hero actions
+  headerChoose.addEventListener('click', () => openDialog(headerChoose));
+  heroChoose.addEventListener('click', () => openDialog(heroChoose));
+  heroMeet.addEventListener('click', () => {
+    document.getElementById('our-coffee').scrollIntoView({ behavior: 'smooth' });
+  });
+  finalChoose.addEventListener('click', () => openDialog(finalChoose));
+
+  // Choose this roast buttons
+  chooseRoastButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      openDialog(btn, btn.dataset.roast);
+    });
+  });
+
+  // Frequency toggle
+  freqToggle.addEventListener('change', updateFrequencyFromToggle);
+  updateFrequencyFromToggle(); // init
+
+  // Plan buttons
+  planButtons.forEach((btn, idx) => {
+    btn.addEventListener('click', () => {
+      const plan = btn.closest('.plan');
+      let option = 'solo';
+      if (plan.classList.contains('choose-duo')) option = 'duo';
+      else if (plan.classList.contains('choose-household')) option = 'household';
+      openDialog(btn, featuredRoast, option);
+    });
+  });
+
+  // Dialog controls
+  dialogClose.addEventListener('click', closeDialog);
+  dialogCancel.addEventListener('click', closeDialog);
+  dialogOverlay.addEventListener('click', e => {
+    if (e.target === dialogOverlay) closeDialog();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && dialogOverlay.getAttribute('aria-hidden') === 'false') {
+      closeDialog();
+    }
+  });
+  // Trap focus
+  dialog.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      const focusable = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  });
+  // Form input listeners for live summary
+  dialogForm.addEventListener('input', updateSummary);
+  dialogForm.addEventListener('change', updateSummary);
+  // Submit
+  dialogForm.addEventListener('submit', e => {
+    e.preventDefault();
+    if (validateForm()) {
+      showConfirmation();
+    }
+  });
+
+  // Initialize hero roast
+  updateHeroRoast('Morning Light');
+</script>
+</body>
+</html>
