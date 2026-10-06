@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 30px;
+  background-color: #f0f0f0;
+}
+
+.button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 150px;
+  height: 30px;
+  font-size: 20px;
+  text-align: center;
+  line-height: 30px;
+  border: none;
+  background-color: #f0f0f0;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: #ccc;
+}
+
+.panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 300px;
+  height: 200px;
+  background-color: #f0f0f0;
+  padding: 10px;
+  border: 1px solid #ccc;
+  display: none;
+}
+
+.panel.selected {
+  display: block;
+}
+
+#rack {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #ccc;
+}
+
+#rack .rack-unit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  background-color: #f0f0f0;
+}
+
+#rack .rack-unit.server {
+  width: 200px;
+  height: 40px;
+}
+
+#rack .server {
+  width: 100%;
+  height: 100%;
+  background-color: #ccc;
+}
+
+#rack .server .name {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background-color: #f0f0f0;
+  text-align: center;
+  line-height: 20px;
+}
+
+#rack .server .type {
+  position: absolute;
+  top: 20px;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background-color: #f0f0f0;
+  text-align: center;
+  line-height: 20px;
+}
+
+#rack .server .form-factor {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  background-color: #f0f0f0;
+  text-align: center;
+  line-height: 20px;
+}
+</style>
+<script src="https://unpkg.com/three@0.143.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.143.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+<div class="container">
+<button class="button" id="full-rack-button">[RACK VIEW]</button>
+<button class="button" id="slice-button">[SLICE VIEW]</button>
+<button class="button" id="open-cover-button">[OPEN COVER]</button>
+<button class="button" id="cutaway-button">[CUTAWAY]</button>
+<button class="button" id="explode-button">[EXPLODE]</button>
+<button class="button" id="airflow-button">[SHOW AIRFLOW]</button>
+<button class="button" id="power-button">[SHOW POWER]</button>
+<button class="button" id="data-button">[SHOW DATA]</button>
+<button class="button" id="failures-button">[SIMULATE FAILURES]</button>
+<button class="button" id="reset-button">[RESET]</button>
+</div>
+<div id="rack"></div>
+<div id="panel" class="panel selected"></div>
+<div id="slice-panel" class="panel"></div>
+<script>
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+var renderer = new THREE.WebGLRenderer({
+  canvas: document.getElementById('canvas'),
+  antialias: true
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+camera.position.z = 5;
+var orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+var clock = new THREE.Clock();
+var selectedServer = null;
+var sliceMode = false;
+var selectedSlice = null;
+var failures = false;
+var airflow = false;
+var power = false;
+var data = false;
+var exploded = false;
+var cutaway = false;
+var panel = null;
+var slicePanel = null;
+
+document.getElementById('full-rack-button').addEventListener('click', function() {
+  sliceMode = false;
+  selectServer(null);
+});
+
+document.getElementById('slice-button').addEventListener('click', function() {
+  if (selectedServer) {
+    sliceMode = true;
+    selectSlice(selectedServer);
+  }
+});
+
+document.getElementById('open-cover-button').addEventListener('click', function() {
+  if (sliceMode) {
+    selectedServer.cover.open();
+  }
+});
+
+document.getElementById('cutaway-button').addEventListener('click', function() {
+  if (sliceMode) {
+    selectedServer.chassis.cutaway = !selectedServer.chassis.cutaway;
+  }
+});
+
+document.getElementById('explode-button').addEventListener('click', function() {
+  if (sliceMode) {
+    selectedServer.explode = !selectedServer.explode;
+  }
+});
+
+document.getElementById('airflow-button').addEventListener('click', function() {
+  airflow = !airflow;
+  if (airflow) {
+    selectedServer.airflow = true;
+  } else {
+    selectedServer.airflow = false;
+  }
+});
+
+document.getElementById('power-button').addEventListener('click', function() {
+  power = !power;
+  if (power) {
+    selectedServer.power = true;
+  } else {
+    selectedServer.power = false;
+  }
+});
+
+document.getElementById('data-button').addEventListener('click', function() {
+  data = !data;
+  if (data) {
+    selectedServer.data = true;
+  } else {
+    selectedServer.data = false;
+  }
+});
+
+document.getElementById('failures-button').addEventListener('click', function() {
+  failures = !failures;
+  if (failures) {
+    selectedServer.failures = true;
+  } else {
+    selectedServer.failures = false;
+  }
+});
+
+document.getElementById('reset-button').addEventListener('click', function() {
+  sliceMode = false;
+  selectServer(null);
+  selectedServer = null;
+  failures = false;
+  airflow = false;
+  power = false;
+  data = false;
+  exploded = false;
+  cutaway = false;
+});
+
+var servers = [
+  {
+    name: 'AI COMPUTE NODE',
+    type: 'GPU SERVER',
+    formFactor: '4U',
+    position: 39,
+    x: 100,
+    y: 200,
+    height: 40,
+    width: 200
+  },
+  {
+    name: 'VIRTUALIZATION SERVER',
+    type: 'VIRTUALIZATION SERVER',
+    formFactor: '2U',
+    position: 37,
+    x: 300,
+    y: 300,
+    height: 20,
+    width: 150
+  },
+  {
+    name: 'COMPUTE NODE',
+    type: 'GENERAL PURPOSE SERVER',
+    formFactor: '1U',
+    position: 35,
+    x: 400,
+    y: 100,
+    height: 20,
+    width: 100
+  },
+  {
+    name: 'STORAGE SERVER',
+    type: 'STORAGE SERVER',
+    formFactor: '4U',
+    position: 31,
+    x: 200,
+    y: 400,
+    height: 40,
+    width: 200
+  },
+  {
+    name: 'DATABASE SERVER',
+    type: 'DATABASE SERVER',
+    formFactor: '2U',
+    position: 29,
+    x: 100,
+    y: 500,
+    height: 20,
+    width: 150
+  }
+];
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+var light = new THREE.DirectionalLight(0xffffff, 0.8);
+light.position.set(10, 10, 10);
+scene.add(light);
+scene.background = new THREE.Color(0x555555);
+
+var geometry = new THREE.BoxGeometry();
+var material = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  wireframe: true
+});
+geometry.scale(50, 50, 50);
+material.wireframe = true;
+var mesh = new THREE.Mesh(geometry, material);
+scene.add(mesh);
+
+var cameraPerspective = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+cameraPerspective.position.z = 50;
+scene.add(cameraPerspective);
+
+function render(timestamp) {
+  if (sliceMode) {
+    selectedServer.update(timestamp);
+  } else {
+    mesh.position.y = 0;
+    mesh.rotation.y = 0;
+  }
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.render(scene, camera);
+  requestAnimationFrame(render);
+}
+
+var lastUpdateTime = 0;
+function update(timestamp) {
+  if (sliceMode) {
+    selectedServer.update(timestamp);
+  } else {
+    mesh.position.y = 0;
+    mesh.rotation.y = 0;
+    selectedServer = null;
+  }
+  orbitControls.update(clock.getDelta());
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.render(scene, camera);
+  requestAnimationFrame(update);
+}
+
+function selectServer(server) {
+  if (panel) {
+    panel.style.display = 'none';
+  }
+  if (server) {
+    camera.position.set(server.x + 10, server.y + 10, 10);
+    camera.rotation.set(server.rotationX, server.rotationY, 0);
+  } else {
+    camera.position.set(0, 0, 10);
+    camera.rotation.set(0, 0, 0);
+  }
+  if (sliceMode) {
+    selectedSlice = slicePanel;
+  }
+  selectedServer = server;
+  panel = null;
+  slicePanel = null;
+}
+
+function selectSlice(slice) {
+  slicePanel = slice;
+  slicePanel.style.display = 'block';
+  if (selectedSlice) {
+    selectedSlice.style.display = 'none';
+  }
+  selectedSlice = slicePanel;
+}
+
+function drawServer(server) {
+  var geometry = new THREE.BoxGeometry(server.width, server.height, 1);
+  var material = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    wireframe: true
+  });
+  var mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(server.x, server.y, 0);
+  mesh.rotation.set(0, 0, 0);
+  mesh.name = server.name;
+  mesh.type = server.type;
+  mesh.formFactor = server.formFactor;
+  return mesh;
+}
+
+function drawPanel(server) {
+  var geometry = new THREE.BoxGeometry(200, 100, 1);
+  var material = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    wireframe: true
+  });
+  var mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(server.x, server.y + 100, 0);
+  mesh.rotation.set(0, 0, 0);
+  mesh.name = server.name;
+  mesh.type = server.type;
+  mesh.formFactor = server.formFactor;
+  return mesh;
+}
+
+function drawSlice(slice) {
+  var geometry = new THREE.BoxGeometry(200, 100, 1);
+  var material = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    wireframe: true
+  });
+  var mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(slice.x, slice.y, 0);
+  mesh.rotation.set(0, 0, 0);
+  mesh.name = slice.name;
+  mesh.type = slice.type;
+  mesh.formFactor = slice.formFactor;
+  return mesh;
+}
+
+for (var i = 0; i < servers.length; i++) {
+  var server = servers[i];
+  var mesh = drawServer(server);
+  scene.add(mesh);
+  var panelMesh = drawPanel(server);
+  scene.add(panelMesh);
+  panelMesh.addEventListener('click', function() {
+    selectServer(server);
+  });
+}
+
+function showRack(timestamp) {
+  var lastUpdate = lastUpdateTime;
+  lastUpdateTime = timestamp;
+  if (timestamp - lastUpdate >= 1000) {
+    var servers = [0, 1, 2, 3, 4];
+    for (var i = 0; i < servers.length; i++) {
+      var serverIndex = servers[i];
+      if (sliceMode) {
+        selectedServer = servers[serverIndex];
+        selectedServer.update(timestamp);
+      }
+    }
+    if (sliceMode) {
+      mesh.position.y = selectedServer.y;
+      mesh.rotation.y = selectedServer.rotationY;
+    } else {
+      mesh.position.y = 200;
+      mesh.rotation.y = 0;
+    }
+  }
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.render(scene, camera);
+  requestAnimationFrame(showRack);
+}
+
+requestAnimationFrame(showRack);
+
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.render(scene, camera);
+update(lastUpdateTime);
+render(lastUpdateTime);
+</script>
+</body>
+</html>
