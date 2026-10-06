@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mechanical Keyboard Showcase</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      perspective: 1000px;
+      transform-style: preserve-3d;
+    }
+    #scene {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      transform-style: preserve-3d;
+    }
+    .keyboard-part {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+    .key {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+    .keycap,
+    .switch,
+    .plate,
+    .foam,
+    .pcb {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 100;
+    }
+    #mute {
+      cursor: pointer;
+    }
+    #replay {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="scene">
+    <div class="keyboard-part pcb">
+      <mesh>
+        <boxGeometry args={[200, 100, 2]} />
+        <meshStandardMaterial color="#808080" />
+      </mesh>
+    </div>
+    <div class="keyboard-part foam">
+      <mesh>
+        <boxGeometry args={[200, 100, 1]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+    </div>
+    <div class="keyboard-part plate">
+      <mesh>
+        <boxGeometry args={[200, 100, 1]} />
+        <meshStandardMaterial color="#404040" />
+      </mesh>
+    </div>
+    <div class="keyboard-part switches">
+      <mesh>
+        <boxGeometry args={[200, 100, 1]} />
+        <meshStandardMaterial color="#000000" />
+      </mesh>
+    </div>
+    <div class="keyboard-part keycaps">
+      <mesh>
+        <boxGeometry args={[200, 100, 1]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+    </div>
+  </div>
+  <div id="controls">
+    <button id="mute">Mute</button>
+    <button id="replay">Replay</button>
+  </div>
+  <script src="https://unpkg.com/three@0.139.2/build/three.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+    camera.position.z = 500;
+
+    const keyboardParts = ['pcb', 'foam', 'plate', 'switches', 'keycaps'];
+    const keys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ', 'enter', 'backspace', 'shift', 'ctrl'];
+    let isMuted = false;
+    let isAnimating = false;
+
+    keyboardParts.forEach(part => {
+      const obj = document.querySelector(`.${part}`);
+      const mesh = new THREE.Object3D();
+      mesh.position.set(0, 0, -50 - keyboardParts.indexOf(part) * 10);
+      scene.add(mesh);
+      mesh.add(obj);
+    });
+
+    keys.forEach(key => {
+      const obj = document.createElement('div');
+      obj.classList.add('key');
+      obj.innerText = key;
+      const mesh = new THREE.Object3D();
+      mesh.position.set((key.charCodeAt(0) - 97) * 10 - 100, 0, 0);
+      scene.add(mesh);
+      mesh.add(obj);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    function assembleKeyboard() {
+      if (isAnimating) return;
+      isAnimating = true;
+      let currentPart = 0;
+      function animateAssembly() {
+        if (currentPart === keyboardParts.length) {
+          isAnimating = false;
+          return;
+        }
+        const part = keyboardParts[currentPart];
+        const obj = scene.getObjectByName(part);
+        obj.position.z += 10;
+        if (obj.position.z > 0) {
+          obj.position.z = 0;
+          currentPart++;
+        }
+        requestAnimationFrame(animateAssembly);
+      }
+      animateAssembly();
+    }
+
+    function playSound(key) {
+      if (isMuted) return;
+      const oscillator = new AudioContext().createOscillator();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(key === ' ' ? 200 : key === 'enter' || key === 'backspace' || key === 'shift' || key === 'ctrl' ? 400 : 800, AudioContext.currentTime);
+      oscillator.connect(AudioContext.destination);
+      oscillator.start();
+      oscillator.stop(AudioContext.currentTime + 0.1);
+    }
+
+    function pressKey(key) {
+      const obj = scene.getObjectByName(key);
+      obj.position.y = -5;
+      setTimeout(() => {
+        obj.position.y = 0;
+      }, 50);
+      playSound(key);
+    }
+
+    document.addEventListener('keydown', event => {
+      pressKey(event.key);
+    });
+
+    document.getElementById('mute').addEventListener('click', () => {
+      isMuted = !isMuted;
+      document.getElementById('mute').innerText = isMuted ? 'Unmute' : 'Mute';
+    });
+
+    document.getElementById('replay').addEventListener('click', assembleKeyboard);
+
+    assembleKeyboard();
+    animate();
+  </script>
+</body>
+</html>
