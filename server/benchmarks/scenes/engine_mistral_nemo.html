@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procedural V8 Engine</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #333;
+      font-family: Arial, sans-serif;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #fff;
+      font-size: 14px;
+    }
+    #gui {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: #fff;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info"></div>
+  <div id="gui">
+    <label>
+      RPM: <input type="range" min="0" max="8000" step="100" value="700" id="rpm">
+    </label>
+    <button id="stop">STOP</button>
+    <button id="idle">IDLE</button>
+    <button id="2k">2000</button>
+    <button id="4k">4000</button>
+    <button id="6k">6000</button>
+    <button id="8k">8000</button>
+    <label>
+      Mode: <select id="mode">
+        <option value="auto">Auto</option>
+        <option value="manual">Manual</option>
+      </select>
+    </label>
+    <label>
+      Crank: <input type="range" min="0" max="720" step="1" value="0" id="crank">
+    </label>
+    <label>
+      Slow: <select id="slow">
+        <option value="1">1x</option>
+        <option value="0.25">0.25x</option>
+        <option value="0.05">0.05x</option>
+      </select>
+    </label>
+    <label>
+      View: <select id="view">
+        <option value="hero">HERO</option>
+        <option value="front">FRONT</option>
+        <option value="side">SIDE</option>
+        <option value="top">TOP</option>
+        <option value="internal">INTERNAL</option>
+      </select>
+    </label>
+    <label>
+      Explode: <input type="range" min="0" max="1" step="0.01" value="0" id="explode">
+    </label>
+    <label>
+      Cylinder: <select id="cylinder">
+      </select>
+    </label>
+    <label>
+      Show: <input type="checkbox" id="block">Block
+      <input type="checkbox" id="pistons">Pistons
+      <input type="checkbox" id="crankshaft">Crankshaft
+      <input type="checkbox" id="rods">Rods
+      <input type="checkbox" id="valvetrain">Valve Train
+      <input type="checkbox" id="intake">Intake
+      <input type="checkbox" id="exhaust">Exhaust
+      <input type="checkbox" id="timing">Timing
+    </label>
+  </div>
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.138.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.138.0/examples/jsm/controls/OrbitControls.js';
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    camera.position.z = 50;
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
+
+    let rpm = 700;
+    let crankAngle = 0;
+    let mode = 'auto';
+    let slow = 1;
+    let view = 'hero';
+    let explode = 0;
+    let cylinder = 1;
+
+    document.getElementById('rpm').addEventListener('input', (e) => {
+      rpm = parseInt(e.target.value);
+    });
+    document.getElementById('stop').addEventListener('click', () => {
+      rpm = 0;
+    });
+    document.getElementById('idle').addEventListener('click', () => {
+      rpm = 700;
+    });
+    document.getElementById('2k').addEventListener('click', () => {
+      rpm = 2000;
+    });
+    document.getElementById('4k').addEventListener('click', () => {
+      rpm = 4000;
+    });
+    document.getElementById('6k').addEventListener('click', () => {
+      rpm = 6000;
+    });
+    document.getElementById('8k').addEventListener('click', () => {
+      rpm = 8000;
+    });
+    document.getElementById('mode').addEventListener('change', (e) => {
+      mode = e.target.value;
+    });
+    document.getElementById('crank').addEventListener('input', (e) => {
+      crankAngle = parseInt(e.target.value);
+    });
+    document.getElementById('slow').addEventListener('change', (e) => {
+      slow = parseFloat(e.target.value);
+    });
+    document.getElementById('view').addEventListener('change', (e) => {
+      view = e.target.value;
+      switch (view) {
+        case 'hero':
+          camera.position.set(0, 0, 50);
+          camera.lookAt(scene.position);
+          break;
+        case 'front':
+          camera.position.set(0, 30, 50);
+          camera.lookAt(scene.position);
+          break;
+        case 'side':
+          camera.position.set(30, 0, 50);
+          camera.lookAt(scene.position);
+          break;
+        case 'top':
+          camera.position.set(0, 50, 0);
+          camera.lookAt(scene.position);
+          break;
+        case 'internal':
+          camera.position.set(0, 0, -50);
+          camera.lookAt(scene.position);
+          break;
+      }
+    });
+    document.getElementById('explode').addEventListener('input', (e) => {
+      explode = parseFloat(e.target.value);
+    });
+    document.getElementById('cylinder').addEventListener('change', (e) => {
+      cylinder = parseInt(e.target.value);
+    });
+    document.getElementById('block').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'block') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('pistons').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'piston') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('crankshaft').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'crankshaft') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('rods').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'rod') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('valvetrain').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'valvetrain') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('intake').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'intake') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('exhaust').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'exhaust') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+    document.getElementById('timing').addEventListener('change', (e) => {
+      scene.traverse((child) => {
+        if (child.name === 'timing') {
+          child.visible = e.target.checked;
+        }
+      });
+    });
+
+    const cylinders = [];
+    const pistons = [];
+    const rods = [];
+    const crankshaft = new THREE.Group();
+    crankshaft.name = 'crankshaft';
+    scene.add(crankshaft);
+
+    const createCylinder = (x, y, z) => {
+      const geometry = new THREE.CylinderGeometry(1, 1, 2, 32);
+      const material = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+      const cylinder = new THREE.Mesh(geometry, material);
+      cylinder.position.set(x, y, z);
+      cylinder.name = 'cylinder';
+      scene.add(cylinder);
+      cylinders.push(cylinder);
+    };
+
+    const createPiston = (x, y, z) => {
+      const geometry = new THREE.BoxGeometry(1, 2, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const piston = new THREE.Mesh(geometry, material);
+      piston.position.set(x, y, z);
+      piston.name = 'piston';
+      scene.add(piston);
+      pistons.push(piston);
+    };
+
+    const createRod = (x, y, z) => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const rod = new THREE.Mesh(geometry, material);
+      rod.position.set(x, y, z);
+      rod.name = 'rod';
+      scene.add(rod);
+      rods.push(rod);
+    };
+
+    const createCrankshaft = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const crank = new THREE.Mesh(geometry, material);
+      crank.position.set(0, 0, 0);
+      crank.name = 'crank';
+      crankshaft.add(crank);
+
+      const rodJournal = new THREE.Mesh(geometry, material);
+      rodJournal.position.set(5, 0, 0);
+      rodJournal.name = 'rod_journal';
+      crankshaft.add(rodJournal);
+
+      const crankWeb = new THREE.Mesh(geometry, material);
+      crankWeb.position.set(10, 0, 0);
+      crankWeb.name = 'crank_web';
+      crankshaft.add(crankWeb);
+
+      const crankThrow = new THREE.Mesh(geometry, material);
+      crankThrow.position.set(15, 0, 0);
+      crankThrow.name = 'crank_throw';
+      crankshaft.add(crankThrow);
+
+      const counterweight = new THREE.Mesh(geometry, material);
+      counterweight.position.set(20, 0, 0);
+      counterweight.name = 'counterweight';
+      crankshaft.add(counterweight);
+    };
+
+    const createValvetrain = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const intakeValve = new THREE.Mesh(geometry, material);
+      intakeValve.position.set(0, 5, 0);
+      intakeValve.name = 'intake_valve';
+      scene.add(intakeValve);
+
+      const exhaustValve = new THREE.Mesh(geometry, material);
+      exhaustValve.position.set(0, -5, 0);
+      exhaustValve.name = 'exhaust_valve';
+      scene.add(exhaustValve);
+
+      const valveSpring = new THREE.Mesh(geometry, material);
+      valveSpring.position.set(0, 0, 0);
+      valveSpring.name = 'valve_spring';
+      scene.add(valveSpring);
+    };
+
+    const createTimingSystem = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const crankTimingGear = new THREE.Mesh(geometry, material);
+      crankTimingGear.position.set(0, 0, 0);
+      crankTimingGear.name = 'crank_timing_gear';
+      scene.add(crankTimingGear);
+
+      const camTimingGear = new THREE.Mesh(geometry, material);
+      camTimingGear.position.set(0, 0, 0);
+      camTimingGear.name = 'cam_timing_gear';
+      scene.add(camTimingGear);
+
+      const timingChain = new THREE.Mesh(geometry, material);
+      timingChain.position.set(0, 0, 0);
+      timingChain.name = 'timing_chain';
+      scene.add(timingChain);
+    };
+
+    const createFlywheel = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const flywheel = new THREE.Mesh(geometry, material);
+      flywheel.position.set(0, 0, 0);
+      flywheel.name = 'flywheel';
+      scene.add(flywheel);
+    };
+
+    const createBlock = () => {
+      const geometry = new THREE.BoxGeometry(20, 10, 10);
+      const material = new THREE.MeshBasicMaterial({ color: 0x888888 });
+      const block = new THREE.Mesh(geometry, material);
+      block.position.set(0, 0, 0);
+      block.name = 'block';
+      scene.add(block);
+    };
+
+    const createIntake = () => {
+      const geometry = new THREE.TubeGeometry(2, 2, 4, 8, false);
+      const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const intake = new THREE.Mesh(geometry, material);
+      intake.position.set(0, 0, 0);
+      intake.name = 'intake';
+      scene.add(intake);
+    };
+
+    const createExhaust = () => {
+      const geometry = new THREE.TubeGeometry(2, 2, 4, 8, false);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const exhaust = new THREE.Mesh(geometry, material);
+      exhaust.position.set(0, 0, 0);
+      exhaust.name = 'exhaust';
+      scene.add(exhaust);
+    };
+
+    const createCylinderHeads = () => {
+      const geometry = new THREE.BoxGeometry(10, 5, 10);
+      const material = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+      const leftHead = new THREE.Mesh(geometry, material);
+      leftHead.position.set(-10, 0, 0);
+      leftHead.name = 'left_head';
+      scene.add(leftHead);
+
+      const rightHead = new THREE.Mesh(geometry, material);
+      rightHead.position.set(10, 0, 0);
+      rightHead.name = 'right_head';
+      scene.add(rightHead);
+    };
+
+    const createEngine = () => {
+      createCylinder(-5, 0, 0);
+      createCylinder(5, 0, 0);
+      createCylinder(-5, 0, -10);
+      createCylinder(5, 0, -10);
+      createPiston(-5, 0, 0);
+      createPiston(5, 0, 0);
+      createPiston(-5, 0, -10);
+      createPiston(5, 0, -10);
+      createRod(-5, 0, 0);
+      createRod(5, 0, 0);
+      createRod(-5, 0, -10);
+      createRod(5, 0, -10);
+      createCrankshaft();
+      createValvetrain();
+      createTimingSystem();
+      createFlywheel();
+      createBlock();
+      createIntake();
+      createExhaust();
+      createCylinderHeads();
+    };
+
+    createEngine();
+
+    const update = () => {
+      if (mode === 'auto') {
+        crankAngle += (rpm / 60) * slow;
+      } else {
+        crankAngle = document.getElementById('crank').value;
+      }
+
+      crankshaft.rotation.x = crankAngle * Math.PI / 180;
+
+      pistons.forEach((piston, i) => {
+        const cylinder = cylinders[i];
+        const rod = rods[i];
+        const x = Math.cos(crankAngle * Math.PI / 180) * 5;
+        const y = Math.sin(crankAngle * Math.PI / 180) * 5;
+        piston.position.set(x, y, 0);
+        cylinder.position.set(x, y, 0);
+        rod.position.set(x, y, 0);
+      });
+
+      const cylinder = cylinders[cylinder - 1];
+      const piston = pistons[cylinder - 1];
+      const rod = rods[cylinder - 1];
+      const x = Math.cos(crankAngle * Math.PI / 180) * 5;
+      const y = Math.sin(crankAngle * Math.PI / 180) * 5;
+      cylinder.position.set(x, y, 0);
+      piston.position.set(x, y, 0);
+      rod.position.set(x, y, 0);
+
+      const explodeValue = document.getElementById('explode').value;
+      scene.traverse((child) => {
+        if (child.name === 'left_head' || child.name === 'right_head') {
+          child.position.y = Math.sin(crankAngle * Math.PI / 180) * explodeValue * 10;
+        }
+      });
+
+      document.getElementById('info').innerText = `RPM: ${rpm.toFixed(0)} Crank: ${crankAngle.toFixed(0)}°`;
+    };
+
+    renderer.setAnimationLoop(() => {
+      update();
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>
