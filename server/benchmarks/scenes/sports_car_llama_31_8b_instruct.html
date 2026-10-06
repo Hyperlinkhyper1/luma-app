@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2, user-scalable=no">
+    <title>3D Sports Car Benchmark</title>
+    <style>
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #333;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #111;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #111;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100vh;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .option {
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+</head>
+<body>
+    <div id="info"></div>
+    <div id="controls">
+        <div class="option" id="showroom">Showroom</div>
+        <div class="option" id="testdrive">Test Drive</div>
+        <input type="checkbox" id="audio" />
+        <label for="audio">Audio</label>
+        <div id="cameras">
+            <div class="option" id="front-3-4">Front 3/4</div>
+            <div class="option" id="side">Side</div>
+            <div class="option" id="rear-3-4">Rear 3/4</div>
+            <div class="option" id="top">Top</div>
+            <div class="option" id="interior">Interior</div>
+            <div class="option" id="wheel-close-up">Wheel Close-Up</div>
+        </div>
+        <button id="reset">Reset</button>
+    </div>
+    <canvas id="renderCanvas"></canvas>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/OrbitControls.js';
+
+        let scene, camera, renderer, controls;
+        let currentMode = 'showroom';
+        let carsColor = 0;
+        let rimsColor = 1;
+        let headLightsState = true;
+        let xrayMode = false;
+        let audioState = false;
+
+        init();
+        animate();
+
+        function init() {
+            renderer = new THREE.WebGLRenderer({
+                clearAlpha: 1,
+                alpha: true,
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('renderCanvas').appendChild(renderer.domElement);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.x = 0;
+            camera.position.y = 0;
+            camera.position.z = 250;
+            camera.lookAt(0, 0, 0);
+            scene = new THREE.Scene();
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 0, 0);
+            controls.update();
+
+            // Light
+            let ambient = new THREE.AmbientLight(0x333333);
+            scene.add(ambient);
+
+            let directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight1.position.set(0, 0, 100);
+            scene.add(directionalLight1);
+
+            let directionalLight2 = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight2.position.set(0, 0, -100);
+            scene.add(directionalLight2);
+
+            // Floor
+            let floorGeometry = new THREE.PlaneGeometry(100, 100);
+            let floorMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -1;
+            scene.add(floor);
+
+            // Road
+            let roadGeometry = new THREE.BufferGeometry();
+            let roadPositions = [];
+            let roadUvs = [];
+            for (let i = 0; i < 10000; i++) {
+                let x = Math.sin(i * 0.01) * 20 + 50;
+                let y = Math.cos(i * 0.01) * 5 + 5;
+                roadPositions.push(x, y);
+                roadUvs.push(0, 0);
+                roadUvs.push(1, 0);
+            }
+            let roadAttributes = { position: roadPositions, uv: roadUvs };
+            let roadMesh = new THREE.Mesh(roadGeometry, new THREE.MeshBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.8 }));
+            roadMesh.scale.set(20, 1, 1);
+            roadMesh.position.y = -1;
+            scene.add(roadMesh);
+
+            // Car
+            car();
+            animateCar();
+
+            // Event listeners
+            document.addEventListener('keydown', (e) => {
+                if (e.key === ' ') {
+                    headLightsState = !headLightsState;
+                }
+                if (e.key === 'q') {
+                    carsColor++;
+                    carsColor %= 6;
+                }
+                if (e.key === 'w' && currentMode === 'testdrive') {
+                    if (camera.position.z > 250) {
+                        camera.position.z -= 2;
+                    }
+                }
+                if (e.key === 's' && currentMode === 'testdrive') {
+                    if (camera.position.z < 350) {
+                        camera.position.z += 2;
+                    }
+                }
+                if (e.key === 'a' && currentMode === 'testdrive') {
+                    camera.position.x -= 2;
+                }
+                if (e.key === 'd' && currentMode === 'testdrive') {
+                    camera.position.x += 2;
+                }
+                if (e.key === 'e' && currentMode === 'testdrive') {
+                    changeGear(-1);
+                }
+                if (e.key === 'q' && currentMode === 'testdrive') {
+                    changeGear(1);
+                }
+                if (e.key === 'r' && currentMode === 'testdrive') {
+                    car.position.y = 0;
+                    car.rotation.x = 0;
+                    camera.position.y = 0;
+                    camera.position.z = 250;
+                    camera.rotation.x = 0;
+                }
+                if (e.key === 'p') {
+                    xrayMode = !xrayMode;
+                }
+            });
+            document.getElementById('showroom').addEventListener('click', () => {
+                currentMode = 'showroom';
+                document.getElementById('testdrive').className = '';
+                document.getElementById('showroom').className = 'selected';
+                document.getElementById('cameras').style.display = 'flex';
+                document.getElementById('reset').style.display = 'block';
+                document.getElementById('cameras').children.item(0).className = '';
+                document.getElementById('cameras').children.item(1).className = '';
+                document.getElementById('cameras').children.item(2).className = '';
+                document.getElementById('cameras').children.item(3).className = '';
+                document.getElementById('cameras').children.item(4).className = '';
+                document.getElementById('cameras').children.item(5).className = '';
+                camera.position.y = 2;
+                camera.lookAt(0, -0.5, 0);
+                camera.position.z = 200;
+            });
+            document.getElementById('testdrive').addEventListener('click', () => {
+                currentMode = 'testdrive';
+                document.getElementById('testdrive').className = 'selected';
+                document.getElementById('showroom').className = '';
+                document.getElementById('cameras').style.display = 'flex';
+                document.getElementById('reset').style.display = 'block';
+                document.getElementById('cameras').children.item(0).className = 'selected';
+                document.getElementById('cameras').children.item(1).className = '';
+                document.getElementById('cameras').children.item(2).className = '';
+                document.getElementById('cameras').children.item(3).className = '';
+                document.getElementById('cameras').children.item(4).className = '';
+                document.getElementById('cameras').children.item(5).className = '';
+                camera.position.y = 0;
+                camera.lookAt(0, 0, 0);
+                camera.position.z = 250;
+                document.getElementById('reset').style.display = 'block';
+            });
+            document.getElementById('front-3-4').addEventListener('click', () => {
+                camera.lookAt(0, -5, 0);
+            });
+            document.getElementById('side').addEventListener('click', () => {
+                camera.position.x = 20;
+                camera.lookAt(0, 0, 0);
+            });
+            document.getElementById('rear-3-4').addEventListener('click', () => {
+                camera.position.x = -20;
+                camera.lookAt(0, -3, 0);
+            });
+            document.getElementById('top').addEventListener('click', () => {
+                camera.fov = 120;
+                camera.position.z = 200;
+                camera.position.y = 0;
+                camera.lookAt(0, 0, 0);
+            });
+            document.getElementById('interior').addEventListener('click', () => {
+                camera.position.x = -30;
+                camera.position.y = 0;
+                camera.lookAt(0, -2, 0);
+            });
+            document.getElementById('wheel-close-up').addEventListener('click', () => {
+                camera.position.x = -30;
+                camera.position.y = -3;
+                camera.lookAt(0, 0, 0);
+            });
+            document.getElementById('reset').addEventListener('click', () => {
+                reset();
+            });
+            document.getElementById('audio').addEventListener('change', (e) => {
+                audioState = e.target.checked;
+            });
+        }
+
+        function car() {
+            let carGeometry = new THREE.Group();
+            let bodyGeometry = new THREE.BufferGeometry();
+            let bodyPositions = [];
+            let bodyUvs = [];
+            for (let i = 0; i < 20; i++) {
+                bodyPositions.push(Math.sin(i * 0.1) * 10 + 10, Math.cos(i * 0.1) * 5 + 5, 0);
+                bodyUvs.push(0, 0);
+                bodyUvs.push(1, 0);
+                bodyUvs.push(1, 1);
+                bodyUvs.push(0, 1);
+            }
+            bodyAttributes = { position: bodyPositions, uv: bodyUvs };
+            body = new THREE.Mesh(bodyGeometry, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+            body.scale.set(20, 1, 1);
+            body.position.y = 5;
+            body.rotation.x = -Math.PI / 4;
+            carGeometry.add(body);
+
+            let leftDoorGeometry = new THREE.BoxGeometry(1.5, 2, 0.1);
+            let leftDoorMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let leftDoor = new THREE.Mesh(leftDoorGeometry, leftDoorMaterial);
+            leftDoor.position.set(-3, 5, -0.05);
+            leftDoor.rotation.x = -Math.PI / 4;
+            carGeometry.add(leftDoor);
+
+            let rightDoorGeometry = new THREE.BoxGeometry(1.5, 2, 0.1);
+            let rightDoorMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let rightDoor = new THREE.Mesh(rightDoorGeometry, rightDoorMaterial);
+            rightDoor.position.set(3, 5, -0.05);
+            rightDoor.rotation.x = -Math.PI / 4;
+            carGeometry.add(rightDoor);
+
+            let hoodGeometry = new THREE.BoxGeometry(1.5, 1, 0.1);
+            let hoodMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let hood = new THREE.Mesh(hoodGeometry, hoodMaterial);
+            hood.position.set(0, 5, 0);
+            hood.rotation.x = -Math.PI / 4;
+            carGeometry.add(hood);
+
+            let trunkGeometry = new THREE.BoxGeometry(1.5, 1, 0.1);
+            let trunkMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.set(0, 5, -1);
+            trunk.rotation.x = -Math.PI / 4;
+            carGeometry.add(trunk);
+
+            let wheelGeometry = new THREE.SphereGeometry(1, 100, 10);
+            let wheelMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let frontLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontLeftWheel.position.set(-2, -1, -0.1);
+            carGeometry.add(frontLeftWheel);
+            let frontRightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            frontRightWheel.position.set(2, -1, -0.1);
+            carGeometry.add(frontRightWheel);
+            let rearLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            rearLeftWheel.position.set(-2, -1, 0.8);
+            carGeometry.add(rearLeftWheel);
+            let rearRightWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            rearRightWheel.position.set(2, -1, 0.8);
+            carGeometry.add(rearRightWheel);
+
+            car = new THREE.Group();
+            car.add(carGeometry);
+
+            let wheelRimsGeometry = new THREE.ConvexGeometry(new THREE.SphereGeometry(1.1, 100, 10).vertices);
+            let wheelRimsMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let frontLeftRim = new THREE.Mesh(wheelRimsGeometry, wheelRimsMaterial);
+            frontLeftWheel.add(frontLeftRim);
+            let frontRightRim = new THREE.Mesh(wheelRimsGeometry, wheelRimsMaterial);
+            frontRightWheel.add(frontRightRim);
+            let rearLeftRim = new THREE.Mesh(wheelRimsGeometry, wheelRimsMaterial);
+            rearLeftWheel.add(rearLeftRim);
+            let rearRightRim = new THREE.Mesh(wheelRimsGeometry, wheelRimsMaterial);
+            rearRightWheel.add(rearRightRim);
+
+            let wheelTiresGeometry = new THREE.SphereGeometry(1.4, 100, 10);
+            let wheelTiresMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let frontLeftTire = new THREE.Mesh(wheelTiresGeometry, wheelTiresMaterial);
+            frontLeftWheel.add(frontLeftTire);
+            let frontRightTire = new THREE.Mesh(wheelTiresGeometry, wheelTiresMaterial);
+            frontRightWheel.add(frontRightTire);
+            let rearLeftTire = new THREE.Mesh(wheelTiresGeometry, wheelTiresMaterial);
+            rearLeftWheel.add(rearLeftTire);
+            let rearRightTire = new THREE.Mesh(wheelTiresGeometry, wheelTiresMaterial);
+            rearRightWheel.add(rearRightTire);
+
+            let brakeGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+            let brakeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let frontLeftBrake = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            frontLeftWheel.add(frontLeftBrake);
+            let frontRightBrake = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            frontRightWheel.add(frontRightBrake);
+            let rearLeftBrake = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            rearLeftWheel.add(rearLeftBrake);
+            let rearRightBrake = new THREE.Mesh(brakeGeometry, brakeMaterial);
+            rearRightWheel.add(rearRightBrake);
+
+            let calipersGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+            let calipersMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let frontLeftCaliper = new THREE.Mesh(calipersGeometry, calipersMaterial);
+            frontLeftWheel.add(frontLeftCaliper);
+            let frontRightCaliper = new THREE.Mesh(calipersGeometry, calipersMaterial);
+            frontRightWheel.add(frontRightCaliper);
+            let rearLeftCaliper = new THREE.Mesh(calipersGeometry, calipersMaterial);
+            rearLeftWheel.add(rearLeftCaliper);
+            let rearRightCaliper = new THREE.Mesh(calipersGeometry, calipersMaterial);
+            rearRightWheel.add(rearRightCaliper);
+
+            let headLightGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+            let headLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let headLight1 = new THREE.Mesh(headLightGeometry, headLightMaterial);
+            carGeometry.position.set(-8, 10, -6);
+            carGeometry.add(headLight1);
+
+            let indicatorGeometry = new THREE.BoxGeometry(0.1, 1, 0.1);
+            let indicatorMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+            indicator.position.set(-7, 10, -5);
+            carGeometry.add(indicator);
+
+            let wheelLightGeometry = new THREE.SphereGeometry(0.1, 100, 10);
+            let wheelLightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let wheelLight1 = new THREE.Mesh(wheelLightGeometry, wheelLightMaterial);
+            frontLeftWheel.add(wheelLight1);
+            let wheelLight2 = new THREE.Mesh(wheelLightGeometry, wheelLightMaterial);
+            frontRightWheel.add(wheelLight2);
+            let wheelLight3 = new THREE.Mesh(wheelLightGeometry, wheelLightMaterial);
+            rearLeftWheel.add(wheelLight3);
+            let wheelLight4 = new THREE.Mesh(wheelLightGeometry, wheelLightMaterial);
+            rearRightWheel.add(wheelLight4);
+
+            let bodyGeometry2 = new THREE.BufferGeometry();
+            let bodyPositions2 = [];
+            let bodyUvs2 = [];
+            for (let i = 0; i < 20; i++) {
+                bodyPositions2.push(Math.sin(i * 0.1) * 10 + 10, Math.cos(i * 0.1) * 5 + 5, 0);
+                bodyUvs2.push(1, 0);
+                bodyUvs2.push(1, 1);
+                bodyUvs2.push(0, 1);
+                bodyUvs2.push(0, 0);
+            }
+            let bodyAttributes2 = { position: bodyPositions2, uv: bodyUvs2 };
+            body1 = new THREE.Mesh(bodyGeometry2, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+            body1.scale.set(20, 1, 1);
+            body1.position.y = 5;
+            body1.rotation.x = -Math.PI / 4;
+            body1.position.z = 2;
+            car.add(body1);
+
+            let bodyGeometry3 = new THREE.BufferGeometry();
+            let bodyPositions3 = [];
+            let bodyUvs3 = [];
+            for (let i = 0; i < 20; i++) {
+                bodyPositions3.push(Math.sin(i * 0.1) * 10 + 10, Math.cos(i * 0.1) * 5 + 5, 0);
+                bodyUvs3.push(1, 0);
+                bodyUvs3.push(1, 1);
+                bodyUvs3.push(0, 1);
+                bodyUvs3.push(0, 0);
+            }
+            let bodyAttributes3 = { position: bodyPositions3, uv: bodyUvs3 };
+            body2 = new THREE.Mesh(bodyGeometry3, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+            body2.scale.set(20, 1, 1);
+            body2.position.y = 5;
+            body2.rotation.x = -Math.PI / 4;
+            body2.position.z = 2;
+            body2.position.x = 4;
+            car.add(body2);
+
+            let bodyGeometry4 = new THREE.BufferGeometry();
+            let bodyPositions4 = [];
+            let bodyUvs4 = [];
+            for (let i = 0; i < 20; i++) {
+                bodyPositions4.push(Math.sin(i * 0.1) * 10 + 10, Math.cos(i * 0.1) * 5 + 5, 0);
+                bodyUvs4.push(1, 0);
+                bodyUvs4.push(1, 1);
+                bodyUvs4.push(0, 1);
+                bodyUvs4.push(0, 0);
+            }
+            let bodyAttributes4 = { position: bodyPositions4, uv: bodyUvs4 };
+            body3 = new THREE.Mesh(bodyGeometry4, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+            body3.scale.set(20, 1, 1);
+            body3.position.y = 5;
+            body3.rotation.x = -Math.PI / 4;
+            body3.position.z = 2;
+            body3.position.x = 8;
+            car.add(body3);
+
+            let diffuserGeometry = new THREE.BoxGeometry(2, 1, 0.1);
+            let diffuserMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+            let diffuser = new THREE.Mesh(diffuserGeometry, diffuserMaterial);
+            diffuser.position.set(12, 5, -0.05);
+            diffuser.rotation.x = -Math.PI / 4;
+            car.add(diffuser);
+
+            scene.add(car);
+            animateCar();
+        }
+
+        function animateCar() {
+            requestAnimationFrame(animateCar);
+            if (currentMode === 'testdrive') {
+                let steering = -controls.axis.x * Math.PI / 2;
+                let speed = controls.axis.y * 100;
+                let gear = Math.floor(speed / 20);
+                changeGear(gear);
+                let rpm = Math.floor(speed / 2);
+                if (rpm > 0) {
+                    let sound = new Audio(Math.sin(rpm * 0.05));
+                    sound.connect(renderer.context);
+                    if (audioState) {
+                        sound.play();
+                    }
+                } else {
+                    if (audioState) {
+                        sound.disconnect(renderer.context);
+                        sound.stop();
+                    }
+                }
+
+                if (gear > 0) {
+                    speed += 5;
+                } else {
+                    speed -= 5;
+                }
+
+                if (steering < -Math.PI / 2) {
+                    car.rotation.x += 0.01;
+                } else if (steering > Math.PI / 2) {
+                    car.rotation.x -= 0.01;
+                } else {
+                    car.rotation.x = 0;
+                }
+
+                if (speed < 50) {
+                    car.position.y = -1 + Math.sin(steering) * 0.1;
+                } else if (speed < 100) {
+                    car.position.y = -0.5 + Math.sin(steering) * 0.1;
+                } else {
+                    car.position.y = 0;
+                }
+
+                if (speed > 1000) {
+                    car.rotation.y = 0.1;
+                } else if (speed > 900) {
+                    car.rotation.y = 0.05;
+                } else if (speed > 800) {
+                    car.rotation.y = 0;
+                }
+
+                if (speed > 50 && speed < 100) {
+                    car.position.z += 0.1;
+                } else if (speed > 100) {
+                    car.position.z -= 0.1;
+                }
+
+                if (steering > 0) {
+                    car.rotation.y += 0.01;
+                } else if (steering < 0) {
+                    car.rotation.y -= 0.01;
+                } else {
+                    car.rotation.y = 0;
+                }
+            }
+            if (xrayMode) {
+                for (let i = 0; i < car.children.length; i++) {
+                    let child = car.children.item(i);
+                    let raycaster = new THREE.Raycaster(child.position, car.position.sub(child.position));
+                    let intersection = raycaster.raycast(car);
+                    if (!intersection.distance) {
+                        car.children.item(i).visible = false;
+                    } else {
+                        car.children.item(i).visible = true;
+                    }
+                }
+            } else {
+                for (let i = 0; i < car.children.length; i++) {
+                    car.children.item(i).visible = true;
+                }
+            }
+
+            for (let i = 0; i < car.children.length; i++) {
+                let child = car.children.item(i);
+                if (child.visible && currentMode === 'showroom') {
+                    let material = child.material;
+                    if (material.color.dynamic) {
+                        let color = new THREE.Color();
+                        color.r = 255 / 255;
+                        color.g = 0;
+                        color.b = 0;
+                        switch (carsColor) {
+                            default:
+                            case 0: // silver
+                                color.r = 191 / 255;
+                                color.g = 191 / 255;
+                                color.b = 191 / 255;
+                                break;
+                            case 1: // red
+                                color.r = 255 / 255;
+                                color.g = 0;
+                                color.b = 0;
+                                break;
+                            case 2: // blue
+                                color.r = 0;
+                                color.g = 0;
+                                color.b = 255 / 255;
+                                break;
+                            case 3: // green
+                                color.r = 0;
+                                color.g = 255 / 255;
+                                color.b = 0;
+                                break;
+                            case 4: // yellow
+                                color.r = 255 / 255;
+                                color.g = 255 / 255;
+                                color.b = 0;
+                                break;
+                            case 5: // pink
+                                color.r = 255 / 255;
+                                color.g = 0;
+                                color.b = 255 / 255;
+                                break;
+                        }
+                        if (child === car) {
+                            material.color = color;
+                        } else if (child === body) {
+                            material.color = color;
+                        } else if (child === body1) {
+                            material.color = color;
+                        } else if (child === body2) {
+                            material.color = color;
+                        } else if (child === body3) {
+                            material.color = color;
+                        }
+                    }
+                }
+                if (child.uuid === 'left-door') {
+                    let material = child.material;
+                    if (material.color.dynamic) {
+                        material.color.setRGB(191, 191, 191);
+                    }
+                } else if (child.uuid === 'right-door') {
+                    let material = child.material;
+                    if (material.color.dynamic) {
+                        material.color.setRGB(191, 191, 191);
+                    }
+                }
+            }
+
+            let wheelRimColors = ['silver', 'black', 'bronze'];
+            for (let i = 0; i < car.children.length; i++) {
+                let child = car.children.item(i);
+                if (child.uuid.startsWith('wheel')) {
+                    let material = child.children.item(0).material;
+                    if (material.color.dynamic) {
+                        material.color.setRGB(1, 0, 0);
+                    }
+                    if (child.uuid === 'front-left-wheel-child') {
+                        material = child.children.item(0).material;
+                        if (material.color.dynamic) {
+                            let color = new THREE.Color();
+                            switch (rimsColor) {
+                                default:
+                                case 0: // silver
+                                    color.r = 191 / 255;
+                                    color.g = 191 / 255;
+                                    color.b = 191 / 255;
+                                    break;
+                                case 1: // black
+                                    color.r = 0;
+                                    color.g = 0;
+                                    color.b = 0;
+                                    break;
+                                case 2: // bronze
+                                    color.r = 128 / 255;
+                                    color.g = 128 / 255;
+                                    color.b = 1;
+                                    break;
+                            }
+                            material.color = color;
+                        }
+                    } else if (child.uuid === 'front-right-wheel-child') {
+                        material = child.children.item(0).material;
+                        if (material.color.dynamic) {
+                            let color = new THREE.Color();
+                            switch (rimsColor) {
+                                default:
+                                case 0: // silver
+                                    color.r = 191 / 255;
+                                    color.g = 191 / 255;
+                                    color.b = 191 / 255;
+                                    break;
+                                case 1: // black
+                                    color.r = 0;
+                                    color.g = 0;
+                                    color.b = 0;
+                                    break;
+                                case 2: // bronze
+                                    color.r = 128 / 255;
+                                    color.g = 128 / 255;
+                                    color.b = 1;
+                                    break;
+                            }
+                            material.color = color;
+                        }
+                    }
+                }
+            }
+            let indicatorColors = ['red', 'blue', 'green'];
+            for (let i = 0; i < car.children.length; i++) {
+                let child = car.children.item(i);
+                if (child.uuid === 'indicator-child') {
+                    let material = child.material;
+                    if (material.color.dynamic) {
+                        material.color.setRGB(1, 0, 0);
+                    }
+                    if (headLightsState) {
+                        material.color.setRGB(1, 1, 1);
+                    } else {
+                        material.color = new THREE.Color();
+                        switch (indicatorColors[rimsColor]) {
+                            default:
+                            case 0: // red
+                                material.color.r = 1;
+                                material.color.g = 0;
+                                material.color.b = 0;
+                                break;
+                            case 1: // blue
+                                material.color.r = 0;
+                                material.color.g = 0;
+                                material.color.b = 1;
+                                break;
+                            case 2: // green
+                                material.color.r = 0;
+                                material.color.g = 1;
+                                material.color.b = 0;
+                                break;
+                        }
+                    }
+                } else if (child.uuid === 'head-light1-child') {
+                    let material = child.material;
+                    if (material.color.dynamic) {
+                        material.color.setRGB(1, 0, 0);
+                    }
+                    if (headLightsState) {
+                        material.color = new THREE.Color();
+                        material.color.r = 1;
+                        material.color.g = 1;
+                        material.color.b = 1;
+                    } else {
+                        material.color.setRGB(1, 0, 0);
+                    }
+                }
+            }
+            let brakeColors = ['red', 'blue', 'green'];
+            for (let i = 0; i < car.children.length; i++) {
+                let child = car.children.item(i);
+                if (child.uuid.startsWith('brake')) {
+                    let material = child.material;
+                    if (material.color.dynamic) {
+                        material.color.setRGB(1, 0, 0);
+                    }
+                    if (speed < 0.5) {
+                        material.color = new THREE.Color();
+                        switch (brakeColors[rimsColor]) {
+                            default:
+                            case 0: // red
+                                material.color.r = 1;
+                                material.color.g = 0;
+                                material.color.b = 0;
+                                break;
+                            case 1: // blue
+                                material.color.r = 0;
+                                material.color.g = 0;
+                                material.color.b = 1;
+                                break;
+                            case 2: // green
+                                material.color.r = 0;
+                                material.color.g = 1;
+                                material.color.b = 0;
+                                break;
+                        }
+                    }
+                }
+            }
+            if (headLightsState) {
+                car.children.item(0).material.color.setRGB(1, 0, 0);
+                car.children.item(1).material.color.setRGB(1, 0, 0);
+            }
+            if (headLightsState) {
+                car.children.item(2).material.color.r = 1;
+                car.children.item(2).material.color.g = 1;
+                car.children.item(2).material.color.b = 1;
+            }
+            if (speed > 500 && currentMode === 'testdrive') {
+                let wheelLightColors = ['red', 'blue', 'green'];
+                for (let i = 0; i < car.children.length; i++) {
+                    let child = car.children.item(i);
+                    if (child.uuid.startsWith('wheel-light')) {
+                        let material = child.material;
+                        if (material.color.dynamic) {
+                            material.color.setRGB(1, 0, 0);
+                        }
+                        if (currentMode === 'testdrive') {
+                            material.color = new THREE.Color();
+                            switch (wheelLightColors[rimsColor]) {
+                                default:
+                                case 0: // red
+                                    material.color.r = 1;
+                                    material.color.g = 0;
+                                    material.color.b = 0;
+                                    break;
+                                case 1: // blue
+                                    material.color.r = 0;
+                                    material.color.g = 0;
+                                    material.color.b = 1;
+                                    break;
+                                case 2: // green
+                                    material.color.r = 0;
+                                    material.color.g = 1;
+                                    material.color.b = 0;
+                                    break;
+                            }
+                        } else {
+                            material.color.setRGB(1, 0, 0);
+                        }
+                    }
+                }
+            }
+            if (car.children.item(16).position.x < 0 && car.children.item(16).position.z < 0) {
+                car.children.item(16).material.color.r = 1;
+                car.children.item(16).material.color.g = 1;
+                car.children.item(16).material.color.b = 1;
+            }
+            if (car.children.item(16).position.x > 0 && car.children.item(16).position.z < 0) {
+                car.children.item(16).material.color.r = 1;
+                car.children.item(16).material.color.g = 0;
+                car.children.item(16).material.color.b = 0;
+            }
+            if (car.children.item(16).position.x > 0 && car.children.item(16).position.z > 0) {
+                car.children.item(16).material.color.r = 0;
+                car.children.item(16).material.color.g = 0;
+                car.children.item(16).material.color.b = 1;
+            }
+
+            controls.update();
+            car.position.y = camera.position.y + 2;
+            car.position.x = camera.position.x + 0;
+            car.position.z = camera.position.z + 150;
+            car.lookAt(camera.position.x - 150, camera.position.y + 50, camera.position.z + 0);
+
+            if (currentMode === 'showroom') {
+                car.position.x = 0;
+                car.position.z = 150;
+            }
+            controls.target.set(car.position.x, car.position.y + 2, car.position.z);
+            controls.update();
+
+            camera.position.y = car.position.y;
+            camera.position.x = car.position.x;
+            camera.position.z = car.position.z;
+            camera.position.y -= 1;
+            camera.lookAt(car.position.x, car.position.y + 2, car.position.z);
+
+            renderer.render(scene, camera);
+        }
+
+        function changeGear(gear) {
+            let currentRpm = parseInt(camera.position.z);
+            if (Math.floor(currentRpm / 20) > gear + 1) {
+                currentRpm -= 20;
+            } else if (Math.floor(currentRpm / 20) < gear + 1) {
+                currentRpm += 20;
+            }
+            camera.position.y = currentRpm;
+            let sound = new Audio(Math.sin(currentRpm * 0.05));
+            sound.connect(renderer.context);
+            if (audioState) {
+                sound.play();
+            } else {
+                sound.disconnect(renderer.context);
+                sound.stop();
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            if (currentMode === 'testdrive') {
+                let steering = -controls.axis.x * Math.PI / 2;
+                let speed = controls.axis.y * 100;
+                let gear = Math.floor(speed / 20);
+                changeGear(gear);
+                let rpm = Math.floor(speed / 2);
+                if (rpm > 0) {
+                    let sound = new Audio(Math.sin(rpm * 0.05));
+                    sound.connect(renderer.context);
+                    if (audioState) {
+                        sound.play();
+                    }
+                } else {
+                    if (audioState) {
+                        sound.disconnect(renderer.context);
+                        sound.stop();
+                    }
+                }
+            }
+            if (currentMode === 'showroom') {
+                for (let i = 0; i < car.children.length; i++) {
+                    let child = car.children.item(i);
+                    if (child.uuid.startsWith('wheel')) {
+                        let speed = 20 + controls.axis.y * 300;
+                        let wheelRotation = Math.PI / 180 * 20 * speed;
+                        let wheelRotationDirection = -1;
+                        if (steering > 0) {
+                            wheelRotationDirection = -1;
+                        } else {
+                            wheelRotationDirection = 1;
+                        }
+                        child.children.item(0).rotation.z = wheelRotationDirection * wheelRotation;
+                    }
+                }
+            }
+            controls.update();
+            camera.position.y = car.position.y;
+            camera.position.x = car.position.x;
+            camera.position.z = car.position.z;
+            camera.position.y -= 1;
+            camera.lookAt(car.position.x, car.position.y + 2, car.position.z);
+            renderer.render(scene, camera);
+        }
+
+        function reset() {
+            car.position.y = 2;
+            car.rotation.x = 0;
+            car.position.z = 250;
+            camera.position.y = 0;
+            camera.position.z = 250;
+            camera.rotation.x = 0;
+            car.lookAt(camera.position.x, car.position.y + 2, camera.position.z);
+            controls.target.set(car.position.x, car.position.y + 2, car.position.z);
+            controls.update();
+        }
+    </script>
+</body>
+</html>
