@@ -1,0 +1,2573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SERVER ARCHITECTURE LAB</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/libs/dat.gui.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #info-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 0 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            z-index: 1000;
+            border-bottom: 1px solid #333;
+        }
+
+        #title {
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+
+        #stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        #main-container {
+            position: absolute;
+            top: 30px;
+            left: 0;
+            right: 0;
+            bottom: 60px;
+            overflow: hidden;
+        }
+
+        #ui-left {
+            position: absolute;
+            left: 15px;
+            top: 15px;
+            bottom: 15px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        #ui-right {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            bottom: 15px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        #ui-bottom {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 0 15px;
+            z-index: 1000;
+        }
+
+        .button {
+            padding: 8px 16px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .button:hover {
+            background: #3a3a3a;
+            border-color: #666;
+        }
+
+        .button.active {
+            background: #4fc3f7;
+            border-color: #81d4fa;
+            color: #000;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #server-list {
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .server-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(40, 40, 40, 0.5);
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .server-item:hover {
+            background: rgba(79, 195, 247, 0.2);
+            border-color: #4fc3f7;
+        }
+
+        .server-item.selected {
+            background: rgba(79, 195, 247, 0.4);
+            border-color: #4fc3f7;
+        }
+
+        .component-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(40, 40, 40, 0.5);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .health-panel {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .health-metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 11px;
+        }
+
+        .health-bar {
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            margin-top: 2px;
+            overflow: hidden;
+        }
+
+        .health-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+
+        .rack-unit {
+            height: 44.45px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+            font-size: 10px;
+            color: #888;
+        }
+
+        .rack-unit:nth-child(odd) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .failure-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+        }
+
+        .comparison-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .comparison-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+        }
+
+        .comparison-bar {
+            width: 100px;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+
+        .comparison-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+
+        #rack-power-display {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .power-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="info-bar">
+        <div id="title">SERVER ARCHITECTURE LAB</div>
+        <div id="stats">
+            <span>FPS: <span id="fps">0</span></span>
+            <span>Draw: <span id="draw-calls">0</span></span>
+            <span>Tri: <span id="triangles">0</span></span>
+        </div>
+    </div>
+
+    <div id="main-container"></div>
+
+    <div id="ui-left">
+        <h3>RACK OVERVIEW</h3>
+        <div id="server-list"></div>
+    </div>
+
+    <div id="ui-right">
+        <h3>SERVER DETAILS</h3>
+        <div id="server-info"></div>
+        <div id="component-info"></div>
+        <div class="health-panel" id="health-panel">
+            <h4>SERVER HEALTH</h4>
+            <div class="health-metric">
+                <span>CPU 1</span>
+                <span id="cpu1-temp">65°C</span>
+            </div>
+            <div class="health-bar">
+                <div class="health-bar-fill" style="width: 65%; background: #4fc3f7;"></div>
+            </div>
+
+            <div class="health-metric">
+                <span>CPU 2</span>
+                <span id="cpu2-temp">62°C</span>
+            </div>
+            <div class="health-bar">
+                <div class="health-bar-fill" style="width: 62%; background: #4fc3f7;"></div>
+            </div>
+
+            <div class="health-metric">
+                <span>GPU Avg</span>
+                <span id="gpu-temp">72°C</span>
+            </div>
+            <div class="health-bar">
+                <div class="health-bar-fill" style="width: 72%; background: #ff9800;"></div>
+            </div>
+
+            <div class="health-metric">
+                <span>Memory</span>
+                <span id="memory-util">42%</span>
+            </div>
+            <div class="health-bar">
+                <div class="health-bar-fill" style="width: 42%; background: #81c784;"></div>
+            </div>
+
+            <div class="health-metric">
+                <span>Power</span>
+                <span id="power-consumption">4.2 kW</span>
+            </div>
+
+            <div class="health-metric">
+                <span>Fans RPM</span>
+                <span id="fan-rpm">12500</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="ui-bottom">
+        <button class="button" id="rack-view">[RACK VIEW]</button>
+        <button class="button" id="slice-view">[SLICE VIEW]</button>
+        <button class="button" id="open-cover">[OPEN COVER]</button>
+        <button class="button" id="cutaway">[CHASSIS CUTAWAY]</button>
+        <button class="button" id="explode">[EXPLODE]</button>
+        <button class="button" id="airflow">[AIRFLOW]</button>
+        <button class="button" id="power-path">[POWER]</button>
+        <button class="button" id="data-path">[DATA]</button>
+        <button class="button" id="failures">[FAILURES]</button>
+        <button class="button" id="reset">[RESET]</button>
+    </div>
+
+    <div class="failure-warning" id="failure-warning">
+        COMPONENT FAILURE SIMULATED<br>
+        <span id="failure-type">FAN FAILURE</span>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.module.js';
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.132.2/examples/jsm/controls/OrbitControls.js';
+
+        // Main application class
+        class ServerArchitectureLab {
+            constructor() {
+                this.initThreeJS();
+                this.initScene();
+                this.initUI();
+                this.initServers();
+                this.initRack();
+                this.setupEventListeners();
+                this.animate();
+                this.updateStats();
+            }
+
+            initThreeJS() {
+                this.container = document.getElementById('main-container');
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x222222);
+
+                this.camera = new THREE.PerspectiveCamera(60, this.container.clientWidth / this.container.clientHeight, 0.1, 1000);
+                this.camera.position.set(0, 2, 5);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.container.appendChild(this.renderer.domElement);
+
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // Lighting
+                this.ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                this.scene.add(this.ambientLight);
+
+                this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                this.directionalLight.position.set(10, 20, 15);
+                this.directionalLight.castShadow = true;
+                this.directionalLight.shadow.mapSize.width = 2048;
+                this.directionalLight.shadow.mapSize.height = 2048;
+                this.directionalLight.shadow.camera.near = 0.5;
+                this.directionalLight.shadow.camera.far = 50;
+                this.scene.add(this.directionalLight);
+
+                this.hemisphereLight = new THREE.HemisphereLight(0x404040, 0x101010, 0.3);
+                this.scene.add(this.hemisphereLight);
+
+                // Stats
+                this.stats = {
+                    fps: 0,
+                    drawCalls: 0,
+                    triangles: 0
+                };
+
+                // State
+                this.mode = 'rack'; // 'rack' or 'slice'
+                this.selectedServer = null;
+                this.currentSliceServer = null;
+                this.airflowVisible = false;
+                this.powerPathVisible = false;
+                this.dataPathVisible = false;
+                this.cutawayVisible = false;
+                this.exploded = false;
+                this.coverOpen = false;
+                this.failureMode = null;
+                this.failureTimer = 0;
+                this.simulatedTemps = {};
+                this.simulatedPowers = {};
+            }
+
+            initScene() {
+                // Create background plane
+                const bgGeometry = new THREE.PlaneGeometry(100, 100);
+                const bgMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                const bgPlane = new THREE.Mesh(bgGeometry, bgMaterial);
+                bgPlane.rotation.x = -Math.PI / 2;
+                bgPlane.position.y = -1;
+                this.scene.add(bgPlane);
+
+                // Create rack group
+                this.rackGroup = new THREE.Group();
+                this.scene.add(this.rackGroup);
+
+                // Create slice group (initially hidden)
+                this.sliceGroup = new THREE.Group();
+                this.sliceGroup.visible = false;
+                this.scene.add(this.sliceGroup);
+
+                // Create airflow particles
+                this.airflowParticles = [];
+                this.initAirflowParticles();
+
+                // Create power path lines
+                this.powerPathLines = [];
+                this.initPowerPathLines();
+
+                // Create data path lines
+                this.dataPathLines = [];
+                this.initDataPathLines();
+            }
+
+            initAirflowParticles() {
+                const particleCount = 2000;
+                const particles = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 20;
+                    positions[i * 3 + 1] = Math.random() * 10;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+
+                    colors[i * 3] = 0.2 + Math.random() * 0.3;
+                    colors[i * 3 + 1] = 0.6 + Math.random() * 0.3;
+                    colors[i * 3 + 2] = 1.0;
+
+                    sizes[i] = 0.1 + Math.random() * 0.3;
+                }
+
+                particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+                const particleMaterial = new THREE.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.6,
+                    sizeAttenuation: true
+                });
+
+                this.airflowParticleSystem = new THREE.Points(particles, particleMaterial);
+                this.airflowParticleSystem.visible = false;
+                this.scene.add(this.airflowParticleSystem);
+            }
+
+            initPowerPathLines() {
+                this.powerPathLines = [];
+                for (let i = 0; i < 50; i++) {
+                    const lineGeometry = new THREE.BufferGeometry();
+                    const lineMaterial = new THREE.LineBasicMaterial({
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 0.5,
+                        linewidth: 2
+                    });
+
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    line.visible = false;
+                    this.scene.add(line);
+                    this.powerPathLines.push(line);
+                }
+            }
+
+            initDataPathLines() {
+                this.dataPathLines = [];
+                for (let i = 0; i < 30; i++) {
+                    const lineGeometry = new THREE.BufferGeometry();
+                    const lineMaterial = new THREE.LineBasicMaterial({
+                        color: 0x00ff00,
+                        transparent: true,
+                        opacity: 0.6,
+                        linewidth: 1.5
+                    });
+
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    line.visible = false;
+                    this.scene.add(line);
+                    this.dataPathLines.push(line);
+                }
+            }
+
+            initUI() {
+                // Server list
+                this.serverList = document.getElementById('server-list');
+
+                // Server info
+                this.serverInfo = document.getElementById('server-info');
+                this.componentInfo = document.getElementById('component-info');
+
+                // Setup buttons
+                document.getElementById('rack-view').addEventListener('click', () => this.setMode('rack'));
+                document.getElementById('slice-view').addEventListener('click', () => this.setMode('slice'));
+                document.getElementById('open-cover').addEventListener('click', () => this.toggleCover());
+                document.getElementById('cutaway').addEventListener('click', () => this.toggleCutaway());
+                document.getElementById('explode').addEventListener('click', () => this.toggleExplode());
+                document.getElementById('airflow').addEventListener('click', () => this.toggleAirflow());
+                document.getElementById('power-path').addEventListener('click', () => this.togglePowerPath());
+                document.getElementById('data-path').addEventListener('click', () => this.toggleDataPath());
+                document.getElementById('failures').addEventListener('click', () => this.toggleFailures());
+                document.getElementById('reset').addEventListener('click', () => this.resetSimulation());
+            }
+
+            initServers() {
+                this.servers = [];
+
+                // Server 1: 4U AI/GPU Server (U39-U42)
+                this.servers.push(this.createAIGPUServer(39, 42, 'AI COMPUTE NODE'));
+
+                // Server 2: 2U Virtualization Server (U37-U38)
+                this.servers.push(this.createVirtualizationServer(37, 38, 'VIRTUALIZATION HOST'));
+
+                // Server 3: 1U General Purpose (U35-U36)
+                this.servers.push(this.createGeneralPurposeServer(35, 36, 'WEB SERVER'));
+
+                // Server 4: 1U General Purpose (U34)
+                this.servers.push(this.createGeneralPurposeServer(34, 34, 'APP SERVER'));
+
+                // Server 5: 4U Storage Server (U30-U33)
+                this.servers.push(this.createStorageServer(30, 33, 'STORAGE ARRAY'));
+
+                // Server 6: 1U Network Appliance (U29)
+                this.servers.push(this.createNetworkAppliance(29, 29, 'NETWORK FIREWALL'));
+
+                // Server 7: 2U Database Server (U27-U28)
+                this.servers.push(this.createDatabaseServer(27, 28, 'DATABASE SERVER'));
+
+                // Empty units
+                for (let u = 43; u <= 42; u--) {
+                    this.createEmptyUnit(u);
+                }
+            }
+
+            initRack() {
+                // Create 42U rack
+                const rackHeight = 42 * 44.45;
+                const rackDepth = 120;
+                const rackWidth = 60;
+
+                // Rack frame
+                const rackFrameGeometry = new THREE.BoxGeometry(rackWidth, rackHeight, 10);
+                const rackFrameMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                // Front rails
+                const frontRailGeometry = new THREE.BoxGeometry(2, rackHeight, 5);
+                const frontRailMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x555555,
+                    metalness: 0.9,
+                    roughness: 0.2
+                });
+
+                // Rear rails
+                const rearRailGeometry = new THREE.BoxGeometry(2, rackHeight, 5);
+                const rearRailMaterial = rackFrameMaterial;
+
+                // Create rack structure
+                this.rackFrame = new THREE.Mesh(rackFrameGeometry, rackFrameMaterial);
+                this.rackFrame.position.set(0, rackHeight / 2 - 22.225, -rackDepth / 2 + 5);
+                this.rackGroup.add(this.rackFrame);
+
+                // Front rails
+                const frontLeftRail = new THREE.Mesh(frontRailGeometry, frontRailMaterial);
+                frontLeftRail.position.set(-rackWidth / 2 + 1, rackHeight / 2 - 22.225, -rackDepth / 2 + 7.5);
+                this.rackGroup.add(frontLeftRail);
+
+                const frontRightRail = new THREE.Mesh(frontRailGeometry, frontRailMaterial);
+                frontRightRail.position.set(rackWidth / 2 - 1, rackHeight / 2 - 22.225, -rackDepth / 2 + 7.5);
+                this.rackGroup.add(frontRightRail);
+
+                // Rear rails
+                const rearLeftRail = new THREE.Mesh(rearRailGeometry, rearRailMaterial);
+                rearLeftRail.position.set(-rackWidth / 2 + 1, rackHeight / 2 - 22.225, rackDepth / 2 - 7.5);
+                this.rackGroup.add(rearLeftRail);
+
+                const rearRightRail = new THREE.Mesh(rearRailGeometry, rearRailMaterial);
+                rearRightRail.position.set(rackWidth / 2 - 1, rackHeight / 2 - 22.225, rackDepth / 2 - 7.5);
+                this.rackGroup.add(rearRightRail);
+
+                // Rack unit markings
+                for (let u = 0; u <= 42; u++) {
+                    const unitHeight = 44.45;
+                    const yPos = u * unitHeight + unitHeight / 2 - 22.225;
+
+                    // Front rail markings
+                    const frontMarking = new THREE.Mesh(
+                        new THREE.PlaneGeometry(40, 20),
+                        new THREE.MeshBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.3 })
+                    );
+                    frontMarking.position.set(-rackWidth / 2 + 5, yPos, -rackDepth / 2 + 10);
+                    frontMarking.rotation.y = Math.PI / 2;
+                    this.rackGroup.add(frontMarking);
+
+                    const unitText = document.createElement('div');
+                    unitText.style.position = 'absolute';
+                    unitText.style.color = '#888';
+                    unitText.style.fontSize = '10px';
+                    unitText.style.fontFamily = 'monospace';
+                    unitText.textContent = `U${42 - u}`;
+                    unitText.style.top = `${50 + u * 20}px`;
+                    unitText.style.left = '10px';
+                    this.serverList.appendChild(unitText);
+                }
+
+                // Install servers in rack
+                this.servers.forEach(server => {
+                    this.rackGroup.add(server.mesh);
+                    server.mesh.position.y = server.startUnit * 44.45 + (server.endUnit - server.startUnit) * 22.225;
+                    server.mesh.position.z = -55;
+                });
+
+                // Add rack accessories
+                this.addRackAccessories();
+            }
+
+            addRackAccessories() {
+                const rackHeight = 42 * 44.45;
+                const rackDepth = 120;
+                const rackWidth = 60;
+
+                // Top frame
+                const topFrameGeometry = new THREE.BoxGeometry(rackWidth + 20, 10, rackDepth + 20);
+                const topFrameMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x444444,
+                    metalness: 0.7,
+                    roughness: 0.4
+                });
+                const topFrame = new THREE.Mesh(topFrameGeometry, topFrameMaterial);
+                topFrame.position.set(0, rackHeight + 5, 0);
+                this.rackGroup.add(topFrame);
+
+                // Bottom frame
+                const bottomFrameGeometry = new THREE.BoxGeometry(rackWidth + 20, 10, rackDepth + 20);
+                const bottomFrame = new THREE.Mesh(topFrameGeometry, topFrameMaterial);
+                bottomFrame.position.set(0, -5, 0);
+                this.rackGroup.add(bottomFrame);
+
+                // Side panels
+                const sidePanelGeometry = new THREE.BoxGeometry(5, rackHeight, rackDepth);
+                const sidePanelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.5
+                });
+
+                const leftPanel = new THREE.Mesh(sidePanelGeometry, sidePanelMaterial);
+                leftPanel.position.set(-rackWidth / 2 - 2.5, rackHeight / 2 - 22.225, 0);
+                this.rackGroup.add(leftPanel);
+
+                const rightPanel = new THREE.Mesh(sidePanelGeometry, sidePanelMaterial);
+                rightPanel.position.set(rackWidth / 2 + 2.5, rackHeight / 2 - 22.225, 0);
+                this.rackGroup.add(rightPanel);
+
+                // Feet
+                const footGeometry = new THREE.CylinderGeometry(5, 8, 10, 16);
+                const footMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = -1; i <= 1; i += 2) {
+                    for (let j = -1; j <= 1; j += 2) {
+                        const foot = new THREE.Mesh(footGeometry, footMaterial);
+                        foot.position.set(
+                            i * (rackWidth / 2 + 10),
+                            -5,
+                            j * (rackDepth / 2 + 10)
+                        );
+                        foot.rotation.x = Math.PI / 2;
+                        this.rackGroup.add(foot);
+                    }
+                }
+            }
+
+            createAIGPUServer(startUnit, endUnit, name) {
+                const height = (endUnit - startUnit + 1) * 44.45;
+                const server = {
+                    name: name,
+                    startUnit: startUnit,
+                    endUnit: endUnit,
+                    height: height,
+                    type: 'gpu',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false,
+                    power: 8000,
+                    temp: 75
+                };
+
+                // Create chassis
+                const chassisGeometry = new THREE.BoxGeometry(55, height, 80);
+                const chassisMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const chassis = new THREE.Mesh(chassisGeometry, chassisMaterial);
+                chassis.castShadow = true;
+                chassis.receiveShadow = true;
+                server.mesh.add(chassis);
+                server.components.push({ name: 'chassis', mesh: chassis });
+
+                // Create front bezel
+                const bezelGeometry = new THREE.BoxGeometry(57, height, 2);
+                const bezelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+                bezel.position.z = 41;
+                chassis.add(bezel);
+
+                // Create GPU modules (4x)
+                for (let i = 0; i < 4; i++) {
+                    const gpuGroup = new THREE.Group();
+                    gpuGroup.position.set(-15 + i * 12, 100, 30);
+
+                    // GPU card
+                    const gpuGeometry = new THREE.BoxGeometry(8, 25, 2);
+                    const gpuMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x003366,
+                        metalness: 0.6,
+                        roughness: 0.4
+                    });
+                    const gpu = new THREE.Mesh(gpuGeometry, gpuMaterial);
+                    gpu.castShadow = true;
+                    gpuGroup.add(gpu);
+
+                    // GPU heatsink fins
+                    const finGeometry = new THREE.BoxGeometry(7.8, 0.5, 1.8);
+                    const finMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x666666,
+                        metalness: 0.3,
+                        roughness: 0.7
+                    });
+
+                    for (let f = 0; f < 10; f++) {
+                        const fin = new THREE.Mesh(finGeometry, finMaterial);
+                        fin.position.y = -12 + f * 2.5;
+                        gpu.add(fin);
+                    }
+
+                    // GPU faceplate
+                    const faceplateGeometry = new THREE.BoxGeometry(8.2, 2.5, 0.2);
+                    const faceplateMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x333333,
+                        metalness: 0.5,
+                        roughness: 0.4
+                    });
+                    const faceplate = new THREE.Mesh(faceplateGeometry, faceplateMaterial);
+                    faceplate.position.z = 1.1;
+                    faceplate.position.y = 11.25;
+                    gpu.add(faceplate);
+
+                    // PCIe connector
+                    const connectorGeometry = new THREE.BoxGeometry(1, 1, 0.5);
+                    const connectorMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x888888,
+                        metalness: 0.8,
+                        roughness: 0.2
+                    });
+                    const connector = new THREE.Mesh(connectorGeometry, connectorMaterial);
+                    connector.position.z = 1.2;
+                    connector.position.y = -12.5;
+                    gpu.add(connector);
+
+                    chassis.add(gpuGroup);
+                    server.components.push({ name: `gpu-${i}`, mesh: gpuGroup });
+                }
+
+                // Create CPU area
+                const cpuGroup = new THREE.Group();
+                cpuGroup.position.set(0, 150, 20);
+
+                // CPU sockets
+                for (let i = 0; i < 2; i++) {
+                    const socketGeometry = new THREE.CylinderGeometry(5, 5, 3, 16);
+                    const socketMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xcccccc,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const socket = new THREE.Mesh(socketGeometry, socketMaterial);
+                    socket.position.x = -8 + i * 16;
+                    socket.rotation.x = Math.PI / 2;
+                    cpuGroup.add(socket);
+
+                    // CPU heat spreader
+                    const spreaderGeometry = new THREE.BoxGeometry(6, 6, 0.5);
+                    const spreaderMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xaaaaaa,
+                        metalness: 0.7,
+                        roughness: 0.3
+                    });
+                    const spreader = new THREE.Mesh(spreaderGeometry, spreaderMaterial);
+                    spreader.position.z = 1.5;
+                    socket.add(spreader);
+
+                    // VRM heatsinks
+                    const vrmGeometry = new THREE.BoxGeometry(2, 1, 1);
+                    const vrmMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x666666,
+                        metalness: 0.4,
+                        roughness: 0.8
+                    });
+
+                    for (let v = 0; v < 8; v++) {
+                        const vrm = new THREE.Mesh(vrmGeometry, vrmMaterial);
+                        vrm.position.x = -6 + v * 1.7 + i * 16;
+                        vrm.position.y = 3;
+                        vrm.position.z = 2;
+                        cpuGroup.add(vrm);
+                    }
+                }
+
+                chassis.add(cpuGroup);
+                server.components.push({ name: 'cpu-area', mesh: cpuGroup });
+
+                // Create memory area
+                const memoryGroup = new THREE.Group();
+                memoryGroup.position.set(0, 100, 15);
+
+                const dimmGeometry = new THREE.BoxGeometry(12, 1.5, 3);
+                const dimmMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+
+                for (let i = 0; i < 24; i++) {
+                    const dimm = new THREE.Mesh(dimmGeometry, dimmMaterial);
+                    dimm.position.x = -13 + (i % 6) * 4.5;
+                    dimm.position.z = -10 + Math.floor(i / 6) * 5;
+                    memoryGroup.add(dimm);
+                }
+
+                chassis.add(memoryGroup);
+                server.components.push({ name: 'memory-area', mesh: memoryGroup });
+
+                // Create fan wall
+                const fanGroup = new THREE.Group();
+                fanGroup.position.set(0, 50, -35);
+
+                const fanGeometry = new THREE.CylinderGeometry(8, 8, 2, 16);
+                const fanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 6; i++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.x = -18 + i * 7;
+                    fan.rotation.x = Math.PI / 2;
+                    fanGroup.add(fan);
+
+                    // Fan blades
+                    const bladeGeometry = new THREE.BoxGeometry(7, 0.5, 1.5);
+                    const bladeMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x666666,
+                        metalness: 0.3,
+                        roughness: 0.7
+                    });
+
+                    for (let b = 0; b < 9; b++) {
+                        const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+                        blade.position.y = 0.7;
+                        blade.rotation.z = b * (Math.PI * 2 / 9);
+                        fan.add(blade);
+                    }
+                }
+
+                chassis.add(fanGroup);
+                server.components.push({ name: 'fan-wall', mesh: fanGroup });
+
+                // Create PSUs
+                const psuGroup = new THREE.Group();
+                psuGroup.position.set(0, 20, -38);
+
+                const psuGeometry = new THREE.BoxGeometry(15, 20, 30);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                    psu.position.x = -20 + i * 13;
+                    psuGroup.add(psu);
+
+                    // PSU handle
+                    const handleGeometry = new THREE.BoxGeometry(2, 8, 2);
+                    const handleMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x888888,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                    handle.position.set(-7, 5, 14);
+                    psu.add(handle);
+
+                    // PSU exhaust grille
+                    const grilleGeometry = new THREE.PlaneGeometry(13, 18);
+                    const grilleMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x111111,
+                        transparent: true,
+                        opacity: 0.7,
+                        side: THREE.DoubleSide
+                    });
+                    const grille = new THREE.Mesh(grilleGeometry, grilleMaterial);
+                    grille.position.z = 15.1;
+                    psu.add(grille);
+                }
+
+                chassis.add(psuGroup);
+                server.components.push({ name: 'psu-area', mesh: psuGroup });
+
+                // Create networking
+                const nicGeometry = new THREE.BoxGeometry(3, 1, 8);
+                const nicMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                const nic1 = new THREE.Mesh(nicGeometry, nicMaterial);
+                nic1.position.set(18, 180, -38);
+                chassis.add(nic1);
+
+                const nic2 = new THREE.Mesh(nicGeometry, nicMaterial);
+                nic2.position.set(18, 150, -38);
+                chassis.add(nic2);
+
+                // Create BMC
+                const bmcGeometry = new THREE.BoxGeometry(4, 2, 4);
+                const bmcMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const bmc = new THREE.Mesh(bmcGeometry, bmcMaterial);
+                bmc.position.set(-18, 220, -38);
+                chassis.add(bmc);
+
+                // Store server data
+                server.info = {
+                    purpose: 'Machine learning, AI training, scientific computing',
+                    cpus: '2x 64-core server CPUs',
+                    gpus: '4x NVIDIA A100 accelerators',
+                    memory: '2 TB DDR4 ECC RDIMM',
+                    storage: '8x NVMe U.2 drives',
+                    networking: '2x 100GbE NICs',
+                    power: '8-10 kW typical',
+                    cooling: 'High-pressure front-to-rear airflow'
+                };
+
+                return server;
+            }
+
+            createVirtualizationServer(startUnit, endUnit, name) {
+                const height = (endUnit - startUnit + 1) * 44.45;
+                const server = {
+                    name: name,
+                    startUnit: startUnit,
+                    endUnit: endUnit,
+                    height: height,
+                    type: 'virtualization',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false,
+                    power: 1200,
+                    temp: 60
+                };
+
+                // Create chassis
+                const chassisGeometry = new THREE.BoxGeometry(55, height, 80);
+                const chassisMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const chassis = new THREE.Mesh(chassisGeometry, chassisMaterial);
+                chassis.castShadow = true;
+                chassis.receiveShadow = true;
+                server.mesh.add(chassis);
+                server.components.push({ name: 'chassis', mesh: chassis });
+
+                // Create front bezel
+                const bezelGeometry = new THREE.BoxGeometry(57, height, 2);
+                const bezelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+                bezel.position.z = 41;
+                chassis.add(bezel);
+
+                // Create CPU area
+                const cpuGroup = new THREE.Group();
+                cpuGroup.position.set(0, 150, 20);
+
+                // CPU sockets
+                for (let i = 0; i < 2; i++) {
+                    const socketGeometry = new THREE.CylinderGeometry(5, 5, 3, 16);
+                    const socketMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xcccccc,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const socket = new THREE.Mesh(socketGeometry, socketMaterial);
+                    socket.position.x = -8 + i * 16;
+                    socket.rotation.x = Math.PI / 2;
+                    cpuGroup.add(socket);
+
+                    // CPU heat spreader
+                    const spreaderGeometry = new THREE.BoxGeometry(6, 6, 0.5);
+                    const spreaderMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xaaaaaa,
+                        metalness: 0.7,
+                        roughness: 0.3
+                    });
+                    const spreader = new THREE.Mesh(spreaderGeometry, spreaderMaterial);
+                    spreader.position.z = 1.5;
+                    socket.add(spreader);
+                }
+
+                chassis.add(cpuGroup);
+                server.components.push({ name: 'cpu-area', mesh: cpuGroup });
+
+                // Create memory area (much larger than general purpose)
+                const memoryGroup = new THREE.Group();
+                memoryGroup.position.set(0, 100, 15);
+
+                const dimmGeometry = new THREE.BoxGeometry(12, 1.5, 3);
+                const dimmMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+
+                for (let i = 0; i < 32; i++) {
+                    const dimm = new THREE.Mesh(dimmGeometry, dimmMaterial);
+                    dimm.position.x = -18 + (i % 8) * 4.5;
+                    dimm.position.z = -15 + Math.floor(i / 8) * 5;
+                    memoryGroup.add(dimm);
+                }
+
+                chassis.add(memoryGroup);
+                server.components.push({ name: 'memory-area', mesh: memoryGroup });
+
+                // Create PCIe slots
+                const pcieGroup = new THREE.Group();
+                pcieGroup.position.set(0, 180, -30);
+
+                const pcieGeometry = new THREE.BoxGeometry(2, 15, 8);
+                const pcieMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const pcie = new THREE.Mesh(pcieGeometry, pcieMaterial);
+                    pcie.position.x = -12 + i * 8;
+                    pcieGroup.add(pcie);
+                }
+
+                chassis.add(pcieGroup);
+                server.components.push({ name: 'pcie-area', mesh: pcieGroup });
+
+                // Create fan wall
+                const fanGroup = new THREE.Group();
+                fanGroup.position.set(0, 50, -35);
+
+                const fanGeometry = new THREE.CylinderGeometry(8, 8, 2, 16);
+                const fanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.x = -12 + i * 8;
+                    fan.rotation.x = Math.PI / 2;
+                    fanGroup.add(fan);
+                }
+
+                chassis.add(fanGroup);
+                server.components.push({ name: 'fan-wall', mesh: fanGroup });
+
+                // Create PSUs
+                const psuGroup = new THREE.Group();
+                psuGroup.position.set(0, 20, -38);
+
+                const psuGeometry = new THREE.BoxGeometry(15, 20, 30);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = 0; i < 2; i++) {
+                    const psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                    psu.position.x = -12 + i * 24;
+                    psuGroup.add(psu);
+                }
+
+                chassis.add(psuGroup);
+                server.components.push({ name: 'psu-area', mesh: psuGroup });
+
+                // Create networking
+                const nicGeometry = new THREE.BoxGeometry(3, 1, 8);
+                const nicMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                const nic1 = new THREE.Mesh(nicGeometry, nicMaterial);
+                nic1.position.set(18, 220, -38);
+                chassis.add(nic1);
+
+                // Create BMC
+                const bmcGeometry = new THREE.BoxGeometry(4, 2, 4);
+                const bmcMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const bmc = new THREE.Mesh(bmcGeometry, bmcMaterial);
+                bmc.position.set(-18, 220, -38);
+                chassis.add(bmc);
+
+                // Store server data
+                server.info = {
+                    purpose: 'Virtualization, VM hosting, container orchestration',
+                    cpus: '2x 96-core server CPUs',
+                    memory: '6 TB DDR4 ECC RDIMM',
+                    storage: '2x 2.5" SAS SSD',
+                    networking: '4x 10GbE NICs',
+                    power: '1.0-1.5 kW typical',
+                    cooling: 'Balanced front-to-rear airflow'
+                };
+
+                return server;
+            }
+
+            createGeneralPurposeServer(startUnit, endUnit, name) {
+                const height = (endUnit - startUnit + 1) * 44.45;
+                const server = {
+                    name: name,
+                    startUnit: startUnit,
+                    endUnit: endUnit,
+                    height: height,
+                    type: 'general',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false,
+                    power: 400,
+                    temp: 55
+                };
+
+                // Create chassis
+                const chassisGeometry = new THREE.BoxGeometry(55, height, 80);
+                const chassisMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const chassis = new THREE.Mesh(chassisGeometry, chassisMaterial);
+                chassis.castShadow = true;
+                chassis.receiveShadow = true;
+                server.mesh.add(chassis);
+                server.components.push({ name: 'chassis', mesh: chassis });
+
+                // Create front bezel
+                const bezelGeometry = new THREE.BoxGeometry(57, height, 2);
+                const bezelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+                bezel.position.z = 41;
+                chassis.add(bezel);
+
+                // Create drive bays
+                const driveBayGeometry = new THREE.BoxGeometry(45, 15, 10);
+                const driveBayMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const driveBay = new THREE.Mesh(driveBayGeometry, driveBayMaterial);
+                driveBay.position.set(0, 200, 35);
+                chassis.add(driveBay);
+
+                // Create drive carriers
+                const carrierGeometry = new THREE.BoxGeometry(6, 12, 8);
+                const carrierMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x444444,
+                    metalness: 0.4,
+                    roughness: 0.6
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const carrier = new THREE.Mesh(carrierGeometry, carrierMaterial);
+                    carrier.position.x = -18 + i * 12;
+                    carrier.position.z = 39;
+                    chassis.add(carrier);
+
+                    // Drive faceplate
+                    const faceplateGeometry = new THREE.BoxGeometry(5.8, 1.5, 7.8);
+                    const faceplateMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x333333,
+                        metalness: 0.2,
+                        roughness: 0.9
+                    });
+                    const faceplate = new THREE.Mesh(faceplateGeometry, faceplateMaterial);
+                    faceplate.position.y = 5.25;
+                    carrier.add(faceplate);
+                }
+
+                // Create CPU area
+                const cpuGroup = new THREE.Group();
+                cpuGroup.position.set(0, 150, 15);
+
+                // CPU sockets
+                for (let i = 0; i < 2; i++) {
+                    const socketGeometry = new THREE.CylinderGeometry(4, 4, 2, 16);
+                    const socketMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xcccccc,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const socket = new THREE.Mesh(socketGeometry, socketMaterial);
+                    socket.position.x = -8 + i * 16;
+                    socket.rotation.x = Math.PI / 2;
+                    cpuGroup.add(socket);
+
+                    // CPU heat spreader
+                    const spreaderGeometry = new THREE.BoxGeometry(5, 5, 0.3);
+                    const spreaderMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xaaaaaa,
+                        metalness: 0.7,
+                        roughness: 0.3
+                    });
+                    const spreader = new THREE.Mesh(spreaderGeometry, spreaderMaterial);
+                    spreader.position.z = 1.2;
+                    socket.add(spreader);
+                }
+
+                chassis.add(cpuGroup);
+                server.components.push({ name: 'cpu-area', mesh: cpuGroup });
+
+                // Create memory area
+                const memoryGroup = new THREE.Group();
+                memoryGroup.position.set(0, 100, 10);
+
+                const dimmGeometry = new THREE.BoxGeometry(10, 1.2, 2.5);
+                const dimmMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+
+                for (let i = 0; i < 16; i++) {
+                    const dimm = new THREE.Mesh(dimmGeometry, dimmMaterial);
+                    dimm.position.x = -12 + (i % 4) * 6;
+                    dimm.position.z = -8 + Math.floor(i / 4) * 4;
+                    memoryGroup.add(dimm);
+                }
+
+                chassis.add(memoryGroup);
+                server.components.push({ name: 'memory-area', mesh: memoryGroup });
+
+                // Create PCIe slot
+                const pcieGeometry = new THREE.BoxGeometry(2, 12, 6);
+                const pcieMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+                const pcie = new THREE.Mesh(pcieGeometry, pcieMaterial);
+                pcie.position.set(18, 180, -35);
+                chassis.add(pcie);
+
+                // Create fan wall
+                const fanGroup = new THREE.Group();
+                fanGroup.position.set(0, 50, -35);
+
+                const fanGeometry = new THREE.CylinderGeometry(6, 6, 2, 16);
+                const fanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.x = -10 + i * 6.5;
+                    fan.rotation.x = Math.PI / 2;
+                    fanGroup.add(fan);
+                }
+
+                chassis.add(fanGroup);
+                server.components.push({ name: 'fan-wall', mesh: fanGroup });
+
+                // Create PSUs
+                const psuGroup = new THREE.Group();
+                psuGroup.position.set(0, 20, -38);
+
+                const psuGeometry = new THREE.BoxGeometry(12, 18, 25);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = 0; i < 2; i++) {
+                    const psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                    psu.position.x = -10 + i * 20;
+                    psuGroup.add(psu);
+                }
+
+                chassis.add(psuGroup);
+                server.components.push({ name: 'psu-area', mesh: psuGroup });
+
+                // Create networking
+                const nicGeometry = new THREE.BoxGeometry(2.5, 1, 6);
+                const nicMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                const nic1 = new THREE.Mesh(nicGeometry, nicMaterial);
+                nic1.position.set(15, 220, -38);
+                chassis.add(nic1);
+
+                // Create BMC
+                const bmcGeometry = new THREE.BoxGeometry(3, 1.5, 3);
+                const bmcMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const bmc = new THREE.Mesh(bmcGeometry, bmcMaterial);
+                bmc.position.set(-15, 220, -38);
+                chassis.add(bmc);
+
+                // Store server data
+                server.info = {
+                    purpose: 'Web hosting, APIs, application services, general compute',
+                    cpus: '2x 16-core server CPUs',
+                    memory: '512 GB DDR4 ECC RDIMM',
+                    storage: '4x 2.5" SAS HDD',
+                    networking: '2x 1GbE NICs',
+                    power: '300-500 W typical',
+                    cooling: 'Balanced front-to-rear airflow'
+                };
+
+                return server;
+            }
+
+            createStorageServer(startUnit, endUnit, name) {
+                const height = (endUnit - startUnit + 1) * 44.45;
+                const server = {
+                    name: name,
+                    startUnit: startUnit,
+                    endUnit: endUnit,
+                    height: height,
+                    type: 'storage',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false,
+                    power: 1000,
+                    temp: 58
+                };
+
+                // Create chassis
+                const chassisGeometry = new THREE.BoxGeometry(55, height, 80);
+                const chassisMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const chassis = new THREE.Mesh(chassisGeometry, chassisMaterial);
+                chassis.castShadow = true;
+                chassis.receiveShadow = true;
+                server.mesh.add(chassis);
+                server.components.push({ name: 'chassis', mesh: chassis });
+
+                // Create front bezel
+                const bezelGeometry = new THREE.BoxGeometry(57, height, 2);
+                const bezelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+                bezel.position.z = 41;
+                chassis.add(bezel);
+
+                // Create drive cages (front dominates)
+                const driveCageGeometry = new THREE.BoxGeometry(45, 300, 20);
+                const driveCageMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const driveCage = new THREE.Mesh(driveCageGeometry, driveCageMaterial);
+                driveCage.position.set(0, 150, 35);
+                chassis.add(driveCage);
+
+                // Create drive carriers (36x 3.5" drives)
+                const carrierGeometry = new THREE.BoxGeometry(12, 25, 18);
+                const carrierMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x444444,
+                    metalness: 0.4,
+                    roughness: 0.6
+                });
+
+                for (let row = 0; row < 6; row++) {
+                    for (let col = 0; col < 6; col++) {
+                        const carrier = new THREE.Mesh(carrierGeometry, carrierMaterial);
+                        carrier.position.x = -24 + col * 8;
+                        carrier.position.y = 150 - 40 + row * 15;
+                        carrier.position.z = 44;
+                        chassis.add(carrier);
+
+                        // Drive faceplate
+                        const faceplateGeometry = new THREE.BoxGeometry(11.8, 2.5, 17.8);
+                        const faceplateMaterial = new THREE.MeshStandardMaterial({
+                            color: 0x333333,
+                            metalness: 0.2,
+                            roughness: 0.9
+                        });
+                        const faceplate = new THREE.Mesh(faceplateGeometry, faceplateMaterial);
+                        faceplate.position.y = 11.25;
+                        carrier.add(faceplate);
+                    }
+                }
+
+                // Create backplane area
+                const backplaneGeometry = new THREE.BoxGeometry(30, 20, 5);
+                const backplaneMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x555555,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+                const backplane = new THREE.Mesh(backplaneGeometry, backplaneMaterial);
+                backplane.position.set(0, 150, 25);
+                chassis.add(backplane);
+
+                // Create storage controller
+                const controllerGeometry = new THREE.BoxGeometry(15, 10, 8);
+                const controllerMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+                const controller = new THREE.Mesh(controllerGeometry, controllerMaterial);
+                controller.position.set(0, 150, 18);
+                chassis.add(controller);
+
+                // Create CPU area (smaller)
+                const cpuGroup = new THREE.Group();
+                cpuGroup.position.set(0, 150, 10);
+
+                // CPU socket
+                const socketGeometry = new THREE.CylinderGeometry(4, 4, 2, 16);
+                const socketMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xcccccc,
+                    metalness: 0.9,
+                    roughness: 0.1
+                });
+                const socket = new THREE.Mesh(socketGeometry, socketMaterial);
+                socket.rotation.x = Math.PI / 2;
+                cpuGroup.add(socket);
+
+                chassis.add(cpuGroup);
+                server.components.push({ name: 'cpu-area', mesh: cpuGroup });
+
+                // Create memory area
+                const memoryGroup = new THREE.Group();
+                memoryGroup.position.set(0, 100, 5);
+
+                const dimmGeometry = new THREE.BoxGeometry(10, 1.2, 2.5);
+                const dimmMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+
+                for (let i = 0; i < 12; i++) {
+                    const dimm = new THREE.Mesh(dimmGeometry, dimmMaterial);
+                    dimm.position.x = -10 + (i % 3) * 5;
+                    dimm.position.z = -5 + Math.floor(i / 3) * 3;
+                    memoryGroup.add(dimm);
+                }
+
+                chassis.add(memoryGroup);
+                server.components.push({ name: 'memory-area', mesh: memoryGroup });
+
+                // Create fan wall
+                const fanGroup = new THREE.Group();
+                fanGroup.position.set(0, 50, -35);
+
+                const fanGeometry = new THREE.CylinderGeometry(6, 6, 2, 16);
+                const fanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.x = -10 + i * 6.5;
+                    fan.rotation.x = Math.PI / 2;
+                    fanGroup.add(fan);
+                }
+
+                chassis.add(fanGroup);
+                server.components.push({ name: 'fan-wall', mesh: fanGroup });
+
+                // Create PSUs
+                const psuGroup = new THREE.Group();
+                psuGroup.position.set(0, 20, -38);
+
+                const psuGeometry = new THREE.BoxGeometry(12, 18, 25);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = 0; i < 2; i++) {
+                    const psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                    psu.position.x = -10 + i * 20;
+                    psuGroup.add(psu);
+                }
+
+                chassis.add(psuGroup);
+                server.components.push({ name: 'psu-area', mesh: psuGroup });
+
+                // Create networking
+                const nicGeometry = new THREE.BoxGeometry(2.5, 1, 6);
+                const nicMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                const nic1 = new THREE.Mesh(nicGeometry, nicMaterial);
+                nic1.position.set(15, 180, -38);
+                chassis.add(nic1);
+
+                // Create BMC
+                const bmcGeometry = new THREE.BoxGeometry(3, 1.5, 3);
+                const bmcMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const bmc = new THREE.Mesh(bmcGeometry, bmcMaterial);
+                bmc.position.set(-15, 180, -38);
+                chassis.add(bmc);
+
+                // Store server data
+                server.info = {
+                    purpose: 'NAS, backups, object storage, archival storage',
+                    cpus: '2x 8-core server CPUs',
+                    memory: '256 GB DDR4 ECC RDIMM',
+                    storage: '36x 3.5" SAS HDD (144 TB raw)',
+                    networking: '2x 10GbE NICs',
+                    power: '800-1200 W typical',
+                    cooling: 'Front-to-rear airflow through drive cages'
+                };
+
+                return server;
+            }
+
+            createDatabaseServer(startUnit, endUnit, name) {
+                const height = (endUnit - startUnit + 1) * 44.45;
+                const server = {
+                    name: name,
+                    startUnit: startUnit,
+                    endUnit: endUnit,
+                    height: height,
+                    type: 'database',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false,
+                    power: 1600,
+                    temp: 65
+                };
+
+                // Create chassis
+                const chassisGeometry = new THREE.BoxGeometry(55, height, 80);
+                const chassisMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const chassis = new THREE.Mesh(chassisGeometry, chassisMaterial);
+                chassis.castShadow = true;
+                chassis.receiveShadow = true;
+                server.mesh.add(chassis);
+                server.components.push({ name: 'chassis', mesh: chassis });
+
+                // Create front bezel
+                const bezelGeometry = new THREE.BoxGeometry(57, height, 2);
+                const bezelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+                bezel.position.z = 41;
+                chassis.add(bezel);
+
+                // Create NVMe drives
+                const nvmeGeometry = new THREE.BoxGeometry(10, 1.5, 18);
+                const nvmeMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x003366,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 8; i++) {
+                    const nvme = new THREE.Mesh(nvmeGeometry, nvmeMaterial);
+                    nvme.position.x = -20 + (i % 4) * 10;
+                    nvme.position.y = 220 - Math.floor(i / 4) * 25;
+                    nvme.position.z = 38;
+                    chassis.add(nvme);
+
+                    // NVMe faceplate
+                    const faceplateGeometry = new THREE.BoxGeometry(9.8, 2, 17.8);
+                    const faceplateMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x333333,
+                        metalness: 0.2,
+                        roughness: 0.9
+                    });
+                    const faceplate = new THREE.Mesh(faceplateGeometry, faceplateMaterial);
+                    faceplate.position.y = 7.75;
+                    nvme.add(faceplate);
+                }
+
+                // Create CPU area
+                const cpuGroup = new THREE.Group();
+                cpuGroup.position.set(0, 150, 15);
+
+                // CPU sockets
+                for (let i = 0; i < 2; i++) {
+                    const socketGeometry = new THREE.CylinderGeometry(5, 5, 3, 16);
+                    const socketMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xcccccc,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    const socket = new THREE.Mesh(socketGeometry, socketMaterial);
+                    socket.position.x = -8 + i * 16;
+                    socket.rotation.x = Math.PI / 2;
+                    cpuGroup.add(socket);
+
+                    // CPU heat spreader
+                    const spreaderGeometry = new THREE.BoxGeometry(6, 6, 0.5);
+                    const spreaderMaterial = new THREE.MeshStandardMaterial({
+                        color: 0xaaaaaa,
+                        metalness: 0.7,
+                        roughness: 0.3
+                    });
+                    const spreader = new THREE.Mesh(spreaderGeometry, spreaderMaterial);
+                    spreader.position.z = 1.5;
+                    socket.add(spreader);
+                }
+
+                chassis.add(cpuGroup);
+                server.components.push({ name: 'cpu-area', mesh: cpuGroup });
+
+                // Create memory area (very dense)
+                const memoryGroup = new THREE.Group();
+                memoryGroup.position.set(0, 100, 10);
+
+                const dimmGeometry = new THREE.BoxGeometry(12, 1.5, 3);
+                const dimmMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+
+                for (let i = 0; i < 28; i++) {
+                    const dimm = new THREE.Mesh(dimmGeometry, dimmMaterial);
+                    dimm.position.x = -16 + (i % 7) * 4.5;
+                    dimm.position.z = -12 + Math.floor(i / 7) * 4;
+                    memoryGroup.add(dimm);
+                }
+
+                chassis.add(memoryGroup);
+                server.components.push({ name: 'memory-area', mesh: memoryGroup });
+
+                // Create PCIe slots
+                const pcieGroup = new THREE.Group();
+                pcieGroup.position.set(0, 180, -30);
+
+                const pcieGeometry = new THREE.BoxGeometry(2, 15, 8);
+                const pcieMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 3; i++) {
+                    const pcie = new THREE.Mesh(pcieGeometry, pcieMaterial);
+                    pcie.position.x = -8 + i * 8;
+                    pcieGroup.add(pcie);
+                }
+
+                chassis.add(pcieGroup);
+                server.components.push({ name: 'pcie-area', mesh: pcieGroup });
+
+                // Create fan wall
+                const fanGroup = new THREE.Group();
+                fanGroup.position.set(0, 50, -35);
+
+                const fanGeometry = new THREE.CylinderGeometry(8, 8, 2, 16);
+                const fanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.x = -12 + i * 8;
+                    fan.rotation.x = Math.PI / 2;
+                    fanGroup.add(fan);
+                }
+
+                chassis.add(fanGroup);
+                server.components.push({ name: 'fan-wall', mesh: fanGroup });
+
+                // Create PSUs
+                const psuGroup = new THREE.Group();
+                psuGroup.position.set(0, 20, -38);
+
+                const psuGeometry = new THREE.BoxGeometry(15, 20, 30);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = 0; i < 2; i++) {
+                    const psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                    psu.position.x = -12 + i * 24;
+                    psuGroup.add(psu);
+                }
+
+                chassis.add(psuGroup);
+                server.components.push({ name: 'psu-area', mesh: psuGroup });
+
+                // Create networking
+                const nicGeometry = new THREE.BoxGeometry(3, 1, 8);
+                const nicMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                const nic1 = new THREE.Mesh(nicGeometry, nicMaterial);
+                nic1.position.set(18, 220, -38);
+                chassis.add(nic1);
+
+                // Create BMC
+                const bmcGeometry = new THREE.BoxGeometry(4, 2, 4);
+                const bmcMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const bmc = new THREE.Mesh(bmcGeometry, bmcMaterial);
+                bmc.position.set(-18, 220, -38);
+                chassis.add(bmc);
+
+                // Store server data
+                server.info = {
+                    purpose: 'Databases, analytics, transactional systems',
+                    cpus: '2x 32-core server CPUs',
+                    memory: '4 TB DDR4 ECC RDIMM',
+                    storage: '8x NVMe U.2 drives',
+                    networking: '2x 25GbE NICs',
+                    power: '1.4-1.8 kW typical',
+                    cooling: 'High-performance front-to-rear airflow'
+                };
+
+                return server;
+            }
+
+            createNetworkAppliance(startUnit, endUnit, name) {
+                const height = (endUnit - startUnit + 1) * 44.45;
+                const server = {
+                    name: name,
+                    startUnit: startUnit,
+                    endUnit: endUnit,
+                    height: height,
+                    type: 'network',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false,
+                    power: 300,
+                    temp: 52
+                };
+
+                // Create chassis
+                const chassisGeometry = new THREE.BoxGeometry(55, height, 80);
+                const chassisMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                const chassis = new THREE.Mesh(chassisGeometry, chassisMaterial);
+                chassis.castShadow = true;
+                chassis.receiveShadow = true;
+                server.mesh.add(chassis);
+                server.components.push({ name: 'chassis', mesh: chassis });
+
+                // Create front bezel
+                const bezelGeometry = new THREE.BoxGeometry(57, height, 2);
+                const bezelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                const bezel = new THREE.Mesh(bezelGeometry, bezelMaterial);
+                bezel.position.z = 41;
+                chassis.add(bezel);
+
+                // Create network ports (SFP+)
+                const portGeometry = new THREE.CylinderGeometry(1.5, 1.5, 8, 16);
+                const portMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 8; i++) {
+                    const port = new THREE.Mesh(portGeometry, portMaterial);
+                    port.position.x = -20 + (i % 4) * 10;
+                    port.position.y = 220 - Math.floor(i / 4) * 30;
+                    port.position.z = 39;
+                    port.rotation.x = Math.PI / 2;
+                    chassis.add(port);
+                }
+
+                // Create CPU area
+                const cpuGroup = new THREE.Group();
+                cpuGroup.position.set(0, 150, 15);
+
+                // Network CPU
+                const socketGeometry = new THREE.CylinderGeometry(4, 4, 2, 16);
+                const socketMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xcccccc,
+                    metalness: 0.9,
+                    roughness: 0.1
+                });
+                const socket = new THREE.Mesh(socketGeometry, socketMaterial);
+                socket.rotation.x = Math.PI / 2;
+                cpuGroup.add(socket);
+
+                chassis.add(cpuGroup);
+                server.components.push({ name: 'cpu-area', mesh: cpuGroup });
+
+                // Create memory area
+                const memoryGroup = new THREE.Group();
+                memoryGroup.position.set(0, 100, 10);
+
+                const dimmGeometry = new THREE.BoxGeometry(10, 1.2, 2.5);
+                const dimmMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+
+                for (let i = 0; i < 8; i++) {
+                    const dimm = new THREE.Mesh(dimmGeometry, dimmMaterial);
+                    dimm.position.x = -10 + (i % 2) * 5;
+                    dimm.position.z = -5 + Math.floor(i / 2) * 3;
+                    memoryGroup.add(dimm);
+                }
+
+                chassis.add(memoryGroup);
+                server.components.push({ name: 'memory-area', mesh: memoryGroup });
+
+                // Create fan wall
+                const fanGroup = new THREE.Group();
+                fanGroup.position.set(0, 50, -35);
+
+                const fanGeometry = new THREE.CylinderGeometry(6, 6, 2, 16);
+                const fanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+
+                for (let i = 0; i < 4; i++) {
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.x = -10 + i * 6.5;
+                    fan.rotation.x = Math.PI / 2;
+                    fanGroup.add(fan);
+                }
+
+                chassis.add(fanGroup);
+                server.components.push({ name: 'fan-wall', mesh: fanGroup });
+
+                // Create PSUs
+                const psuGroup = new THREE.Group();
+                psuGroup.position.set(0, 20, -38);
+
+                const psuGeometry = new THREE.BoxGeometry(12, 18, 25);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x222222,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                for (let i = 0; i < 2; i++) {
+                    const psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                    psu.position.x = -10 + i * 20;
+                    psuGroup.add(psu);
+                }
+
+                chassis.add(psuGroup);
+                server.components.push({ name: 'psu-area', mesh: psuGroup });
+
+                // Create management port
+                const mgmtGeometry = new THREE.BoxGeometry(2, 1, 6);
+                const mgmtMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0066cc,
+                    metalness: 0.5,
+                    roughness: 0.4
+                });
+                const mgmt = new THREE.Mesh(mgmtGeometry, mgmtMaterial);
+                mgmt.position.set(-18, 220, -38);
+                chassis.add(mgmt);
+
+                // Store server data
+                server.info = {
+                    purpose: 'Routing, firewalling, load balancing',
+                    cpus: '1x 16-core network CPU',
+                    memory: '64 GB DDR4 ECC RDIMM',
+                    storage: '2x 2.5" SSD',
+                    networking: '8x 10GbE SFP+ ports',
+                    power: '200-400 W typical',
+                    cooling: 'Front-to-rear airflow'
+                };
+
+                return server;
+            }
+
+            createEmptyUnit(unit) {
+                const height = 44.45;
+                const emptyUnit = {
+                    name: 'EMPTY',
+                    startUnit: unit,
+                    endUnit: unit,
+                    height: height,
+                    type: 'empty',
+                    position: { x: 0, y: 0, z: 0 },
+                    mesh: new THREE.Group(),
+                    components: [],
+                    selected: false
+                };
+
+                const panelGeometry = new THREE.BoxGeometry(55, height, 2);
+                const panelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x333333,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+                panel.position.z = 40;
+                emptyUnit.mesh.add(panel);
+
+                // Add to rack
+                this.rackGroup.add(emptyUnit.mesh);
+                emptyUnit.mesh.position.y = unit * 44.45 + 22.225;
+                emptyUnit.mesh.position.z = -55;
+
+                return emptyUnit;
+            }
+
+            setMode(mode) {
+                if (this.mode === mode) return;
+
+                this.mode = mode;
+
+                if (mode === 'rack') {
+                    // Switch to rack view
+                    this.rackGroup.visible = true;
+                    this.sliceGroup.visible = false;
+                    this.controls.reset();
+                    this.camera.position.set(0, 2, 5);
+                    this.camera.lookAt(0, 2, 0);
+
+                    // Reset slice server position
+                    if (this.currentSliceServer) {
+                        this.currentSliceServer.mesh.position.copy(this.currentSliceServer.originalPosition);
+                        this.currentSliceServer.mesh.rotation.set(0, 0, 0);
+                    }
+
+                    // Update UI
+                    document.getElementById('rack-view').classList.add('active');
+                    document.getElementById('slice-view').classList.remove('active');
+                } else {
+                    // Switch to slice view
+                    this.rackGroup.visible = false;
+                    this.sliceGroup.visible = true;
+
+                    // Position slice server
+                    if (this.selectedServer) {
+                        this.currentSliceServer = this.selectedServer;
+                        this.currentSliceServer.originalPosition = this.currentSliceServer.mesh.position.clone();
+
+                        // Position in slice view
+                        this.currentSliceServer.mesh.position.set(0, this.currentSliceServer.height / 200, 0);
+                        this.currentSliceServer.mesh.rotation.set(0, Math.PI / 4, 0);
+
+                        // Add to slice group
+                        this.sliceGroup.add(this.currentSliceServer.mesh);
+                    }
+
+                    // Update UI
+                    document.getElementById('rack-view').classList.remove('active');
+                    document.getElementById('slice-view').classList.add('active');
+                }
+            }
+
+            toggleCover() {
+                this.coverOpen = !this.coverOpen;
+
+                if (this.currentSliceServer) {
+                    // Find top cover component
+                    const coverComponent = this.currentSliceServer.components.find(c => c.name === 'top-cover');
+                    if (coverComponent) {
+                        coverComponent.mesh.visible = !this.coverOpen;
+                    }
+                }
+
+                document.getElementById('open-cover').classList.toggle('active', this.coverOpen);
+            }
+
+            toggleCutaway() {
+                this.cutawayVisible = !this.cutawayVisible;
+
+                if (this.currentSliceServer) {
+                    // Find chassis component
+                    const chassisComponent = this.currentSliceServer.components.find(c => c.name === 'chassis');
+                    if (chassisComponent) {
+                        chassisComponent.mesh.material.transparent = this.cutawayVisible;
+                        chassisComponent.mesh.material.opacity = this.cutawayVisible ? 0.3 : 1.0;
+                    }
+                }
+
+                document.getElementById('cutaway').classList.toggle('active', this.cutawayVisible);
+            }
+
+            toggleExplode() {
+                this.exploded = !this.exploded;
+
+                if (this.currentSliceServer) {
+                    const offset = this.exploded ? 30 : 0;
+
+                    this.currentSliceServer.components.forEach(component => {
+                        if (component.name === 'chassis') {
+                            component.mesh.position.y = offset;
+                        } else if (component.name.startsWith('cpu-') || component.name === 'cpu-area') {
+                            component.mesh.position.y = 150 + offset;
+                        } else if (component.name.startsWith('gpu-') || component.name === 'memory-area') {
+                            component.mesh.position.y = 100 + offset;
+                        } else if (component.name === 'fan-wall') {
+                            component.mesh.position.y = 50 + offset;
+                        } else if (component.name === 'psu-area') {
+                            component.mesh.position.y = 20 + offset;
+                        }
+                    });
+                }
+
+                document.getElementById('explode').classList.toggle('active', this.exploded);
+            }
+
+            toggleAirflow() {
+                this.airflowVisible = !this.airflowVisible;
+                this.airflowParticleSystem.visible = this.airflowVisible;
+                document.getElementById('airflow').classList.toggle('active', this.airflowVisible);
+            }
+
+            togglePowerPath() {
+                this.powerPathVisible = !this.powerPathVisible;
+
+                this.powerPathLines.forEach(line => {
+                    line.visible = this.powerPathVisible;
+                });
+
+                document.getElementById('power-path').classList.toggle('active', this.powerPathVisible);
+            }
+
+            toggleDataPath() {
+                this.dataPathVisible = !this.dataPathVisible;
+
+                this.dataPathLines.forEach(line => {
+                    line.visible = this.dataPathVisible;
+                });
+
+                document.getElementById('data-path').classList.toggle('active', this.dataPathVisible);
+            }
+
+            toggleFailures() {
+                // Simple failure simulation UI
+                const warning = document.getElementById('failure-warning');
+                warning.style.display = 'block';
+                setTimeout(() => {
+                    warning.style.display = 'none';
+                }, 3000);
+            }
+
+            resetSimulation() {
+                this.airflowVisible = false;
+                this.powerPathVisible = false;
+                this.dataPathVisible = false;
+                this.cutawayVisible = false;
+                this.exploded = false;
+                this.coverOpen = false;
+                this.failureMode = null;
+
+                this.airflowParticleSystem.visible = false;
+                this.powerPathLines.forEach(line => line.visible = false);
+                this.dataPathLines.forEach(line => line.visible = false);
+
+                document.getElementById('airflow').classList.remove('active');
+                document.getElementById('power-path').classList.remove('active');
+                document.getElementById('data-path').classList.remove('active');
+                document.getElementById('cutaway').classList.remove('active');
+                document.getElementById('explode').classList.remove('active');
+                document.getElementById('open-cover').classList.remove('active');
+
+                // Reset server positions
+                if (this.currentSliceServer) {
+                    this.currentSliceServer.mesh.position.copy(this.currentSliceServer.originalPosition);
+                    this.currentSliceServer.mesh.rotation.set(0, 0, 0);
+
+                    this.currentSliceServer.components.forEach(component => {
+                        component.mesh.position.set(0, 0, 0);
+                        component.mesh.rotation.set(0, 0, 0);
+                    });
+                }
+
+                // Reset temps and power
+                this.simulatedTemps = {};
+                this.simulatedPowers = {};
+
+                // Update health display
+                document.getElementById('cpu1-temp').textContent = '65°C';
+                document.getElementById('cpu2-temp').textContent = '62°C';
+                document.getElementById('gpu-temp').textContent = '72°C';
+                document.getElementById('memory-util').textContent = '42%';
+                document.getElementById('power-consumption').textContent = '4.2 kW';
+                document.getElementById('fan-rpm').textContent = '12500';
+            }
+
+            setupEventListeners() {
+                // Server selection
+                this.raycaster = new THREE.Raycaster();
+                this.mouse = new THREE.Vector2();
+
+                this.container.addEventListener('mousemove', (event) => {
+                    if (this.mode !== 'rack') return;
+
+                    this.mouse.x = (event.clientX / this.container.clientWidth) * 2 - 1;
+                    this.mouse.y = -(event.clientY / this.container.clientHeight) * 2 + 1;
+
+                    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+                    const intersects = this.raycaster.intersectObjects(
+                        this.servers.map(s => s.mesh),
+                        true
+                    );
+
+                    if (intersects.length > 0) {
+                        const server = intersects[0].object.userData.server;
+                        if (server && server !== this.selectedServer) {
+                            // Highlight server
+                            if (this.selectedServer) {
+                                this.selectedServer.mesh.children.forEach(child => {
+                                    if (child.material) child.material.emissive.setHex(0x000000);
+                                });
+                            }
+
+                            this.selectedServer = server;
+                            server.selected = true;
+                            server.mesh.children.forEach(child => {
+                                if (child.material) child.material.emissive.setHex(0x4fc3f7);
+                            });
+
+                            // Update UI
+                            this.updateServerInfo();
+                        }
+                    } else if (this.selectedServer) {
+                        // Clear selection
+                        this.selectedServer.mesh.children.forEach(child => {
+                            if (child.material) child.material.emissive.setHex(0x000000);
+                        });
+                        this.selectedServer = null;
+                        this.updateServerInfo();
+                    }
+                });
+
+                this.container.addEventListener('click', (event) => {
+                    if (this.mode !== 'rack') return;
+
+                    this.mouse.x = (event.clientX / this.container.clientWidth) * 2 - 1;
+                    this.mouse.y = -(event.clientY / this.container.clientHeight) * 2 + 1;
+
+                    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+                    const intersects = this.raycaster.intersectObjects(
+                        this.servers.map(s => s.mesh),
+                        true
+                    );
+
+                    if (intersects.length > 0) {
+                        const server = intersects[0].object.userData.server;
+                        if (server) {
+                            // Select server
+                            this.selectedServer = server;
+
+                            // Update UI
+                            this.updateServerInfo();
+
+                            // Enable slice view button
+                            document.getElementById('slice-view').disabled = false;
+                        }
+                    }
+                });
+
+                // Component selection in slice view
+                this.sliceGroup.addEventListener('click', (event) => {
+                    if (this.mode !== 'slice' || !this.currentSliceServer) return;
+
+                    this.mouse.x = (event.clientX / this.container.clientWidth) * 2 - 1;
+                    this.mouse.y = -(event.clientY / this.container.clientHeight) * 2 + 1;
+
+                    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+                    const intersects = this.raycaster.intersectObjects(
+                        this.currentSliceServer.components.map(c => c.mesh),
+                        true
+                    );
+
+                    if (intersects.length > 0) {
+                        const component = intersects[0].object.userData.component;
+                        if (component) {
+                            this.updateComponentInfo(component);
+                        }
+                    }
+                });
+            }
+
+            updateServerInfo() {
+                if (!this.selectedServer) {
+                    this.serverInfo.innerHTML = '<p>Select a server to view details</p>';
+                    return;
+                }
+
+                const server = this.selectedServer;
+                let html = `
+                    <h4>${server.name}</h4>
+                    <p><strong>Rack position:</strong> U${server.startUnit}-U${server.endUnit}</p>
+                    <p><strong>Height:</strong> ${server.endUnit - server.startUnit + 1}U</p>
+                    <p><strong>Purpose:</strong> ${server.info.purpose}</p>
+                    <p><strong>Power:</strong> ${server.power} W typical</p>
+                `;
+
+                html += '<h5>Architecture</h5><p>';
+                html += `${server.info.cpus}<br>`;
+                html += `${server.info.memory}<br>`;
+                html += `${server.info.storage}<br>`;
+                html += `${server.info.networking}<br>`;
+                html += `Cooling: ${server.info.cooling}`;
+                html += '</p>';
+
+                html += `<h5>Design Priority</h5><p>${server.info.designPriority || 'Balanced enterprise compute'}</p>`;
+
+                this.serverInfo.innerHTML = html;
+            }
+
+            updateComponentInfo(component) {
+                if (!component) {
+                    this.componentInfo.innerHTML = '<p>Select a component</p>';
+                    return;
+                }
+
+                let html = `
+                    <h4>${component.name.replace(/-/g, ' ')}</h4>
+                    <p><strong>Type:</strong> ${this.getComponentType(component.name)}</p>
+                    <p><strong>Role:</strong> ${this.getComponentRole(component.name)}</p>
+                `;
+
+                this.componentInfo.innerHTML = html;
+            }
+
+            getComponentType(name) {
+                if (name.includes('cpu')) return 'Server CPU';
+                if (name.includes('gpu')) return 'GPU Accelerator';
+                if (name.includes('memory') || name.includes('dimm')) return 'Memory Module';
+                if (name.includes('fan')) return 'Cooling Fan';
+                if (name.includes('psu')) return 'Power Supply Unit';
+                if (name.includes('chassis')) return 'Server Chassis';
+                if (name.includes('storage')) return 'Storage System';
+                return 'Component';
+            }
+
+            getComponentRole(name) {
+                if (name.includes('cpu')) return 'General processing';
+                if (name.includes('gpu')) return 'AI / compute acceleration';
+                if (name.includes('memory')) return 'System memory';
+                if (name.includes('fan')) return 'Airflow management';
+                if (name.includes('psu')) return 'Power delivery';
+                if (name.includes('chassis')) return 'Structural enclosure';
+                if (name.includes('storage')) return 'Data storage';
+                return 'System component';
+            }
+
+            updateStats() {
+                // Update FPS counter
+                setInterval(() => {
+                    const now = performance.now();
+                    const delta = now - this.lastTime;
+                    this.lastTime = now;
+
+                    this.frameCount++;
+                    this.totalTime += delta;
+
+                    if (this.totalTime >= 1000) {
+                        const fps = Math.round((this.frameCount * 1000) / this.totalTime);
+                        document.getElementById('fps').textContent = fps;
+                        this.frameCount = 0;
+                        this.totalTime = 0;
+                    }
+                }, 1000);
+
+                // Update draw calls and triangles (simplified)
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                this.totalTime = 0;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                // Update controls
+                this.controls.update();
+
+                // Update airflow particles
+                if (this.airflowVisible && this.currentSliceServer) {
+                    const particles = this.airflowParticleSystem.geometry.attributes.position.array;
+                    const time = Date.now() * 0.001;
+
+                    for (let i = 0; i < particles.length / 3; i++) {
+                        // Simulate airflow from front to back
+                        particles[i * 3] += Math.sin(time + i) * 0.02;
+                        particles[i * 3 + 2] += Math.cos(time * 0.8 + i) * 0.03;
+
+                        // Reset if out of bounds
+                        if (particles[i * 3] > 30) particles[i * 3] = -30;
+                        if (particles[i * 3 + 2] > 30) particles[i * 3 + 2] = -30;
+                    }
+
+                    this.airflowParticleSystem.geometry.attributes.position.needsUpdate = true;
+                }
+
+                // Update power path lines
+                if (this.powerPathVisible && this.currentSliceServer) {
+                    this.updatePowerPathLines();
+                }
+
+                // Update data path lines
+                if (this.dataPathVisible && this.currentSliceServer) {
+                    this.updateDataPathLines();
+                }
+
+                // Update failure simulation
+                if (this.failureMode) {
+                    this.updateFailureSimulation();
+                }
+
+                // Render
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            updatePowerPathLines() {
+                // Simplified power path visualization
+                const lines = this.powerPathLines;
+                let lineIndex = 0;
+
+                if (this.currentSliceServer.type === 'gpu') {
+                    // AC -> PSU -> Motherboard -> CPU -> GPU
+                    const start = new THREE.Vector3(-25, 10, -20);
+                    const psu1 = new THREE.Vector3(-20, 20, -35);
+                    const psu2 = new THREE.Vector3(0, 20, -35);
+                    const mb = new THREE.Vector3(0, 150, 15);
+                    const cpu1 = new THREE.Vector3(-10, 150, 20);
+                    const cpu2 = new THREE.Vector3(10, 150, 20);
+                    const gpu1 = new THREE.Vector3(-15, 100, 30);
+                    const gpu2 = new THREE.Vector3(-3, 100, 30);
+                    const gpu3 = new THREE.Vector3(9, 100, 30);
+                    const gpu4 = new THREE.Vector3(21, 100, 30);
+
+                    // Draw power lines
+                    this.drawPowerLine(lines, lineIndex++, start, psu1, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, start, psu2, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, psu1, mb, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, psu2, mb, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, mb, cpu1, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, mb, cpu2, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, mb, gpu1, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, mb, gpu2, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, mb, gpu3, 0xffff00);
+                    this.drawPowerLine(lines, lineIndex++, mb, gpu4, 0xffff00);
+                }
+            }
+
+            drawPowerLine(lines, index, start, end, color) {
+                if (index >= lines.length) return;
+
+                const line = lines[index];
+                const positions = [start.x, start.y, start.z, end.x, end.y, end.z];
+
+                line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                line.material.color.setHex(color);
+            }
+
+            updateDataPathLines() {
+                // Simplified data path visualization
+                const lines = this.dataPathLines;
+                let lineIndex = 0;
+
+                if (this.currentSliceServer.type === 'gpu') {
+                    // NVMe -> CPU -> RAM -> PCIe -> GPU -> NIC
+                    const nvme = new THREE.Vector3(-15, 220, 38);
+                    const cpu = new THREE.Vector3(0, 150, 20);
+                    const ram = new THREE.Vector3(0, 100, 15);
+                    const pcie = new THREE.Vector3(0, 180, -30);
+                    const gpu = new THREE.Vector3(0, 100, 30);
+                    const nic = new THREE.Vector3(18, 180, -38);
+
+                    this.drawDataLine(lines, lineIndex++, nvme, cpu, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, cpu, ram, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, ram, pcie, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, pcie, gpu, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, gpu, nic, 0x00ff00);
+                } else if (this.currentSliceServer.type === 'storage') {
+                    // Drives -> Backplane -> HBA -> CPU -> NIC
+                    const drives = new THREE.Vector3(0, 150, 35);
+                    const backplane = new THREE.Vector3(0, 150, 25);
+                    const hba = new THREE.Vector3(0, 150, 20);
+                    const cpu = new THREE.Vector3(0, 150, 15);
+                    const nic = new THREE.Vector3(15, 180, -38);
+
+                    this.drawDataLine(lines, lineIndex++, drives, backplane, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, backplane, hba, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, hba, cpu, 0x00ff00);
+                    this.drawDataLine(lines, lineIndex++, cpu, nic, 0x00ff00);
+                }
+            }
+
+            drawDataLine(lines, index, start, end, color) {
+                if (index >= lines.length) return;
+
+                const line = lines[index];
+                const positions = [start.x, start.y, start.z, end.x, end.y, end.z];
+
+                line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                line.material.color.setHex(color);
+            }
+
+            updateFailureSimulation() {
+                this.failureTimer += 0.01;
+
+                if (this.failureMode === 'fan') {
+                    // Simulate fan failure
+                    const fanRPM = 12500 - Math.sin(this.failureTimer * 2) * 2000;
+                    document.getElementById('fan-rpm').textContent = Math.round(fanRPM).toString();
+
+                    // Increase temps
+                    const tempIncrease = Math.sin(this.failureTimer) * 15;
+                    document.getElementById('cpu1-temp').textContent = `${65 + tempIncrease}°C`;
+                    document.getElementById('cpu2-temp').textContent = `${62 + tempIncrease}°C`;
+                }
+            }
+        }
+
+        // Initialize the application when loaded
+        window.addEventListener('load', () => {
+            new ServerArchitectureLab();
+        });
+    </script>
+</body>
+</html>
