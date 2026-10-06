@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>3D Cruise Port Benchmark - Lisbon</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      color: #fff;
+    }
+    #ui button {
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <script type="importmap">
+    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { Sky } from 'three/addons/objects/Sky.js';
+    import { Water } from 'three/addons/objects/Water.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    let scene, camera, renderer, composer, controls, clock, timeOfDay, ship, water, sky, environment;
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xcccccc);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 100, 0);
+
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      composer = new EffectComposer(renderer);
+      const renderPass = new THREE.RenderPass(scene, camera);
+      composer.addPass(renderPass);
+      const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0);
+      composer.addPass(bloomPass);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.minDistance = 50;
+      controls.maxDistance = 500;
+
+      clock = new THREE.Clock();
+
+      createLisbon();
+      createShip();
+      createWater();
+      createSky();
+      createEnvironment();
+
+      window.addEventListener('resize', onWindowResize);
+      document.querySelector('#ui').addEventListener('change', onUIChange);
+      document.querySelector('#ui #depart').addEventListener('click', onDepart);
+      document.querySelector('#ui #return').addEventListener('click', onReturn);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onUIChange(event) {
+      const target = event.target;
+      if (target.name === 'timeOfDay') {
+        timeOfDay = target.value;
+      }
+    }
+
+    function onDepart() {
+      ship.position.z -= 0.1;
+      if (Math.abs(ship.rotation.y) < 0.5) {
+        ship.rotation.y -= 0.01;
+      }
+      if (Math.abs(ship.position.z) > 1000) {
+        clearInterval(departInterval);
+      }
+    }
+
+    function onReturn() {
+      ship.position.z += 0.1;
+      if (Math.abs(ship.rotation.y) > 0.5) {
+        ship.rotation.y += 0.01;
+      }
+      if (Math.abs(ship.position.z) < 100) {
+        clearInterval(returnInterval);
+      }
+    }
+
+    function createLisbon() {
+      // ... create Lisbon landmarks here ...
+    }
+
+    function createShip() {
+      // ... create cruise ship here ...
+    }
+
+    function createWater() {
+      water = new Water(1000, 1000, 1024, 0.5);
+      water.position.y = -10;
+      water.rotation.x = -Math.PI / 2;
+      scene.add(water);
+    }
+
+    function createSky() {
+      sky = new Sky();
+      sky.scale.setScalar(10000);
+      scene.add(sky);
+    }
+
+    function createEnvironment() {
+      environment = new RoomEnvironment();
+      environment.set(sky);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      controls.update(delta);
+      composer.render(delta);
+    }
+  </script>
+  <div id="ui">
+    <label for="timeOfDay">Time of Day:</label>
+    <input type="range" id="timeOfDay" name="timeOfDay" min="0" max="1" step="0.01" value="0.5">
+    <button id="depart">Depart</button>
+    <button id="return">Return</button>
+  </div>
+</body>
+</html>
