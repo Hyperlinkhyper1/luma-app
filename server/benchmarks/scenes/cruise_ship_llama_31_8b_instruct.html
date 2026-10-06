@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtuosa MSC Cruise Ship</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        canvas {
+            width: 100%;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<script src="https://unpkg.com/three@0.144.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.144.0/examples/js/loaders/MTLLoader.js"></script>
+<script src="https://unpkg.com/three@0.144.0/examples/js/loaders/OBJLoader.js"></script>
+<script src="https://unpkg.com/three@0.144.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://unpkg.com/three@0.144.0/examples/js/renderers/CanvasRenderer.js"></script>
+<script src="https://unpkg.com/three@0.144.0/examples/js/renderers/ShaderMaterial.js"></script>
+<script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.CanvasRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    let shipLength = 200;
+    let shipWidth = 30;
+    let shipHeight = 10;
+
+    let lifeBoatLength = 10;
+    let lifeBoatWidth = 2;
+    let lifeBoatHeight = 1;
+
+    const shipBody = new THREE.Mesh(new THREE.BoxGeometry(shipLength, shipHeight, shipWidth), new THREE.MeshBasicMaterial({ color: 0x333333 }));
+    scene.add(shipBody);
+
+    const shipDeck = new THREE.Mesh(new THREE.BoxGeometry(shipLength, shipHeight / 2, shipWidth), new THREE.MeshBasicMaterial({ color: 0x555555 }));
+    shipDeck.position.y = shipHeight / 2;
+    scene.add(shipDeck);
+
+    const deck7 = new THREE.Mesh(new THREE.BoxGeometry(100, shipHeight, 20), new THREE.MeshBasicMaterial({ color: 0x444444 }));
+    deck7.position.y = shipHeight + 10;
+    deck7.lookAt(new THREE.Vector3(shipLength / 2, scene.position.y, shipWidth / 2));
+    scene.add(deck7);
+
+    for (let i = 0; i < 5; i++) {
+        const lifeBoat = new THREE.Mesh(new THREE.BoxGeometry(lifeBoatLength, lifeBoatHeight, lifeBoatWidth), new THREE.MeshBasicMaterial({ color: 0x333333 }));
+        lifeBoat.position.y = shipHeight + 15 + i * 2;
+        lifeBoat.position.x = Math.sin(i * Math.PI * 2) * 10;
+        lifeBoat.position.z = shipWidth / 2;
+        scene.add(lifeBoat);
+    }
+
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshBasicMaterial({ color: 0x456778 }));
+    sea.rotation.x = -Math.PI / 2;
+    scene.add(sea);
+
+    const boat = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 5), new THREE.MeshBasicMaterial({ color: 0x333333 }));
+    scene.add(boat);
+
+    camera.position.z = 200;
+    camera.position.y = 20;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.autoRotate = true;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    let day = 0;
+    setInterval(() => {
+        day++;
+        const ratio = day / 24;
+        const seaColor = new THREE.Color(0x456778);
+        seaColor.r = 0.5 + Math.sin(ratio * Math.PI * 2) * 0.5;
+        seaColor.g = 0.7 + Math.sin(ratio * 1.5 * Math.PI * 2) * 0.3;
+        seaColor.b = 0.8 + Math.sin(ratio * 2 * Math.PI * 2) * 0.2;
+        sea.material.color.copy(seaColor);
+    }, 1000);
+
+    let weather = 0;
+    setInterval(() => {
+        weather++;
+        const ratio = weather / 360;
+        const cloudColor = new THREE.Color(0xffffff);
+        cloudColor.r = 1;
+        cloudColor.g = 1 - Math.sin(ratio * Math.PI * 2) * 0.7;
+        cloudColor.b = 1 - Math.sin(ratio * 1.5 * Math.PI * 2) * 0.7;
+        scene.fog.color.copy(cloudColor);
+    }, 10);
+</script>
+</body>
+</html>
