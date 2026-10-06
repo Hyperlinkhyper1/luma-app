@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D PC Building Benchmark</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #111;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            z-index: 1;
+        }
+        #info input[type="color"] {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+        }
+        #info label {
+            margin-right: 10px;
+        }
+        #info button {
+            margin-left: 10px;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <label for="power">Power:</label>
+        <button id="powerBtn">ON</button>
+        <label for="color">RGB:</label>
+        <input type="color" id="rgb" value="#ffffff">
+    </div>
+    <canvas id="canvas"></canvas>
+    <script src="https://unpkg.com/three@0.138.3/build/three.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        camera.position.z = 5;
+
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        const powerBtn = document.getElementById('powerBtn');
+        const rgbInput = document.getElementById('rgb');
+
+        let isPowerOn = false;
+
+        powerBtn.addEventListener('click', () => {
+            isPowerOn = !isPowerOn;
+            powerBtn.textContent = isPowerOn ? 'OFF' : 'ON';
+            cube.material.color.set(isPowerOn ? 0x00ff00 : 0x444444);
+        });
+
+        rgbInput.addEventListener('input', () => {
+            cube.material.color.set(rgbInput.value);
+        });
+
+        function animate() {
+            controls.update();
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
