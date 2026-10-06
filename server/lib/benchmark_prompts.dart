@@ -143,6 +143,27 @@ like a finished coffee brand with its own identity. Avoid an interchangeable col
 cards, excessive gradients, arbitrary decorative blobs, and walls of tiny
 text. Balance expressive design with readable contrast and obvious actions.
 
+Be creative on your own. Do not settle for the first, most obvious coffee
+landing page; invent a point of view and commit to it. Decide what Ember &
+Bean feels like (a lantern-lit roastery at dawn, a steaming kitchen counter,
+a hand-stamped burlap sack, a brew-guide zine) and let that idea shape the
+layout, section shapes, typography, texture, and motion. Surprise the reader
+with original touches the brief does not spell out, such as a roast-level
+gauge, steam rising from the cup, a latte-art or crema detail, a bean-grade
+swatch strip, coffee-ring stains, hand-drawn brew diagrams, a tasting-note
+flavor wheel, or a section divider shaped like a pour. Write distinctive,
+sensory copy in the voice of someone who loves coffee, with aroma, warmth,
+sound, and ritual, instead of generic marketing filler.
+
+Make it unmistakably coffee-themed everywhere, not only in the hero. Section
+headings, labels, buttons, form fields, dialog text, FAQ answers, and footer
+should use coffee language and imagery (roast, crema, pour, grind, steep,
+bloom, first cup), and every decorative element should be something found in
+a coffee shop, roastery, or kitchen. Palette, textures, and iconography
+should come from roasted beans, espresso, crema, milk, ceramic, kraft paper,
+and copper. Creativity is welcome in everything except the exact names,
+headline, prices, actions, and interaction rules fixed by this brief.
+
 Use the exact brand name Ember & Bean and the hero headline "Good mornings
 start with great coffee." Write concise supporting copy explaining that
 freshly roasted coffee is delivered for the reader's favorite brewing ritual.
@@ -266,8 +287,9 @@ The page will be judged on visual identity, composition, typography,
 consistency, believable coffee product detail, fidelity to the brief, responsive
 behavior, keyboard accessibility, and whether interactions work end to end.
 Use the supplied names, headline, prices, benefits, and interaction rules
-exactly so model outputs can be compared fairly. You may choose the art
-direction and write the remaining copy. Prioritize a complete, attractive,
+exactly so model outputs can be compared fairly. You are expected to choose
+an original art direction and write the remaining copy with imagination and
+a strong coffee theme; a generic result will score lower than a memorable one. Prioritize a complete, attractive,
 usable page over complicated effects. Keep code organized and ensure there
 are no syntax errors, missing assets, placeholder sections, broken links,
 unfinished loading states, or claims that a backend exists. Before replying,

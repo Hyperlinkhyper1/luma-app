@@ -756,6 +756,8 @@ class Api {
           _requireAdmin(_adminBenchmarkGenRecheck))
       ..get('/admin/benchmarks/generate/<id>/output',
           _requireAdmin(_adminBenchmarkGenOutput))
+      ..get('/admin/benchmarks/generate/<id>/result',
+          _requireAdmin(_adminBenchmarkGenResult))
       ..post('/admin/deploy', _requireAdmin(_deploy.requestDeploy))
       ..get('/admin/deploy/status', _requireAdmin(_deploy.deployStatus))
       ..post('/admin/system/check-updates',

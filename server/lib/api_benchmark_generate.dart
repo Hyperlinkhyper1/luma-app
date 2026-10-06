@@ -40,6 +40,17 @@ class BenchmarkGenJob {
           ? j['status'] as String
           : 'running'
       ..error = j['error'] as String?
+      ..resultStatus = j['resultStatus'] as String?
+      ..resultReason = j['resultReason'] as String?
+      ..validation = j['validation'] as String?
+      ..finishReason = j['finishReason'] as String?
+      ..nativeFinishReason = j['nativeFinishReason'] as String?
+      ..httpStatus = (j['httpStatus'] as num?)?.toInt()
+      ..chars = (j['chars'] as num?)?.toInt() ?? 0
+      ..tokens = (j['tokens'] as num?)?.toInt() ?? 0
+      ..outputTokens = (j['outputTokens'] as num?)?.toInt() ?? 0
+      ..outputCapSent = j['outputCapSent'] as bool? ?? true
+      ..hasOutput = j['hasOutput'] == true
       ..finishedAtMs = (j['finishedAtMs'] as num?)?.toInt()
       ..batchStatus = j['batchStatus'] as String?;
   }
@@ -73,6 +84,14 @@ class BenchmarkGenJob {
   int reasoningChars = 0;
   int tokens = 0;
   String? finishReason;
+  String? nativeFinishReason;
+  String? resultStatus;
+  String? resultReason;
+  String? validation;
+  int? httpStatus;
+  int outputTokens = 0;
+  bool outputCapSent = true;
+  bool hasResult = false;
   String? error;
   Map<String, Object> publish = const {};
   bool hasOutput = false;
@@ -102,6 +121,14 @@ class BenchmarkGenJob {
         'reasoningChars': reasoningChars,
         'tokens': tokens,
         'finishReason': finishReason,
+        'nativeFinishReason': nativeFinishReason,
+        'resultStatus': resultStatus,
+        'resultReason': resultReason,
+        'validation': validation,
+        'httpStatus': httpStatus,
+        'outputTokens': outputTokens,
+        'outputCapSent': outputCapSent,
+        'hasResult': hasResult,
         'error': error,
         'hasOutput': hasOutput,
         'batch': batch,
@@ -124,6 +151,17 @@ class BenchmarkGenJob {
         'batchId': batchId,
         'batchStatus': batchStatus,
         'status': status,
+        'resultStatus': resultStatus,
+        'resultReason': resultReason,
+        'validation': validation,
+        'finishReason': finishReason,
+        'nativeFinishReason': nativeFinishReason,
+        'httpStatus': httpStatus,
+        'chars': chars,
+        'tokens': tokens,
+        'outputTokens': outputTokens,
+        'outputCapSent': outputCapSent,
+        'hasOutput': hasOutput,
         'error': error,
         'finishedAtMs': finishedAtMs,
       };
@@ -176,6 +214,7 @@ extension BenchmarkGenerateApi on Api {
         continue;
       }
       job.phase = 'queued';
+      job.hasResult = await File('$_genOutputDir/${job.id}.json').exists();
       _benchmarkGenJobs.add(job);
       // Failed and stopped ones come back as cards that can be checked again.
       if (job.status == 'running') unawaited(_runBenchmarkGen(job));
@@ -386,6 +425,11 @@ extension BenchmarkGenerateApi on Api {
       ..status = 'running'
       ..phase = 'queued'
       ..error = null
+      ..resultStatus = null
+      ..resultReason = null
+      ..validation = null
+      ..httpStatus = null
+      ..hasResult = false
       ..finishedAtMs = null
       ..stopRequested = false;
     await _saveBenchmarkBatches();
@@ -404,6 +448,19 @@ extension BenchmarkGenerateApi on Api {
     return Response(200, body: file.openRead(), headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Content-Security-Policy': 'sandbox',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
+    });
+  }
+
+  Future<Response> _adminBenchmarkGenResult(Request request) async {
+    final job = _findBenchmarkGenJob(request);
+    final file = job == null ? null : File('$_genOutputDir/${job.id}.json');
+    if (file == null || !await file.exists()) {
+      return errorResponse(404, 'not_found', 'No saved result for that run.');
+    }
+    return Response(200, body: file.openRead(), headers: {
+      'Content-Type': 'application/json; charset=utf-8',
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'no-store',
     });
@@ -429,10 +486,12 @@ extension BenchmarkGenerateApi on Api {
   }
 
   Future<void> _deleteBenchmarkGenOutput(BenchmarkGenJob job) async {
-    try {
-      await File('$_genOutputDir/${job.id}.txt').delete();
-    } on FileSystemException {
-      // Never saved, or already gone.
+    for (final extension in ['txt', 'json']) {
+      try {
+        await File('$_genOutputDir/${job.id}.$extension').delete();
+      } on FileSystemException {
+        // Never saved, or already gone.
+      }
     }
   }
 
@@ -467,12 +526,33 @@ extension BenchmarkGenerateApi on Api {
       job.reasoningChars = acc.reasoningChars;
       job.tokens = acc.tokens;
       job.finishReason = acc.finishReason;
+      job.nativeFinishReason = acc.nativeFinishReason;
+      job.outputTokens = acc.usage.outputTokens;
+      final result = benchmarkGenerationResult(
+        reply: acc.content,
+        finishReason: acc.finishReason,
+        nativeFinishReason: acc.nativeFinishReason,
+        httpStatus: acc.errorCode ?? acc.providerStatus ?? job.httpStatus,
+        error: job.error ?? acc.error,
+      );
+      job.validation ??= result.validation;
+      job.resultStatus ??= job.status == 'stopped'
+          ? 'STOPPED'
+          : job.status == 'done'
+              ? 'PASS'
+              : result.status == 'PASS'
+                  ? 'MODEL_ERROR'
+                  : result.status;
+      job.resultReason ??= job.status == 'stopped'
+          ? 'Stopped by administrator'
+          : job.error ?? result.reason;
       try {
         await recordBenchmarkGenerationUsage(
             aiUsage, store.userIdByEmail, job.route, acc.usage);
       } catch (error) {
         stderr.writeln('[luma] benchmark usage recording failed: $error');
       }
+      await _saveBenchmarkGenResult(job, acc);
       if (job.batch) await _saveBenchmarkBatches();
     }
     final mins =
@@ -502,12 +582,13 @@ extension BenchmarkGenerateApi on Api {
           await _streamBenchmarkGen(job, acc, withMaxTokens: false);
     }
     await _saveBenchmarkGenOutput(job, acc.content);
+    job.httpStatus = status;
     if (job.stopRequested) {
       job.status = 'stopped';
     } else if (status != HttpStatus.ok) {
       job.status = 'failed';
       job.error = _benchmarkUpstreamError(job, status, errorBody);
-    } else if (acc.error != null && acc.contentChars == 0) {
+    } else if (acc.error != null) {
       job.status = 'failed';
       job.error = acc.error;
     } else {
@@ -563,6 +644,7 @@ extension BenchmarkGenerateApi on Api {
           id is! String ||
           id.isEmpty) {
         job.status = 'failed';
+        job.httpStatus = status;
         job.error = _benchmarkUpstreamError(
             job, status, body is String ? body : jsonEncode(body));
         return;
@@ -605,9 +687,9 @@ extension BenchmarkGenerateApi on Api {
           job.reasoningChars = acc.reasoningChars;
           job.tokens = acc.tokens;
           await _saveBenchmarkGenOutput(job, acc.content);
-          if (why != null && acc.contentChars == 0) {
+          if (why != null || acc.error != null) {
             job.status = 'failed';
-            job.error = why;
+            job.error = why ?? acc.error;
           } else {
             await _finishBenchmarkGen(job, acc);
           }
@@ -621,6 +703,7 @@ extension BenchmarkGenerateApi on Api {
           status == HttpStatus.unauthorized ||
           status == HttpStatus.forbidden) {
         job.status = 'failed';
+        job.httpStatus = status;
         job.error = _benchmarkUpstreamError(
             job, status, body is String ? body : jsonEncode(body));
         return;
@@ -690,6 +773,7 @@ extension BenchmarkGenerateApi on Api {
       ..connectionTimeout = const Duration(seconds: 30);
     job.client = client;
     job.phase = 'connecting';
+    job.outputCapSent = withMaxTokens;
     final deadline =
         DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_totalTimeout);
     final req = await client.postUrl(Uri.parse(route.upstream.endpoint));
@@ -758,20 +842,18 @@ extension BenchmarkGenerateApi on Api {
       BenchmarkGenJob job, ChatStreamAccumulator acc) async {
     job.phase = 'saving';
     final page = extractBenchmarkHtml(acc.content);
-    if (page == null) {
+    final result = benchmarkGenerationResult(
+      reply: acc.content,
+      finishReason: acc.finishReason,
+      nativeFinishReason: acc.nativeFinishReason,
+      error: acc.error,
+      httpStatus: acc.errorCode ?? acc.providerStatus ?? job.httpStatus,
+    );
+    job.validation = result.validation;
+    if (result.status != 'PASS') {
       job.status = 'failed';
-      job.error = acc.contentChars == 0
-          ? 'The model answered with no text'
-              '${acc.finishReason == null ? '' : ' (finish: ${acc.finishReason})'}.'
-          : 'The reply holds no HTML page. Open the reply to see what came back.';
-      return;
-    }
-    if (acc.finishReason == 'length' || !benchmarkHtmlComplete(page)) {
-      job.status = 'failed';
-      job.error = acc.finishReason == 'length'
-          ? 'The model hit its output limit (${job.maxTokens} tokens asked) '
-              'before finishing the page. Try a higher limit or lower effort.'
-          : 'The page stops before </html>: the reply was cut off.';
+      job.resultStatus = result.status;
+      job.resultReason = result.reason;
       return;
     }
     final effort = job.route.reasoningEffort;
@@ -781,7 +863,7 @@ extension BenchmarkGenerateApi on Api {
         '${job.route.upstream.label} · $model'
         '${effort == null ? '' : ' · $effort reasoning'}'
         '${job.batch ? ' · batch' : ''}.';
-    final bytes = utf8.encode(page);
+    final bytes = utf8.encode(page!);
     final Map<String, dynamic> entry;
     try {
       entry = await aiBenchmarks.saveUpload(
@@ -794,6 +876,7 @@ extension BenchmarkGenerateApi on Api {
       );
     } on ArgumentError catch (e) {
       job.status = 'failed';
+      job.resultStatus = 'INVALID_OUTPUT';
       job.error = '${e.message}';
       return;
     }
@@ -811,6 +894,29 @@ extension BenchmarkGenerateApi on Api {
       job.hasOutput = true;
     } on FileSystemException catch (e) {
       stderr.writeln('[luma] could not save benchmark reply ${job.id}: $e');
+    }
+  }
+
+  Future<void> _saveBenchmarkGenResult(
+      BenchmarkGenJob job, ChatStreamAccumulator acc) async {
+    try {
+      await Directory(_genOutputDir).create(recursive: true);
+      await File('$_genOutputDir/${job.id}.json').writeAsString(
+        const JsonEncoder.withIndent('  ').convert({
+          ...job.toJson(),
+          'hasResult': true,
+          'reply': acc.content,
+          'inputTokens': acc.usage.inputTokens,
+          'providerError': acc.error,
+          'providerErrorCode': acc.errorCode,
+          'providerHttpStatus': acc.providerStatus ?? job.httpStatus,
+          'configuredOutputCap': job.outputCapSent ? job.maxTokens : null,
+        }),
+        flush: true,
+      );
+      job.hasResult = true;
+    } on FileSystemException catch (e) {
+      stderr.writeln('[luma] could not save benchmark result ${job.id}: $e');
     }
   }
 }
@@ -948,6 +1054,7 @@ const _bgCss = r'''
 .bg-runs:empty{display:none}
 .bg-run{background:#12101e;border:1px solid #241e36;border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:start}
 .bg-run.is-failed{border-color:#3a2430}
+.bg-run.is-truncated{border-color:#655025}
 .bg-run.is-done{border-color:#24382b}
 .bg-run-name{font-weight:600;font-size:13.5px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .bg-run-name .badge:not(.ok):not(.warn):not(.err){background:#1f1a33;color:#b4addc}
@@ -1247,13 +1354,15 @@ const _bgScript = r'''
       const running = j.status === 'running';
       const took = elapsed((j.finishedAtMs || Date.now()) - j.startedAtMs);
       const badge = running ? '<span class="badge warn">' + esc(PHASE[j.phase] || 'Running') + '</span>'
-        : j.status === 'done' ? '<span class="badge ok">Added</span>'
+        : j.status === 'done' ? '<span class="badge ok">PASS</span>'
         : j.status === 'stopped' ? '<span class="badge">Stopped</span>'
-        : '<span class="badge err">Failed</span>';
+        : '<span class="badge ' + (j.resultStatus === 'TRUNCATED' ? 'warn' : 'err') + '">'
+          + esc(j.resultStatus || 'MODEL_ERROR') + '</span>';
       const bits = [];
-      if (j.chars) bits.push(kfmt(j.chars) + ' characters written');
+      if (j.chars) bits.push('Generated: ' + (j.outputTokens ? kfmt(j.outputTokens) + ' output tokens / ' : '') + kfmt(j.chars) + ' chars');
       else if (j.reasoningChars) bits.push(kfmt(j.reasoningChars) + ' characters of reasoning');
-      if (j.tokens) bits.push(kfmt(j.tokens) + ' tokens');
+      if (j.tokens) bits.push(kfmt(j.tokens) + ' total tokens');
+      bits.push('Output cap: ' + (j.outputCapSent === false ? 'provider default (requested ' + kfmt(j.maxTokens) + ')' : kfmt(j.maxTokens)));
       if (j.batch && running) bits.push('OpenRouter batch ' + (j.batchStatus || 'not submitted yet').replace(/_/g, ' '));
       bits.push(took);
       let pub = '';
@@ -1268,11 +1377,12 @@ const _bgScript = r'''
       if (running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="stop"' + (j.batch ? ' data-batch="1"' : '') + '>Stop</button>');
       if (j.commitUrl) actions.push('<a class="btn btn-ghost btn-sm" href="' + esc(j.commitUrl) + '" target="_blank" rel="noopener">Commit</a>');
       if (j.hasOutput) actions.push('<a class="btn btn-ghost btn-sm" href="/admin/benchmarks/generate/' + encodeURIComponent(j.id) + '/output" target="_blank" rel="noopener">Reply</a>');
+      if (j.hasResult) actions.push('<a class="btn btn-ghost btn-sm" href="/admin/benchmarks/generate/' + encodeURIComponent(j.id) + '/result" target="_blank" rel="noopener">Raw result</a>');
       if (j.batch && j.batchId && (j.status === 'failed' || j.status === 'stopped')) {
         actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="recheck" title="The batch may still be running at OpenRouter: wait for it again">Check again</button>');
       }
       if (!running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="dismiss" aria-label="Dismiss this run">Dismiss</button>');
-      return '<div class="bg-run is-' + esc(j.status) + '" data-id="' + esc(j.id) + '">'
+      return '<div class="bg-run is-' + esc(j.resultStatus === 'TRUNCATED' ? 'truncated' : j.status) + '" data-id="' + esc(j.id) + '">'
         + '<div><div class="bg-run-name">' + esc(j.name) + ' <span class="badge">' + esc(j.kindLabel) + '</span>'
         + (j.batch ? '<span class="badge">Batch</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + esc(j.upstreamLabel) + ' · <code>' + esc(j.model) + '</code>'
@@ -1281,6 +1391,10 @@ const _bgScript = r'''
         + '<div class="bg-run-actions">' + actions.join('') + '</div>'
         + (running ? '<div class="bg-bar" role="progressbar" aria-label="' + esc(j.name) + ' is running"></div>' : '')
         + '<div class="bg-run-line">' + esc(bits.join(' · ') + pub) + '</div>'
+        + (j.resultReason ? '<div class="bg-run-line">Reason: ' + esc(j.resultReason) + '</div>' : '')
+        + (j.validation ? '<div class="bg-run-line">Validation: ' + esc(j.validation) + '</div>' : '')
+        + (!running ? '<div class="bg-run-line">Finish reason: ' + esc(j.finishReason || 'Unknown')
+          + (j.nativeFinishReason ? ' · Provider finish reason: ' + esc(j.nativeFinishReason) : '') + '</div>' : '')
         + (j.error ? '<div class="bg-run-err">' + esc(j.error) + '</div>' : '')
         + '</div>';
     }).join('');

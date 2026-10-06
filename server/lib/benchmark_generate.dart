@@ -68,10 +68,83 @@ int? _pageStart(String s) {
   return m?.start;
 }
 
-/// Whether [page] ends with its closing tag. A page cut off by the token
-/// limit doesn't.
+/// Whether [page] ends with its closing tag. This validation alone cannot
+/// establish why an incomplete response ended.
 bool benchmarkHtmlComplete(String page) =>
     page.toLowerCase().trimRight().endsWith('</html>');
+
+typedef BenchmarkGenerationResult = ({
+  String status,
+  String reason,
+  String validation
+});
+
+BenchmarkGenerationResult benchmarkGenerationResult({
+  required String reply,
+  String? finishReason,
+  String? nativeFinishReason,
+  int? httpStatus,
+  String? error,
+}) {
+  final page = extractBenchmarkHtml(reply);
+  final validation = page == null
+      ? 'No HTML page'
+      : benchmarkHtmlComplete(page)
+          ? 'Closing </html> present'
+          : 'Missing closing </html>';
+  final finish = finishReason?.trim().toUpperCase();
+  const limits = {'LENGTH', 'MAX_TOKENS', 'MAX_OUTPUT_TOKENS'};
+  if (limits.contains(finish) ||
+      limits.contains(nativeFinishReason?.trim().toUpperCase())) {
+    return (
+      status: 'TRUNCATED',
+      reason: 'Output limit reached',
+      validation: validation
+    );
+  }
+  if (httpStatus == 429) {
+    return (
+      status: 'RATE_LIMITED',
+      reason: error ?? 'Provider rate limit reached',
+      validation: validation
+    );
+  }
+  if (httpStatus == 503 || httpStatus == 502 || httpStatus == 529) {
+    return (
+      status: 'PROVIDER_BUSY',
+      reason: error ?? 'Provider temporarily unavailable',
+      validation: validation
+    );
+  }
+  if (error != null || (httpStatus != null && httpStatus != 200)) {
+    return (
+      status: 'MODEL_ERROR',
+      reason: error ?? 'Provider returned HTTP $httpStatus',
+      validation: validation
+    );
+  }
+  if (page == null || !benchmarkHtmlComplete(page)) {
+    return (
+      status: 'INVALID_OUTPUT',
+      reason: finishReason == null
+          ? 'Incomplete or invalid HTML; termination cause unknown'
+          : 'Incomplete or invalid HTML',
+      validation: validation,
+    );
+  }
+  if (finish != null && finish != 'STOP') {
+    return (
+      status: 'MODEL_ERROR',
+      reason: 'Provider ended generation: $finishReason',
+      validation: validation
+    );
+  }
+  return (
+    status: 'PASS',
+    reason: 'HTML completion checks passed',
+    validation: validation
+  );
+}
 
 /// The roster name for [modelName] at [effort]: OpenRouter's
 /// "Anthropic: Claude Sonnet 5.5" loses its company prefix (the vendor badge
@@ -136,9 +209,12 @@ class ChatStreamAccumulator {
   final StringBuffer _content = StringBuffer();
   int reasoningChars = 0;
   String? finishReason;
+  String? nativeFinishReason;
   AiCallUsage usage = const AiCallUsage();
   int get tokens => usage.totalTokens;
   String? error;
+  int? errorCode;
+  int? providerStatus;
   bool done = false;
 
   String get content => _content.toString();
@@ -162,12 +238,14 @@ class ChatStreamAccumulator {
     final err = chunk['error'];
     if (err is Map) {
       error = '${err['message'] ?? err['code'] ?? 'Upstream error'}';
+      errorCode = int.tryParse('${err['code']}');
     } else if (err is String) {
       error = err;
     }
     if (chunk['usage'] is Map || chunk['usageMetadata'] is Map) {
       usage = AiCallUsage.parse(data);
     }
+    _addGoogleCandidates(chunk);
     final choices = chunk['choices'];
     if (choices is! List || choices.isEmpty || choices.first is! Map) return;
     final choice = choices.first as Map;
@@ -180,7 +258,11 @@ class ChatStreamAccumulator {
         if (r is String) reasoningChars += r.length;
       }
     }
-    final reason = choice['finish_reason'];
+    if (choice['native_finish_reason'] is String)
+      nativeFinishReason = choice['native_finish_reason'] as String;
+    final reason = choice['finish_reason'] ??
+        choice['finishReason'] ??
+        choice['native_finish_reason'];
     if (reason is String && reason.isNotEmpty) finishReason = reason;
   }
 
@@ -190,10 +272,13 @@ class ChatStreamAccumulator {
     final err = body['error'];
     if (err is Map) {
       error = '${err['message'] ?? err['code'] ?? 'Upstream error'}';
+      errorCode = int.tryParse('${err['code']}');
     } else if (err is String) {
       error = err;
     }
-    if (body['usage'] is Map) usage = AiCallUsage.parse(jsonEncode(body));
+    if (body['usage'] is Map || body['usageMetadata'] is Map)
+      usage = AiCallUsage.parse(jsonEncode(body));
+    _addGoogleCandidates(body);
     final choices = body['choices'];
     if (choices is List && choices.isNotEmpty && choices.first is Map) {
       final choice = choices.first as Map;
@@ -206,10 +291,36 @@ class ChatStreamAccumulator {
           if (r is String) reasoningChars += r.length;
         }
       }
-      final reason = choice['finish_reason'];
+      if (choice['native_finish_reason'] is String)
+        nativeFinishReason = choice['native_finish_reason'] as String;
+      final reason = choice['finish_reason'] ??
+          choice['finishReason'] ??
+          choice['native_finish_reason'];
       if (reason is String && reason.isNotEmpty) finishReason = reason;
     }
     done = true;
+  }
+
+  void _addGoogleCandidates(Map body) {
+    if (body['choices'] is List && (body['choices'] as List).isNotEmpty) return;
+    final candidates = body['candidates'];
+    if (candidates is! List || candidates.isEmpty || candidates.first is! Map)
+      return;
+    final candidate = candidates.first as Map;
+    final reason = candidate['finishReason'];
+    if (reason is String && reason.isNotEmpty) finishReason = reason;
+    final content = candidate['content'];
+    final parts = content is Map ? content['parts'] : null;
+    if (parts is! List) return;
+    for (final part in parts) {
+      if (part is! Map || part['text'] is! String) continue;
+      final text = part['text'] as String;
+      if (part['thought'] == true) {
+        reasoningChars += text.length;
+      } else {
+        _content.write(text);
+      }
+    }
   }
 }
 
@@ -240,6 +351,7 @@ const kBenchmarkBatchTerminal = {'completed', 'failed', 'expired', 'cancelled'};
 String? readBenchmarkBatch(Map batch, ChatStreamAccumulator acc) {
   String? message(Object? err) {
     if (err is Map) {
+      acc.errorCode ??= int.tryParse('${err['code']}');
       final m = err['message'] ?? err['code'];
       return m == null ? null : '$m';
     }
@@ -272,6 +384,7 @@ String? readBenchmarkBatch(Map batch, ChatStreamAccumulator acc) {
   final body = response is Map ? response['body'] : null;
   if (body is! Map) return 'The batch result holds no response.';
   final code = response is Map ? response['status_code'] : null;
+  acc.providerStatus = code is num ? code.toInt() : null;
   if (code is num && code != 200) {
     return 'HTTP ${code.toInt()}${message(body['error']) == null ? '' : ': ${message(body['error'])}'}';
   }

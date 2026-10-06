@@ -17,6 +17,8 @@ import 'app/window_controls.dart';
 import 'features/chat/data/chat_database.dart';
 import 'features/chat/data/chat_repository.dart';
 import 'features/chat/chat_scope.dart';
+import 'features/chat/memory/assistant_memory_repository.dart';
+import 'features/chat/memory/assistant_memory_scope.dart';
 import 'features/plugins/installed/audio_tools/audio_tools_repository.dart';
 import 'features/plugins/installed/audio_tools/audio_tools_scope.dart';
 import 'features/plugins/installed/auto_clicker/auto_clicker_repository.dart';
@@ -244,6 +246,8 @@ class _LumaAppState extends State<LumaApp> {
   );
   late final AiWorkbenchRepository _aiWorkbenchRepository =
       AiWorkbenchRepository();
+  late final AssistantMemoryRepository _assistantMemoryRepository =
+      AssistantMemoryRepository();
   // Per-device usage totals, shared through the server only on open and on
   // close rather than the collection loop — see AiUsageCloudSync.
   late final AiUsageCloudSync _aiUsageCloudSync = AiUsageCloudSync(
@@ -364,6 +368,17 @@ class _LumaAppState extends State<LumaApp> {
         listenable: widget.settings,
         exporter: () async => widget.settings.exportData(),
         importer: (data) => widget.settings.importData(data),
+      ),
+      // Automatic too: the assistant's memory, profile and chat preferences
+      // follow the account on every plan, Core included. Its blob still
+      // counts toward the plan's server storage quota.
+      JsonStoreSyncCollection(
+        id: kAssistantMemoryCollectionId,
+        label: 'Assistant memory',
+        icon: Icons.psychology_rounded,
+        listenable: _assistantMemoryRepository,
+        exporter: _assistantMemoryRepository.exportData,
+        importer: _assistantMemoryRepository.importData,
       ),
       JsonStoreSyncCollection(
         id: 'notes',
@@ -756,6 +771,7 @@ class _LumaAppState extends State<LumaApp> {
     _spotifyRepository.dispose();
     _freeSketchRepository.dispose();
     _smartHomeRepository.dispose();
+    _assistantMemoryRepository.dispose();
     super.dispose();
   }
 
@@ -784,7 +800,9 @@ class _LumaAppState extends State<LumaApp> {
 
   @override
   Widget build(BuildContext context) {
-    return PetScope(
+    return AssistantMemoryScope(
+      repository: _assistantMemoryRepository,
+      child: PetScope(
       repository: _petRepository,
       child: StorageGuardScope(
         service: _storageGuard,
@@ -993,7 +1011,7 @@ class _LumaAppState extends State<LumaApp> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
