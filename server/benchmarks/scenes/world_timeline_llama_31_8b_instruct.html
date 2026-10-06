@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>SVG Animation Benchmark: A Timeline of the World</title>
+	<style>
+		/* Global Styles */
+		* {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+		}
+		body, html {
+			margin: 0;
+			padding: 0;
+			background-color: #f2f2f2;
+			font-family: sans-serif;
+			overflow: hidden;
+		}
+		
+		/* Main SVG Styles */
+		#main-svg {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			pointer-events: none;
+		}
+		
+		/* Timeline Styles */
+		#timeline {
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			height: 30px;
+			background-color: #333;
+			color: #fff;
+			line-height: 30px;
+			text-align: center;
+		}
+		
+		#timeline .era-band {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 0;
+			height: 30px;
+			background-color: #666;
+			transition: width 0.5s;
+		}
+		
+		#timeline .era-band::after {
+			content: "";
+			position: absolute;
+			top: -1px;
+			left: 0;
+			width: 100%;
+			height: 2px;
+			background-color: #fff;
+		}
+		
+		#timeline .chapter-marker {
+			position: absolute;
+			top: 0;
+			left: 0;
+			height: 30px;
+			width: 20px;
+			background-color: #f2f2f2;
+			border: 1px solid #333;
+			cursor: pointer;
+		}
+		
+		#timeline .chapter-marker::after {
+			content: attr(data-date);
+			position: absolute;
+			top: -20px;
+			left: 50%;
+			margin-left: -100px;
+			width: 200px;
+			font-size: 14px;
+			color: #666;
+			background-color: #f2f2f2;
+			padding: 10px;
+		}
+		
+		#playhead {
+			position: absolute;
+			bottom: 0;
+			left: 50%;
+			margin-left: -10px;
+			width: 20px;
+			height: 20px;
+			background-color: #f2f2f2;
+			border: 1px solid #333;
+			border-radius: 50%;
+			cursor: pointer;
+		}
+		
+		#playhead::after {
+			content: "";
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			margin-top: -10px;
+			margin-left: -10px;
+			width: 20px;
+			height: 20px;
+			background-color: #fff;
+			border-radius: 50%;
+		}
+		
+		.controls {
+			position: absolute;
+			top: 10px;
+			right: 10px;
+			z-index: 1;
+		}
+		
+		.controls button {
+			background-color: #333;
+			color: #fff;
+			border: none;
+			padding: 10px 20px;
+			font-size: 16px;
+			cursor: pointer;
+		}
+		
+		.controls button:hover {
+			background-color: #666;
+		}
+		
+		.controls .speed {
+			position: absolute;
+			top: 50px;
+			right: 10px;
+			z-index: 1;
+		}
+		
+		.controls .speed button {
+			background-color: #333;
+			color: #fff;
+			border: none;
+			padding: 10px 20px;
+			font-size: 16px;
+			cursor: pointer;
+		}
+		
+		.controls .speed button:hover {
+			background-color: #666;
+		}
+		
+		/* Keyboard Accessibility */
+		.keypress {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			z-index: 1;
+		}
+		
+		.keypress::after {
+			content: "Space to play/pause, Arrow keys to navigate";
+			position: relative;
+			font-size: 14px;
+		}
+	</style>
+</head>
+<body>
+	<div class="controls">
+		<button id="play-pause">Play</button>
+		<button id="restart">Restart</button>
+		<button class="speed" id="slow-speed">0.5x</button>
+		<button class="speed active" id="normal-speed">1x</button>
+		<button class="speed" id="fast-speed">2x</button>
+	</div>
+	<div class="keypress">Press Space to play/pause, Arrow keys to navigate</div>
+	<svg id="main-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+	<path id="earth" d="M-1200,-300 a1800,1800 0 0,1 3600,0 a1800,1800 0 0,1 -3600,0 z" fill="#666"/>
+	<path id="oceans" d="M-1200,-300 a1800,1800 0 0,1 3600,0 a1800,1800 0 0,1 -3600,0 z" fill="#456"/>
+	<path id="landscape" d="M-1200,-300 a1800,1800 0 0,1 3600,0 a1800,1800 0 0,1 -3600,0 z" fill="#fff"/>
+	<animate id="earth-animate" attributeType="XML" attributeName="d" from="M-1200,-300 a1800,1800 0 0,1 3600,0 a1800,1800 0 0,1 -3600,0 z" to="M0,0 a2000,2000 0 0,1 4000,0 a2000,2000 0 0,1 -4000,0 z" dur="30000ms" repeatCount="indefinite"/>
+	<animate id="oceans-animate" attributeType="XML" attributeName="d" from="M-1200,-300 a1800,1800 0 0,1 3600,0 a1800,1800 0 0,1 -3600,0 z" to="M-300,-150 a1000,1000 0 0,1 3000,0 a1000,1000 0 0,1 -3000,0 z" dur="30000ms" repeatCount="indefinite"/>
+	<animate id="landscape-animate" attributeType="XML" attributeName="d" from="M-1200,-300 a1800,1800 0 0,1 3600,0 a1800,1800 0 0,1 -3600,0 z" to="M200,-300 a500,500 0 0,1 1500,0 a500,500 0 0,1 -1500,0 z" dur="30000ms" repeatCount="indefinite"/>
+	<g id="life" transform="translate(400,400)">
+		<circle id="stromatolites" cx="0" cy="0" r="10" fill="#66a"/>
+		<animateMotion id="stromatolites-animate" dur="50000ms" repeatCount="indefinite" calcMode="linear" keyPoints="0 0 400 100 700 0 1000 100 1300 0 1500 100 1700 0 1900 100 2100 0" keySplines="0.5 0 0.5 1 0.5 1 0.5 0"/>
+	</g>
+	<g id="life-2" transform="translate(600,500)">
+		<path id="dinosaurs" d="M0,-10 a10,10 0 1,1 20,0 a10,10 0 1,1 -20,0 z" fill="#b33"/>
+		<animateMotion id="dinosaurs-animate" dur="50000ms" repeatCount="indefinite" calcMode="linear" keyPoints="0 0 1000 0"/>
+	</g>
+	<g id="life-3" transform="translate(600,300)">
+		<path id="mammals" d="M0,-10 a10,10 0 1,1 20,0 a10,10 0 1,1 -20,0 z" fill="#666"/>
+		<animateMotion id="mammals-animate" dur="50000ms" repeatCount="indefinite" calcMode="linear" keyPoints="0 0 1000 0"/>
+	</g>
+	<g id="life-4" transform="translate(200,200)">
+		<path id="humans" d="M0,-10 a10,10 0 1,1 20,0 a10,10 0 1,1 -20,0 z" fill="#fff"/>
+		<animateMotion id="humans-animate" dur="50000ms" repeatCount="indefinite" calcMode="linear" keyPoints="0 0 1000 0"/>
+	</g>
+	<g id="ui" transform="translate(0,0)">
+		<line id="timeline" x1="0" x2="800" y1="600" y2="570" stroke="#fff" stroke-width="2"/>
+		<rect id="era-band-1" x="0" y="570" width="200" height="30" fill="#666"/>
+		<text id="era-label-1" x="100" y="580" fill="#fff">Hadean</text>
+		<rect id="era-band-2" x="200" y="570" width="200" height="30" fill="#666"/>
+		<text id="era-label-2" x="300" y="580" fill="#fff">Archean</text>
+		<rect id="era-band-3" x="400" y="570" width="200" height="30" fill="#666"/>
+		<text id="era-label-3" x="500" y="580" fill="#fff">Proterozoic</text>
+		<rect id="era-band-4" x="600" y="570" width="200" height="30" fill="#666"/>
+		<text id="era-label-4" x="700" y="580" fill="#fff">Paleozoic</text>
+		<rect id="era-band-5" x="800" y="570" width="200" height="30" fill="#666"/>
+		<text id="era-label-5" x="900" y="580" fill="#fff">Mesozoic</text>
+		<rect id="era-band-6" x="0" y="500" width="200" height="30" fill="#666"/>
+		<text id="era-label-6" x="100" y="510" fill="#fff">Cenozoic</text>
+		<line id="playhead" x1="0" x2="0" y1="570" y2="570" stroke="#fff" stroke-width="2"/>
+		<g id="playhead-text">
+			<text x="10" y="570" fill="#fff">4.54 billion years ago</text>
+		</g>
+	</g>
+	<script>
+		// Get all the elements we need
+		var earth = document.getElementById("earth");
+		var oceans = document.getElementById("oceans");
+		var landscape = document.getElementById("landscape");
+		var stromatolites = document.getElementById("stromatolites");
+		var dinosaurs = document.getElementById("dinosaurs");
+		var mammals = document.getElementById("mammals");
+		var humans = document.getElementById("humans");
+		var timeline = document.getElementById("timeline");
+		var eraBand1 = document.getElementById("era-band-1");
+		var eraLabel1 = document.getElementById("era-label-1");
+		var eraBand2 = document.getElementById("era-band-2");
+		var eraLabel2 = document.getElementById("era-label-2");
+		var eraBand3 = document.getElementById("era-band-3");
+		var eraLabel3 = document.getElementById("era-label-3");
+		var eraBand4 = document.getElementById("era-band-4");
+		var eraLabel4 = document.getElementById("era-label-4");
+		var eraBand5 = document.getElementById("era-band-5");
+		var eraLabel5 = document.getElementById("era-label-5");
+		var eraBand6 = document.getElementById("era-band-6");
+		var eraLabel6 = document.getElementById("era-label-6");
+		var playhead = document.getElementById("playhead");
+		var playheadText = document.getElementById("playhead-text");
+		var controls = document.getElementById("controls");
+		var playPauseButton = document.getElementById("play-pause");
+		var restartButton = document.getElementById("restart");
+		var speedButtons = document.querySelectorAll(".speed");
+		var speed = "normal-speed";
+		var playing = false;
+		var playheadX = 0;
+		
+		// Set up event listeners
+		playPauseButton.addEventListener("click", function() {
+			if (playing) {
+				stromatolitesAnimate.pause();
+				dinosaursAnimate.pause();
+				mammalsAnimate.pause();
+				humansAnimate.pause();
+				playhead.animate({
+					x: playheadX
+				}, 0);
+				playing = false;
+			} else {
+				stromatolitesAnimate.play();
+				dinosaursAnimate.play();
+				mammalsAnimate.play();
+				humansAnimate.play();
+				playing = true;
+			}
+		});
+		
+		restartButton.addEventListener("click", function() {
+			stromatolitesAnimate.currentTime = 0;
+			dinosaursAnimate.currentTime = 0;
+			mammalsAnimate.currentTime = 0;
+			humansAnimate.currentTime = 0;
+			stromatolites.animate({
+				x: 0
+			}, 0);
+			dinosaurs.animate({
+				x: 0
+			}, 0);
+			mammals.animate({
+				x: 0
+			}, 0);
+			humans.animate({
+				x: 0
+			}, 0);
+			playing = false;
+		});
+		
+		for (var i = 0; i < speedButtons.length; i++) {
+			speedButtons[i].addEventListener("click", function() {
+				for (var j = 0; j < speedButtons.length; j++) {
+					speedButtons[j].classList.remove("active");
+				}
+				this.classList.add("active");
+				speed = this.id;
+				switch (speed) {
+					case "slow-speed":
+						stromatolitesAnimate.playbackRate = 0.5;
+						dinosaursAnimate.playbackRate = 0.5;
+						mammalsAnimate.playbackRate = 0.5;
+						humansAnimate.playbackRate = 0.5;
+						break;
+					case "normal-speed":
+						stromatolitesAnimate.playbackRate = 1;
+						dinosaursAnimate.playbackRate = 1;
+						mammalsAnimate.playbackRate = 1;
+						humansAnimate.playbackRate = 1;
+						break;
+					case "fast-speed":
+						stromatolitesAnimate.playbackRate = 2;
+						dinosaursAnimate.playbackRate = 2;
+						mammalsAnimate.playbackRate = 2;
+						humansAnimate.playbackRate = 2;
+						break;
+				}
+			});
+		}
+		
+		// Set up animation controllers
+		var stromatolitesAnimate = earth.animate([
+			{
+				transform: "translate(0,0)"
+			},
+			{
+				transform: "translate(400,100)"
+			}
+		], {
+			duration: 50000,
+			easing: "linear",
+			fill: "forwards"
+		});
+		
+		var dinosaursAnimate = earth.animate([
+			{
+				transform: "translate(0,0)"
+			},
+			{
+				transform: "translate(800,0)"
+			}
+		], {
+		(duration: 50000,
+			easing: "linear",
+			fill: "forwards"
+		});
+		
+		var mammalsAnimate = earth.animate([
+			{
+			transform: "translate(0,0)"
+			},
+			{
+				transform: "translate(800,0)"
+			}
+		], {
+			duration: 50000,
+			easing: "linear",
+			fill: "forwards"
+		});
+		
+		var humansAnimate = earth.animate([
+			{
+				transform: "translate(0,0)"
+			},
+			{
+				transform: "translate(800,0)"
+			}
+		], {
+			duration: 50000,
+			easing: "linear",
+			fill: "forwards"
+		});
+		
+		// Set up event listeners for playhead movement
+		controls.addEventListener("mousedown", function(e) {
+			e.preventDefault();
+			var playheadRect = playhead.getBoundingClientRect();
+			var playheadX = e.clientX - playheadRect.left;
+			document.addEventListener("mousemove", function(e) {
+				e.preventDefault();
+				var playheadRect = playhead.getBoundingClientRect();
+				playheadX = e.clientX - playheadRect.left;
+				updatePlayheadState();
+			});
+			document.addEventListener("mouseup", function() {
+				document.removeEventListener("mousemove", arguments.callee);
+				document.removeEventListener("mouseup", arguments.callee);
+			});
+		});
+		
+		function updatePlayheadState() {
+			playhead.animate({
+				x: playheadX
+			}, 0);
+			playheadX += 0.5;
+			if (playheadX < 0) {
+				playheadX = 0;
+			} else if (playheadX > 800) {
+				playheadX = 800;
+			}
+			var percentage = (playheadX / 800) * 100;
+			var era = 0;
+			if (percentage < 20) {
+				era = 1;
+			} else if (percentage < 40) {
+				era = 2;
+			} else if (percentage < 60) {
+				era = 3;
+			} else if (percentage < 80) {
+				era = 4;
+			} else if (percentage < 100) {
+				era = 5;
+			}
+			switch (era) {
+				case 1:
+					eraBand1.style.width = "200px";
+					eraBand2.style.width = "0px";
+					eraBand3.style.width = "0px";
+					eraBand4.style.width = "0px";
+					eraBand5.style.width = "0px";
+					eraLabel1.style.opacity = "1";
+					eraLabel2.style.opacity = "0";
+					eraLabel3.style.opacity = "0";
+					eraLabel4.style.opacity = "0";
+					eraLabel5.style.opacity = "0";
+					break;
+				case 2:
+					eraBand2.style.width = "200px";
+					eraBand1.style.width = "0px";
+					eraBand3.style.width = "0px";
+					eraBand4.style.width = "0px";
+					eraBand5.style.width = "0px";
+					eraLabel2.style.opacity = "1";
+					eraLabel1.style.opacity = "0";
+					eraLabel3.style.opacity = "0";
+					eraLabel4.style.opacity = "0";
+					eraLabel5.style.opacity = "0";
+					break;
+				case 3:
+					eraBand3.style.width = "200px";
+					eraBand2.style.width = "0px";
+					eraBand1.style.width = "0px";
+					eraBand4.style.width = "0px";
+					eraBand5.style.width = "0px";
+					eraLabel3.style.opacity = "1";
+					eraLabel2.style.opacity = "0";
+					eraLabel1.style.opacity = "0";
+					eraLabel4.style.opacity = "0";
+					eraLabel5.style.opacity = "0";
+					break;
+				case 4:
+					eraBand4.style.width = "200px";
+					eraBand3.style.width = "0px";
+					eraBand2.style.width = "0px";
+					eraBand1.style.width = "0px";
+					eraBand5.style.width = "0px";
+					eraLabel4.style.opacity = "1";
+					eraLabel3.style.opacity = "0";
+					eraLabel2.style.opacity = "0";
+					eraLabel1.style.opacity = "0";
+					eraLabel5.style.opacity = "0";
+					break;
+				case 5:
+					eraBand5.style.width = "200px";
+					eraBand4.style.width = "0px";
+					eraBand3.style.width = "0px";
+					eraBand2.style.width = "0px";
+					eraBand1.style.width = "0px";
+					eraLabel5.style.opacity = "1";
+					eraLabel4.style.opacity = "0";
+					eraLabel3.style.opacity = "0";
+					eraLabel2.style.opacity = "0";
+					eraLabel1.style.opacity = "0";
+					break;
+			}
+		}
+		
+		// Start the animation
+		stromatolitesAnimate.play();
+		dinosaursAnimate.play();
+		mammalsAnimate.play();
+		humansAnimate.play();
+		updatePlayheadState();
+		
+		// Request the next animation frame
+		function requestAnimationFrame() {
+			requestAnimationFrame(arguments.callee);
+			if (playing) {
+				stromatolitesAnimate.playbackRate = 1;
+				dinosaursAnimate.playbackRate = 1;
+				mammalsAnimate.playbackRate = 1;
+				humansAnimate.playbackRate = 1;
+				var currentTime = stromatolitesAnimate.currentTime;
+				if (currentTime > stromatolitesAnimate.duration) {
+					stromatolitesAnimate.currentTime = 0;
+					dinosaursAnimate.currentTime = 0;
+					mammalsAnimate.currentTime = 0;
+					humansAnimate.currentTime = 0;
+				}
+				updatePlayheadState();
+			}
+		}
+		requestAnimationFrame();
+	</script>
+</body>
+</html>
