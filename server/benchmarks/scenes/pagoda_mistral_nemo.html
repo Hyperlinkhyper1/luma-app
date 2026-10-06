@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      text-align: center;
+      color: white;
+      font-size: 20px;
+      pointer-events: none;
+    }
+    #timeOfDaySlider {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: 200px;
+    }
+    #pauseButton {
+      position: absolute;
+      top: 10px;
+      left: 220px;
+    }
+  </style>
+</head>
+<body>
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const colors = {
+      vermillion: 0xC73E1D,
+      gold: 0xE8B86D,
+      deepTeak: 0x4A2C1A,
+      jade: 0x2D6A4F,
+      jadeLight: 0x40916C,
+      sakura: 0xFFB7C5,
+      sakuraLight: 0xFF8FAB,
+      sakuraLightest: 0xFFE5EC,
+      stone: 0x9AA0A6,
+      pond: 0x7ED6DF,
+      moss: 0x606C38,
+    };
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    const voxelCount = () => scene.children.filter(child => child.type === 'InstancedMesh').reduce((acc, child) => acc + child.count, 0);
+    const fps = () => Math.round(1000 / performance.now() - performance.now());
+    let pagodaFloors = 0;
+    let timeOfDay = 0;
+
+    const generateVoxel = (geometry, material, count) => {
+      const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+      scene.add(instancedMesh);
+      return instancedMesh;
+    };
+
+    const generatePagoda = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const materials = [
+        new THREE.MeshStandardMaterial({ color: colors.vermillion }),
+        new THREE.MeshStandardMaterial({ color: colors.gold }),
+        new THREE.MeshStandardMaterial({ color: colors.jade }),
+        new THREE.MeshStandardMaterial({ color: colors.jadeLight }),
+        new THREE.MeshStandardMaterial({ color: colors.deepTeak }),
+      ];
+
+      const floors = 5;
+      let y = 0;
+      for (let i = 0; i < floors; i++) {
+        const count = Math.floor(Math.pow(2, i)) * 100;
+        const instancedMesh = generateVoxel(geometry, materials[i], count);
+        instancedMesh.position.y = y;
+        y += count * geometry.parameters.height;
+        pagodaFloors = floors;
+      }
+
+      const doorsGeometry = new THREE.BoxGeometry(1, 2, 1);
+      const doorsMaterial = new THREE.MeshStandardMaterial({ color: colors.deepTeak });
+      const doors = [];
+      for (let i = 0; i < floors; i++) {
+        const instancedMesh = generateVoxel(doorsGeometry, doorsMaterial, 2);
+        instancedMesh.position.y = y - (geometry.parameters.height * count) / 2;
+        instancedMesh.position.z = -1;
+        doors.push(instancedMesh);
+      }
+
+      return doors;
+    };
+
+    const generateTerrain = () => {
+      const geometry = new THREE.BoxGeometry(64, 1, 64);
+      const material = new THREE.MeshStandardMaterial({ color: colors.stone });
+      const instancedMesh = generateVoxel(geometry, material, 1);
+      instancedMesh.position.y = -32;
+    };
+
+    const generatePond = () => {
+      const geometry = new THREE.BoxGeometry(20, 1, 20);
+      const material = new THREE.MeshStandardMaterial({ color: colors.pond });
+      const instancedMesh = generateVoxel(geometry, material, 1);
+      instancedMesh.position.y = -30.5;
+    };
+
+    const generateLanterns = () => {
+      const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: colors.gold });
+      const lights = [];
+      for (let i = 0; i < 4; i++) {
+        const instancedMesh = generateVoxel(geometry, material, 1);
+        instancedMesh.position.set(-15 + i * 5, 0, -15);
+        const light = new THREE.PointLight(0xffffff, 1, 10);
+        light.position.copy(instancedMesh.position);
+        scene.add(light);
+        lights.push({ instancedMesh, light });
+      }
+      return lights;
+    };
+
+    const generateKoi = () => {
+      const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: colors.gold });
+      const instancedMesh = generateVoxel(geometry, material, 6);
+      instancedMesh.position.y = -30.5;
+      return instancedMesh;
+    };
+
+    const generateTrees = () => {
+      const geometries = [
+        new THREE.BoxGeometry(1, 2, 1),
+        new THREE.BoxGeometry(1, 3, 1),
+        new THREE.BoxGeometry(1, 4, 1),
+        new THREE.BoxGeometry(1, 5, 1),
+        new THREE.BoxGeometry(1, 6, 1),
+      ];
+      const materials = [
+        new THREE.MeshStandardMaterial({ color: colors.sakura }),
+        new THREE.MeshStandardMaterial({ color: colors.sakuraLight }),
+        new THREE.MeshStandardMaterial({ color: colors.sakuraLightest }),
+        new THREE.MeshStandardMaterial({ color: colors.sakura }),
+        new THREE.MeshStandardMaterial({ color: colors.sakura }),
+      ];
+      const trees = [];
+      for (let i = 0; i < 3; i++) {
+        const instancedMesh = generateVoxel(geometries[i], materials[i], 1);
+        instancedMesh.position.set(-10 + i * 5, 0, -20);
+        trees.push(instancedMesh);
+      }
+      for (let i = 3; i < 5; i++) {
+        const instancedMesh = generateVoxel(geometries[i], materials[i], 1);
+        instancedMesh.position.set(-10 + (i - 3) * 5, 0, -10);
+        trees.push(instancedMesh);
+      }
+      const willowGeometry = new THREE.BoxGeometry(1, 7, 1);
+      const willowMaterial = new THREE.MeshStandardMaterial({ color: colors.sakuraLightest });
+      const willow = generateVoxel(willowGeometry, willowMaterial, 1);
+      willow.position.set(5, 0, -10);
+      trees.push(willow);
+      return trees;
+    };
+
+    const generateSakuraPetals = () => {
+      const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+      const material = new THREE.MeshStandardMaterial({ color: colors.sakuraLightest });
+      const instancedMesh = generateVoxel(geometry, material, 1000);
+      instancedMesh.position.y = -30.5;
+      return instancedMesh;
+    };
+
+    const generateTorii = () => {
+      const geometry = new THREE.BoxGeometry(5, 3, 1);
+      const material = new THREE.MeshStandardMaterial({ color: colors.vermillion });
+      const instancedMesh = generateVoxel(geometry, material, 2);
+      instancedMesh.position.set(0, 1.5, -25);
+      instancedMesh.rotation.y = Math.PI / 2;
+    };
+
+    const generateBambooFence = () => {
+      const geometry = new THREE.BoxGeometry(1, 2, 1);
+      const material = new THREE.MeshStandardMaterial({ color: colors.moss });
+      const instancedMesh = generateVoxel(geometry, material, 10);
+      instancedMesh.position.set(0, 1, -23);
+      instancedMesh.rotation.y = Math.PI / 2;
+    };
+
+    const generateJizo = () => {
+      const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: colors.stone });
+      const instancedMesh = generateVoxel(geometry, material, 2);
+      instancedMesh.position.set(-5, 0, -20);
+      const hatGeometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+      const hatMaterial = new THREE.MeshStandardMaterial({ color: colors.moss });
+      const hat = generateVoxel(hatGeometry, hatMaterial, 1);
+      hat.position.y = 1;
+      hat.position.z = -0.5;
+      instancedMesh.add(hat);
+      return instancedMesh;
+    };
+
+    const generateFlowers = () => {
+      const geometry = new THREE.SphereGeometry(0.2, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: colors.sakuraLightest });
+      const instancedMesh = generateVoxel(geometry, material, 40);
+      instancedMesh.position.y = -30.5;
+      return instancedMesh;
+    };
+
+    const generateWaterfall = () => {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const material = new THREE.MeshStandardMaterial({ color: colors.pond });
+      const instancedMesh = generateVoxel(geometry, material, 1000);
+      instancedMesh.position.y = -30.5;
+      instancedMesh.position.x = 10;
+      instancedMesh.rotation.y = Math.PI / 2;
+      return instancedMesh;
+    };
+
+    const generateFlyingIslands = () => {
+      const geometry = new THREE.BoxGeometry(5, 1, 5);
+      const material = new THREE.MeshStandardMaterial({ color: colors.stone });
+      const instancedMesh = generateVoxel(geometry, material, 1);
+      instancedMesh.position.y = 10;
+      instancedMesh.position.x = 5;
+      return instancedMesh;
+    };
+
+    const generateBirds = () => {
+      const geometry = new THREE.SphereGeometry(0.5, 32, 32);
+      const material = new THREE.MeshStandardMaterial({ color: colors.gold });
+      const instancedMesh = generateVoxel(geometry, material, 10);
+      instancedMesh.position.y = 15;
+      return instancedMesh;
+    };
+
+    const doors = generatePagoda();
+    generateTerrain();
+    generatePond();
+    const lanterns = generateLanterns();
+    const koi = generateKoi();
+    const trees = generateTrees();
+    const sakuraPetals = generateSakuraPetals();
+    generateTorii();
+    generateBambooFence();
+    const jizo = generateJizo();
+    generateFlowers();
+    const waterfall = generateWaterfall();
+    generateFlyingIslands();
+    const birds = generateBirds();
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
+
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+    scene.add(hemisphereLight);
+
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = true;
+    renderer.shadowMap.needsUpdate = true;
+
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+
+    camera.position.z = 50;
+    camera.position.y = 10;
+
+    const clock = new THREE.Clock();
+    let lastTime = performance.now();
+    let lastFpsUpdate = performance.now();
+    let lastVoxelCount = voxelCount();
+    let lastTimeOfDayUpdate = performance.now();
+
+    const animate = () => {
+      const now = performance.now();
+      const delta = now - lastTime;
+      lastTime = now;
+
+      timeOfDay = (clock.getElapsedTime() * 0.5) % 1;
+      directionalLight.position.x = Math.cos(timeOfDay * Math.PI * 2) * 10;
+      directionalLight.position.y = Math.sin(timeOfDay * Math.PI * 2) * 10 + 5;
+      directionalLight.position.z = 10;
+      hemisphereLight.color.lerp(new THREE.Color(`hsl(${timeOfDay * 360}, 50%, 50%)`), 0.1);
+
+      lanterns.forEach(({ instancedMesh, light }) => {
+        light.intensity = Math.abs(Math.sin(timeOfDay * Math.PI * 2 + instancedMesh.position.x * 0.1)) * 0.5 + 0.5;
+        if (instancedMesh.userData.lit !== undefined) {
+          light.visible = instancedMesh.userData.lit;
+        }
+      });
+
+      koi.position.x = Math.sin(timeOfDay * Math.PI * 2 + 0.5) * 5;
+      koi.position.z = Math.sin(timeOfDay * Math.PI * 2 + 1.5) * 5;
+
+      trees.forEach(tree => {
+        tree.rotation.x = Math.sin(timeOfDay * Math.PI * 2 + tree.position.x * 0.1) * 0.1;
+        tree.rotation.z = Math.sin(timeOfDay * Math.PI * 2 + tree.position.x * 0.1) * 0.1;
+      });
+
+      sakuraPetals.position.x = Math.sin(timeOfDay * Math.PI * 2 + 0.5) * 5;
+      sakuraPetals.position.z = Math.sin(timeOfDay * Math.PI * 2 + 1.5) * 5;
+
+      if (now - lastFpsUpdate > 1000) {
+        document.getElementById('fps').textContent = fps();
+        lastFpsUpdate = now;
+      }
+
+      if (now - lastVoxelCount > 1000) {
+        document.getElementById('voxelCount').textContent = voxelCount();
+        lastVoxelCount = now;
+      }
+
+      if (now - lastTimeOfDayUpdate > 100) {
+        document.getElementById('timeOfDay').textContent = timeOfDay.toFixed(2);
+        lastTimeOfDayUpdate = now;
+      }
+
+      controls.update();
+
+      renderer.render(scene, camera);
+
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    window.addEventListener('click', event => {
+      const intersects = sceneraycaster.intersectObjects(doors, true);
+      if (intersects.length > 0) {
+        const door = intersects[0].object;
+        door.userData.open = !door.userData.open;
+        door.position.y = door.userData.open ? 0 : -1;
+      } else {
+        const lantern = sceneraycaster.intersectObjects(lanterns.map(({ instancedMesh }) => instancedMesh), true)[0].object;
+        lantern.userData.lit = !lantern.userData.lit;
+      }
+    });
+
+    const sceneraycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    document.addEventListener('mousemove', event => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      sceneraycaster.setFromCamera(mouse, camera);
+    });
+
+    document.getElementById('timeOfDaySlider').addEventListener('input', event => {
+      timeOfDay = parseFloat(event.target.value);
+      directionalLight.position.x = Math.cos(timeOfDay * Math.PI * 2) * 10;
+      directionalLight.position.y = Math.sin(timeOfDay * Math.PI * 2) * 10 + 5;
+      hemisphereLight.color.lerp(new THREE.Color(`hsl(${timeOfDay * 360}, 50%, 50%)`), 0.1);
+    });
+
+    document.getElementById('pauseButton').addEventListener('click', event => {
+      event.target.textContent = event.target.textContent === 'Pause' ? 'Resume' : 'Pause';
+      animateId = event.target.textContent === 'Pause' ? null : requestAnimationFrame(animate);
+    });
+  </script>
+  <div id="info">
+    <span id="voxelCount">0</span> voxels | <span id="fps">0</span> FPS | Click lanterns
+    <br>
+    <input type="range" id="timeOfDaySlider" min="0" max="1" step="0.01" value="0">
+    <button id="pauseButton">Pause</button>
+  </div>
+</body>
+</html>
