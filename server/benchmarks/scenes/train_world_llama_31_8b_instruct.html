@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no">
+    <title>3D Train World Benchmark</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        #ui-container > button {
+            margin: 10px;
+            padding: 10px;
+            font-size: 18px;
+        }
+
+        #ui-container > button:hover {
+            background-color: #ccc;
+        }
+
+        #schematic {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 300px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <importmap>
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}} </importmap>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer, UnrealBloomPass } from 'three/addons/effects/EffectComposer.js';
+        import { CanvasRenderTarget } from 'three/addons/renderers/CanvasRenderer.js';
+        import { Sky } from 'three/addons/scenes/Sky.js';
+
+        let canvas = document.createElement('canvas');
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0px';
+        canvas.style.left = '0px';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        document.body.appendChild(canvas);
+
+        let renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            antialias: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setClearColor(0x87ceeb);
+
+        let scene = new THREE.Scene();
+        let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 50, 100);
+        camera.lookAt(0, 0, 0);
+
+        let controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        let composer = new EffectComposer(renderer);
+        let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.2;
+        bloomPass.strength = 0.5;
+        composer.addPass(bloomPass);
+
+        let world = {
+            train1: null,
+            train2: null,
+            train3: null,
+            signals: [],
+            switches: [],
+            blocks: []
+        };
+
+        let generateWorld = () => {
+            let hillGeometry = new THREE.BufferGeometry();
+            let hills = [];
+            for (let i = 0; i < 5; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 5) * 100, 0, Math.cos(i * Math.PI * 2 / 5) * 100);
+                let height = Math.random() * 20;
+                hills.push(pos.clone().add(new THREE.Vector3(0, height, 0)));
+            }
+
+            hillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(hills.map(p => [p.x, p.y, p.z]), 3));
+            let hillMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+            let hillMesh = new THREE.Mesh(hillGeometry, hillMaterial);
+            scene.add(hillMesh);
+
+            let tunnelGeometry = new THREE.CylinderGeometry(10, 10, 50, 64);
+            let tunnelMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            let tunnelMesh = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+            tunnelMesh.position.set(0, -20, 0);
+            scene.add(tunnelMesh);
+
+            let bridgeGeometry = new THREE.BufferGeometry();
+            let bridge = [];
+            for (let i = 0; i < 50; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 50) * 10, 0, Math.cos(i * Math.PI * 2 / 50) * 10);
+                bridge.push(pos.clone().add(new THREE.Vector3(0, 0, 0)));
+            }
+
+            bridgeGeometry.setAttribute('position', new THREE.Float32BufferAttribute(bridge.map(p => [p.x, p.y, p.z]), 3));
+            let bridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+            let bridgeMesh = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+            bridgeMesh.position.set(0, 20, 0);
+            scene.add(bridgeMesh);
+
+            let stationGeometry = new THREE.BoxGeometry(20, 20, 20);
+            let stationMaterial = new THREE.MeshStandardMaterial({ color: 0x777777 });
+            let stationMesh = new THREE.Mesh(stationGeometry, stationMaterial);
+            stationMesh.position.set(-50, 0, 0);
+            scene.add(stationMesh);
+
+            let villageGeometry = new THREE.Group();
+            let houses = [];
+            for (let i = 0; i < 10; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 10) * 20, 0, Math.cos(i * Math.PI * 2 / 10) * 20);
+                let house = new THREE.Group();
+                house.position.set(pos.x, 20, pos.z);
+                houses.push(house);
+                scene.add(house);
+            }
+
+            let roofs = [];
+            for (let i = 0; i < 10; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 10) * 20, 0, Math.cos(i * Math.PI * 2 / 10) * 20);
+                let roof = new THREE.BoxGeometry(10, 10, 10);
+                let roofMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+                let roofMesh = new THREE.Mesh(roof, roofMaterial);
+                roofMesh.position.set(pos.x + 5, 30, pos.z + 5);
+                roofMesh.rotation.set(Math.PI, 0, 0);
+                roofs.push(roofMesh);
+                houses[i].add(roofMesh);
+                scene.add(houses[i]);
+            }
+
+            let roadGeometry = new THREE.CylinderGeometry(2, 2, 20, 64);
+            let roadMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+            let roadMesh = new THREE.Mesh(roadGeometry, roadMaterial);
+            roadMesh.position.set(-50, -10, 0);
+            scene.add(roadMesh);
+
+            let trafficLightGeometry = new THREE.SphereGeometry(5, 32, 32);
+            let trafficLightMaterial = new THREE.MeshStandardMaterial({ color: 0x777777 });
+            let trafficLightMesh = new THREE.Mesh(trafficLightGeometry, trafficLightMaterial);
+            trafficLightMesh.position.set(-70, -10, 0);
+            scene.add(trafficLightMesh);
+
+            let trainGeometry = new THREE.BufferGeometry();
+            let train = [];
+            for (let i = 0; i < 10; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 10) * 10, 0, Math.cos(i * Math.PI * 2 / 10) * 10);
+                train.push(pos.clone().add(new THREE.Vector3(0, 0, 0)));
+            }
+
+            trainGeometry.setAttribute('position', new THREE.Float32BufferAttribute(train.map(p => [p.x, p.y, p.z]), 3));
+            let trainMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+            let trainMesh = new THREE.Mesh(trainGeometry, trainMaterial);
+            trainMesh.position.set(50, 0, 0);
+            scene.add(trainMesh);
+
+            let train2Geometry = new THREE.BufferGeometry();
+            let train2 = [];
+            for (let i = 0; i < 10; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 10) * 10, 0, Math.cos(i * Math.PI * 2 / 10) * 10);
+                train2.push(pos.clone().add(new THREE.Vector3(0, 0, 0)));
+            }
+
+            train2Geometry.setAttribute('position', new THREE.Float32BufferAttribute(train2.map(p => [p.x, p.y, p.z]), 3));
+            let train2Material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+            let train2Mesh = new THREE.Mesh(train2Geometry, train2Material);
+            train2Mesh.position.set(100, 0, 0);
+            scene.add(train2Mesh);
+
+            let train3Geometry = new THREE.BufferGeometry();
+            let train3 = [];
+            for (let i = 0; i < 10; i++) {
+                let pos = new THREE.Vector3(Math.sin(i * Math.PI * 2 / 10) * 10, 0, Math.cos(i * Math.PI * 2 / 10) * 10);
+                train3.push(pos.clone().add(new THREE.Vector3(0, 0, 0)));
+            }
+
+            train3Geometry.setAttribute('position', new THREE.Float32BufferAttribute(train3.map(p => [p.x, p.y, p.z]), 3));
+            let train3Material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            let train3Mesh = new THREE.Mesh(train3Geometry, train3Material);
+            train3Mesh.position.set(150, 0, 0);
+            scene.add(train3Mesh);
+
+            let signalGeometry = new THREE.BoxGeometry(5, 20, 5);
+            let signalMaterial = new THREE.MeshStandardMaterial({ color: 0x777777 });
+            let signalMesh = new THREE.Mesh(signalGeometry, signalMaterial);
+            signalMesh.position.set(-70, 10, 0);
+            scene.add(signalMesh);
+
+            let switchGeometry = new THREE.BoxGeometry(10, 20, 10);
+            let switchMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+            let switchMesh = new THREE.Mesh(switchGeometry, switchMaterial);
+            switchMesh.position.set(-50, 15, 0);
+            scene.add(switchMesh);
+
+            let levelCrossingGeometry = new THREE.PlaneGeometry(20, 20);
+            let levelCrossingMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
+            let levelCrossingMesh = new THREE.Mesh(levelCrossingGeometry, levelCrossingMaterial);
+            levelCrossingMesh.position.set(-80, -10, 0);
+            scene.add(levelCrossingMesh);
+
+            let buttonGeometry = new THREE.BoxGeometry(20, 20, 20);
+            let buttonMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+            let buttonMesh = new THREE.Mesh(buttonGeometry, buttonMaterial);
+            buttonMesh.position.set(-90, -10, 0);
+            scene.add(buttonMesh);
+
+            world.signals = [signalMesh];
+            world.switches = [switchMesh];
+            world.blocks = [signalMesh.position, switchMesh.position, levelCrossingMesh.position];
+        };
+
+        generateWorld();
+
+        let clock = new THREE.Clock();
+        let lastTime = 0;
+        let simulation = true;
+        let speed = 1;
+        let time = 0;
+        let dayNight = 0;
+
+        let update = () => {
+            requestAnimationFrame(update);
+
+            if (!simulation) return;
+
+            let now = performance.now();
+            let dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            time += dt * speed;
+
+            camera.position.y = 50 + Math.sin(time * 0.1) * 10;
+            camera.lookAt(0, 0, 0);
+
+            if (dayNight < 0.5) dayNight = 0.5;
+            else dayNight = 0;
+
+            bloomPass.strength = (Math.sin(dayNight * Math.PI)) * 0.5 + 0.75;
+            bloomPass.threshold = (Math.cos(dayNight * Math.PI)) * 0.5 + 0.55;
+
+            world.train1.update(dt);
+            world.train2.update(dt);
+            world.train3.update(dt);
+
+            for (let i = 0; i < world.signals.length; i++) {
+                world.signals[i].position.x = world.blocks[i].x + (Math.sin((i * Math.PI * 2 / world.signals.length) + time) * 10);
+                world.signals[i].position.y = world.blocks[i].y + (Math.cos((i * Math.PI * 2 / world.signals.length) + time) * 20);
+                world.signals[i].material.color.setHSL(Math.sin((i * Math.PI * 2 / world.signals.length) + time), 0.5, 0.2);
+                world.signals[i].signal = Math.sin((i * Math.PI * 2 / world.signals.length) + time);
+                if (world.signals[i].signal < 0) world.signals[i].signal = 0;
+                if (world.signals[i].signal > 2) world.signals[i].signal = 2;
+                world.signals[i].material.color.setHSL(0, 1, world.signals[i].signal);
+            }
+
+            for (let i = 0; i < world.switches.length; i++) {
+                world.switches[i].position.x = world.blocks[i].x + (Math.sin((i * Math.PI * 2 / world.switches.length) + time) * 10);
+                world.switches[i].position.y = world.blocks[i].y + (Math.cos((i * Math.PI * 2 / world.switches.length) + time) * 20);
+                world.switches[i].material.color.setHSL(Math.sin((i * Math.PI * 2 / world.switches.length) + time), 0.5, 0.2);
+            }
+
+            controls.update();
+
+            composer.render();
+        };
+
+        update();
+
+        let simulate = () => {
+            simulation = !simulation;
+            document.getElementById("simulate").textContent = simulation ? "Stop Simulation" : "Start Simulation";
+        };
+
+        let speedUp = () => {
+            speed *= 2;
+            document.getElementById("speed").textContent = "Speed: " + speed;
+        };
+
+        let slowDown = () => {
+            speed /= 2;
+            document.getElementById("speed").textContent = "Speed: " + speed;
+        };
+
+        let dayNightUp = () => {
+            dayNight += 0.05;
+            document.getElementById("day-night").textContent = "Day/Night: " + dayNight;
+        };
+
+        let dayNightDown = () => {
+            dayNight -= 0.05;
+            document.getElementById("day-night").textContent = "Day/Night: " + dayNight;
+        };
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key == " ") {
+                simulate();
+            } else if (event.key == "ArrowUp") {
+                speedUp();
+            } else if (event.key == "ArrowDown") {
+                slowDown();
+            } else if (event.key == "ArrowLeft") {
+                dayNightUp();
+            } else if (event.key == "ArrowRight") {
+                dayNightDown();
+            }
+        });
+
+        let ui = document.createElement("div");
+        ui.id = "ui-container";
+        document.body.appendChild(ui);
+
+        let simulateButton = document.createElement("button");
+        simulateButton.textContent = "Start Simulation";
+        simulateButton.addEventListener("click", simulate);
+        ui.appendChild(simulateButton);
+
+        let speedButton = document.createElement("button");
+        speedButton.textContent = "Speed: 1";
+        speedButton.addEventListener("click", speedUp);
+        ui.appendChild(speedButton);
+
+        let slowButton = document.createElement("button");
+        slowButton.textContent = "Slow";
+        slowButton.addEventListener("click", slowDown);
+        ui.appendChild(slowButton);
+
+        let dayNightButton = document.createElement("button");
+        dayNightButton.textContent = "Day/Night: 0";
+        dayNightButton.addEventListener("click", dayNightUp);
+        ui.appendChild(dayNightButton);
+
+        let slowButton2 = document.createElement("button");
+        slowButton2.textContent = "Slow";
+        slowButton2.addEventListener("click", dayNightDown);
+        ui.appendChild(slowButton2);
+
+        let schematicButton = document.createElement("button");
+        schematicButton.textContent = "Schematic";
+        schematicButton.onclick = function() {
+            let schematic = document.getElementById("schematic");
+            if (schematic.style.display == "none") {
+                schematic.style.display = "block";
+            } else {
+                schematic.style.display = "none";
+            }
+        };
+        ui.appendChild(schematicButton);
+
+        let signalButton = document.createElement("button");
+        signalButton.textContent = "Signal";
+        signalButton.onclick = function() {
+            let signal = document.getElementById("signal");
+            if (signal.style.display == "none") {
+                signal.style.display = "block";
+            } else {
+                signal.style.display = "none";
+            }
+        };
+        ui.appendChild(signalButton);
+
+        let switchButton = document.createElement("button");
+        switchButton.textContent = "Switch";
+        switchButton.onclick = function() {
+            let switchElement = document.getElementById("switch");
+            if (switchElement.style.display == "none") {
+                switchElement.style.display = "block";
+            } else {
+                switchElement.style.display = "none";
+            }
+        };
+        ui.appendChild(switchButton);
+
+        let schematic = document.createElement("div");
+        schematic.id = "schematic";
+        ui.appendChild(schematic);
+
+        let blockElements = document.createElement("div");
+        blockElements.id = "block-elements";
+        ui.appendChild(blockElements);
+
+        let signalElement = document.createElement("div");
+        signalElement.id = "signal";
+        ui.appendChild(signalElement);
+
+        let switchElement = document.createElement("div");
+        switchElement.id = "switch";
+        ui.appendChild(switchElement);
+
+        for (let i = 0; i < world.blocks.length; i++) {
+            let blockElement = document.createElement("div");
+            blockElement.className = "block";
+            let signalIcon = document.createElement("div");
+            signalIcon.className = "signal-icon";
+            signalIcon.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
+            blockElement.appendChild(signalIcon);
+            let text = document.createElement("div");
+            text.textContent = "Block" + i;
+            blockElement.appendChild(text);
+            blockElements.appendChild(blockElement);
+        }
+
+        for (let i = 0; i < world.signals.length; i++) {
+            let signalElement = document.createElement("div");
+            signalElement.className = "signal";
+            signalElement.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
+            signalElement.id = "signal-" + i;
+            let text = document.createElement("div");
+            text.textContent = "Signal" + i;
+            signalElement.appendChild(text);
+            schematic.appendChild(signalElement);
+        }
+
+        for (let i = 0; i < world.switches.length; i++) {
+            let switchElement = document.createElement("div");
+            switchElement.className = "switch";
+            let text = document.createElement("div");
+            text.textContent = "Switch" + i;
+            switchElement.appendChild(text);
+            switchElement.id = "switch-" + i;
+            schematic.appendChild(switchElement);
+        }
+
+        let signalIcon = document.createElement("div");
+        signalIcon.className = "signal-icon";
+        signalIcon.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
+        signalElement.appendChild(signalIcon);
+        signalElement.id = "signal-0";
+
+        let text = document.createElement("div");
+        text.textContent = "No Signal";
+        signalElement.appendChild(text);
+
+        let block = document.createElement("div");
+        block.className = "block";
+        text = document.createElement("div");
+        text.textContent = "No Block";
+        block.appendChild(text);
+        blockElements.appendChild(block);
+
+        let howItWorks = document.createElement("div");
+        howItWorks.id = "how-it-works";
+        howItWorks.innerHTML = "This is a 3D train simulation. The trains are controlled by a signalling system. There are three signals and three switches. The switches control the trains' movement. The signals indicate whether the train can proceed or not.";
+        document.body.appendChild(howItWorks);
+
+        let signalStates = ["No Signal", "Ready", "Clear"];
+        let switchStates = ["Off", "On"];
+
+        let updateSchematic = () => {
+            for (let i = 0; i < world.signals.length; i++) {
+                let signalElement = document.getElementById("signal-" + i);
+                let state = world.signals[i].signal;
+                signalElement.classList.remove("signal-ready");
+                signalElement.classList.remove("signal-clear");
+                signalElement.classList.remove("fa-circle");
+                signalElement.classList.remove("fa-circle-slash");
+                signalElement.classList.remove("fa-exclamation-circle");
+                signalElement.classList.remove("fa-spinner");
+                signalElement.classList.remove("fa-spinner-gear");
+                if (state == 0) {
+                    signalElement.classList.add("signal-ready");
+                    signalElement.classList.add("fa-circle");
+                } else if (state == 2) {
+                    signalElement.classList.add("signal-clear");
+                    signalElement.classList.add("fa-circle-slash");
+                } else if (state == 1) {
+                    let random = Math.random();
+                    if (random < 0.33) {
+                        signalElement.classList.add("fa-circle-slash");
+                    } else if (random < 2/3) {
+                        signalElement.classList.add("fa-spinner");
+                    } else {
+                        signalElement.classList.add("fa-spinner-gear");
+                    }
+                }
+                document.getElementById("signal-" + i + "-text").textContent = signalStates[world.signals[i].signal];
+            }
+
+            for (let i = 0; i < world.switches.length; i++) {
+                let switchElement = document.getElementById("switch-" + i);
+                let state = world.switches[i].state;
+                switchElement.classList.remove("switch-off");
+                switchElement.classList.remove("switch-on");
+                switchElement.classList.remove("fa-circle");
+                switchElement.classList.remove("fa-circle-slash");
+                if (state == 0) {
+                    switchElement.classList.add("switch-off");
+                    switchElement.classList.add("fa-circle");
+                } else {
+                    switchElement.classList.add("switch-on");
+                    switchElement.classList.add("fa-circle-slash");
+                }
+                document.getElementById("switch-" + i + "-text").textContent = switchStates[world.switches[i].state];
+            }
+
+            let blockElements = document.getElementById("block-elements");
+            blockElements.innerHTML = "";
+            for (let i = 0; i < world.blocks.length; i++) {
+                let blockElement = document.createElement("div");
+                blockElement.className = "block";
+                let signalIcon = document.createElement("div");
+                signalIcon.className = "signal-icon";
+                if (world.signals[i].signal > 0) {
+                    let random = Math.random();
+                    if (random < 0.33) {
+                        signalIcon.classList.add("fa-circle-slash");
+                    } else if (random < 2/3) {
+                        signalIcon.classList.add("fa-spinner");
+                    } else {
+                        signalIcon.classList.add("fa-spinner-gear");
+                    }
+                }
+                blockElement.appendChild(signalIcon);
+                let text = document.createElement("div");
+                text.textContent = "Block" + i;
+                blockElement.appendChild(text);
+                blockElements.appendChild(blockElement);
+            }
+        };
+
+        setInterval(uploadUI, 16);
+
+        let uploadUI = () => {
+            updateSchematic();
+        };
+
+        let debugUI = document.createElement("div");
+        debugUI.id = "debug-ui";
+        document.body.appendChild(debugUI);
+
+        let debugSchematic = document.createElement("div");
+        debugSchematic.id = "debug-schematic";
+        debugUI.appendChild(debugSchematic);
+
+        for (let i = 0; i < world.signals.length; i++) {
+            let signalElement = document.createElement("div");
+            signalElement.className = "signal";
+            signalElement.id = "signal-" + i;
+            debugSchematic.appendChild(signalElement);
+        }
+
+        for (let i = 0; i < world.switches.length; i++) {
+            let switchElement = document.createElement("div");
+            switchElement.className = "switch";
+            switchElement.id = "switch-" + i;
+            debugSchematic.appendChild(switchElement);
+        }
+
+        let signalIcon = document.createElement("div");
+        signalIcon.className = "signal-icon";
+        signalIcon.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
+        signalElement.appendChild(signalIcon);
+        signalElement.id = "signal-0";
+
+        world.blocks = signalElement.position = new THREE.Vector3(Math.sin((i * Math.PI * 2 / world.signals.length)) * 10, 0, Math.cos((i * Math.PI * 2 / world.signals.length)) * 10);
+        world.blocks.push(switchElement.position = new THREE.Vector3(Math.sin((i * Math.PI * 2 / world.switches.length)) * 10, 0, Math.cos((i * Math.PI * 2 / world.switches.length)) * 10));
+
+        let debugBlockElements = document.createElement("div");
+        debugBlockElements.id = "debug-block-elements";
+        debugUI.appendChild(debugBlockElements);
+
+        for (let i = 0; i < world.blocks.length; i++) {
+            let blockElement = document.createElement("div");
+            blockElement.className = "block";
+            let signalIcon = document.createElement("div");
+            signalIcon.className = "signal-icon";
+            if (world.signals[i].signal > 0) {
+                let random = Math.random();
+                if (random < 0.33) {
+                    signalIcon.classList.add("fa-circle-slash");
+                } else if (random < 2/3) {
+                    signalIcon.classList.add("fa-spinner");
+                } else {
+                    signalIcon.classList.add("fa-spinner-gear");
+                }
+            }
+            blockElement.appendChild(signalIcon);
+            let text = document.createElement("div");
+            text.textContent = "Block" + i;
+            blockElement.appendChild(text);
+            debugBlockElements.appendChild(blockElement);
+        }
+    </script>
+</body>
+</html>
