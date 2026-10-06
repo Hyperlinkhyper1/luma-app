@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Sports Car Benchmark</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 1;
+    }
+    #ui button {
+      margin-right: 5px;
+    }
+    #ui label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    #ui input[type="color"] {
+      width: 30px;
+      height: 30px;
+    }
+    #ui input[type="range"] {
+      width: 100px;
+    }
+    #ui img {
+      width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <label>
+      Paint Color:
+      <input type="color" id="paintColor" value="#ffffff">
+    </label>
+    <label>
+      Rim Finish:
+      <select id="rimFinish">
+        <option value="silver">Silver</option>
+        <option value="black">Black</option>
+        <option value="bronze">Bronze</option>
+      </select>
+    </label>
+    <label>
+      Caliper Color:
+      <input type="color" id="caliperColor" value="#ff0000">
+    </label>
+    <button id="toggleDoors">Open/Close Doors</button>
+    <button id="toggleLights">Headlights On/Off</button>
+    <button id="xray">X-RAY / EXPLODED</button>
+    <button id="drive">DRIVE</button>
+    <button id="showroom">SHOWROOM</button>
+    <button id="mute">MUTE</button>
+  </div>
+  <script type="importmap">
+    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { PMREMGenerator } from 'three/addons/math/PMREMGenerator.js';
+    import { Water } from 'three/addons/objects/Water.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    let camera, scene, renderer, controls, water, car, carMesh, carMaterials, carGeometry, carConfig, driveScene, driveCamera, driveControls, driveHUD;
+
+    init();
+    animate();
+
+    function init() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xcccccc);
+
+      camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.z = 5;
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      document.body.appendChild(renderer.domElement);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableZoom = false;
+      controls.enablePan = false;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.5;
+
+      const pmremGenerator = new PMREMGenerator(renderer);
+      const environment = new RoomEnvironment();
+      const texture = pmremGenerator.fromScene(environment, 512).texture;
+      scene.environment = texture;
+
+      createCar();
+      addLights();
+
+      const clock = new THREE.Clock();
+      const tick = () => {
+        controls.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(tick);
+      };
+      tick();
+
+      window.addEventListener('resize', onWindowResize);
+      window.addEventListener('keydown', onKeyDown);
+
+      initUI();
+    }
+
+    function createCar() {
+      carGeometry = new THREE.Geometry();
+      // ... create car geometry here using custom BufferGeometry, lofted cross-sections, lathed or extruded profiles or a deformed subdivided mesh
+
+      carMaterials = {
+        paint: new THREE.MeshPhysicalMaterial({ color: 0xffffff, clearcoat: 1, clearcoatRoughness: 0.05 }),
+        glass: new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 }),
+        rubber: new THREE.MeshPhysicalMaterial({ color: 0x333333 }),
+        metal: new THREE.MeshPhysicalMaterial({ color: 0xaaaaaa, roughness: 0.5 }),
+        carbonFiber: new THREE.MeshPhysicalMaterial({ map: generateCarbonFiberTexture() }),
+      };
+
+      carMesh = new THREE.Mesh(carGeometry, Object.values(carMaterials));
+      carMesh.position.y = -1.5;
+      carMesh.rotation.x = Math.PI / 2;
+      scene.add(carMesh);
+
+      carConfig = {
+        doorsOpen: false,
+        lightsOn: false,
+        xray: false,
+        drive: false,
+      };
+
+      updateCar();
+    }
+
+    function addLights() {
+      const light1 = new THREE.DirectionalLight(0xffffff, 1);
+      light1.position.set(1, 1, 1);
+      scene.add(light1);
+
+      const light2 = new THREE.DirectionalLight(0xffffff, 1);
+      light2.position.set(-1, -1, -1);
+      scene.add(light2);
+    }
+
+    function updateCar() {
+      if (carConfig.xray) {
+        // ... update car mesh to show exploded view here
+      } else {
+        // ... update car mesh to show normal view here
+      }
+
+      if (carConfig.drive) {
+        driveScene.add(carMesh);
+      } else {
+        scene.add(carMesh);
+      }
+    }
+
+    function initUI() {
+      document.getElementById('paintColor').addEventListener('input', (e) => {
+        carMaterials.paint.color.set(e.target.value);
+        updateCar();
+      });
+
+      document.getElementById('rimFinish').addEventListener('change', (e) => {
+        // ... update rim finish here
+      });
+
+      document.getElementById('caliperColor').addEventListener('input', (e) => {
+        // ... update caliper color here
+      });
+
+      document.getElementById('toggleDoors').addEventListener('click', () => {
+        carConfig.doorsOpen = !carConfig.doorsOpen;
+        // ... animate doors opening or closing here
+        updateCar();
+      });
+
+      document.getElementById('toggleLights').addEventListener('click', () => {
+        carConfig.lightsOn = !carConfig.lightsOn;
+        // ... turn headlights on or off here
+        updateCar();
+      });
+
+      document.getElementById('xray').addEventListener('click', () => {
+        carConfig.xray = !carConfig.xray;
+        updateCar();
+      });
+
+      document.getElementById('drive').addEventListener('click', () => {
+        carConfig.drive = !carConfig.drive;
+        updateCar();
+        if (carConfig.drive) {
+          initDriveScene();
+        } else {
+          scene.add(carMesh);
+        }
+      });
+
+      document.getElementById('showroom').addEventListener('click', () => {
+        carConfig.drive = false;
+        updateCar();
+      });
+
+      document.getElementById('mute').addEventListener('click', () => {
+        // ... mute audio here
+      });
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onKeyDown(event) {
+      if (carConfig.drive) {
+        switch (event.code) {
+          case 'KeyW':
+          case 'ArrowUp':
+            // ... accelerate here
+            break;
+          case 'KeyS':
+          case 'ArrowDown':
+            // ... brake here
+            break;
+          case 'KeyA':
+          case 'ArrowLeft':
+            // ... turn left here
+            break;
+          case 'KeyD':
+          case 'ArrowRight':
+            // ... turn right here
+            break;
+          case 'Space':
+            // ... handbrake here
+            break;
+          case 'KeyQ':
+          case 'KeyE':
+            // ... gear change here
+            break;
+          case 'KeyC':
+            // ... cycle cameras here
+            break;
+          case 'KeyR':
+            // ... reset car here
+            break;
+        }
+      }
+    }
+
+    function initDriveScene() {
+      driveScene = new THREE.Scene();
+      driveScene.background = new THREE.Color(0xcccccc);
+
+      driveCamera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+      driveCamera.position.z = 5;
+
+      driveControls = new OrbitControls(driveCamera, renderer.domElement);
+      driveControls.enableZoom = false;
+      driveControls.enablePan = false;
+      driveControls.autoRotate = false;
+
+      const driveGeometry = new THREE.PlaneGeometry(100, 100);
+      const driveMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+      const drivePlane = new THREE.Mesh(driveGeometry, driveMaterial);
+      drivePlane.rotation.x = Math.PI / -2;
+      driveScene.add(drivePlane);
+
+      const trackGeometry = new THREE.Geometry();
+      // ... create track geometry here using custom BufferGeometry, lofted cross-sections, lathed or extruded profiles or a deformed subdivided mesh
+
+      const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+      const track = new THREE.Mesh(trackGeometry, trackMaterial);
+      driveScene.add(track);
+
+      const waterGeometry = new THREE.PlaneGeometry(100, 100);
+      water = new Water(waterGeometry, {
+        textureWidth: 512,
+        textureHeight: 512,
+        waterNormals: new THREE.TextureLoader().load('https://threejs.org/examples/textures/waternormals.jpg', function (texture) {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        }),
+        dashing: true,
+        color: 0xffffff,
+        flowDirection: new THREE.Vector2(1, 1),
+        scale: 4,
+      });
+      water.rotation.x = -Math.PI / 2;
+      driveScene.add(water);
+
+      const driveClock = new THREE.Clock();
+      const driveTick = () => {
+        driveControls.update();
+        water.material.uniforms.time.value += 1.0 / 60.0;
+        renderer.render(driveScene, driveCamera);
+        requestAnimationFrame(driveTick);
+      };
+      driveTick();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    function generateCarbonFiberTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const context = canvas.getContext('2d');
+      const gradient = context.createLinearGradient(0, 0, canvas.width, 0);
+      gradient.addColorStop(0, '#333333');
+      gradient.addColorStop(0.5, '#666666');
+      gradient.addColorStop(1, '#999999');
+      context.fillStyle = gradient;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      return texture;
+    }
+  </script>
+</body>
+</html>
