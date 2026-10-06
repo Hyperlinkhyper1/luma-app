@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SERVER ARCHITECTURE LAB</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    #ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: #333;
+      color: #fff;
+      padding: 8px;
+      z-index: 1;
+    }
+    #info {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #333;
+      color: #fff;
+      padding: 8px;
+      z-index: 1;
+    }
+    #tools {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      background: #333;
+      color: #fff;
+      padding: 8px;
+      z-index: 1;
+    }
+    #stats {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #333;
+      color: #fff;
+      padding: 8px;
+      z-index: 1;
+    }
+    #server-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    #server-list li {
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    #server-list li:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <div id="ui">
+    <h1>SERVER ARCHITECTURE LAB</h1>
+    <div id="stats"></div>
+  </div>
+  <div id="info"></div>
+  <div id="tools">
+    <button id="rack-view">RACK VIEW</button>
+    <button id="slice-view">SLICE VIEW</button>
+    <button id="open-cover">OPEN COVER</button>
+    <button id="cutaway">CUTAWAY</button>
+    <button id="explode">EXPLODE</button>
+    <button id="airflow">AIRFLOW</button>
+    <button id="power">POWER</button>
+    <button id="data">DATA</button>
+    <button id="failure">FAILURE</button>
+    <button id="reset">RESET</button>
+    <button id="prev-server">PREVIOUS SERVER</button>
+    <button id="next-server">NEXT SERVER</button>
+    <button id="return-rack">RETURN TO RACK</button>
+  </div>
+  <ul id="server-list"></ul>
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.138.3/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.138.3/examples/jsm/controls/OrbitControls.js';
+
+    // ... (continue with the rest of the code)
+  </script>
+</body>
+</html>
