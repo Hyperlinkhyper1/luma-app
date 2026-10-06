@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+  <title>3D Fluid Simulation Benchmark</title>
+
+  <style>
+    /* Make the page fill the window and clamp the device pixel ratio at most 2 */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* UI controls */
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background-color: white;
+      border: 1px solid black;
+    }
+
+    #scenario-select {
+      padding: 10px;
+      margin-bottom: 5px;
+    }
+
+    /* Show a clear message if WebGL is unavailable */
+    canvas {
+      display: block;
+    }
+
+    canvas:empty {
+      display: none;
+    }
+
+    canvas:before {
+      display: block;
+      font-size: 24px;
+      font-family: monospace;
+      text-align: center;
+      color: black;
+      background-color: white;
+    }
+  </style>
+
+  <script type="importmap">
+  {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+  </script>
+
+</head>
+
+<body>
+
+  <script type="module">
+    // Get the canvas element
+    let canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+
+    // Check for WebGL2 support
+    let gl = canvas.getContext('webgl2');
+    if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
+      console.log('WebGL2 float render target support is missing. Falling back to a CPU solver.');
+      // Show a clear message if WebGL is unavailable or float render target is unsupported
+      let node = document.createElement('div');
+      node.textContent = 'WebGL2 float render target support is missing or WebGL is unavailable.';
+      canvas.parentNode.insertBefore(node, canvas);
+      canvas.remove();
+    }
+
+    // Initialize Three.js
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // Create the scene, camera and renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+    const renderer = gl;
+
+    // Add orbit controls
+    const controls = new OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+
+    let water = null;
+    let tank = null;
+    let objects = [];
+    let scenario = 0;
+    let particleCount = 20000;
+    let viscosity = 0.5;
+    let gravity = 9.81;
+    let timeStep = 0.01;
+    let paused = false;
+
+    // Function to create the scene elements
+    function createScene() {
+      // Create the tank mesh
+      const geometry = new THREE.PlaneGeometry(10, 10, 16, 16);
+      const material = new THREE.MeshPhongMaterial({ color: 0xffffff });
+      tank = new THREE.Mesh(geometry, material);
+      tank.rotation.x = -Math.PI / 2;
+      scene.add(tank);
+
+      // Create the water scene elements
+      let waterGeometry = new THREE.SphereGeometry(2, 32, 32);
+      waterGeometry.translate(0, 2, 0);
+      water = new THREE.Points(waterGeometry, new THREE.PointsMaterial({ size: 0.01, color: 0x0000ff }));
+      scene.add(water);
+
+      // Add the camera to the scene
+      camera.position.z = 5;
+    }
+
+    // Function to update the scene
+    function update(time) {
+      if (!paused) {
+        if (objects.length > 0) {
+          for (let i = 0; i < objects.length; i++) {
+            objects[i].update(time);
+          }
+        }
+
+        // Update water
+        if (water) {
+          // Update water simulation
+          waterSimulation();
+
+          // Update water geometry
+          water.geometry.dispose();
+          let waterGeometry = new THREE.SphereGeometry(2, 32, 32);
+          waterGeometry.translate(0, 2, 0);
+          water.geometry = waterGeometry;
+          water.geometry.verticesNeedUpdate = true;
+        }
+      }
+
+      // Animate the controls
+      controls.update();
+    }
+
+    // Function to render the scene
+    function render() {
+      // Clear the canvas
+      gl.clearColor(0.85, 0.85, 0.85, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // Render the scene
+      if (tank) {
+        tank.rotation.x = -Math.PI / 2;
+      }
+
+      if (water) {
+        if (scenario === 1) {
+          tank.rotation.x = Math.PI / 2;
+        } else if (scenario === 3) {
+          camera.position.y = -1;
+        } else if (scenario === 4) {
+          tank.rotation.y = Math.PI / 2;
+        } else if (scenario === 5) {
+          tank.position.z = Math.cos(time * 0.01) * -2;
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Function to draw the UI
+    function drawUI() {
+      const ui = document.createElement('div');
+      ui.id = 'controls';
+      document.body.appendChild(ui);
+
+      // Add the scenario selector
+      const scenarioSelect = document.createElement('select');
+      scenarioSelect.id = 'scenario-select';
+      ui.appendChild(scenarioSelect);
+
+      // Get all scenarios
+      const allScenarios = [
+        document.createElement('option'),
+        document.createElement('option'),
+        document.createElement('option'),
+        document.createElement('option'),
+        document.createElement('option'),
+        document.createElement('option')
+      ];
+
+      // Fill the scenario selector
+      allScenarios[0].textContent = 'DAM BREAK';
+      scenarioSelect.appendChild(allScenarios[0]);
+      allScenarios[1].textContent = 'DOUBLE DAM';
+      scenarioSelect.appendChild(allScenarios[1]);
+      allScenarios[2].textContent = 'DROP';
+      scenarioSelect.appendChild(allScenarios[2]);
+      allScenarios[3].textContent = 'FAUCET';
+      scenarioSelect.appendChild(allScenarios[3]);
+      allScenarios[4].textContent = 'WAVE MACHINE';
+      scenarioSelect.appendChild(allScenarios[4]);
+      allScenarios[5].textContent = 'Custom';
+      scenarioSelect.appendChild(allScenarios[5]);
+
+      scenarioSelect.onchange = function() {
+        // Update the scenario type based on the selected option
+        if (this.value === 'DAM BREAK') {
+          scenario = 0;
+        } else if (this.value === 'DOUBLE DAM') {
+          scenario = 1;
+        } else if (this.value === 'DROP') {
+          scenario = 2;
+        } else if (this.value === 'FAUCET') {
+          scenario = 3;
+        } else if (this.value === 'WAVE MACHINE') {
+          scenario = 4;
+        } else {
+          scenario = 5;
+        }
+
+        // Reset the tank and the water
+        if (tank) {
+          scene.remove(tank);
+        }
+
+        if (water) {
+          scene.remove(water);
+        }
+
+        createScene();
+      };
+
+      // Add particle count control
+      const particleCountLabel = document.createElement('label');
+      particleCountLabel.textContent = 'Particle count:';
+      ui.appendChild(document.createElement('br'));
+      const particleCountInput = document.createElement('input');
+      particleCountInput.type = 'number';
+      particleCountInput.value = particleCount;
+      ui.appendChild(particleCountLabel);
+      ui.appendChild(particleCountInput);
+
+      particleCountInput.oninput = function() {
+        particleCount = parseInt(this.value);
+      };
+
+      // Add viscosity control
+      const viscosityLabel = document.createElement('label');
+      viscosityLabel.textContent = 'Viscosity:';
+      ui.appendChild(document.createElement('br'));
+      const viscosityInput = document.createElement('input');
+      viscosityInput.type = 'range';
+      viscosityInput.min = 0;
+      viscosityInput.max = 10;
+      viscosityInput.value = viscosity;
+      ui.appendChild(viscosityLabel);
+      ui.appendChild(viscosityInput);
+
+      viscosityInput.oninput = function() {
+        viscosity = parseFloat(this.value);
+      };
+
+      // Add gravity control
+      const gravityLabel = document.createElement('label');
+      gravityLabel.textContent = 'Gravity:';
+      ui.appendChild(document.createElement('br'));
+      const gravityInput = document.createElement('input');
+      gravityInput.type = 'range';
+      gravityInput.min = 1;
+      gravityInput.max = 100;
+      gravityInput.value = gravity;
+      ui.appendChild(gravityLabel);
+      ui.appendChild(gravityInput);
+
+      gravityInput.oninput = function() {
+        gravity = parseFloat(this.value);
+      };
+
+      // Add time step control
+      const timeStepLabel = document.createElement('label');
+      timeStepLabel.textContent = 'Time step:';
+      ui.appendChild(document.createElement('br'));
+      const timeStepInput = document.createElement('input');
+      timeStepInput.type = 'number';
+      timeStepInput.value = timeStep;
+      ui.appendChild(timeStepLabel);
+      ui.appendChild(timeStepInput);
+
+      timeStepInput.oninput = function() {
+        timeStep = parseFloat(this.value);
+      };
+
+      // Add pause control
+      const pauseLabel = document.createElement('label');
+      pauseLabel.textContent = 'Pause:';
+      ui.appendChild(pauseLabel);
+      const pauseCheckbox = document.createElement('input');
+      pauseCheckbox.type = 'checkbox';
+      pauseCheckbox.checked = paused;
+      ui.appendChild(pauseCheckbox);
+
+      pauseCheckbox.onchange = function() {
+        paused = this.checked;
+      };
+
+      // Add reset control
+      const resetLabel = document.createElement('label');
+      resetLabel.textContent = 'Reset:';
+      ui.appendChild(resetLabel);
+      const resetButton = document.createElement('button');
+      resetButton.textContent = 'Reset';
+      ui.appendChild(resetButton);
+
+      resetButton.onclick = function() {
+        if (tank) {
+          scene.remove(tank);
+        }
+
+        if (water) {
+          scene.remove(water);
+        }
+
+        createScene();
+      };
+
+      // Add stats overlay
+      const statsOverlayLabel = document.createElement('label');
+      statsOverlayLabel.textContent = 'Stats:';
+      ui.appendChild(document.createElement('br'));
+      const statsOverlay = document.createElement('div');
+      statsOverlay.style.width = '100%';
+      statsOverlay.style.height = '20px';
+      statsOverlay.style.position = 'absolute';
+      statsOverlay.style.top = '0px';
+      statsOverlay.style.backgroundColor = 'rgba(255, 255, 255, 0.7)';
+      document.body.appendChild(statsOverlay);
+
+      statsOverlayLabel.appendChild(statsOverlay);
+      ui.appendChild(statsOverlayLabel);
+
+      // Function to update the stats overlay
+      function updateStats() {
+        statsOverlay.textContent = `FPS: ${Math.floor(1000 / window.performance.now() - start)}  Particle count: ${water.geometry.vertices.length}  Simulation time per frame in ms: ${Math.floor(window.performance.now() - time)}ms  `;
+      }
+
+      start = window.performance.now();
+
+      // Function to draw the raw particles colored by speed
+      function drawRawParticles() {
+        if (water) {
+          const rawParticlesGeometry = new THREE.BufferGeometry();
+          const positions = new Float32Array(particleCount * 3);
+          const colors = new Float32Array(particleCount * 3);
+          rawParticlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+          rawParticlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+          for (let i = 0; i < particleCount; i++) {
+            let angle = (i + 0.5) * 2 * Math.PI / particleCount;
+            positions[i * 3 + 0] = 2 * Math.cos(angle);
+            positions[i * 3 + 1] = 2 * Math.sin(angle);
+            positions[i * 3 + 2] = 2;
+            colors[i * 3 + 0] = (positions[i * 3 + 0] * 2) / 2;
+            colors[i * 3 + 1] = (positions[i * 3 + 1] * 2) / 2;
+            colors[i * 3 + 2] = 1;
+          }
+
+          const rawParticles = new THREE.Points(rawParticlesGeometry, new THREE.PointsMaterial({ size: 0.1, vertexColors: true }));
+          scene.add(rawParticles);
+        }
+      }
+
+      // Add a button to toggle the raw particles
+      const rawParticlesButton = document.createElement('button');
+      rawParticlesButton.textContent = 'Raw particles';
+      ui.appendChild(rawParticlesButton);
+
+      rawParticlesButton.onclick = function() {
+        if (rawParticlesButton.textContent.startsWith('Raw')) {
+          if (rawParticles) {
+            scene.remove(rawParticles);
+          }
+          rawParticlesButton.textContent = 'Draw raw particles';
+        } else {
+          drawRawParticles();
+          rawParticlesButton.textContent = 'Hide raw particles';
+        }
+      };
+    }
+
+    // Main loop
+    let start = window.performance.now();
+    createScene();
+    requestAnimationFrame(animation);
+
+    // Function to update water simulation
+    function waterSimulation() {
+      // Create a particle update buffer
+      const positions = new Float32Array(particleCount * 3);
+      const velocities = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount; i++) {
+        let angle = (i + 0.5) * 2 * Math.PI / particleCount;
+        positions[i * 3 + 0] = 2 * Math.cos(angle);
+        positions[i * 3 + 1] = 2 * Math.sin(angle);
+        positions[i * 3 + 2] = 2;
+        velocities[i * 3 + 0] = 0;
+        velocities[i * 3 + 1] = 0;
+        velocities[i * 3 + 2] = 0;
+      }
+
+      const particleBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, positions, gl.DYNAMIC_DRAW);
+
+      // Create a velocity update buffer
+      const velocityBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, velocityBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, velocities, gl.DYNAMIC_DRAW);
+
+      // Create a velocity vertex shader
+      const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vertexShader, `
+        #version 300 es
+        in highp vec4 vertex;
+        in highp vec3 velocity;
+        uniform highp mat4 model;
+        uniform highp mat4 view;
+        uniform highp mat4 projection;
+        uniform float gravity;
+        out highp vec3 vVelocity;
+        void main() {
+          gl_Position = projection * view * model * vertex;
+          vVelocity = normalize(velocity) * gravity;
+        }
+      `);
+      gl.compileShader(vertexShader);
+
+      // Create a velocity fragment shader
+      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fragmentShader, `
+        #version 300 es
+        in highp vec3 vVelocity;
+        out highp vec4 FragColor;
+        void main() {
+          FragColor = vec4(vVelocity, 1.0);
+        }
+      `);
+      gl.compileShader(fragmentShader);
+
+      const velocityProgram = gl.createProgram();
+      gl.attachShader(velocityProgram, vertexShader);
+      gl.attachShader(velocityProgram, fragmentShader);
+      gl.linkProgram(velocityProgram);
+      gl.validateProgram(velocityProgram);
+
+      // Update water particle velocities
+      gl.useProgram(velocityProgram);
+      gl.uniformMatrix4fv(gl.getUniformLocation(velocityProgram, 'model'), false, new Float32Array(matrix4.array()));
+      gl.uniformMatrix4fv(gl.getUniformLocation(velocityProgram, 'view'), false, new Float32Array(camera.matrixWorldInverse.array()));
+      gl.uniformMatrix4fv(gl.getUniformLocation(velocityProgram, 'projection'), false, new Float32Array(camera.projectionMatrix.array()));
+      gl.uniform1f(gl.getUniformLocation(velocityProgram, 'gravity'), gravity);
+      gl.bindBuffer(gl.ARRAY_BUFFER, velocityBuffer);
+      gl.vertexAttribPointer(gl.getAttribLocation(velocityProgram, 'velocity'), 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(gl.getAttribLocation(velocityProgram, 'velocity'));
+      gl.drawArrays(gl.POINTS, 0, velocities.length / 3);
+      gl.disableVertexAttribArray(gl.getAttribLocation(velocityProgram, 'velocity'));
+
+      // Update water particle positions
+      gl.useProgram(velocityProgram);
+      gl.uniformMatrix4fv(gl.getUniformLocation(velocityProgram, 'model'), false, new Float32Array(matrix4.array()));
+      gl.uniformMatrix4fv(gl.getUniformLocation(velocityProgram, 'view'), false, new Float32Array(camera.matrixWorldInverse.array()));
+      gl.uniformMatrix4fv(gl.getUniformLocation(velocityProgram, 'projection'), false, new Float32Array(camera.projectionMatrix.array()));
+      gl.uniform1f(gl.getUniformLocation(velocityProgram, 'gravity'), gravity);
+      gl.bindBuffer(gl.ARRAY_BUFFER, particleBuffer);
+      gl.vertexAttribPointer(gl.getAttribLocation(velocityProgram, 'vertex'), 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(gl.getAttribLocation(velocityProgram, 'vertex'));
+      gl.drawArrays(gl.POINTS, 0, positions.length / 3);
+      gl.disableVertexAttribArray(gl.getAttribLocation(velocityProgram, 'vertex'));
+      gl.deleteBuffer(particleBuffer);
+      gl.deleteBuffer(velocityBuffer);
+    }
+
+    // Function to draw the scene
+    function draw() {
+      // Clear the canvas
+      gl.clearColor(0.85, 0.85, 0.85, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // Render the water
+      if (water) {
+        // Draw water
+        gl.drawArrays(gl.POINTS, 0, water.geometry.vertices.length / 3);
+
+        // If in debug mode, draw the raw particles
+        // if (debug) {
+        //   gl.useProgram(debugProgram);
+        //   gl.uniformMatrix4fv(gl.getUniformLocation(debugProgram, 'model'), false, new Float32Array(matrix4.array()));
+        //   gl.uniformMatrix4fv(gl.getUniformLocation(debugProgram, 'view'), false, new Float32Array(camera.matrixWorldInverse.array()));
+        //   gl.uniformMatrix4fv(gl.getUniformLocation(debugProgram, 'projection'), false, new Float32Array(camera.projectionMatrix.array()));
+        //   gl.drawArrays(gl.POINTS, 0, rawParticles.geometry.vertices.length / 3);
+        // }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    // Create the simulation matrix
+    let matrix4 = new THREE.Matrix4();
+
+    // Animation loop
+    function animation(time) {
+      update(time);
+      render();
+    }
+
+    // Add event listeners
+    canvas.addEventListener('click', function(event) {
+      if (scenario === 0 || scenario === 1) {
+        // Click and drag in the water
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        mouse.x = (canvas.width / window.innerWidth) * event.clientX;
+        mouse.y = (canvas.height / window.innerHeight) * event.clientY;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(tank);
+        if (intersects.length > 0) {
+          if (scenario === 0) {
+            const waterGeometry = new THREE.SphereGeometry(2, 32, 32);
+            const waterParticles = new THREE.Points(waterGeometry, new THREE.PointsMaterial({ size: 0.01, color: 0x0000ff, transparent: true, opacity: 0 }));
+            scene.add(waterParticles);
+            const sphere = new THREE.Mesh(waterParticles.geometry, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(), transparent: true, opacity: 1 }));
+            sphere.position.copy(intersects[0].point);
+            sphere.geometry.translate(0, 2, 0);
+            scene.add(sphere);
+            water = sphere;
+
+            // Water physics
+            const physics = new Physics();
+            physics.setGravity(9.8);
+            physics.setDensity(0.5);
+            physics.setViscosity(0.5);
+            physics.setParticleCount(2000);
+            physics.setParticlesGeometry(waterParticles.geometry);
+            physics.setSimulate(true);
+
+            // Add force at the point where the user clicked
+            physics.addForce(intersects[0].point, 10);
+          } else if (scenario === 1) {
+            // Simulate a sphere impact at the point where the user clicked
+            const sphereImpact = new THREE.Mesh(new THREE.SphereGeometry(2, 32, 32), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+            sphereImpact.position.copy(intersects[0].point);
+            sphereImpact.geometry.translate(0, 2, 0);
+            scene.add(sphereImpact);
+
+            // Simulate a water impact at the point where the user clicked
+            const waterImpact = new THREE.Mesh(new THREE.SphereGeometry(2, 32, 32), new THREE.MeshBasicMaterial({ color: 0x0000ff }));
+            waterImpact.position.copy(intersects[0].point);
+            waterImpact.geometry.translate(0, 2, 0);
+            scene.add(waterImpact);
+
+            // Simulate a bubble impact at the point where the user clicked
+            const bubbleImpact = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            bubbleImpact.position.copy(intersects[0].point);
+            bubbleImpact.geometry.translate(0, 2, 0);
+            scene.add(bubbleImpact);
+          }
+        }
+      }
+
+      animation(time);
+    });
+
+    // Start the animation
+    canvas.addEventListener('mousemove', function() {
+      controls.update();
+    });
+    canvas.addEventListener('touchmove', function() {
+      controls.update();
+    });
+    canvas.addEventListener('touchstart', function(event) {
+      if (event.touches.length === 1) {
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        mouse.x = (canvas.width / window.innerWidth) * event.touches[0].clientX;
+        mouse.y = (canvas.height / window.innerHeight) * event.touches[0].clientY;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObject(tank);
+        if (intersects.length > 0 && scenario === 0) {
+          const waterGeometry = new THREE.SphereGeometry(2, 32, 32);
+          water = new THREE.Mesh(waterGeometry, new THREE.MeshBasicMaterial({ color: 0x0000ff }));
+          water.position.copy(intersects[0].point);
+          water.geometry.translate(0, 2, 0);
+          scene.add(water);
+          // water physics
+          const physics = new Physics();
+          physics.setGravity(9.81);
+          physics.setDensity(1000);
+          physics.setViscosity(0.5);
+          physics.setParticleCount(20000);
+          physics.setParticlesGeometry(water.geometry);
+        }
+      }
+    });
+    canvas.addEventListener('touchend', function(event) {
+      if (event.touches.length === 1) {
+        if (scenario === 0 || scenario === 1) {
+          const waterGeometry = new THREE.SphereGeometry(2, 32, 32);
+          const waterParticles = new THREE.Points(waterGeometry, new THREE.PointsMaterial({ size: 0.01, color: 0x0000ff, transparent: true, opacity: 0 }));
+          scene.add(waterParticles);
+          const sphere = new THREE.Mesh(waterParticles.geometry, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(), transparent: true, opacity: 1 }));
+          sphere.position.copy(intersects[0].point);
+          sphere.geometry.translate(0, 2, 0);
+          scene.add(sphere);
+          water = sphere;
+
+          // Water physics
+          const physics = new Physics();
+          physics.setGravity(9.8);
+          physics.setDensity(0.5);
+          physics.setViscosity(0.5);
+          physics.setParticleCount(2000);
+          physics.setParticlesGeometry(waterParticles.geometry);
+          physics.setSimulate(true);
+        }
+      }
+    });
+
+    // Tilt the tank with the arrow keys
+    function checkTilt(event) {
+      if (scenario === 4) {
+        if (event.key === 'ArrowUp') {
+          tank.rotation.x -= Math.PI / 180;
+        } else if (event.key === 'ArrowDown') {
+          tank.rotation.x += Math.PI / 180;
+        } else if (event.key === 'ArrowLeft') {
+          tank.rotation.y += Math.PI / 180;
+        } else if (event.key === 'ArrowRight') {
+          tank.rotation.y -= Math.PI / 180;
+        }
+      }
+    }
+
+    document.addEventListener('keydown', checkTilt);
+    document.addEventListener('keyup', function() {
+      if (scenario === 0 || scenario === 1) {
+        if (event.key === 'ArrowUp') {
+          tank.rotation.x = -Math.PI / 2;
+        } else if (event.key === 'ArrowDown') {
+          tank.rotation.x = Math.PI / 2;
+        } else if (event.key === 'ArrowLeft') {
+          tank.rotation.y = Math.PI / 2;
+        } else if (event.key === 'ArrowRight') {
+          tank.rotation.y = -Math.PI / 2;
+        }
+      }
+    });
+
+    // Handle device pixel ratio
+    window.addEventListener('resize', function(event) {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      let pixelRatio = window.devicePixelRatio;
+      if (pixelRatio > 2) {
+        pixelRatio = 2;
+      }
+      canvas.style.width = `${canvas.width}` + 'px';
+      canvas.style.height = `${canvas.height}` + 'px';
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      camera.aspect = canvas.width / canvas.height;
+      camera.updateProjectionMatrix();
+    });
+
+    // Show the UI
+    drawUI();
+
+    draw();
+  </script>
+
+</body>
+</html>
