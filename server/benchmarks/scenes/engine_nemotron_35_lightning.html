@@ -879,8 +879,7 @@
       // Create engine geometry
       createEngineGeometry();
       
-      // Set up controls
-      initControls();
+      // Set up controls (OrbitControls are created in initThreeJS)
       
       // Start animation loop
       animate();
@@ -1565,6 +1564,7 @@
       
       // Simple approach - just update text
       const phaseText = document.querySelectorAll('.panel:nth-child(4) span');
+      if (phaseText.length < 5) return;
       phaseText[0].textContent = '0°';
       phaseText[1].textContent = '180°';
       phaseText[2].textContent = '360°';

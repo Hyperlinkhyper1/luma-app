@@ -1509,6 +1509,7 @@ function createOcean() {
     `;
     
     shader.fragmentShader = `
+      uniform float uWeatherIntensity;
       uniform vec3 uSunDirection;
       uniform vec3 uSunColor;
       uniform vec3 uFogColor;
@@ -2466,8 +2467,8 @@ let loaded = false;
 function checkLoaded() {
   if (!loaded) {
     loaded = true;
-    document.getElementById('loadingEl').style.opacity = '0';
-    setTimeout(() => document.getElementById('loadingEl').style.display = 'none', 500);
+    document.getElementById('loading').style.opacity = '0';
+    setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
   }
 }
 

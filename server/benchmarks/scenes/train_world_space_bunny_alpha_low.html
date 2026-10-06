@@ -92,10 +92,10 @@ const dummy=new THREE.Object3D();scene.userData.dummy=dummy;
 // network points in X/Z, clockwise
 const P=[
  [-48,7],[-30,-25],[-8,-28],[13,-18],[34,5],[27,30],[1,36],[-28,30],[-49,12]
-];
+].map(([x,z])=>new THREE.Vector3(x,0,z));
 const A=[P[0].clone().add(new THREE.Vector3(0,0,-9)),P[2].clone().add(new THREE.Vector3(0,0,-9))];
 // Curves generated as quadratic Bezier through midpoint tangents.
-function curve(a,b,bend=0){let m=a.clone().lerp(b,.5), d=b.clone().sub(a).normalize(), side=new THREE.Vector3(-d.y,0,d.x);m.addScaledVector(side,bend);return new THREE.QuadraticBezierCurve3(a,m,b)}
+function curve(a,b,bend=0){let m=a.clone().lerp(b,.5), d=b.clone().sub(a).normalize(), side=new THREE.Vector3(-d.z,0,d.x);m.addScaledVector(side,bend);return new THREE.QuadraticBezierCurve3(a,m,b)}
 const main=[
  curve(P[0],P[1],-2),curve(P[1],P[2],0),curve(P[2],P[3],4),curve(P[3],P[4],0),
  curve(P[4],P[5],-4),curve(P[5],P[6],0),curve(P[6],P[7],3),curve(P[7],P[0],-3)
@@ -110,7 +110,7 @@ const allCurves=[...main,...siding];let totalMain=blockData.slice(0,8).reduce((a
 function pointAt(curve,t,lat=0){let p=curve.getPoint(t),tan=curve.getTangent(t).normalize();p.add(new THREE.Vector3(-tan.z,0,tan.x).multiplyScalar(lat));p.y=.48;return p}
 function buildTrack(cd,index){
  const n=Math.ceil(cd.length/.48), railPts=[],ties=[];
- for(let i=0;i<=n;i++){let t=i/n;railPts.push(pointAt(cd.curve,t));if(i%2===0){let q=pointAt(cd.curve,t);q.rotation.y=-Math.atan2(cd.curve.getTangent(t).z,cd.curve.getTangent(t).x);ties.push(q)}}
+ for(let i=0;i<=n;i++){let t=i/n;railPts.push(pointAt(cd.curve,t));if(i%2===0){ties.push({p:pointAt(cd.curve,t),ry:-Math.atan2(cd.curve.getTangent(t).z,cd.curve.getTangent(t).x)})}}
  // ballast ribbon
  const pos=[],idx=[];for(let i=0;i<=n;i++){let p=pointAt(cd.curve,i/n);let d=cd.curve.getTangent(i/n),s=new THREE.Vector3(-d.z,0,d.x);pos.push(p.x+s.x*.82,p.y-.08,p.z+s.z*.82,p.x-s.x*.82,p.y-.08,p.z-s.z*.82);if(i<n){let k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();let m=new THREE.Mesh(g,ballast);m.receiveShadow=true;scene.add(m);
@@ -120,7 +120,7 @@ function buildTrack(cd,index){
   const wear=new THREE.Mesh(lm.geometry,new THREE.MeshStandardMaterial({color:0xb4b6b3,roughness:.22,metalness:.9}));wear.position.y=.002;scene.add(wear);
  }
  const inst=new THREE.InstancedMesh(new THREE.BoxGeometry(.95,.10,.18),sleeper,ties.length);
- ties.forEach((p,i)=>{dummy.position.copy(p);dummy.rotation.copy(p.rotation);dummy.scale.set(1,1,1);dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix)});inst.receiveShadow=true;scene.add(inst);
+ ties.forEach(({p,ry},i)=>{dummy.position.copy(p);dummy.rotation.set(0,ry,0);dummy.scale.set(1,1,1);dummy.updateMatrix();inst.setMatrixAt(i,dummy.matrix)});inst.receiveShadow=true;scene.add(inst);
  cd.mesh=m;
 }
 blockData.forEach(buildTrack);
@@ -165,7 +165,7 @@ function makeSignal(cd,index,kind='normal'){
  let lamps=[];for(let i=0;i<3;i++){let m=new THREE.MeshStandardMaterial({color:0x202020,emissive:0x000000});let o=sphere(.105,m,0,2.62-i*.31,.15,1,1,.6,root);lamps.push(o)}
  // face towards approaching side
  root.rotation.y+=Math.PI;let hit=new THREE.Mesh(new THREE.SphereGeometry(.7,8,6),new THREE.MeshBasicMaterial({visible:false}));hit.position.y=2.3;hit.userData.signalIndex=index;root.add(hit);
- let txt=document.createElementNS('http://www.w3.org/2000/svg','text');txt.setAttribute('x',index<8?P[index][0]+42:P[index][0]+42);txt.setAttribute('y',P[index][1]-42);txt.setAttribute('fill','#b7c7ce');txt.setAttribute('font-size','8');txt.textContent=cd.id;$('#svg').appendChild(txt);
+ let txt=document.createElementNS('http://www.w3.org/2000/svg','text');const q0=cd.curve.getPoint(.1);txt.setAttribute('x',q0.x+198);txt.setAttribute('y',q0.z+58);txt.setAttribute('fill','#b7c7ce');txt.setAttribute('font-size','8');txt.textContent=cd.id;$('#svg').appendChild(txt);
  signalMeshes.push({lamps,hit,cd});cd.signalIndex=index;
 }
 blockData.forEach(makeSignal);
@@ -183,22 +183,22 @@ const trains=[
  {id:'C',name:'Ore Line 9',color:'#ffd166',model:freight(),dist:totalMain*.76,speed:0,target:7,max:7,useLoop:false,lap:1,state:'Running',dwell:0}
 ];
 let cycleEdges=[0,1,2,3,4,5,6,7];let cycleLength=totalMain;
-function makeCycle(t){if(t.useLoop){let next=[0,8,9,10,2,3,4,5,6,7];cycleEdges=next;cycleLength=next.reduce((s,i)=>s+blockData[i].length,0)}else{cycleEdges=[0,1,2,3,4,5,6,7];cycleLength=totalMain}}
+function makeCycle(t){if(t.useLoop){let next=[0,8,9,10,2,3,4,5,6,7];t.cycleEdges=next;t.cycleLength=next.reduce((s,i)=>s+blockData[i].length,0)}else{t.cycleEdges=[0,1,2,3,4,5,6,7];t.cycleLength=totalMain}}
 trains.forEach(makeCycle);
-function segmentFor(t,d){d=((d%cycleLength)+cycleLength)%cycleLength;let i=0;while(d>blockData[cycleEdges[i]].length&&i<cycleEdges.length-1){d-=blockData[cycleEdges[i]].length;i++}return{bi:cycleEdges[i],local:d,edge:cycleDataIndex(cycleEdges[i])}}
+function segmentFor(t,d){const ce=t.cycleEdges,cl=t.cycleLength;d=((d%cl)+cl)%cl;let i=0;while(d>blockData[ce[i]].length&&i<ce.length-1){d-=blockData[ce[i]].length;i++}return{bi:ce[i],local:d,edge:cycleDataIndex(ce[i])}}
 function cycleDataIndex(i){return blockData[i]}
 function routeOffset(){return trains.findIndex(t=>t.dwell>0)}
 function setPoints(t,bi){let sw=switches.S3;if(bi===8||bi===10){sw.set='b';sw.want='b'}if(bi===2||bi===3){sw.set='a';sw.want='a'}if(bi===0||bi===1){sw.set='a';sw.want='a'}}
 function requestNext(t){
- let {bi,local,edge}=segmentFor(t,t.dist),nseg=segmentFor(t,t.dist+edge.length+.01),n=nseg.edge;
- if(blockData[n].occupied||blockData[n].manual||blockData[n].reserved&&blockData[n].reserved!==t.id)return false;
+ let {bi,local,edge}=segmentFor(t,t.dist),nseg=segmentFor(t,t.dist+(edge.length-local)+.01),n=nseg.bi;
+ if(blockData[n].occupied||blockData[n].manual||blockData[n].reserved&&blockData[n].reserved!=='pending'&&blockData[n].reserved!==t.id)return false;
  // Exclusive turnouts and direction lock; the entire passing loop is one section group.
- if((n===8||n===9||n===10)&&blockData[8].reserved&&blockData[8].reserved!==t.id)return false;
+ if((n===8||n===9||n===10)&&blockData[8].reserved&&blockData[8].reserved!=='pending'&&blockData[8].reserved!==t.id)return false;
  blockData[n].reserved=t.id;blockData[n].routeAt=simTime;t.wantSwitch=n;return true;
 }
-function nextAspect(t){let cur=segmentFor(t,t.dist), n=segmentFor(t,t.dist+cur.edge.length+.02).edge, n2=segmentFor(t,t.dist+cur.edge.length+blockData[n].length+.03).edge;
+function nextAspect(t){let cur=segmentFor(t,t.dist), rem=cur.edge.length-cur.local, n=segmentFor(t,t.dist+rem+.02).bi, n2=segmentFor(t,t.dist+rem+blockData[n].length+.03).bi;
  if(blockData[n].manual||blockData[n].occupied||!blockData[n].reserved)return 'red';if(blockData[n2].occupied||blockData[n2].manual||!blockData[n2].reserved)return 'yellow';return 'green'}
-function releaseBehind(t){let c=segmentFor(t,t.dist-2.2).edge;blockData.forEach((b,i)=>{if(b.reserved===t.id&&b!==blockData[c]&&i!==segmentFor(t,t.dist+8).edge)b.reserved=null})}
+function releaseBehind(t){let c=segmentFor(t,t.dist-2.2).bi,ahead=segmentFor(t,t.dist+8).bi,cur=segmentFor(t,t.dist).bi;blockData.forEach((b,i)=>{if(b.reserved===t.id&&i!==c&&i!==ahead&&i!==cur&&!b.occupied)b.reserved=null})}
 function pointAlong(t,dist){let s=segmentFor(t,dist),b=blockData[s.bi],c=b.curve;return c.getPointAt(Math.min(.99999,s.local/b.length))}
 // initial disjoint occupancy
 function refreshOccupancy(){blockData.forEach(b=>b.occupied=null);for(let t of trains){let n=Math.ceil(t.model.length/.42);for(let j=0;j<n;j++){let b=segmentFor(t,t.dist-j*.42).edge;if(!b.occupied)b.occupied=t.id}}}
@@ -254,10 +254,10 @@ function aspectFor(b){
  if(b.manual||b.occupied||(!b.reserved&&b.reserved!=='pending'))return'RED';if(n.occupied||n.manual||!n.reserved)return'YELLOW';if(n2.occupied||n2.manual||!n2.reserved)return'YELLOW';return'GREEN'}
 function updateSignals(){
  blockData.forEach((b,i)=>{let a=aspectFor(b),idx=a==='GREEN'?0:a==='YELLOW'?1:2;signalMeshes[i].lamps.forEach((l,j)=>l.material=j===idx?signalLamps[a.toLowerCase()]:signalLamps.off);let col=a==='GREEN'?'#54f28b':a==='YELLOW'?'#ffd452':'#ff4d55';svgSig[i].setAttribute('fill',col);
- let p=showBlocks?(b.occupied?'#ff9b38':b.reserved&&b.reserved!=='pending'?'#328aa6':'#52636d'):'#52636d';svgBlocks[i].setAttribute('stroke',p);if(b.mesh){if(showBlocks)b.mesh.material.color.setHex(b.occupied?0xb56832:b.reserved&&b.reserved!=='pending'?0x4d94a8:0x77736b);else b.mesh.material.color.setHex(0x77736b)}b.mesh.visible=showRoutes||!b.reserved||b.reserved==='pending'||b.reserved!==t?.id})
+ let p=showBlocks?(b.occupied?'#ff9b38':b.reserved&&b.reserved!=='pending'?'#328aa6':'#52636d'):'#52636d';svgBlocks[i].setAttribute('stroke',p);if(b.mesh){if(showBlocks)b.mesh.material.color.setHex(b.occupied?0xb56832:b.reserved&&b.reserved!=='pending'?0x4d94a8:0x77736b);else b.mesh.material.color.setHex(0x77736b)}b.mesh.visible=true})
 }
 let puffs=0;function updateModels(dt){
- trains.forEach(t=>{let seg=segmentFor(t,t.dist);let asp=nextAspect(t);
+ trains.forEach(t=>{let seg=segmentFor(t,t.dist);let asp=nextAspect(t).toUpperCase();
   t.model.cars.forEach((c,j)=>{let d=t.dist-t.model.offsets[j],s=segmentFor(t,d),p=pointAlong(t,d),tan=s.edge.curve.getTangentAt(Math.min(.999,s.local/s.edge.length));c.g.position.copy(p);c.g.rotation.y=-Math.atan2(tan.z,tan.x);c.g.position.y+=.08;
    c.wheels.forEach(w=>w.rotation.x-=t.speed*dt/.28);
    if(c.rod)c.rod.rotation.x=-t.dist*1.5;
@@ -278,7 +278,7 @@ function updateWorld(dt){
  smoke.forEach(s=>{s.age+=dt;let k=s.age/s.life;s.o.position.y+=dt*(1.2+s.age*.25);s.o.position.x+=dt*.3;s.o.scale.setScalar(.3+k*1.2);s.o.material.opacity=k<1?Math.sin(Math.PI*k)*.55:0});
  updateModels(dt);
 }
-const hemiBase=2,day=$.querySelector('#day');function updateLight(){let v=+day.value;let dayc=new THREE.Color().lerpColors(new THREE.Color(0x071327),new THREE.Color(0x9bcbe0),v);scene.background.copy(dayc);scene.fog.color.copy(dayc);hemi.intensity=.45+v*1.65;sun.intensity=.15+v*2.85;let night=1-v;windows.forEach(w=>{w.material=night>.3?new THREE.MeshStandardMaterial({color:0xffd76b,emissive:0xffa72e,emissiveIntensity:1.4}):windowM})}
+const hemiBase=2,day=$('#day');function updateLight(){let v=+day.value;let dayc=new THREE.Color().lerpColors(new THREE.Color(0x071327),new THREE.Color(0x9bcbe0),v);scene.background.copy(dayc);scene.fog.color.copy(dayc);hemi.intensity=.45+v*1.65;sun.intensity=.15+v*2.85;let night=1-v;windows.forEach(w=>{w.material=night>.3?new THREE.MeshStandardMaterial({color:0xffd76b,emissive:0xffa72e,emissiveIntensity:1.4}):windowM})}
 day.oninput=updateLight;updateLight();
 function animate(){requestAnimationFrame(animate);let dt=Math.min(.05,clock.getDelta());if(!paused){let simdt=dt*timeScale;updateSimulation(simdt);updateWorld(simdt);updateSignals()}
  if(cameraTween){camera.position.lerp(cameraTween.pos,.07);controls.target.lerp(cameraTween.target,.07);if(camera.position.distanceTo(cameraTween.pos)<.1)cameraTween=null}
@@ -289,7 +289,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 $('#routes').classList.add('active');
 setTimeout(()=>{$('#loading').style.display='none';toast('Welcome to Valley Junction — the railway is live')},350);
 }catch(err){
- console.error(err);$('#loading').style.display='none';const e=$('#error');e.style.display='grid';e.textContent='WebGL could not start on this device. Please enable hardware acceleration or open this page in a WebGL-capable browser. ('+err.message+')';
+ console.error(err);document.querySelector('#loading').style.display='none';const e=document.querySelector('#error');e.style.display='grid';e.textContent='WebGL could not start on this device. Please enable hardware acceleration or open this page in a WebGL-capable browser. ('+err.message+')';
 }
 </script>
 </body>

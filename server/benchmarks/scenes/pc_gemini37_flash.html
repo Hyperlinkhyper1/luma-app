@@ -1923,6 +1923,7 @@
         State.rgbColor.setHSL(hue, 1.0, 0.5);
 
         rgbMaterials.forEach(item => {
+          if (!item.mat.emissive) return;
           const itemHue = ((t * 0.2) + (item.phase || 0)) % 1.0;
           item.mat.emissive.setHSL(itemHue, 1.0, 0.5);
           item.mat.emissiveIntensity = (item.baseEmissive || 1.0) * State.brightness;

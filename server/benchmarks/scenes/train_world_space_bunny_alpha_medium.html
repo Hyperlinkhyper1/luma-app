@@ -93,7 +93,7 @@ for(let i=0;i<12;i++){
 function branchCurve(a,b,inset){const p=master.getPoint(a/12),q=master.getPoint(b/12),m=master.getPoint((a+b)/24);const c=m.clone();const center=new THREE.Vector3(0,0,0);c.lerp(center,inset);return new THREE.CatmullRomCurve3([p,p.clone().lerp(c,.4),c,q.clone().lerp(c,.4),q],false,'centripetal');}
 edgeCurves[13]=branchCurve(0,1,.17);edgeIds[13]='P1';
 edgeCurves[14]=branchCurve(6,7,.17);edgeIds[14]='P2';
-const allEdges=[...edgeCurves];
+const allEdges=edgeCurves.slice();
 const railMat=new THREE.MeshStandardMaterial({color:0x9aabb0,metalness:.88,roughness:.27});
 const sleeperMat=new THREE.MeshStandardMaterial({color:0x4c3425,roughness:.95});
 const ballastMat=new THREE.MeshStandardMaterial({color:0x777970,roughness:1});
@@ -106,7 +106,7 @@ function ribbon(curve,width,mat,yOffset=0){
 }
 function makeTrack(curve,id){
  const ballast=ribbon(curve,3.25,ballastMat,.08);ballast.receiveShadow=true;scene.add(ballast);
- const overlay=ribbon(curve,2.75,routeOverlay.clone(),.18);overlay.visible=false;overlay.material.color.set(id.includes('P')?0x8d7bff:0x5ee6a0);scene.add(overlay);
+ const overlay=ribbon(curve,2.75,routeOverlay.clone(),.18);overlay.visible=false;overlay.material.color.set(id>=13?0x8d7bff:0x5ee6a0);(curve.userData=curve.userData||{}).overlay=overlay;scene.add(overlay);
  const n=Math.max(18,Math.floor(curve.getLength()/1.05)),dummy=new THREE.Object3D(),sleeper=new THREE.InstancedMesh(new THREE.BoxGeometry(2.35,.18,.34),sleeperMat,n);sleeper.receiveShadow=true;
  for(let i=0;i<n;i++){const t=(i+.5)/n,p=curve.getPoint(t),tg=curve.getTangent(t);dummy.position.set(p.x,.22,p.z);dummy.rotation.y=Math.atan2(tg.x,tg.z);dummy.updateMatrix();sleeper.setMatrixAt(i,dummy.matrix)}scene.add(sleeper);
  for(const side of [-1,1]){
@@ -134,7 +134,7 @@ edgeCurves.forEach((c,i)=>makeSignal(c,edgeIds[i],i));
 
 // Four mechanically moving turnout blade groups, one at each end of the two passing loops.
 function addSwitch(edgeIndex,atStart,branchId){
- const c=allEdges[edgeIndex],p=c.getPoint(atStart?.01:.99),tg=c.getTangent(atStart?.001:-.001),n=new THREE.Vector3(-tg.z,0,tg.x);
+ const c=allEdges[edgeIndex],p=c.getPoint(atStart?.01:.99),tg=c.getTangent(atStart?.001:.999),n=new THREE.Vector3(-tg.z,0,tg.x);
  const root=new THREE.Group();orientation(root,p,tg);root.position.addScaledVector(n,-1.35);scene.add(root);
  const housing=new THREE.Mesh(new THREE.BoxGeometry(2.5,.18,.65),new THREE.MeshStandardMaterial({color:0x4d3a2b}));housing.position.y=.3;root.add(housing);
  const blade=new THREE.Group();blade.position.set(-.65,.47,0);root.add(blade);
@@ -173,7 +173,7 @@ mound(-38,23,13,5,12);mound(37,24,15,6,13);mound(38,-23,12,4.5,11);mound(-35,-25
 // Trees, fences, houses and church.
 const trunkMat=new THREE.MeshStandardMaterial({color:0x6b482c,roughness:1}),leafMats=[0x2f6841,0x3d7747,0x527d42].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:1}));
 const treeCount=65,treeData=[];for(let i=0;i<treeCount;i++){let x,z;do{x=(Math.random()-.5)*82;z=(Math.random()-.5)*53;}while(Math.hypot(x,z)<29);treeData.push({x,z,h:2+Math.random()*2.6});}
-const trunks=new THREE.InstancedMesh(new THREE.CylinderGeometry(.16,.24,1,7),trunkMat,treeCount),leaves=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,8),leafMat[0],treeCount*2),d=new THREE.Object3D();treeData.forEach((v,i)=>{d.position.set(v.x,v.h*.38,v.z);d.scale.set(1,v.h*.75,1);d.rotation.y=Math.random()*6;d.updateMatrix();trunks.setMatrixAt(i,d.matrix);for(let j=0;j<2;j++){d.position.set(v.x,v.h*(.72+j*.18),v.z);d.scale.set(v.h*.34*(1-j*.25),v.h*.7,v.h*.34*(1-j*.25));d.updateMatrix();leaves.setMatrixAt(i*2+j,d.matrix);leaves.setColorAt(i*2+j,new THREE.Color(leafMats[(i+j)%3]))}});trunks.castShadow=leaves.castShadow=true;scene.add(trunks,leaves);
+const trunks=new THREE.InstancedMesh(new THREE.CylinderGeometry(.16,.24,1,7),trunkMat,treeCount),leaves=new THREE.InstancedMesh(new THREE.ConeGeometry(1,1,8),leafMats[0],treeCount*2),d=new THREE.Object3D();treeData.forEach((v,i)=>{d.position.set(v.x,v.h*.38,v.z);d.scale.set(1,v.h*.75,1);d.rotation.y=Math.random()*6;d.updateMatrix();trunks.setMatrixAt(i,d.matrix);for(let j=0;j<2;j++){d.position.set(v.x,v.h*(.72+j*.18),v.z);d.scale.set(v.h*.34*(1-j*.25),v.h*.7,v.h*.34*(1-j*.25));d.updateMatrix();leaves.setMatrixAt(i*2+j,d.matrix);leaves.setColorAt(i*2+j,new THREE.Color(leafMats[(i+j)%3]))}});trunks.castShadow=leaves.castShadow=true;scene.add(trunks,leaves);
 const windowMats=[],lampMats=[];
 function roofGeometry(w,d,h){const g=new THREE.BufferGeometry(),p=[];const a=[[-w/2,0,-d/2],[w/2,0,-d/2],[0,h,-d/2],[-w/2,0,d/2],[w/2,0,d/2],[0,h,d/2]];p.push(...a[0],...a[2],...a[1],...a[0],...a[3],...a[2],...a[0],...a[5],...a[3],...a[1],...a[4],...a[2],...a[1],...a[5],...a[4],...a[0],...a[4],...a[3],...a[1],...a[4],...a[5]);g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.computeVertexNormals();return g}
 function house(x,z,rot,scale=1,color=0xd9c5a0){
@@ -264,7 +264,7 @@ trainDefs.forEach((def,ti)=>{
 function buildRoute(t){t.route=[];for(let i=0;i<12;i++){if(i===0&&t.branchA)t.route.push(13);else if(i===6&&t.branchB)t.route.push(14);else t.route.push(i)}t.cum=[0];t.total=0;for(const e of t.route){t.total+=allEdges[e].getLength();t.cum.push(t.total)}}
 function stationS(t,edge){let s=0;for(let i=0;i<edge;i++)s+=allEdges[t.route[i]].getLength();return s+allEdges[t.route[edge]].getLength()*.5}
 function sampleRoute(t,s){
- s=((s%t.total)+t.total)%t.total;let lo=0,hi=t.cum.length-1;while(lo+1<hi){const m=(lo+hi)>>1;if(t.cum[m]<=s)lo=m;else hi=m}const a=t.cum[lo],b=t.cum[lo+1],f=(s-a)/(b-a),edge=t.route[lo],c=allEdges[edge],p=c.getPoint(f),tg=c.getTangent(f).normalize();return {p,tg,edge,remaining:b-s};
+ s=((s%t.total)+t.total)%t.total;let lo=0,hi=t.cum.length-1;while(lo+1<hi){const m=(lo+hi)>>1;if(t.cum[m]<=s)lo=m;else hi=m}const a=t.cum[lo],b=t.cum[lo+1],f=(s-a)/(b-a),edge=t.route[lo],c=allEdges[edge],p=c.getPoint(f),tg=c.getTangent(f).normalize();return {p,tg,edge,at:lo,remaining:b-s};
 }
 function setCarPose(car,p,tg,scale=1){car.root.position.copy(p);car.root.position.y+=.08;car.root.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),tg);car.root.scale.setScalar(scale)}
 
@@ -336,9 +336,7 @@ function lighting(){
 
 // Track overlays, crossing and road traffic.
 function infrastructure(dt){
- for(let i=0;i<allEdges.length;i++){const ov=allEdges[i].userData?.overlay;if(ov)ov.visible=showBlocks}
- // Recover overlays by geometry user metadata.
- allEdges.forEach((c,i)=>{c.userData.overlay=scene.children.find(o=>o.geometry?.attributes?.position?.count===243&&o.material?.transparent&&o.position.y===0&&false)});
+ for(let i=0;i<allEdges.length;i++){const ov=allEdges[i]?.userData?.overlay;if(ov)ov.visible=showBlocks}
  let nearest=99;for(const t of trains){const l=sampleRoute(t,t.s);const d=Math.hypot(l.p.x-crossP.x,l.p.z-crossP.z);nearest=Math.min(nearest,d)}const active=nearest<17;for(const b of barrierPivots)b.arm.rotation.x=THREE.MathUtils.damp(b.arm.rotation.x,active?b.side*Math.PI/2:0,4,dt);
  let lampIndex=0;for(let s=-1;s<=1;s+=2)for(const b of barrierPivots.filter(x=>x.side===s)){const mats=crossingRoot.children.filter(()=>false);b.arm.children[0].material.emissiveIntensity=active&&Math.sin(performance.now()*.012)>0?2:.1}
  for(const r of roadCars){const target=active?8:r.offset;r.offset=THREE.MathUtils.damp(r.offset,target,1.2,dt);const p=crossP.clone().addScaledVector(roadN,r.side*(r.offset+2.2));r.car.position.set(p.x,.15,p.z);r.car.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),roadN.clone().multiplyScalar(r.side).negate())}

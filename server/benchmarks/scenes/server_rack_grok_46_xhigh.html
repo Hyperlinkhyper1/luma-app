@@ -357,8 +357,8 @@
   key.shadow.camera.top = 3;
   key.shadow.camera.bottom = -3;
   scene.add(key);
-  scene.add(new THREE.DirectionalLight(0x8aa6c4, 0.45)).position.set(-4, 2.8, -2.2);
-  scene.add(new THREE.DirectionalLight(0xb7c8e0, 0.28)).position.set(0.2, 3.4, -5);
+  { const l = new THREE.DirectionalLight(0x8aa6c4, 0.45); l.position.set(-4, 2.8, -2.2); scene.add(l); };
+  { const l = new THREE.DirectionalLight(0xb7c8e0, 0.28); l.position.set(0.2, 3.4, -5); scene.add(l); };
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(14,14), new THREE.MeshStandardMaterial({ color:0x14171c, roughness:0.92, metalness:0.05 }));
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);

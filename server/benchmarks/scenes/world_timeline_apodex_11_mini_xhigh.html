@@ -286,7 +286,7 @@ const interpolatePath = (p1, p2) => {
   return formatPath(t1.map((tok, i) => {
     const a = parseFloat(tok);
     const b = parseFloat(t2[i]);
-    return isNaN(a) || isNaN(b) ? tok : lerp(a, b, P.current);
+    return isNaN(a) || isNaN(b) ? tok : lerp(a, b, P ? P.current : 0);
   }));
 };
 
@@ -408,7 +408,7 @@ const UI = {
   progressFill: document.getElementById('progress-bar-fill')
 };
 
-let P = {
+var P = {
   activeIdx: 0,    // Index in CHAPTERS array
   progress: 0.0,   // 0..1 between active and next chapter
   totalDuration: 0,
@@ -526,7 +526,7 @@ function render(now) {
   // --- 4. Era Specific Effects & Sprites ---
   
   // Helper to show/hide sprites
-  function toggleSprite(id, show, x, y, s, rot) {
+  function toggleSprite(id, show, x, y, scale, rot) {
     const s = sprites.find(sp => sp.id === id);
     if (!s) return;
     if (show !== s.active) {

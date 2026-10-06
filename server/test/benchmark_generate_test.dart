@@ -32,6 +32,12 @@ void main() {
       expect(extractBenchmarkHtml(reply), page);
     });
 
+    test('skips a draft page before an unopened </think>', () {
+      final reply = '<!DOCTYPE html><html>draft</html>\nNot done yet.</think>'
+          '$page';
+      expect(extractBenchmarkHtml(reply), page);
+    });
+
     test('keeps a page cut off before </html>, flagged incomplete', () {
       const cut = '<!doctype html><html><body><script>let x = 1';
       final got = extractBenchmarkHtml('Sure:\n$cut');

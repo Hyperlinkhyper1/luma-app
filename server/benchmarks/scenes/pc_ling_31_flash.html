@@ -611,7 +611,7 @@ AIO.add(tube([[-0.9,1.5,-0.9],[-1.6,1.7,-1.3],[-1.95,2.2,-1.6],[-1.98,4.6,-1.7]]
 AIO.add(tube([[-0.2,1.5,-0.9],[-0.6,1.9,-1.35],[-1.35,2.4,-1.55],[-1.82,4.6,-1.55]], 0.085));
 /* rear fan (on back panel, facing out) */
 const rearFan = makeFan(0.62, 0.16, true);
-rearFan.position.set(-1.9, 4.6, -1.68); rearFan.rotation.y = Math.PI;
+rearFan.group.position.set(-1.9, 4.6, -1.68); rearFan.group.rotation.y = Math.PI;
 AIO.add(rearFan.group);
 S.fans.push(rearFan); S.fansPower['f3'] = rearFan;
 

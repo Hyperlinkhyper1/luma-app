@@ -476,6 +476,7 @@ function mergeGeos(src){
 }
 
 /* ---- procedural textures (canvas → GPU, nothing external) ---- */
+const tex2=(key,draw,w=512,h=512)=>cvsTex(key,w,h,draw);
 const TEXC={};
 function cvsTex(key,w,h,draw,o={}){
   if(TEXC[key]) return TEXC[key];
@@ -843,9 +844,9 @@ function addDimmField(a,ctx,o){
       rows:[['Slot',name+' — '+(o.socket||'CPU1')],['Channel','Channel '+(CH[ch%12])],['Capacity',o.cap+' GB'],['Speed',o.speed],['Rank','2Rx4'],['Voltage','1.1 V'],['Status', o.pop?'Populated':'Populated']],
       n:'Populating all channels — not just filling slots — is what doubles memory bandwidth for VM and database workloads.'}});
     const nc=Math.floor(dl/0.0128);
-    for(let k=0;k<nc;k++){chips.push({m:M4(px+th/2-0.0004,o.y+dh*0.52,pz-dl/2+0.0075+k*(dl-0.015)/(nc-1)});}
+    for(let k=0;k<nc;k++){chips.push({m:M4(px+th/2-0.0004,o.y+dh*0.52,pz-dl/2+0.0075+k*(dl-0.015)/(nc-1))});}
     chips.push({m:M4(px+th/2-0.0004,o.y+dh*0.52,pz+dl/2-0.0062,0,0,0),sx:0.6,sy:0.6,sz:1.5}); // PMIC/SPD hub
-    for(let k=0;k<nc;k++){chips.push({m:M4(px-th/2+0.0004,o.y+dh*0.52,pz-dl/2+0.0075+k*(dl-0.015)/(nc-1)});}
+    for(let k=0;k<nc;k++){chips.push({m:M4(px-th/2+0.0004,o.y+dh*0.52,pz-dl/2+0.0075+k*(dl-0.015)/(nc-1))});}
   }
   sub.inst('plastic',GEO.box(0.0072,0.0058,dl+0.004),empty);
   sub.inst('dimmb',GEO.box(th,dh,dl),full);
@@ -1106,6 +1107,8 @@ function addBasePan(a,o){
   return sub;
 }
 /* --- generic informational sub-group for empty / blanked hardware --- */
+/* addBmc is called below but was never written; skip that part. */
+function addBmc(){}
 function addVoid(a,o){
   const sub=a.sub(o.info,{tag:o.tag});
   bx(sub,'pcbDark',o.w,0.0016,o.d,o.x,o.y,o.z);
@@ -2432,7 +2435,7 @@ function refreshElev(){
       inner+='<span class="nm">'+(occ.first?occ.d.name:'·')+'</span>';
       if(S.sel===occ.d.id)cell.classList.add('sel');
       const h=H[occ.d.id];
-      if(h&&h.alarms&&h.alarms[0][0]==='crit')cell.style.setProperty('--c','#dc5b41');
+      if(h&&h.alarms&&h.alarms[0]&&h.alarms[0][0]==='crit')cell.style.setProperty('--c','#dc5b41');
       cell.onclick=()=>{selectServer(occ.d.id);};
       cell.onmouseenter=()=>{if(S.mode==='rack'&&occ.d.proxy)placeHl(hlSel,occ.d.proxy,null);};
       cell.onmouseleave=()=>{if(S.mode==='rack')hlSel.visible=false;};
@@ -2477,7 +2480,7 @@ function refreshSys(){
     '<div class="card-sub">'+d.uh+'U · U'+d.u+(d.uh>1?'–U'+(d.u+d.uh-1):'')+' · '+ar.short+' ARCHETYPE</div>'+
     '<div class="badges"><span class="badge acc">'+(S.mode==='slice'?'SLICE ISOLATED':'IN RACK')+'</span>'+
       '<span class="badge">SN '+d.sn+'</span><span class="badge">DEPTH '+(ar.depth*1000).toFixed(0)+' mm</span>'+
-      '<span class="badge '+(h.alarms&&h.alarms[0][0]!=='ok'?'':'acc')+'">'+(h.alarms?h.alarms[0][0]==='ok'?'HEALTH OK':'ALERTS '+h.alarms.length:'HEALTH OK')+'</span></div>'+
+      '<span class="badge '+(h.alarms&&h.alarms[0]&&h.alarms[0][0]!=='ok'?'':'acc')+'">'+(h.alarms&&h.alarms.length?h.alarms[0][0]==='ok'?'HEALTH OK':'ALERTS '+h.alarms.length:'HEALTH OK')+'</span></div>'+
     '<div class="hint" style="margin:8px 0 10px">'+ar.blurb+'</div>'+
     '<dl class="kv">'+rows+'</dl>'+
     '<div style="display:flex;gap:5px;margin-top:11px">'+
@@ -2824,7 +2827,7 @@ applyToggles=()=>{
 /* attach the power / data path node labels to the slice overlay */
 const __ensure=ensureSlice;
 ensureSlice=(id)=>{
-  const def=byId(id),sl=__ensure(def?def.id:def);
+  const def=typeof id==='string'?byId(id):id,sl=__ensure(def);
   if(sl&&!sl.ov._lbl){sl.ov._lbl=1;
     for(const L of [sl.pwLabels,sl.datLabels])if(L)L.forEach(l=>{if(!l.parent){l.position.y+=0.002;sl.ov.add(l);}});
   }

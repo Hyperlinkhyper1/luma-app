@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 
+import 'benchmark_generate.dart';
+
 /// One interactive benchmark scene the app can download, e.g. a model's
 /// independent implementation of the Pagoda, Engine, or Cathedral test.
 ///
@@ -174,6 +176,7 @@ class AiBenchmarkStore {
     required String description,
     required List<int>? bytes,
   }) async {
+    if (bytes != null && extForKind(kind) == 'html') bytes = trimToPage(bytes);
     final entry = validateUpload(
       kind: kind,
       id: id,
@@ -207,6 +210,19 @@ class AiBenchmarkStore {
       await rosterTmp.rename(_uploadsRoster.path);
     });
     return entry;
+  }
+
+  /// A pasted model reply often keeps the model's closing prose before the
+  /// page, or the markdown fence around it, and the WebView shows that as
+  /// text instead of the scene. Keeps the page alone; bytes that are already
+  /// just a page come back untouched.
+  static List<int> trimToPage(List<int> bytes) {
+    final text = utf8.decode(bytes, allowMalformed: true);
+    final page = extractBenchmarkHtml(text);
+    if (page == null || page == text.replaceFirst('﻿', '').trim()) {
+      return bytes;
+    }
+    return utf8.encode('$page\n');
   }
 
   static final Map<String, Future<void>> _writeQueues = {};

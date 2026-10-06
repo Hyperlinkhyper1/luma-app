@@ -229,6 +229,7 @@ const createDrive = (size, isHotSwap) => {
 // SERVER BUILDER
 // ============================================================================
 class ServerBuilder {
+  get position() { return this.group.position; }
   constructor(mode, archetype) {
     this.mode = mode; // 'rack' or 'slice'
     this.arch = ARCHS[archetype];
@@ -667,12 +668,12 @@ class RackBuilder {
 
   addServer(serverObj, uPos) {
     this.servers.push(serverObj);
-    serverObj.position.set(0, (uPos * U_MM) + (U_MM/2) - (serverObj.arch.h * U_MM)/2, 0);
-    this.group.add(serverObj);
+    serverObj.group.position.set(0, (uPos * U_MM) + (U_MM/2) - (serverObj.arch.h * U_MM)/2, 0);
+    this.group.add(serverObj.group);
   }
 
   buildPDUs() {
-    const h = RACK_H;
+    const h = RACK_H, w = RACK_W;
     const p1 = new THREE.Mesh(createBox(0.08, h, 0.04), new THREE.MeshStandardMaterial({color:0x222, metalness:0.5, roughness:0.5}));
     p1.position.set(w/2-0.15, h/2, 0.25);
     // PDU LEDs

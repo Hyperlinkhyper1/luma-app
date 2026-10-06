@@ -186,7 +186,7 @@
                     const t = s / roofSegments;
                     const roofScale = size * (1 - t * 0.3);
                     const roofGeo = new THREE.BoxGeometry(roofScale, 0.3, roofScale);
-                    const roof = new THREE.Mesh(i % 2 === 0 ? jadeMat : goldMat, roofGeo);
+                    const roof = new THREE.Mesh(roofGeo, i % 2 === 0 ? jadeMat : goldMat);
                     roof.position.y = i * floorHeight + floorHeight * 0.5 + s * 0.2;
                     roof.castShadow = true;
                     roof.receiveShadow = true;

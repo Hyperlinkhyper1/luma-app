@@ -893,6 +893,7 @@ function createVoxelGroup(worldSize = 64) {
 
 // ───────────────────────────── BUILD ALL ─────────────────────────────
 const pagodaResult = createVoxelGroup(64);
+scene.add(pagodaResult.group);
 const allMaterials = pagodaResult.materials;
 const allMeshes = pagodaResult.group.children;
 

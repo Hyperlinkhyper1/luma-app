@@ -239,7 +239,7 @@ const materials = {
 const dummy = new THREE.Object3D();
 const vA = new THREE.Vector3();
 const vB = new THREE.Vector3();
-const rngSeed = 1987;
+let rngSeed = 1987;
 function rnd() {
   rngSeed = (rngSeed * 1664525 + 1013904223) >>> 0;
   return rngSeed / 4294967296;
@@ -991,7 +991,7 @@ updateEnvironment();updatePassengers(0);updateVehicles(0);updateBoats(0);updateT
 let previous=performance.now(),elapsed=0,uiTick=0;
 function animate(now) {
   requestAnimationFrame(animate);
-  const dt=Math.min(.05,(now-previous)/1000);previous=now;elapsed+=dt;
+  const dt=Math.max(0,Math.min(.05,(now-previous)/1000));previous=now;elapsed+=dt;
   if(timePlaying){time=(time+dt*.16)%24;updateEnvironment();}
   updateCameraTween(dt);
   updateWalk(dt);

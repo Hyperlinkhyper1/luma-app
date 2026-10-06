@@ -403,9 +403,9 @@ baseInset.position.y=-.22;baseInset.receiveShadow=true;world.add(baseInset);
 
 function terrainY(x,z){
   let h=.08+.07*Math.sin(x*.31)*Math.cos(z*.25);
-  h+=2.6*Math.exp(-((x+31)/10)**2-((z-22)/7)**2);
-  h+=2.9*Math.exp(-((x-31)/10)**2-((z+22)/7)**2);
-  h+=3.7*Math.exp(-((x-3.2)/8)**2-((z+.5)/10)**2);
+  h+=2.6*Math.exp(-(((x+31)/10)**2)-(((z-22)/7)**2));
+  h+=2.9*Math.exp(-(((x-31)/10)**2)-(((z+22)/7)**2));
+  h+=3.7*Math.exp(-(((x-3.2)/8)**2)-(((z+.5)/10)**2));
   if(x>-1.2&&x<7.7&&Math.abs(z)<2.65) h=Math.min(h,.02);
   const riverX=-11.3+Math.sin(z*.1)*.35;
   if(Math.abs(x-riverX)<2.45) h=-.68+Math.max(0,(Math.abs(x-riverX)-1.45)*.4);
@@ -634,7 +634,7 @@ const routePatterns=[
   ['WTN','WPN','WBN','NORTH','EPN','EBN','ETN','C6','C5','C4','C3','C2','C1'],
   ['C1','C2','C3','C4','C5','C6','ETS','EPS','EBS','SOUTH','WPS','WBS','WTS']
 ];
-function orientedLeg(edge,rev){return {edge,rev,path:rev?reverseCurve(edge.curve):edge.curve,startS:0,endS:edge.length,station:edge.station,signal:null};}
+function orientedLeg(edge,rev){return {edge,rev,startNode:edge.a,endNode:edge.b,path:rev?reverseCurve(edge.curve):edge.curve,startS:0,endS:edge.length,station:edge.station,signal:null};}
 function makeRoute(train,upper=true){
   const choice=train.lap%2===0?0:1;
   const branchW=upper?(choice?edges.get('WBN'):edges.get('WPN')):(choice?edges.get('WBS'):edges.get('WPS'));
@@ -644,7 +644,7 @@ function makeRoute(train,upper=true){
   else list=['C1','C2','C3','C4','C5','C6','ETS',branchE.id,'SOUTH',branchW.id,'WTS'].map(id=>edges.get(id));
   const legs=list.map((e,i)=>orientedLeg(e,upper?i>=5:i<6));let total=0;
   legs.forEach(l=>{l.startS=total;total+=l.edge.length;l.endS=total;});
-  for(let i=0;i<legs.length;i++){const a=legs[i],b=legs[(i+1)%legs.length];const fromStart=a.rev?a.endNode:a.startNode,toStart=b.rev?b.endNode:b.startNode;let sig;if(fromStart===toStart)sig=createSignal(a.edge,b.edge,fromStart,toStart);a.signal=sig||signalMap.get(a.edge.id+'>'+b.edge.id);}
+  for(let i=0;i<legs.length;i++){const a=legs[i],b=legs[(i+1)%legs.length];const fromStart=a.rev?a.endNode:a.startNode,toStart=b.rev?b.endNode:b.startNode;let sig;sig=createSignal(a.edge,b.edge,fromStart,toStart);a.signal=sig||signalMap.get(a.edge.id+'>'+b.edge.id);}
   return {legs,total,upper};
 }
 function locate(route,distance){
@@ -653,7 +653,7 @@ function locate(route,distance){
   const l=route.legs[route.legs.length-1];return {index:route.legs.length-1,leg:l,local:l.edge.length};
 }
 function sampleRoute(route,distance){
-  const q=locate(route,distance),p=q.leg.path.getPointAt(clamp(q.local/q.edge.length,0,1)),t=horizontalTangent(q.leg.path.getTangentAt(clamp(q.local/q.edge.length,0,1)));
+  const q=locate(route,distance),p=q.leg.path.getPointAt(clamp(q.local/q.leg.edge.length,0,1)),t=horizontalTangent(q.leg.path.getTangentAt(clamp(q.local/q.leg.edge.length,0,1)));
   return {point:p,tangent:t,index:q.index,leg:q.leg};
 }
 
@@ -761,7 +761,7 @@ function makeContainerWagon(){
 const trains=[];
 function buildTrain(def){
   const carModels=[];for(const spec of def.cars){const m=spec.make();m.bogies=[addBogie(),addBogie()];carModels.push(m);}
-  const train={...def,route:null,progress:0,speed:0,state:'starting',stateReason:'',lap:0,odometer:0,dwellDone:false,dwellTimer:0,dwellDuration:def.dwell,occupancy:new Set(),currentIndex:0,currentLeg:null,nextLeg:null,nextSignal:null,nextAspect:'red',routeReason:'clear',brake:1.5,doorsOpen:false,steamAccumulator:0,lastWorld:new V3()};
+  const train={...def,group:new THREE.Group(),route:null,progress:0,speed:0,state:'starting',stateReason:'',lap:0,odometer:0,dwellDone:false,dwellTimer:0,dwellDuration:def.dwell,occupancy:new Set(),currentIndex:0,currentLeg:null,nextLeg:null,nextSignal:null,nextAspect:'red',routeReason:'clear',brake:def.brake||1.5,doorsOpen:false,steamAccumulator:0,lastWorld:new V3()};
   train.route=makeRoute(train,def.upper);train.progress=def.start;world.add(train.group);
   train.cars=carModels.map((m,i)=>({...m,index:i,offset:def.offsets[i],bogies:m.bogies,root:m.root,wheels:m.wheels}));
   for(const c of train.cars){train.group.add(c.root);c.root.traverse(o=>{if(o.isMesh){o.userData.trainId=train.id;trainPickMeshes.push(o);}});for(const b of c.bogies)b.group.traverse(o=>{if(o.isMesh){o.userData.trainId=train.id;trainPickMeshes.push(o);}});}
@@ -779,7 +779,7 @@ steam.progress=locate(steam.route,steam.progress).leg.startS+locate(steam.route,
 function setInitialPosition(tr,legIndex,fraction){
   const l=tr.route.legs[legIndex];tr.progress=l.startS+l.edge.length*fraction;
 }
-setInitialPosition(steam,1,.23);setInitialPosition(freight,1,.73);setInitialPosition(electric,0,.28);
+setInitialPosition(steam,1,.55);setInitialPosition(freight,2,.5);setInitialPosition(electric,0,.28);
 
 const smokeMatBase=new THREE.MeshStandardMaterial({color:0xdadada,transparent:true,opacity:.45,depthWrite:false,roughness:1});
 const puffGeo=new THREE.SphereGeometry(1,10,8);
@@ -790,7 +790,7 @@ function edgeAtDistance(route,s){
 }
 function markRange(route,start,length,set){
   if(length<=0)return;let s=mod(start,route.total),end=s+length;
-  if(end>=route.total){markRange(route,s,route.total-s,set);s=0;end-=route.total;}
+  if(end>route.total+1e-6){markRange(route,s,route.total-s,set);s=0;end-=route.total;}
   while(s<end-.0001){
     const q=locate(route,s),next=Math.min(end,q.leg.endS);
     set.add(q.leg.edge.id);
@@ -826,10 +826,10 @@ function updateOccupancy(){
 function updateNodeLocks(){
   for(const n of nodes.values()){
     if(n.degree<3)continue;
-    let nearest=null,dist=Infinity;
+    let nearest=null;
     for(const tr of trains)for(const c of tr.cars){
       const p=sampleRoute(tr.route,tr.progress-c.offset).point;const d=Math.hypot(p.x-n.x,p.z-n.z);
-      if(d-c.length*.5-1.15<dist){dist=d-c.length*.5-1.15;nearest=tr.id;}
+      if(d-c.length*.5-1.15<0)nearest=tr.id;
     }
     if(nearest!==null && !n.lockBy)n.lockBy=nearest;
     else if(nearest===null)n.lockBy=null;
@@ -837,7 +837,7 @@ function updateNodeLocks(){
 }
 function edgeForRoute(tr,index){return tr.route.legs[mod(index,tr.route.legs.length)].edge;}
 function canReserve(tr,nextIndex,commit=false){
-  const l=tr.route.legs[nextIndex],e=l.edge,cur=tr.route.legs[mod(nextIndex-1,tr.route.legs.length)];
+  const l=tr.route.legs[mod(nextIndex,tr.route.legs.length)],e=l.edge,cur=tr.route.legs[mod(nextIndex-1,tr.route.legs.length)];
   if(e.occupant&&e.occupant!==tr.id)return false;
   if(e.reservedBy&&e.reservedBy!==tr.id)return false;
   if(e.switchId){
@@ -858,7 +858,7 @@ function canReserve(tr,nextIndex,commit=false){
   return true;
 }
 function physicallyClear(tr,nextIndex){
-  const l=tr.route.legs[nextIndex],e=l.edge,cur=tr.route.legs[mod(nextIndex-1,tr.route.legs.length)];
+  const l=tr.route.legs[mod(nextIndex,tr.route.legs.length)],e=l.edge,cur=tr.route.legs[mod(nextIndex-1,tr.route.legs.length)];
   if(e.occupant&&e.occupant!==tr.id)return false;
   if(e.switchId){const sw=switches.get(e.switchId);if(sw.lockBy&&sw.lockBy!==tr.id)return false;}
   if(e.single&&singleSection.owner&&singleSection.owner!==tr.id)return false;
@@ -867,7 +867,7 @@ function physicallyClear(tr,nextIndex){
   return true;
 }
 function signalAspect(tr,nextIndex){
-  const l=tr.route.legs[nextIndex],sig=tr.route.legs[mod(nextIndex-1,tr.route.legs.length)].signal;
+  const l=tr.route.legs[mod(nextIndex,tr.route.legs.length)],sig=tr.route.legs[mod(nextIndex-1,tr.route.legs.length)].signal;
   if(!sig)return 'red';
   if(sig.manual||!canReserve(tr,nextIndex,false)||l.edge.reservedBy!==tr.id)return 'red';
   if(!physicallyClear(tr,nextIndex+1))return 'yellow';
@@ -877,7 +877,7 @@ function signalAspect(tr,nextIndex){
 }
 function reasonFor(tr,nextIndex){
   if(tr.route.legs[mod(nextIndex-1,tr.route.legs.length)].signal?.manual)return 'manual signal hold';
-  const e=tr.route.legs[nextIndex].edge;
+  const e=tr.route.legs[mod(nextIndex,tr.route.legs.length)].edge;
   if(e.occupant&&e.occupant!==tr.id)return trains.find(t=>t.id===e.occupant)?.name+' occupies block';
   if(e.reservedBy&&e.reservedBy!==tr.id)return 'conflicting route reserved';
   if(e.switchId&&switches.get(e.switchId).lockBy!==tr.id)return 'switch route locked';
@@ -906,8 +906,7 @@ function updateTrain(tr,dt){
   }
   tr.doorsOpen=false;
   let target=tr.maxSpeed;
-  if(tr.nextAspect==='red')target=0;
-  else if(tr.nextAspect==='yellow')target=Math.min(target,tr.maxSpeed*.45);
+  if(tr.nextAspect==='yellow')target=Math.min(target,tr.maxSpeed*.45);
   let stopDistance=null;
   if(tr.nextAspect!=='green')stopDistance=Math.max(0,distance-.13);
   if(loc.leg.station&&!tr.dwellDone){
@@ -977,7 +976,7 @@ function refreshSignals(){
   for(const s of signals)setSignalVisual(s,s.manual?'red':'red');
   for(const tr of trains){
     const loc=locate(tr.route,tr.progress),next=(loc.index+1)%tr.route.legs.length;
-    const sig=tr.currentLeg.signal;
+    const sig=(tr.currentLeg||loc.leg).signal;
     if(sig)setSignalVisual(sig,signalAspect(tr,next));
   }
 }
@@ -1044,7 +1043,7 @@ trains.forEach(tr=>{
 });
 function updateTrainPanel(){
   for(const tr of trains){
-    const loc=locate(tr.route,tr.progress),c=tr.card;
+    const c=tr.card=$('train-'+tr.id);if(!c)continue;
     c.querySelector('.speed').textContent=(tr.speed*3.6).toFixed(0)+' km/h';
     const vals=c.querySelectorAll('.train-grid b');vals[0].textContent=tr.currentLeg.edge.name;vals[1].textContent=tr.nextAspect.toUpperCase();vals[1].className='aspect '+tr.nextAspect;vals[2].textContent=tr.state;vals[3].textContent=tr.stateReason;
   }

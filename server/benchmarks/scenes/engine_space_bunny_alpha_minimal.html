@@ -248,7 +248,7 @@ function updateEngine(dt,now){
  for(const c of cylinders){
   const phase=phaseOf(c),theta=rad(phase);
   // Slider-crank: journal is crank center plus throw; rod/piston remain on bank bore centerline.
-  const crankThrow=rad(c.phase0),cp=cg.position.set(0,0,0);
+  const crankThrow=rad(c.phase0);
   const center=v3(c.x,-.08,0);
   const throwPos=center.clone().add(v3(0,Math.sin(a+crankThrow)*.54,Math.cos(a+crankThrow)*.54));
   // Resolve x along the bank bore using exact slider-crank root.
@@ -271,7 +271,7 @@ function updateEngine(dt,now){
    const base=center.clone().addScaledVector(c.n,2.02).addScaledVector(c.t,local);
    vs.g.position.copy(base).addScaledVector(c.n,bank>0?intL:exL);
    alignY(vs.g,c.n);
-   const springBase=cg.position.copy(base).addScaledVector(c.n,2.15);
+   const springBase=base.clone().addScaledVector(c.n,2.15);
    vs.spring.scale.y=1-(bank>0?intL:exL)/.62;
   }
   const stroke=strokeOf(phase),power=stroke==='POWER';

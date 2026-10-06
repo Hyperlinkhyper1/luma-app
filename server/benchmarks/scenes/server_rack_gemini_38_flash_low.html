@@ -1302,7 +1302,7 @@ function buildServerRearIO(group, config, width, height, depth) {
 
     registerComponent(psu, {
       title: `CRPS Redundant Power Supply Module [PSU ${i + 1}]`,
-      desc: `${config.archetype.psus}. Hot-swappable 80-Plus Titanium efficiency module with internal high-pressure exhaust fan and PMBus telemetry.`,
+      desc: `${ARCHETYPES[config.archetypeId].psus}. Hot-swappable 80-Plus Titanium efficiency module with internal high-pressure exhaust fan and PMBus telemetry.`,
       tdp: `${config.archetypeId === "gpu_node" ? "3200 W" : "1600 W"} Rated`,
       cooling: "Internal 40mm counter-rotating exhaust fan",
       bus: "Internal Copper Busbar / PDB Blind-Mate Connector"

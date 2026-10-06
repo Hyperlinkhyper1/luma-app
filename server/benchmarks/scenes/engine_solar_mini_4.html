@@ -173,7 +173,7 @@ const crankAxis=new THREE.Vector3(0,0,1);
 // ============================================================
 // ENGINE
 // ============================================================
-const engine=new Group();
+const engine=new THREE.Group();
 scene.add(engine);
 
 const bankA=new THREE.Group(); // right bank (viewed from front, +Z)
@@ -1005,7 +1005,7 @@ function updateVisuals(){
   }
 
   // Camshaft
-  const cams = [camA.getObject('shaft'), camB.getObject('shaft')];
+  const cams = [camA.getObjectByName('shaft'), camB.getObjectByName('shaft')];
   // Access via children
   camA.rotation.z = camPhaseRad;
   camB.rotation.z = camPhaseRad;

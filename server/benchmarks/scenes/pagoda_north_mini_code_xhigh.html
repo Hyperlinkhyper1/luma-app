@@ -1,34 +1,4 @@
-This is a very basic implementation of the 3D pagoda benchmark. Let's refine the implementation step by step.
-
-1. **Terrain and Path Generation**: Use `BoxGeometry` for terrain and path to maintain voxel style. The terrain is a flat plane, the path is a series of boxes arranged in a zig-zag.
-
-2. **Pagoda Construction**: Create a 5-story pagoda using `BoxGeometry` for floors and pillars. Each floor is smaller than the one below, creating a stepped effect. The roofs are also boxes, with smaller dimensions per floor. Add a finial at the top.
-
-3. **Trees**: Create tree trunks using `CylinderGeometry` and foliage using `ConeGeometry`. Vary the foliage color based on tree type (sakura, pine, maple, willow).
-
-4. **Koi Fish**: Create koi fish using `BoxGeometry` and animate their movement with simple horizontal and vertical oscillations.
-
-5. **Torii Gate**: Construct the torii gate using three `BoxGeometry` meshes (two vertical posts and a horizontal top).
-
-6. **Lanterns**: Create lanterns as a group of meshes (body, light bulb, base) and add flickering animation.
-
-7. **Waterfall**: Create a waterfall using `BoxGeometry` and animate its rotation and position.
-
-8. **Birds**: Create birds as simple triangles and animate their flight path.
-
-9. **Sakura Petals**: Create falling petals as small boxes and animate their movement with gravity and random reset.
-
-10. **Post-processing**: Use `EffectComposer` to add bloom effect for a more vibrant scene.
-
-11. **Day/Night Cycle**: Implement a day/night cycle that smoothly transitions between sky colors and lighting.
-
-12. **HUD**: Display the voxel count, FPS, lantern interaction prompt, and a day/night slider with a pause button.
-
-13. **Interaction**: Add click events for lanterns (toggle light) and pagoda floors (animate doors).
-
-14. **Camera Intro**: Implement a camera intro animation that smoothly moves from behind the torii to the center of the scene.
-
-Now, let's put all these together in a complete HTML document. I'll start by writing the skeleton again and then add the code for each component.<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -109,6 +79,10 @@ Now, let's put all these together in a complete HTML document. I'll start by wri
     </div>
 
     <script type="module">
+        import * as TWEEN from 'https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@23.1.3/dist/tween.esm.js';
+        const Tween = class extends TWEEN.Tween {};
+        Tween.Easing = TWEEN.Easing;
+        (function tweenTick() { requestAnimationFrame(tweenTick); TWEEN.update(); })();
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -542,7 +516,7 @@ Now, let's put all these together in a complete HTML document. I'll start by wri
 
         // Flying birds (simple triangles)
         const birdGroup = new THREE.Group();
-        const birdGeometry = new THREE.TriangleGeometry();
+        const birdGeometry = new THREE.CircleGeometry(0.5, 3);
         const birdMaterial = new THREE.MeshStandardMaterial({ color: 0x9aa0a6 }); // Stone
         const bird = new THREE.Mesh(birdGeometry, birdMaterial);
         bird.position.set(0, 10, 0);
@@ -661,7 +635,7 @@ Now, let's put all these together in a complete HTML document. I'll start by wri
                 lastFpsUpdate = Date.now();
 
                 // Update HUD
-                document.getElementById('stats').textContent = `${voxelCount} voxels | ${Math.round(fps)} FPS`;
+                document.getElementById('stats').textContent = `${window.__VOXEL__.voxelCount} voxels | ${Math.round(fps)} FPS`;
             }
         }
 

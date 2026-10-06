@@ -8,6 +8,7 @@ import '../logic/money.dart';
 import 'add_transaction_sheet.dart';
 import 'lookups.dart';
 import '../import/bank_selection_dialog.dart';
+import 'statement_reconciliation_dialog.dart';
 
 class TransactionsTab extends StatelessWidget {
   const TransactionsTab({super.key});
@@ -285,6 +286,15 @@ class _TransactionsBodyState extends State<_TransactionsBody> {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
+        _ChipButton(
+          icon: Icons.fact_check_rounded,
+          label: 'Reconcile statement',
+          active: false,
+          onTap: () => showStatementReconciliation(
+            context,
+            repo: FinanceScope.of(context),
+          ),
+        ),
         _MonthStepper(
           month: _month,
           onPrev: () => _shiftMonth(-1),

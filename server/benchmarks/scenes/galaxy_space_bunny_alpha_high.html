@@ -949,7 +949,7 @@ function updateWorld(now,dt,state){
   for(const s of planetShaders)if(s.uniforms.uTime)s.uniforms.uTime.value=now*.001;
   if(arrivalRingShader)arrivalRingShader.uniforms.uTime.value=now*.001;
   if(nebulaPoints)nebulaPoints.material.uniforms.uTime.value=now*.001;
-  if(departureGroup?.userData.moon){const m=departureGroup.userData.moon;a=now*.00014;m.position.set(3.3*Math.cos(a),.6+.3*Math.sin(a),68+3.3*Math.sin(a));}
+  if(departureGroup?.userData.moon){const m=departureGroup.userData.moon;const a=now*.00014;m.position.set(3.3*Math.cos(a),.6+.3*Math.sin(a),68+3.3*Math.sin(a));}
   ship.userData.strobe.material.color.setScalar(((now%1250)<95)?1:.035);
   ship.userData.strobe.scale.setScalar(((now%1250)<95)?2.2:1);
   const navPulse=.45+.55*(.5+.5*Math.sin(now*.0027));ship.userData.navPort.scale.setScalar(.7+navPulse*.55);ship.userData.navStar.scale.copy(ship.userData.navPort.scale);

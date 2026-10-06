@@ -252,7 +252,25 @@ class AiBenchmarkRepository extends ChangeNotifier {
   /// [AiBenchmarkApiException] when the download fails or the bytes don't
   /// match the manifest's hash — the caller shows a retry, never a WebView
   /// pointed at half a file.
-  Future<File> sceneFile(String id, {String extension = 'html'}) async {
+  ///
+  /// Pages call this from `build`, and this repository notifies on every
+  /// roster refresh and preview warm, so repeat calls return the same future:
+  /// a fresh one per rebuild would put the page back on its spinner, tear
+  /// down the WebView and start the download over each time. A failed load
+  /// is forgotten so Retry really retries.
+  Future<File> sceneFile(String id, {String extension = 'html'}) {
+    final key = '$id.$extension:${byId(id)?.sha256}';
+    return _scenes[key] ??= _loadScene(id, extension)
+        .catchError((Object e, StackTrace s) {
+      _scenes.remove(key);
+      return Future<File>.error(e, s);
+    });
+  }
+
+  /// Scene loads in flight or done, keyed by id, extension and hash.
+  final Map<String, Future<File>> _scenes = {};
+
+  Future<File> _loadScene(String id, String extension) async {
     final benchmark = byId(id);
     if (benchmark == null) {
       throw StateError('Unknown benchmark "$id".');
@@ -272,6 +290,9 @@ class AiBenchmarkRepository extends ChangeNotifier {
       final bytes = await api.fetchScene(id);
       if (bytes.length != benchmark.sizeBytes ||
           sha256.convert(bytes).toString() != benchmark.sha256) {
+        // Usually the roster is older than the scene (repaired or re-uploaded
+        // since), so fetch a fresh one for the retry.
+        await refreshFromServer(force: true);
         throw const AiBenchmarkApiException(
             200, 'The downloaded scene failed its integrity check.');
       }

@@ -9,6 +9,7 @@ import 'package:luma/finance/finance_repository.dart';
 import 'package:luma/finance/import/bank_selection_dialog.dart';
 import 'package:luma/finance/import/dutch_bank_parser.dart';
 import 'package:luma/finance/import/import_models.dart';
+import 'package:luma/finance/import/import_review_dialog.dart';
 import 'package:luma/storage/storage_guard.dart';
 import 'package:luma/theme/luma_theme.dart';
 
@@ -36,6 +37,58 @@ void main() {
       );
     }
   }
+
+  testWidgets('confirmed import match keeps a recurring payment counted once', (
+    tester,
+  ) async {
+    await tester.runAsync(
+      () => repo.createRecurring(
+        RecurringRulesCompanion.insert(
+          name: 'Salary',
+          kind: TxnKind.income,
+          amountCents: 200000,
+          cadence: Cadence.monthly,
+          nextDue: DateTime(2026, 10, 5),
+        ),
+      ),
+    );
+    await tester.runAsync(() => repo.applyDue(DateTime(2026, 10, 5)));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LumaTheme.dark,
+        home: Scaffold(
+          body: ImportReviewDialog(
+            repo: repo,
+            entries: [
+              ParsedBankEntry(
+                date: DateTime(2026, 10, 6),
+                amountCents: 200000,
+                isIncome: true,
+                description: 'Bank salary',
+              ),
+            ],
+            pots: const [],
+            categories: const [],
+            merchants: const [],
+          ),
+        ),
+      ),
+    );
+    await settle(tester);
+    expect(find.text('Possible matches'), findsOneWidget);
+    await tester.ensureVisible(find.text('Salary'));
+    await tester.tap(find.text('Salary'));
+    await tester.pump();
+    expect(find.text('Match & next'), findsOneWidget);
+    await tester.tap(find.text('Match & next'));
+    await settle(tester);
+    expect(await tester.runAsync(repo.currentMainCents), 200000);
+    expect(
+      (await tester.runAsync(() => repo.watchTransactions().first))!,
+      hasLength(1),
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('all seven banks are reachable in the 320px picker', (
     tester,

@@ -566,7 +566,7 @@
     clearTimers();
     keyboard.classList.remove('live');
     assembled = false;
-    document.body.classList.remove.apply(document.body, RGB_MODES);
+    document.body.classList.remove(...RGB_MODES);
     document.body.classList.add('rgb-off');
     rgblbl.textContent = 'RGB: Off';
     rgbIdx = 0;

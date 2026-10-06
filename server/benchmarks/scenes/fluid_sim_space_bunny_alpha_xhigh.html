@@ -741,7 +741,8 @@ void main(){
 
 const gridFunctions = `
 uniform vec3 uGrid;
-uniform vec3 uH;
+#ifndef SHARED_SCENE_UNIFORMS
+#define SHARED_SCENE_UNIFORMS
 uniform float uWallX;
 uniform vec3 uWallVelocity;
 uniform float uWave;
@@ -750,6 +751,8 @@ uniform int uObjectType;
 uniform vec3 uObjectPosition;
 uniform vec3 uObjectVelocity;
 uniform float uObjectRadius;
+uniform vec3 uH;
+#endif
 
 ivec2 gridTexel(ivec3 c){
   return ivec2(c.x+c.z*int(uGrid.x),c.y);
@@ -784,6 +787,8 @@ bool solidCell(ivec3 c,out vec3 solidVelocity){
 `;
 
 const collisionFunctions = `
+#ifndef SHARED_SCENE_UNIFORMS
+#define SHARED_SCENE_UNIFORMS
 uniform float uWallX;
 uniform vec3 uWallVelocity;
 uniform float uWave;
@@ -793,6 +798,7 @@ uniform vec3 uObjectPosition;
 uniform vec3 uObjectVelocity;
 uniform float uObjectRadius;
 uniform vec3 uH;
+#endif
 
 float collisionBoxSDF(vec3 p,vec3 hs){
   vec3 q=abs(p)-hs;
@@ -930,9 +936,9 @@ const p2gMaterial = new THREE.RawShaderMaterial({
   blendDst: THREE.OneFactor
 });
 
-let p2gPoints = null;
+let p2gPoints = null, p2gGeometry = null;
 if (gpuMode) {
-  const p2gGeometry = new THREE.InstancedBufferGeometry();
+  p2gGeometry = new THREE.InstancedBufferGeometry();
   p2gGeometry.instanceCount = 8;
   p2gPoints = new THREE.Points(p2gGeometry, p2gMaterial);
   p2gPoints.frustumCulled = false;
@@ -997,7 +1003,7 @@ const divergenceMaterial = new THREE.RawShaderMaterial({
     uniform sampler2D uGridVelocity;
     uniform float uRestDensity;
     out vec4 outColor;
-    vec3 velocityOrSolid(ivec3 c,vec3 cellMass){
+    vec3 velocityOrSolid(ivec3 c,float cellMass){
       vec3 sv;
       if(solidCell(c,sv)) return sv;
       return gridCell(uGridVelocity,c).yzw;
@@ -1151,7 +1157,7 @@ const g2pVelocityMaterial = new THREE.RawShaderMaterial({
     ${interpolateGrid}
     uniform sampler2D uPositions,uVelocity,uGridVelocity;
     uniform vec2 uStateSize;
-    uniform float uDt,uViscosity,uRestDensity,uWave;
+    uniform float uDt,uViscosity,uRestDensity;
     uniform int uStirActive;
     uniform vec3 uStirPosition,uStirVelocity;
     out vec4 outColor;
@@ -1172,7 +1178,7 @@ const g2pVelocityMaterial = new THREE.RawShaderMaterial({
       }
       vec3 predicted=p.xyz+v*uDt;
       collidePoint(predicted,v);
-      if(uWave>.5 && mod(pid,5)==0 && (p.w>2.5||p.y>1.94)) v=vec3(.02,-2.25,0.0);
+      if(uWave>.5 && pid%5==0 && (p.w>2.5||p.y>1.94)) v=vec3(.02,-2.25,0.0);
       float speed=length(v);
       if(speed>8.0) v*=8.0/speed;
       outColor=vec4(v,p.w);
@@ -1191,7 +1197,7 @@ const g2pPositionMaterial = new THREE.RawShaderMaterial({
     ${collisionFunctions}
     uniform sampler2D uPositions,uVelocity;
     uniform vec2 uStateSize;
-    uniform float uDt,uWave;
+    uniform float uDt;
     out vec4 outColor;
     void main(){
       ivec2 st=ivec2(gl_FragCoord.xy);
@@ -1199,7 +1205,7 @@ const g2pPositionMaterial = new THREE.RawShaderMaterial({
       vec4 p=texelFetch(uPositions,st,0);
       vec3 v=texelFetch(uVelocity,st,0).xyz;
       float age=uWave>.5?p.w+uDt:1.0;
-      if(uWave>.5 && mod(pid,5)==0 && (p.w>2.5||p.y>1.94)){
+      if(uWave>.5 && pid%5==0 && (p.w>2.5||p.y>1.94)){
         float a=float(pid)*2.399963;
         p=vec4(.1+cos(a)*.025,1.965,.08+sin(a)*.025,0.0);
         v=vec3(.015,-2.2,0.0);
@@ -1303,6 +1309,7 @@ const gpuDepthMaterial = new THREE.RawShaderMaterial({
     ${particleVertexCommon}
     uniform sampler2D uPositions;
     uniform mat4 modelViewMatrix,projectionMatrix;
+    uniform float uPointScale;
     in vec3 position;
     out float vDepth;
     void main(){
@@ -1667,7 +1674,7 @@ const blurMaterial = new THREE.RawShaderMaterial({
         sum+=s*w;
         wsum+=w;
       }
-      outColor=vec4(sum/max(wsum,.0001));
+      outColor=vec4(sum/max(wsum,.0001),0.0,0.0);
     }
   `,
   depthTest: false,
@@ -1710,7 +1717,7 @@ const postMaterial = new THREE.RawShaderMaterial({
         if(dr<.0001) dr=water.r;
         if(dd<.0001) dd=water.r;
         if(du<.0001) du=water.r;
-        vec3 ndc=vUv*2.0-1.0;
+        vec2 ndc=vUv*2.0-1.0;
         vec3 ray=normalize(vec3(ndc.x*uAspect*uTanFov,ndc.y*uTanFov,-1.0));
         vec3 p=viewPosition(vUv,water.r);
         vec3 px=viewPosition(vUv+vec2(texel.x*2.0,0.0),dr)-viewPosition(vUv-vec2(texel.x*2.0,0.0),dl);
@@ -2169,7 +2176,7 @@ canvas.addEventListener('pointermove',e=>{
   if(p)U.uStirPosition.value.copy(p);
 });
 function endStir(e){
-  if(!stirting)return;
+  if(!stirring)return;
   stirring=false;
   U.uStirActive.value=0;
   U.uStirVelocity.value.multiplyScalar(.25);

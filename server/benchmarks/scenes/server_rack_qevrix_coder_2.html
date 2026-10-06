@@ -365,7 +365,7 @@ function doorTex(){
   });
 }
 function cable(pts,r,m,parent){
-  const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));
+  const curve=new THREE.CatmullRomCurve3(pts.map(p=>p.isVector3?p.clone():new THREE.Vector3(...p)));
   const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,26,r,6,false),m);
   mesh.castShadow=true; (parent||rackGroup).add(mesh); return mesh;
 }
@@ -997,7 +997,7 @@ function buildDetail(s){
 class Server{
   constructor(spec){
     Object.assign(this,spec);
-    this.D=ARCH[spec.type];
+    this.D=ARCH[spec.type]||ARCH.network;
     this.group=new THREE.Group();
     this.group.position.set(0,BASE+(spec.uTop-spec.uH/2)*U,0);
     this.home=this.group.position.clone();
@@ -1039,7 +1039,7 @@ function buildRearCabling(){
       const side=i%2===0?-1:1;
       const psuX=psuN===4?(-0.15+i*0.1):(-0.155+i*0.31);
       const pduX=side*(RACKW/2-0.045);
-      const pduY=BASE+0.2+((s.spec_uTop*5+i*9)%19)*0.088;
+      const pduY=BASE+0.2+((s.uTop*5+i*9)%19)*0.088;
       const from=new THREE.Vector3(pduX,pduY,-(RACKD/2-0.115));
       const to=new THREE.Vector3(side*(s.D.w/2-0.02),s.home.y+(i-(psuN-1)/2)*0.012,-RACKD/2+0.02);
       const mid=from.clone().lerp(to,0.5); mid.x+=side*0.04; mid.y+=0.025;
@@ -1480,7 +1480,7 @@ function renderRackList(){
   for(const s of servers){
     const row=document.createElement('div');
     row.className='srvRow'+(state.selected===s?' sel':'');
-    row.dataset.id=s.spec.id;
+    row.dataset.id=s.id;
     row.innerHTML='<span class="dot" style="'+(s.type==='patch'?'background:#55677a;box-shadow:none':'')+'"></span><span class="nm">'+s.name+'</span><span class="uu">'+s.uRange+'</span>';
     row.onclick=()=>{ selectServer(s); if(state.mode==='slice') switchSliceServer(s); };
     row.ondblclick=()=>enterSlice(s);
@@ -1571,7 +1571,7 @@ function selectServer(s){
   renderSelInfo(s);
   renderHealth(s);
   clearComp();
-  document.querySelectorAll('.srvRow').forEach(r=>r.classList.toggle('sel',r.dataset.id===s.spec.id));
+  document.querySelectorAll('.srvRow').forEach(r=>r.classList.toggle('sel',r.dataset.id===s.id));
 }
 
 /* ================= BUTTON WIRING ================= */

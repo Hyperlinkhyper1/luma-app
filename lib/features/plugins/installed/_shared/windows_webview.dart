@@ -87,19 +87,35 @@ class _WindowsWebviewState extends State<WindowsWebview> {
     widget.onController?.call(_controller);
     _controller.loadingState
         .firstWhere((s) => s == LoadingState.navigationCompleted)
-        .then((_) {
-      if (mounted) widget.onLoaded?.call();
-    });
-    if (widget.html case final html?) {
-      await _controller.loadStringContent(html);
-    } else if (widget.fileUrl case final fileUrl?) {
-      await _controller.loadUrl(fileUrl);
+        .then((_) => _loaded(), onError: (_) => _loaded());
+    // navigationCompleted waits for the load event, which a page stalled on
+    // one slow CDN script never fires; by now it has painted something of
+    // its own, so a caller's spinner must not keep covering it.
+    _loadedFallback = Timer(const Duration(seconds: 8), _loaded);
+    try {
+      if (widget.html case final html?) {
+        await _controller.loadStringContent(html);
+      } else if (widget.fileUrl case final fileUrl?) {
+        await _controller.loadUrl(fileUrl);
+      }
+    } finally {
+      if (mounted) setState(() => _ready = true);
     }
-    if (mounted) setState(() => _ready = true);
+  }
+
+  Timer? _loadedFallback;
+  bool _loadedFired = false;
+
+  void _loaded() {
+    _loadedFallback?.cancel();
+    if (_loadedFired || !mounted) return;
+    _loadedFired = true;
+    widget.onLoaded?.call();
   }
 
   @override
   void dispose() {
+    _loadedFallback?.cancel();
     _controller.dispose();
     super.dispose();
   }

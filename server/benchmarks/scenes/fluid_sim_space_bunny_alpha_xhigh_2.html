@@ -870,8 +870,6 @@ async function boot() {
 
   const fullscreenVertex = `
     precision highp float;
-    in vec3 position;
-    in vec2 uv;
     out vec2 vUv;
     void main() {
       vUv = uv;
@@ -1050,7 +1048,7 @@ async function boot() {
     ivec2 atlasPixel(ivec3 c) {
       return ivec2(c.z * int(uGridSize.x) + c.x, c.y);
     }
-    vec3 centroid(ivec3 c) {
+    vec3 cellCentroid(ivec3 c) {
       return texture(uGridPositions, vec2(atlasPixel(c))).gba;
     }
     vec3 centroidVelocity(ivec3 c) {
@@ -1111,6 +1109,7 @@ async function boot() {
     uniform sampler2D uDensity;
     uniform int uCount;
     uniform float uDt;
+    uniform float uTime;
     uniform float uViscosity;
     uniform float uRestDensity;
     uniform vec3 uGravity;
@@ -1232,6 +1231,7 @@ async function boot() {
     uniform sampler2D uVelocities;
     uniform int uCount;
     uniform float uDt;
+    uniform float uTime;
     uniform float uWallX;
     uniform vec3 uMax;
     uniform vec3 uMin;

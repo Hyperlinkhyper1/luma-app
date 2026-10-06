@@ -310,6 +310,39 @@ void main() {
       expect(api.sceneCalls, 1);
     });
 
+    test('sceneFile hands rebuilds the same future, not a new download',
+        () async {
+      final benchmark = _benchmark();
+      final api = _FakeApi(
+        manifest: _manifest([benchmark]),
+        sceneHtml: {'pagoda_demo': '<html>demo</html>'},
+      );
+      final repo = repoWith(_manifest([benchmark]),
+          sync: _FakeSync(), api: api);
+      await repo.refreshFromServer();
+
+      final first = repo.sceneFile('pagoda_demo');
+      expect(identical(repo.sceneFile('pagoda_demo'), first), isTrue);
+      await first;
+      expect(identical(repo.sceneFile('pagoda_demo'), first), isTrue);
+      expect(api.sceneCalls, 1);
+    });
+
+    test('a failed sceneFile is forgotten so Retry tries again', () async {
+      final benchmark = _benchmark();
+      final api = _FakeApi(manifest: _manifest([benchmark]));
+      final repo = repoWith(_manifest([benchmark]),
+          sync: _FakeSync(), api: api);
+      await repo.refreshFromServer();
+
+      final failed = repo.sceneFile('pagoda_demo');
+      await expectLater(failed, throwsA(isA<AiBenchmarkApiException>()));
+      final retry = repo.sceneFile('pagoda_demo');
+      expect(identical(retry, failed), isFalse);
+      await expectLater(retry, throwsA(isA<AiBenchmarkApiException>()));
+      expect(api.sceneCalls, 2);
+    });
+
     test('sceneFile rejects bytes that fail the integrity check', () async {
       final benchmark = _benchmark();
       final api = _FakeApi(

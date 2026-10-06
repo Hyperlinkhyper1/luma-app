@@ -22,17 +22,7 @@ Future<void> showImportFlow(
   required List<Category> categories,
   required List<Merchant> merchants,
 }) async {
-  final entries = await showDialog<List<ParsedBankEntry>>(
-    context: context,
-    builder: (_) => Dialog(
-      backgroundColor: context.luma.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
-        child: const _BankSelectionBody(),
-      ),
-    ),
-  );
+  final entries = await pickStatementEntries(context);
 
   if (entries == null || entries.isEmpty) return;
   if (!context.mounted) return;
@@ -59,8 +49,7 @@ Future<void> showImportFlow(
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: 520,
-          // Clamp so a minimized window (height 0) can't produce a negative
-          // constraint, which would throw during layout.
+          // Clamp so a minimized window cannot produce negative constraints.
           maxHeight: (MediaQuery.of(dialogContext).size.height - 48).clamp(
             240.0,
             760.0,
@@ -73,6 +62,21 @@ Future<void> showImportFlow(
           categories: categories,
           merchants: merchants,
         ),
+      ),
+    ),
+  );
+}
+
+/// Reads a statement without adding transactions or creating pots.
+Future<List<ParsedBankEntry>?> pickStatementEntries(BuildContext context) {
+  return showDialog<List<ParsedBankEntry>>(
+    context: context,
+    builder: (_) => Dialog(
+      backgroundColor: context.luma.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
+        child: const _BankSelectionBody(),
       ),
     ),
   );

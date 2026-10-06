@@ -189,25 +189,25 @@ const mats = {
   blockCut: new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.7, metalness:0.8, transparent:true, opacity:0.3}),
   piston: new THREE.MeshStandardMaterial({color:0xc8c8cc, roughness:0.3, metalness:0.9}),
   pistonRing: new THREE.MeshStandardMaterial({color:0x888888, roughness:0.2, metalness:1.0}),
-  rod: new THREE.MeshStandardMaterial({color:0x4a4a5a, roughness:0.4, metalness=0.9}),
-  rodCap: new THREE.MeshStandardMaterial({color:0x3a3a4a, roughness=0.3, metalness=0.9}),
-  crank: new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.2, metalness=1.0}),
-  crankWeb: new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.25, metalness=0.95}),
-  camshaft: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness:0.25, metalness=0.9}),
-  camLobe: new THREE.MeshStandardMaterial({color:0x5a5a5a, roughness=0.15, metalness=0.95}),
-  valve: new THREE.MeshStandardMaterial({color:0xaaaaaa, roughness:0.2, metalness=0.9}),
-  spring: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness=0.6, metalness=0.8}),
-  rocker: new THREE.MeshStandardMaterial({color:0x5a5a5a, roughness:0.3, metalness=0.9}),
-  pushrod: new THREE.MeshStandardMaterial({color:0x6a6a6a, roughness=0.35, metalness=0.85}),
-  lifter: new THREE.MeshStandardMaterial({color:0x4a4a4a, roughness=0.3, metalness=0.9}),
-  intake: new THREE.MeshStandardMaterial({color:0xb8b8c0, roughness:0.4, metalness=0.7}),
-  exhaust: new THREE.MeshStandardMaterial({color:0x5a3a2a, roughness=0.6, metalness=0.7}),
-  timingGear: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness:0.3, metalness=0.9}),
-  timingChain: new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness=0.4, metalness=0.9}),
-  flywheel: new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness=0.25, metalness=0.95}),
-  pulley: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness=0.3, metalness=0.9}),
-  belt: new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness=0.8, metalness=0.1}),
-  bolt: new THREE.MeshStandardMaterial({color:0x4a4a4a, roughness=0.2, metalness=1.0}),
+  rod: new THREE.MeshStandardMaterial({color:0x4a4a5a, roughness:0.4, metalness:0.9}),
+  rodCap: new THREE.MeshStandardMaterial({color:0x3a3a4a, roughness:0.3, metalness:0.9}),
+  crank: new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.2, metalness:1.0}),
+  crankWeb: new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.25, metalness:0.95}),
+  camshaft: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness:0.25, metalness:0.9}),
+  camLobe: new THREE.MeshStandardMaterial({color:0x5a5a5a, roughness:0.15, metalness:0.95}),
+  valve: new THREE.MeshStandardMaterial({color:0xaaaaaa, roughness:0.2, metalness:0.9}),
+  spring: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness:0.6, metalness:0.8}),
+  rocker: new THREE.MeshStandardMaterial({color:0x5a5a5a, roughness:0.3, metalness:0.9}),
+  pushrod: new THREE.MeshStandardMaterial({color:0x6a6a6a, roughness:0.35, metalness:0.85}),
+  lifter: new THREE.MeshStandardMaterial({color:0x4a4a4a, roughness:0.3, metalness:0.9}),
+  intake: new THREE.MeshStandardMaterial({color:0xb8b8c0, roughness:0.4, metalness:0.7}),
+  exhaust: new THREE.MeshStandardMaterial({color:0x5a3a2a, roughness:0.6, metalness:0.7}),
+  timingGear: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness:0.3, metalness:0.9}),
+  timingChain: new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.4, metalness:0.9}),
+  flywheel: new THREE.MeshStandardMaterial({color:0x2a2a2a, roughness:0.25, metalness:0.95}),
+  pulley: new THREE.MeshStandardMaterial({color:0x3a3a3a, roughness:0.3, metalness:0.9}),
+  belt: new THREE.MeshStandardMaterial({color:0x1a1a1a, roughness:0.8, metalness:0.1}),
+  bolt: new THREE.MeshStandardMaterial({color:0x4a4a4a, roughness:0.2, metalness:1.0}),
   highlight: new THREE.MeshStandardMaterial({color:0x00ff00, emissive:0x00ff00, emissiveIntensity:0.5, transparent:true, opacity:0.8}),
   combustion: new THREE.MeshBasicMaterial({color:0xffaa00, transparent:true, opacity:0.8, depthWrite:false}),
 };
@@ -1296,6 +1296,7 @@ class V8Engine {
   buildIntake() {
     const group = new THREE.Group();
     group.name = 'intake';
+    this.intake = group;
     
     // Plenum (center)
     const plenumGeo = new THREE.BoxGeometry(6.0, 3.0, 4.0);

@@ -64,7 +64,6 @@ let highlightedCylinder = null;
 const clock = new THREE.Clock();
 
 init();
-animate();
 
 function init() {
   scene = new THREE.Scene();
@@ -102,8 +101,7 @@ function init() {
     explodeValue = +e.target.value;
   });
 
-  buildEngine();
-  setPreset('hero');
+
 }
 
 function onResize() {
@@ -171,7 +169,7 @@ const springIntakeMeshes = [];
 const springExhaustMeshes = [];
 const combustionMarkers = [];
 const crankShaftGroup = new THREE.Group();
-const camShaftGroupLeft = new TH.Group();
+const camShaftGroupLeft = new THREE.Group();
 const camShaftGroupRight = new THREE.Group();
 
 engineGroup.add(crankShaftGroup);
@@ -281,6 +279,7 @@ function buildPistonsAndRods() {
       phaseRad,
       posInBank
     };
+    pistonGroup.userData = piston.userData;
     rod.userData = {
       cyl,
       piston: pistonGroup,
@@ -778,6 +777,10 @@ document.getElementById('manualCrank').addEventListener('input', (e) => {
 document.getElementById('manualCrank').addEventListener('change', () => {
   manualMode = false; // release manual mode when user stops dragging
 });
+
+buildEngine();
+setPreset('hero');
+animate();
 </script>
 </body>
 </html>

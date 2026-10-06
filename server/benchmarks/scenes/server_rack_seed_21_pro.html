@@ -1422,7 +1422,7 @@ function populateRack() {
 function buildRearCabling() {
   const cableGroup = new THREE.Group();
   rackGroup.add(cableGroup);
-  rackServers.forEach(srv => {
+  rackServers.forEach((srv, i) => {
     const def = srv.userData.def;
     const srvRearZ = srv.position.z + CHASSIS_D/2;
     const psuCount = def.psus;

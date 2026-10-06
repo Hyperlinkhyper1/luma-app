@@ -9,17 +9,24 @@ void main() {
     home: SplashScreen(bootstrap: bootstrap, onDone: onDone),
   );
 
-  testWidgets('releases the app promptly when startup is ready', (
-    tester,
-  ) async {
-    var completed = 0;
-    await tester.pumpWidget(splash(Future<void>.value(), () => completed++));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+  testWidgets(
+    'keeps the splash visible for five seconds when startup is ready',
+    (tester) async {
+      var completed = 0;
+      await tester.pumpWidget(splash(Future<void>.value(), () => completed++));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4999));
 
-    expect(completed, 1);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      expect(completed, 0);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(completed, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('waiting for startup does not continuously draw frames', (
     tester,
@@ -27,7 +34,7 @@ void main() {
     final bootstrap = Completer<void>();
     var completed = 0;
     await tester.pumpWidget(splash(bootstrap.future, () => completed++));
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(seconds: 6));
 
     expect(completed, 0);
     expect(tester.binding.hasScheduledFrame, isFalse);
@@ -50,7 +57,13 @@ void main() {
     await tester.pumpWidget(splash(bootstrap.future, () => completed++));
     bootstrap.completeError(StateError('Storage unavailable'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 4999));
+
+    expect(tester.takeException(), isNull);
+    expect(completed, 0);
+
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(tester.takeException(), isNull);
     expect(completed, 1);

@@ -1130,7 +1130,7 @@
 
     function setRackHighlight(){
       app.serverMeshes.forEach((grp,i)=>{
-        grp.traverse(o=>{ if(o.isMesh && o.material && o.material.color){
+        grp.traverse(o=>{ if(o.isMesh && o.material && o.material.color && o.material.emissive){
           if(!o.userData.baseColor) o.userData.baseColor = o.material.color.clone();
           const hovered = app.hoverObject && app.hoverObject.userData && app.hoverObject.userData.serverIndex===i;
           const selected = i===app.selectedServerIndex;

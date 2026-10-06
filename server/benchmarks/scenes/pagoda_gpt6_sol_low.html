@@ -214,7 +214,6 @@ for(let x=11;x<=19;x++){
     if((z===20||z===23)&&(x%2===1))V(x,y+1,z,C.teak);}   // guard posts
   if(x===11||x===19){for(let z=20;z<=23;z++)V(x,y+1,z,C.verm);V(x,y+2,21,C.gold,0,1);V(x,y+2,22,C.gold,0,1);}
 }
-//#NEXT#
 /* ============ five-story pagoda (focus, ~28m) ============ */
 const floors=[];
 const FHW=[7,6,5,4,3];                     // floor half-widths, progressively smaller
@@ -292,7 +291,11 @@ function buildFloor(f){
     g.add(panel);scene.add(g);
     F.doors.push({g,dir:sx,open:false,a:0,target:0});
   }
-  // invisible click target for the whole floor body
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(hw*2+1,4,hw*2+1),
+    new THREE.MeshBasicMaterial({visible:false}));
+  hit.position.set(0,y0+1.5,0);scene.add(hit);
+  F.hit=hit;
+}
 /* ============ torii gate ============ */
 for(const sx of[-1,1]){for(let y=0;y<=5;y++)V(sx*4,y,29,C.verm);V(sx*4,6,29,C.verm);V(sx*5,7,29,C.verm);}
 for(let x=-5;x<=5;x++){V(x,6,29,C.teakD);V(x,7,29,C.verm);}
@@ -381,13 +384,6 @@ while(flowers<40){
   const fc=[C.sak,C.sakD,C.gold,0xFFE5EC,C.verm][ri(0,4)];
   V(x,1,z,fc);V(x,0,z,C.mossL);flowers++;
 }
-//#NEXT#
-
-  const hit=new THREE.Mesh(new THREE.BoxGeometry(hw*2+1,4,hw*2+1),
-    new THREE.MeshBasicMaterial({visible:false}));
-  hit.position.set(0,y0+1.5,0);scene.add(hit);
-  F.hit=hit;
-}
 for(let f=0;f<5;f++)buildFloor(f);
 // central pillar above the top floor + gold finial (sorin)
 const topY=2+5*5+6;
@@ -397,6 +393,98 @@ for(let y=27;y<31;y++)V(0,y,0,C.gold,0,1);
 V(1,28,0,C.gold,0,1);V(-1,28,0,C.gold,0,1);V(0,28,1,C.gold,0,1);V(0,28,-1,C.gold,0,1);
 V(1,30,0,C.gold,0,1);V(-1,30,0,C.gold,0,1);V(0,30,1,C.gold,0,1);V(0,30,-1,C.gold,0,1);
 V(0,32,0,C.gold,1,1);V(0,33,0,C.gold,1,1);
-//#NEXT#
 
+/* ============ bake the static world ============ */
+bakeMap(world,{cast:true});
 
+/* ============ water: pond + creek ============ */
+const waterMat=new THREE.MeshStandardMaterial({color:C.pond,transparent:true,opacity:0.72,roughness:0.12,metalness:0.1});
+const pond=new THREE.Mesh(new THREE.CircleGeometry(POND.r-0.9,48),waterMat);
+pond.rotation.x=-Math.PI/2;pond.position.set(POND.x,-1.45,POND.z);pond.receiveShadow=true;scene.add(pond);
+const brook=new THREE.Mesh(new THREE.PlaneGeometry(5,6),waterMat);
+brook.rotation.x=-Math.PI/2;brook.position.set(15,-1.45,22);scene.add(brook);
+
+/* ============ camera + controls ============ */
+const camera=new THREE.PerspectiveCamera(48,window.innerWidth/window.innerHeight,0.5,600);
+camera.position.set(46,30,62);
+const controls=new OrbitControls(camera,canvas);
+controls.target.set(0,11,4);
+controls.enableDamping=true;controls.dampingFactor=0.06;
+controls.minDistance=12;controls.maxDistance=140;
+controls.maxPolarAngle=Math.PI*0.52;
+controls.update();
+
+/* ============ day / night ============ */
+let tod=0.33, paused=false;
+const timeEl=document.getElementById('time'), pauseEl=document.getElementById('pause'), statEl=document.getElementById('stat');
+timeEl.addEventListener('input',()=>{tod=timeEl.value/1000;});
+pauseEl.addEventListener('click',()=>{paused=!paused;pauseEl.textContent=paused?'▶':'❚❚';});
+const skyDay=new THREE.Color(0x9fd3f0), skyDusk=new THREE.Color(0xf2a06b), skyNight=new THREE.Color(0x0b1030), sky=new THREE.Color();
+const sunDay=new THREE.Color(0xfff2d8), sunDusk=new THREE.Color(0xff9a52), sunCol=new THREE.Color();
+scene.background=sky;
+scene.fog=new THREE.Fog(0x9fd3f0,120,320);
+function applyTime(){
+  const ang=(tod-0.25)*Math.PI*2, h=Math.sin(ang);
+  sunLight.position.set(Math.cos(ang)*70+8,Math.max(h,0.08)*70+6,34);
+  sunLight.target.position.set(0,6,4);
+  const day=smooth(clamp((h+0.12)/0.4,0,1)), dusk=clamp(1-Math.abs(h)/0.28,0,1);
+  sky.copy(skyNight).lerp(skyDay,day).lerp(skyDusk,dusk*0.65);
+  sunCol.copy(sunDay).lerp(sunDusk,dusk);
+  sunLight.color.copy(sunCol);
+  sunLight.intensity=3.0*day+0.05;
+  hemi.intensity=0.14+0.65*day;
+  scene.fog.color.copy(sky);
+  renderer.toneMappingExposure=0.85+0.25*day;
+  return 1-day;
+}
+
+/* ============ interaction ============ */
+const ray=new THREE.Raycaster(), mouse=new THREE.Vector2();
+let downX=0,downY=0;
+canvas.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;});
+canvas.addEventListener('pointerup',e=>{
+  if(Math.hypot(e.clientX-downX,e.clientY-downY)>5)return;
+  mouse.set(e.clientX/window.innerWidth*2-1,-(e.clientY/window.innerHeight)*2+1);
+  ray.setFromCamera(mouse,camera);
+  const targets=[...lanterns.map(L=>L.hit),...floors.map(F=>F.hit)];
+  const hits=ray.intersectObjects(targets,false);
+  if(!hits.length)return;
+  const o=hits[0].object;
+  if(o.userData.lantern){const L=o.userData.lantern;L.user=!(L.user===null?L.on:L.user);}
+  else{const F=floors.find(q=>q.hit===o);if(F){F.open=!F.open;for(const d of F.doors)d.target=F.open?1:0;}}
+});
+addEventListener('resize',()=>{
+  camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth,window.innerHeight);
+});
+
+/* ============ loop ============ */
+let last=performance.now(), fpsT=0, frames=0, fps=60;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min((now-last)/1000,0.1);last=now;
+  const t=now/1000;
+  if(!paused){tod=(tod+dt/240)%1;timeEl.value=Math.round(tod*1000);}
+  const night=applyTime();
+  for(const L of lanterns){
+    L.on=L.user===null?night>0.55:L.user;
+    const want=L.on?1:0;
+    const flick=L.on?0.9+0.1*Math.sin(t*7+L.phase):1;
+    L.light.intensity+=((want*28*flick)-L.light.intensity)*Math.min(1,dt*6);
+    L.glow.material.opacity+=((want*0.55)-L.glow.material.opacity)*Math.min(1,dt*6);
+  }
+  for(const F of floors)for(const d of F.doors){
+    d.a+=(d.target-d.a)*Math.min(1,dt*5);
+    d.g.rotation.y=d.dir*smooth(clamp(d.a,0,1))*1.6;
+  }
+  for(const T of treeGroups){T.g.rotation.z=Math.sin(t*0.8+T.ph)*T.amp;T.g.rotation.x=Math.cos(t*0.6+T.ph)*T.amp*0.7;}
+  waterMat.opacity=0.68+0.05*Math.sin(t*1.3);
+  controls.update();
+  renderer.render(scene,camera);
+  frames++;fpsT+=dt;
+  if(fpsT>=0.5){fps=Math.round(frames/fpsT);frames=0;fpsT=0;statEl.textContent=voxelTotal.toLocaleString()+' voxels | '+fps+' FPS';}
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

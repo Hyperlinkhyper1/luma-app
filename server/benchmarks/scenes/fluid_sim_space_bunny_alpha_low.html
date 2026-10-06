@@ -67,7 +67,7 @@ const quadCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
 const quadScene=new THREE.Scene();
 const simMat=new THREE.ShaderMaterial({glslVersion:THREE.GLSL3,uniforms:{tex:{value:null},uDt:{value:dt},uTime:{value:0},uGravity:{value:-.75},uVis:{value:.22},uTilt:{value:0},uStir:{value:new THREE.Vector3()},uObject:{value:objectPos},uWave:{value:0},uFaucet:{value:0},uFaucetX:{value:0}},vertexShader:`out vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}`,fragmentShader:`
 precision highp float;in vec2 vUv;out vec4 outColor;uniform sampler2D tex;uniform float uDt,uTime,uGravity,uVis,uTilt,uWave,uFaucet,uFaucetX;uniform vec3 uStir,uObject;
-vec2 uvFor(vec3 p){return (p+vec3(4.,0.,2.))/vec2(8.,5.5,4.);}
+vec2 uvFor(vec3 p){return ((p+vec3(4.,0.,2.))/vec3(8.,5.5,4.)).xz;}
 void main(){
  vec4 a=texture(tex,vUv); vec3 p=a.xyz; vec3 v=(p-texture(tex,vUv-vec2(1./4096.)).xyz)/max(uDt,.001);
  if(uFaucet>.5 && p.y>5.05){v=vec3(0.,-2.5,0.);}

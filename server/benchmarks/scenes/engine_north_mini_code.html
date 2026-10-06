@@ -51,7 +51,7 @@
         .preset-btn:hover { background: #3a8; }
     </style>
     <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-    <script src="https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js"></script>
+    <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
 </head>
 <body>
     <canvas id="canvas"></canvas>
@@ -203,7 +203,7 @@
             stroke: 90, // mm
             bore: 85, // mm
             rodLength: 150, // mm
-            crankRadius: engineConfig.stroke / 2,
+            crankRadius: 90 / 2,
             mainBearingDiameter: 50,
             mainBearingLength: 30,
             blockLength: 300,
@@ -620,13 +620,7 @@
                 this.skirt.receiveShadow = true;
                 
                 // Piston rings (3 rings)
-                const ringGeometry = new THREE.TubeGeometry(
-                    new THREE.CircleGeometry(84.5 / 2, 16),
-                    2,
-                    8,
-                    Math.PI * 2,
-                    false
-                );
+                const ringGeometry = new THREE.CylinderGeometry(84.5 / 2, 84.5 / 2, 2, 16);
                 for (let i = 0; i < 3; i++) {
                     const ring = new THREE.Mesh(ringGeometry, materials.steel);
                     ring.position.y = -20 + i * 10;
@@ -917,13 +911,7 @@
             }
             
             createSpring() {
-                const springGeometry = new THREE.TubeGeometry(
-                    new THREE.CircleGeometry(2.5, 8),
-                    100,
-                    8,
-                    Math.PI * 2,
-                    false
-                );
+                const springGeometry = new THREE.CylinderGeometry(2.5, 2.5, 100, 8);
                 this.spring = new THREE.Mesh(springGeometry, materials.steel);
                 this.spring.position.y = -90;
                 this.spring.rotation.x = Math.PI / 2;
@@ -952,7 +940,7 @@
             }
             
             addToScene(scene, valveGroup) {
-                valveGroup.add(this.valveGroup);
+                if (Array.isArray(valveGroup)) valveGroup.push(this); else valveGroup.add(this.valveGroup);
             }
         }
         
@@ -1241,13 +1229,7 @@
                 
                 // Runners (one per cylinder)
                 for (let i = 0; i < 8; i++) {
-                    const runnerGeometry = new THREE.TubeGeometry(
-                        new THREE.CircleGeometry(15 / 2, 8),
-                        200,
-                        8,
-                        Math.PI * 2,
-                        false
-                    );
+                    const runnerGeometry = new THREE.CylinderGeometry(15 / 2, 15 / 2, 200, 8);
                     const runner = new THREE.Mesh(runnerGeometry, materials.aluminum);
                     runner.position.set(0, 40, 20);
                     
@@ -1292,13 +1274,7 @@
                 
                 // Exhaust headers (one per cylinder)
                 for (let i = 0; i < 8; i++) {
-                    const headerGeometry = new THREE.TubeGeometry(
-                        new THREE.CircleGeometry(20 / 2, 8),
-                        180,
-                        8,
-                        Math.PI * 2,
-                        false
-                    );
+                    const headerGeometry = new THREE.CylinderGeometry(20 / 2, 20 / 2, 180, 8);
                     const header = new THREE.Mesh(headerGeometry, materials.steel);
                     header.position.set(100, 0, 20);
                     

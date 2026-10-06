@@ -330,7 +330,7 @@ const sunOrbit=new THREE.Vector3();
 function daylight(t){
   const angle=(t/90-.25)*Math.PI*2;
   sunOrbit.set(Math.cos(angle)*48,12+Math.sin(angle)*42,-18);sun.position.copy(sunOrbit);
-  const daylight=clamp((sun.y+7)/48,0,1),dusk=Math.max(0,1-Math.abs(sun.y-4)/20);
+  const daylight=clamp((sun.position.y+7)/48,0,1),dusk=Math.max(0,1-Math.abs(sun.position.y-4)/20);
   sky.copy(skyNight).lerp(skyDay,daylight).lerp(skyDusk,dusk*.48);scene.background.copy(sky);scene.fog.color.copy(sky);
   sun.intensity=.25+daylight*3.1;sun.color.set(daylight>.2?0xffe5b2:0x9bb7df);hemi.intensity=.45+daylight*1.65;
   const hour=Math.floor(t%24),minute=Math.floor((t%1)*60);clock.textContent=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');

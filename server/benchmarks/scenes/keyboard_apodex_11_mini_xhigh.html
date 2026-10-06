@@ -344,6 +344,7 @@ scene.fog = new THREE.FogExp2(0x0d1117, 0.002);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 3000);
 camera.position.set(280, 360, 320);
+camera.lookAt(0, 20, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);

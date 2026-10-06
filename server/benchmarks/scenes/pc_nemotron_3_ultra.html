@@ -506,7 +506,7 @@ return new THREE.LatheGeometry(points, segments);
 // ═══════════════════════════════════════════════════════════════════
 function setupEnvironment() {
 // HDRI-like environment using procedural cubemap
-const pmremGenerator = new THREE.PMREMRenderer(renderer);
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
 pmremGenerator.compileEquirectangularShader();
 
 const envScene = new THREE.Scene();
@@ -722,6 +722,8 @@ group.add(strip);
 }
 }
 
+return group;
+}
 pc.add(buildCase());
 
 // ---- MOTHERBOARD ----
@@ -902,6 +904,7 @@ group.add(slot);
 return group;
 }
 const c = CONFIG.case;
+const m = CONFIG.mb;
 pc.add(buildMotherboard());
 
 // ---- GPU ----
@@ -1809,7 +1812,7 @@ pos.setXYZ(i, x, y, z);
 pos.needsUpdate = true;
 }
 }
-}
+
 
 function animateGPUBackplate() {
 if (!state.componentEnabled.gpuBackplate) return;

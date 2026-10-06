@@ -640,7 +640,7 @@ class World {
   constructor() {
     this.scene = new THREE.Scene();
     this.scene.fog = new THREE.FogExp2(0xaaccff, 0.006);
-    this.r = 1000; this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    this.r = new THREE.AmbientLight(0xffffff, 0.6); this.scene.add(this.r);
     this.sun = new THREE.DirectionalLight(0xffffee, 1.2);
     this.sun.position.set(50, 80, 50);
     this.scene.add(this.sun);
@@ -764,11 +764,12 @@ class App {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
-    this.controls = new OrbitControls(this.renderer.domElement, this.world.scene);
+    this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 5000);
+    this.camera.position.set(30, 30, 30);
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.autoRotate = true;
     this.controls.autoRotateSpeed = 0.5;
     this.controls.target.set(50, 0, 50);
-    this.camera = this.renderer.domElement;
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
 
@@ -973,7 +974,7 @@ class App {
     // Add time controls
     const timeDiv = document.createElement('div');
     timeDiv.className = 'panel';
-    timeDiv.style.position = 'absolute'; bottom = '10px'; left = '10px';
+    timeDiv.style.position = 'absolute'; timeDiv.style.bottom = '10px'; timeDiv.style.left = '10px';
     timeDiv.style.bottom = '330px';
     timeDiv.style.right = '320px';
     timeDiv.innerHTML = `<button id="btnPause">Pause</button> <button id="btnPlay">Play</button> <label>Speed: <input type="range" id="btnSpeed" min="0" max="4" step="0.5" value="1"></label>`;

@@ -787,6 +787,7 @@ const app = {
         // Store
         this.pistons[def.id] = piston;
         this.rods[def.id] = rod;
+        this.rocket = this.rocket || {};
         this.rocket[def.id] = {
             throwGroup: this.throwGroups[def.throwIdx],
             localThrowX: [-4.5, -1.5, 1.5, 4.5][def.throwIdx],
@@ -869,8 +870,8 @@ const app = {
             let t = theta % 360; if(t<0) t+=360;
             const kin = sliderCrank(t, G.r, G.l);
             
-            const pPos = v3A.copy(def.id * 1.1 - 4.4, 0, 0);
-            pPos.add(def.bankDir.clone().multiplyScalar(kin.x)); // x is from crank center (0,0,0) along bank? 
+            const pPos = v3A.set(def.id*1.1-4.4,0,0);
+            pPos.add(this.rocket[def.id].bankDir.clone().multiplyScalar(kin.x)); // x is from crank center (0,0,0) along bank? 
             // Wait. Piston position = crank center + kin.x * dir.
             // Bank Dir is direction from crank line towards deck.
             // Piston Z/Y determined by bank rotation.
@@ -921,7 +922,7 @@ const app = {
             // Valve position: stem moves along -z (into head) roughly.
             // Intake valve (bank inner) moves -vDir (towards chamber)
             // Exhaust valve (bank outer) moves +vDir
-            const vDir = def.bankDir.clone().negate(); // stem points down? 
+            const vDir = this.rocket[def.id].bankDir.clone().negate(); // stem points down? 
             // Actually valves stem points UP towards cam. Stem axis = bank normal.
             // Closed: head at z? Head Z=9. Valve stem tip at 8.4. 
             // Stem moves -vDir when opening (down into bore? NO, into combustion chamber which is ABOVE block? 
@@ -932,8 +933,8 @@ const app = {
             // Open moves +0.6 along vDir.
             
             const cam = def.bank === 'A' ? this.camAPos : this.camBPos; // cam lobe tip
-            const rockerPivot = v3A.copy(def.id*1.1-4.4).add(v3A.copy(vDir).multiplyScalar(0.6)); // pivot on deck edge
-            const valveBase = v3A.copy(def.id*1.1-4.4).add(vDir.clone().multiplyScalar(1.6)); // head z
+            const rockerPivot = v3A.set(def.id*1.1-4.4,0,0).add(v3A.copy(vDir).multiplyScalar(0.6)); // pivot on deck edge
+            const valveBase = v3A.set(def.id*1.1-4.4,0,0).add(vDir.clone().multiplyScalar(1.6)); // head z
             const pushrodEndA = v3A.copy(cam).add(vDir.clone().multiplyScalar(0.5)); // cam follower contact
             const pushrodEndB = v3A.copy(rockerPivot).add(vDir.clone().multiplyScalar(-0.4)); // rocker arm tip contact
             
@@ -987,7 +988,7 @@ const app = {
             // Update engine stats
             this.cylStats[def.id] = { phase: eff, name: cycle.name, power: cycle.name==='POWER' };
             this.cylStats[def.id].pistonZ = pPos.z.toFixed(1);
-            this.cylStats[def.id].rodAngle = (def.bankDir.angleTo(bPos.clone().sub(wPos)) * 180/Math.PI).toFixed(0);
+            this.cylStats[def.id].rodAngle = (this.rocket[def.id].bankDir.angleTo(bPos.clone().sub(wPos)) * 180/Math.PI).toFixed(0);
         }
     },
     
@@ -1101,11 +1102,10 @@ const app = {
         CYL_ORDER_IN_THROWS.forEach((def, i) => {
             const runner = new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35, 3, 8), intMat);
             // position between plenum and head
-            const center = v3A.copy(def.id*1.1-4.4, 0, 0);
+            const center = v3A.set(def.id*1.1-4.4,0,0);
             const dir = this.getBankDirection(def.bank);
             runner.position.copy(center).add(v3A.copy(dir).multiplyScalar(5.2));
             runner.position.y += 1.8;
-            runner.rotation.copy(dir.clone().angleTo(new THREE.Vector3(0,1,0)) ? 0 : 0);
             // Align runner to bank
             runner.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
             runner.position.y += 0.4;
@@ -1119,7 +1119,7 @@ const app = {
             if(def.bank !== 'A') return; // Headers on both banks for symmetry? Usually one side. Let's do both for visual density.
             const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.7, 3.5, 8), this.mats.exhaust);
             pipe.rotation.x = Math.PI/2;
-            const center = v3A.copy(def.id*1.1-4.4, 0, 0);
+            const center = v3A.set(def.id*1.1-4.4,0,0);
             const dir = this.getBankDirection(def.bank);
             pipe.position.copy(center);
             // Offset exhaust side (outer bank)

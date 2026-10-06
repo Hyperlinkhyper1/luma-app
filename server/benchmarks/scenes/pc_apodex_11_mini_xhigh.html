@@ -571,7 +571,7 @@ function animate() {
     controls.update();
     composer.render();
 }
-animate();
+
 
 // --- RESIZE ---
 window.addEventListener('resize', () => {
@@ -628,6 +628,7 @@ powerBtn.addEventListener('click', () => {
 
 // Initial setup for the display object reference
 let dispUserData = { ctx: dispCtx, Tex: dispTex };
+animate();
 
 gpuPower.addEventListener('change', (e) => {
     if(!G.on) { e.target.checked = false; return; }

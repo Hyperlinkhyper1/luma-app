@@ -976,7 +976,7 @@
 
     function updateSmoke() {
         scene.traverse((obj) => {
-            if (obj.material && obj.material.color.getHex() === 0xaaaaaa && obj.geometry && obj.geometry.type === 'SphereGeometry') {
+            if (obj.material && obj.material.color && obj.material.color.getHex() === 0xaaaaaa && obj.geometry && obj.geometry.type === 'SphereGeometry') {
                 // Animate smoke by increasing size and reducing opacity
                 obj.scale.x += 0.01;
                 obj.scale.y += 0.02;

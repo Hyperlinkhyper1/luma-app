@@ -409,7 +409,7 @@ function animate() {
 
     // Animate lights
     if (Math.floor(voyageProgress * 10) % 2 === 0) {
-      document.querySelector('#ship-container canvas').style.display = 'none'; // placeholder
+      { const c = document.querySelector('#ship-container canvas'); if (c) c.style.display = 'none'; } // placeholder
     }
 
     updateHUD();

@@ -248,12 +248,12 @@
             const stemMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
             // --- GROUPS ---
-            const pcbGroup = new THREE.Group();
-            const foamGroup = new THREE.Group();
-            const plateGroup = new THREE.Group();
-            const switchesGroup = new THREE.Group();
-            const capsGroup = new THREE.Group();
-            const baseGroup = new THREE.Group();
+            const pcbGroup = globalThis.pcbGroup = new THREE.Group();
+            const foamGroup = globalThis.foamGroup = new THREE.Group();
+            const plateGroup = globalThis.plateGroup = new THREE.Group();
+            const switchesGroup = globalThis.switchesGroup = new THREE.Group();
+            const capsGroup = globalThis.capsGroup = new THREE.Group();
+            const baseGroup = globalThis.baseGroup = new THREE.Group();
 
             baseGroup.add(pcbGroup);
             baseGroup.add(foamGroup);
@@ -292,8 +292,8 @@
 
             // Individual Key Switches & Caps
             // To keep it organized, we group by key in arrays
-            let switchMeshes = [];
-            let capMeshes = [];
+            let switchMeshes = globalThis.switchMeshes = [];
+            let capMeshes = globalThis.capMeshes = [];
 
             // Knob
             if (reduceMotion) {
@@ -319,7 +319,7 @@
                 const knobCapGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.5, 16);
                 const knobCapMesh = new THREE.Mesh(knobCapGeo, capMat);
                 knobCapMesh.position.set(7.5, 0.75, 2.5);
-                knobsCapMesh.userData = { code: 'Knob', isKey: true };
+                knobCapMesh.userData = { code: 'Knob', isKey: true };
                 capsGroup.add(knobCapMesh);
                 keyMap['Knob'] = knobCapMesh;
             }

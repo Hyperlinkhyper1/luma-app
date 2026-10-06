@@ -137,7 +137,7 @@ function makeBox(w,h,d,material) {
   return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), material);
 }
 function makeTube(r1,r2,height,material,seg=12) {
-  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.Line3D(new THREE.Vector3(),new THREE.Vector3(0,1,0)), seg, r1, r2, false), material);
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.LineCurve3(new THREE.Vector3(),new THREE.Vector3(0,1,0)), seg, r1, r2, false), material);
 }
 
 // ============================================================

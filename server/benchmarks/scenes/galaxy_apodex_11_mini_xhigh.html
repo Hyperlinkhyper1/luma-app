@@ -119,7 +119,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
 
 // --- MATH HELPERS ---
 const PI2 = Math.PI*2;
@@ -308,6 +308,8 @@ class Galaxy {
         uniform float uCameraDist;
         uniform float uBulgeR;
         uniform float uHyperdrive;
+        uniform vec3 uColorHalo, uColorBulge, uColorArm, uColorPink, uDustTint;
+        uniform float uDustWidth;
         attribute float aSize;
         attribute float aBulge;
         attribute float aArm;
@@ -333,23 +335,23 @@ class Galaxy {
           float dArm = abs(theta - armTheta);
 
           // Density / Color
-          float bulge = smoothstep(0.0, 1500.0, r) * (1.0 - smoothstep(${C.armCount}*.0, ${C.armCount}*.0 + 2000.0, r));
+          float bulge = smoothstep(0.0, 1500.0, r) * (1.0 - smoothstep(${C.armCount}.0*.0, ${C.armCount}.0*.0 + 2000.0, r));
           float arm = exp(-dArm * dArm * 40.0);
           
           // Stars only where they should be
           float density = (bulge + arm);
-          if(density < 0.5) discard;
+          if(density < 0.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return; }
 
           // Color mixing
-          vec3 col = mix(${this.uColorHalo.value}, ${this.uColorBulge.value}, bulge);
-          col = mix(col, ${this.uColorArm.value}, arm * 3.0);
+          vec3 col = mix(uColorHalo, uColorBulge, bulge);
+          col = mix(col, uColorArm, arm * 3.0);
           
           // H-II regions (pink) in arms
-          if(aColor > 0.5) col = mix(col, ${this.uColorPink.value}, aColor * 0.6 + 0.4);
+          if(aColor > 0.5) col = mix(col, uColorPink, aColor * 0.6 + 0.4);
 
           // Dust lanes dim inner edge of arms
-          float dust = smoothstep(0.0, ${C.uDustWidth.value}, dArm);
-          col *= (1.0 - dust * ${this.uDustTint.value.rgb} * 2.0);
+          float dust = smoothstep(0.0, uDustWidth, dArm);
+          col *= (1.0 - dust * uDustTint * 2.0);
 
           vAlpha = density * 0.8 + 0.2;
           vAlpha *= (1.0 - dust * 0.7);
@@ -444,6 +446,10 @@ class Galaxy {
 // SPACESHIP
 // ============================================================
 class Ship {
+  // The voyage and main loop treat the ship as an Object3D.
+  get position() { return this.group.position; }
+  lookAt(...a) { return this.group.lookAt(...a); }
+  get materials() { const m = []; this.group.traverse((o) => { if (o.material && o.material.emissive) m.push(o.material); }); return m; }
   constructor() {
     this.group = new THREE.Group();
     this.parts = {};
@@ -524,7 +530,7 @@ class Ship {
 // ============================================================
 class Voyage {
   constructor() {
-    this.ship = ship;
+    this.ship = null; // set once app.ship exists, below
     this.state = 'PRE_LAUNCH'; // PRE_LAUNCH, DEPART, CRUISE, HYPERDRIVE, CORE, NEBULA, ARRIVAL
     this.t = 0;
     this.duration = 1;
@@ -761,6 +767,7 @@ const app = {
   t: 0,
   state: 'flying' // ui state
 };
+app.voyage.ship = app.ship;
 
 // Init Galaxy & Scene
 app.scene.add(app.galaxy.group);
@@ -849,6 +856,7 @@ window.addEventListener('resize', () => {
 function drawMinimap() {
   mmGL.render(mmScene, mmCam);
   const ctx = minimapCanvas.getContext('2d');
+  if (!ctx) return; // the minimap canvas already holds mmGL's WebGL context
   ctx.clearRect(0,0,160,160);
   const cx = 80, cy = 80;
   // Draw Route

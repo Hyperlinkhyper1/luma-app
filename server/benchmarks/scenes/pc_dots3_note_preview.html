@@ -238,7 +238,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPixelatedShader } from 'three/addons/shaders/PixelatedShader.js';
+
         import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
         // Scene Setup
@@ -290,10 +290,7 @@
 
         // Post-processing
         const composer = new EffectComposer(renderer);
-        const pixelPass = new ShaderPass(RenderPixelatedShader);
-        pixelPass.uniforms['resolution'].value = new THREE.Vector2(window.innerWidth, window.innerHeight);
-        pixelPass.uniforms['pixelSize'].value = 1.0;
-        composer.addPass(pixelPass);
+        // three.js ships no PixelatedShader; the scene renders directly instead.
 
         // PC Group
         const pcGroup = new THREE.Group();
@@ -614,6 +611,14 @@
             });
         }
 
+        // Animation Data (declared before the build calls that fill it)
+        const fanData = [];
+        const rgbElements = [];
+        let isPowered = false;
+        let currentRGB = new THREE.Color(0x6a8cff);
+        let fanSpeed = 0.7;
+        let ambienceIntensity = 0.3;
+
         // Build PC
         buildCase();
         buildMotherboard();
@@ -623,13 +628,6 @@
         buildDisplay();
         buildAmbient();
 
-        // Animation Data
-        const fanData = [];
-        const rgbElements = [];
-        let isPowered = false;
-        let currentRGB = new THREE.Color(0x6a8cff);
-        let fanSpeed = 0.7;
-        let ambienceIntensity = 0.3;
 
         // Power System
         function setPower(on) {
@@ -707,7 +705,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            pixelPass.uniforms['resolution'].value.set(window.innerWidth, window.innerHeight);
+            
         });
 
         // HUD Event Handlers
@@ -793,7 +791,7 @@
                 pcGroup.position.y = Math.sin(clock.elapsedTime * 0.5) * 0.05;
             }
             
-            composer.render();
+            renderer.render(scene, camera);
         }
 
         // Initialize

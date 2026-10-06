@@ -462,6 +462,7 @@ function bankBasis(sign) {
   return { n, p, angle: Math.atan2(n.y, n.x) };
 }
 function bankWorld(bank, x, y, z) {
+  bank = bank.basis || bank;
   return bank.p.clone().multiplyScalar(x).add(bank.n.clone().multiplyScalar(y)).add(V(0, 0, z));
 }
 function createFrame(bank) {

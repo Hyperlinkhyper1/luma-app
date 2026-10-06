@@ -43,13 +43,14 @@
 
 </head>
 <body>
+<canvas id="gl"></canvas>
 
 <div id="loader"><div class="spinner"></div><div id="loading-text">Initializing Physics Engine...</div></div>
 
 <div id="ui">
   <div class="panel">
     <h3>Simulation</h3>
-    <div class="row">Method <strong id="mode-text">GPU FLIP-SPH</strong></div>
+    <div class="row">Method <strong id="mode-text">PBF + SSFR</strong></div>
     <div class="row">Particles <strong id="stat-count">0</strong></div>
     <div class="row">Avg Density Err <strong id="density">0</strong></div>
     <div class="row">Sim Time <strong id="stat-time">0 ms</strong></div>
@@ -61,8 +62,8 @@
       </span>
     </div>
     <div class="row">
-      <label style="flex:1">Particles: <strong id="val-count">32000</strong></label>
-      <input type="range" id="inp-count" min="4000" max="40000" step="1000" value="32000">
+      <label style="flex:1">Particles: <strong id="val-count">6000</strong></label>
+      <input type="range" id="inp-count" min="2000" max="24000" step="1000" value="6000">
     </div>
     <div class="row">
       <label style="flex:1">Gravity: <strong id="val-grav">9.8</strong></label>
@@ -119,2125 +120,788 @@
       <div><span>FPS</span><span id="sd-fps">0</span></div>
       <div><span>Render(ms)</span><span id="sd-render">0</span></div>
       <div><span>Grid Load</span><span id="sd-load">0</span></div>
-      <div><span>Raymarch Iters</span><span id="sd-iters">0</span></div>
+      <div><span>Solver Iters</span><span id="sd-iters">0</span></div>
     </div>
   </div>
 </div>
 
 <button id="toggle-ui" class="panel" style="width:auto; padding:8px 12px; margin:0;"><span>Toggle UI</span></button>
 
-<script type="module">
-/*
- * REAL-TIME 3D FLUID SIMULATION (GPU FLIP-SPH + SSFR RENDERING)
- * Single-file implementation.
- */
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ============================================================
-// CONSTANTS & CONFIG
-// ============================================================
-const CONFIG = {
-  simName: "SPH Grid (FLIP-SPH hybrid)",
-  simVersion: "v1.0",
-  dt: 0.016,
-  subSteps: 4,
-  particleRadius: 0.06,
-  smoothingRadius: 0.16, // h
-  mass: 0.5,
-  pressureK: 65.0,
-  viscosity: 0,
-  grav: 9.81,
-  wallDamping: 0.7,
-  colors: 0xffffff,
-};
+        const DUMMY = { style: {}, classList: { add() {}, remove() {}, toggle() {} }, addEventListener() {}, textContent: '', value: '' };
+        const $ = (id) => document.getElementById(id) || DUMMY;
+        const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 
-// ============================================================
-// SHADER SOURCES
-// ============================================================
-const SHADER_SOURCES = {
-  // Compute: Hash particles into a spatial grid texture (R channel = index)
-  updateGrid: `
-    precision mediump float;
-    uniform highp sampler2D texPos;   // position texture
-    uniform highp sampler2D texVel;   // velocity texture (for hashing velocity buckets)
-    uniform highp sampler2D texGrid;  // current grid state
-    uniform highp sampler2D texCount; // cells -> count of particles per cell
-    uniform vec2 u_resolution;
-    uniform float u_count;
-    uniform float u_h;                // smoothing radius
-    uniform float u_dx;               // cell size
-    uniform float u_gravY;
-    uniform int u_objects;            // 1 if objects active
+        // ------------------------------------------------------------------
+        // Settings and state
+        // ------------------------------------------------------------------
+        const cfg = { dt: 0.016, viscosity: 0.02, gravity: 9.81, absorption: 0.8, reflection: 0.5, fresnel: 1.0, tiltX: 0, tiltY: 0, zoom: 34, iterations: 3 };
+        const BOX = new THREE.Vector3(10, 6, 5);          // tank half extents
+        const MAX_PARTICLES = 24000;
+        const MAX_NEIGHBORS = 56;
+        let scenario = 'dam-break';
+        let renderMode = 'screen-space';
+        let paused = false, stepOnce = false;
+        let simTime = 0;
 
-    // Grid key: hash of cell coordinates
-    float gridKey(float x, float y, float z) {
-      return fract(sin(dot(vec3(x,y,z), vec3(12.9898, 78.233, 45.854))) * 43758.5453) * 2048.0;
-    }
+        // Particle storage
+        let N = 6000, count = 0, spacing = 0.45, kh = 0.9, rho0 = 1;
+        let pos, vel, pred, lam, dpos, speedAttr, nbr, nbrCount;
+        let cellStart, cellOrder, cellOf, gx = 1, gy = 1, gz = 1;
+        let densityError = 0, epsG2 = 1;
+        const balls = [];
+        let emitCursor = 0;
 
-    void main() {
-      ivec2 p = ivec2(gl_FragCoord.xy);
-      float fx = p.x / u_resolution.x;
-      float fy = p.y / u_resolution.y;
-      vec4 particle = texelFetch(texPos, ivec2(int(fx * u_count), int(fy)), 0);
-      
-      if (particle.w < 0.0) return; // inactive
+        // ------------------------------------------------------------------
+        // Renderer, scene, camera
+        // ------------------------------------------------------------------
+        const canvas = $('gl');
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(1);
+        renderer.setSize(window.innerWidth, window.innerHeight);
 
-      // Particle physics attributes
-      vec3 pos = particle.xyz;
-      vec3 vel = texelFetch(texVel, ivec2(p.x, p.y), 0).xyz;
-      
-      // Cell coordinates based on hash-friendly velocity space
-      float cellX = floor(vel.x * 8.0) * u_h; 
-      float cellY = floor(vel.y * 8.0) * u_h;
-      float cellZ = floor(vel.z * 8.0) * u_h;
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a1220);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 300);
+        camera.position.set(0, 10, cfg.zoom);
+        const controls = new OrbitControls(camera, canvas);
+        controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 8; controls.maxDistance = 60;
+        controls.mouseButtons = { LEFT: -1, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+        controls.touches = { ONE: -1, TWO: THREE.TOUCH.DOLLY_ROTATE };
 
-      float key = gridKey(cellX, cellY, cellZ);
-      int idx = int(key) % int(u_count);
-      
-      // Simple cell occupancy management: 
-      // Grid stores [count][idx1][idx2][idx3] (rgba)
-      // Cell index is determined by key. To find the cell: 
-      // We use a 2D texture where x = gridKey % 2048, y = cellZ hash.
-      
-      // Simplified approach for stability in one texture:
-      // Write particle index to grid cell (key).
-      // Collision handling: read existing, increment count, append.
-      vec4 existing = texelFetch(texGrid, ivec2(int(fx * 2048.0), int(fy)), 0);
-      float cnt = existing.r;
-      ivec2 coords = ivec2(int(key) % 2048, int(fx * u_count) % u_resolution.y);
-      
-      // We write the count to a separate texture 'texCount' to manage list capacity
-      // Here we do the append logic into the main grid texture directly
-      if(cnt < 3.0) {
-        if(cnt == 0.0) texelFetch(texCount, ivec2(int(fx*2048.0), int(fy)), 0); // placeholder
-      }
-      
-      // Direct append strategy (overwrites if bucket full - acceptable for high particle counts)
-      // Use 2D texture coordinates: x = hash_key, y = particle_index mod grid_rows
-      float gridY = (p.y + int(key)) % u_resolution.y;
-      float key2 = (cnt + 1.0) / u_resolution.y; // index in cell
-      texelFetch(texGrid, ivec2(int(key) % 2048, int(gridY)), 0);
-      texelFetch(texCount, ivec2(int(key) % 2048, int(gridY)), 0);
-    }
-  `,
-};
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+        keyLight.position.set(6, 14, 8);
+        scene.add(keyLight);
 
-// ---------------------------------------------------------------------------
-// NOTE: The above snippet was a placeholder for the thought process. 
-// Implementing the FULL 2048-cell append-list grid solver in a single fragment 
-// shader in one go requires careful buffer management. Below is the ACTUAL 
-// optimized implementation used in production single-file fluid demos (e.g., 
-// based on the standard "SPH on GPU" approach with a hash map and linear probe 
-// chaining).
-// ---------------------------------------------------------------------------
+        // Tank frame: everything that tilts with the tank lives here
+        const tank = new THREE.Group();
+        scene.add(tank);
+        const edges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(BOX.x * 2, BOX.y * 2, BOX.z * 2)),
+            new THREE.LineBasicMaterial({ color: 0x9bc7ff }));
+        tank.add(edges);
+        const glass = new THREE.Mesh(
+            new THREE.BoxGeometry(BOX.x * 2, BOX.y * 2, BOX.z * 2),
+            new THREE.MeshBasicMaterial({ color: 0x88bbff, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false }));
+        tank.add(glass);
+        const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.6, BOX.y * 2, BOX.z * 2), new THREE.MeshBasicMaterial({ color: 0x7a8aa6, transparent: true, opacity: 0.55 }));
+        paddle.visible = false;
+        tank.add(paddle);
+        const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 1.2, 16), new THREE.MeshStandardMaterial({ color: 0x9aa4b4, metalness: 0.8, roughness: 0.3 }));
+        nozzle.position.set(0, BOX.y + 0.6, 0);
+        nozzle.visible = false;
+        tank.add(nozzle);
 
+        const floor = new THREE.GridHelper(80, 40, 0x24364f, 0x14202f);
+        floor.position.y = -BOX.y - 2;
+        scene.add(floor);
+        const floorGlow = new THREE.Mesh(new THREE.CircleGeometry(40, 48), new THREE.MeshBasicMaterial({ color: 0x0f1d33 }));
+        floorGlow.rotation.x = -Math.PI / 2; floorGlow.position.y = -BOX.y - 2.02;
+        scene.add(floorGlow);
 
-const SHD = {
-  // Clear grid to zeros
-  clearGrid: `
-    precision mediump float;
-    void main() { gl_FragColor = vec4(0.0); }
-  `,
-  // Compute grid cells: [count, id1, id2, id3]
-  buildGrid: `
-    precision highp float;
-    uniform highp sampler2D texPos;
-    uniform float u_count;
-    uniform float u_dx; // cell size
-    uniform vec3 u_grav;
-    
-    // Hash to cell coordinates using velocity-space hashing helps cache locality
-    // (standard SPH uses position hashing; velocity hashing prevents grid drift when fluid moves)
-    vec3 cellCoord(vec3 v) {
-        return floor(v * vec3(8.0)) * u_dx;
-    }
+        const ballMat = new THREE.MeshStandardMaterial({ color: 0xe0503c, roughness: 0.35, metalness: 0.1 });
+        const ballGeo = new THREE.SphereGeometry(1, 32, 24);
 
-    float hash31(vec3 p3) {
-        return fract(sin(dot(p3, vec3(12.9898, 78.233, 45.854))) * 43758.5453);
-    }
+        // ------------------------------------------------------------------
+        // Particle buffers + drawables
+        // ------------------------------------------------------------------
+        const geometry = new THREE.BufferGeometry();
+        let posAttr, speedAttrBuf;
 
-    void main() {
-        ivec2 p = ivec2(gl_FragCoord.xy);
-        float px = float(p.x) / u_dx;
-        float py = float(p.y) / u_dx;
-        
-        // Cell coordinates in hash space
-        vec2 cell = vec2(px, py);
-        
-        // For every grid cell, we need to collect particles.
-        // Since one fragment = one grid cell, we must iterate ALL particles
-        // to find which fall in this cell. O(N*M) is too slow.
-        // Instead, we do the classic hash-map: one fragment per PARTICLE,
-        // writing into the grid at its cell hash location.
-        
-        float fx = fract(float(p.x) / float(u_dx)); 
-        float fy = fract(float(p.y) / float(u_dx));
-        
-        // To implement "one fragment per particle" we map screen coords to particle index
-        // via a separate rendering trick (rendering to quad). 
-        // Here we assume u_resolution.y holds u_count (particles tall).
-        
-        int idx = int(gl_FragCoord.y);
-        if(idx >= int(u_count)) return;
-        
-        float px_f = float(idx) / u_count;
-        vec4 pos = texelFetch(texPos, ivec2(int(gl_FragCoord.x), int(px_f)), 0);
-        if(pos.w < 0.0) return;
-
-        vec3 c = cellCoord(pos.xyz);
-        float h = hash31(c);
-        int cellX = int(h * u_dx); // grid width
-        int cellY = int(px_f * u_dx); // grid height (approx)
-        
-        // Read current count
-        vec4 cellData = texelFetch(texGrid, ivec2(cellX, cellY), 0);
-        float count = cellData.r;
-        int slot = int(count);
-        cellData.r += 1.0;
-        if(slot < 3) cellData.g = float(idx);
-        texelWrite(texGrid, ivec2(cellX, cellY), cellData);
-    }
-  `,
-
-  // --- ACTUAL SOLVER SHADERS (Robust implementation below) ---
-  
-  // Pass 1: Density computation. O(N^2) naive is too slow, so we use the grid.
-  // Reusing a 2048x2048 grid is large but standard for these demos.
-  computeDensity: `
-    precision highp float;
-    uniform highp sampler2D texPos;
-    uniform highp sampler2D texGrid;
-    uniform float u_count;
-    uniform float u_h; // smoothing radius
-    uniform float u_mass;
-    uniform float u_h2;
-
-    vec2 cell(vec3 p) { return floor(p * vec2(1.0/u_h)); }
-    float hash31(vec3 p) { return fract(sin(dot(p, vec3(12.9898,78.233,45.854)))*43758.5453); }
-
-    void main() {
-        int idx = int(gl_FragCoord.y);
-        if (idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-        int px = int(gl_FragCoord.x);
-        
-        vec4 p = texelFetch(texPos, ivec2(px, idx), 0);
-        if (p.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-        
-        vec3 pos = p.xyz;
-        float density = 0.0;
-        vec3 cellV = floor(pos * vec3(1.0/u_h));
-        
-        // Neighbor loop 3x3x3
-        for (int z = -1; z <= 1; z++) {
-        for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
-            vec3 npos = pos + vec3(x,y,z) * u_h;
-            vec2 ncell = floor(npos * vec2(1.0/u_h));
-            // 2D hash to 3D cell
-            float h = hash31(vec3(ncell, cellV.z));
-            ivec2 gpos = ivec2(int(h*2048.0), int(ncell.y));
-            
-            vec4 cell = texelFetch(texGrid, gpos, 0);
-            float c = cell.r;
-            if (c <= 0.0) continue;
-            for (int i = 0; i < 3; i++) {
-                float pidx = cell.g + float(i);
-                if (pidx >= c) break;
-                ivec2 pip = ivec2(int(gl_FragCoord.x), int(pidx));
-                // Cannot texelFetch by variable y index directly without a 1D buffer or loop over texture.
-                // Strategy: We fetched the whole density texture previously? No.
-                // Fallback: Read particle pos from texPos. To read pos at idx 'pidx' 
-                // where pidx is a fragment-unique variable: we need a 1D buffer or a linear lookup.
-                // Since we can only read texPos at coordinate (x, y), and our grid stores index y...
-                // We must map index back to 2D: y = pidx.
-                vec4 np = texelFetch(texPos, ivec2(px, int(pidx)), 0);
-                vec3 d = pos - np.xyz;
-                float r2 = dot(d,d);
-                if (r2 < u_h2) {
-                    density += u_mass * (1.0 - 0.5 * r2 / u_h2) * (1.0 + 4.0 * (1.0 - r2/u_h2)); // W = SpX * SpY * SpZ
-                }
-            }
-        } } }
-        gl_FragColor = vec4(density, 0.0, 0.0, 0.0);
-    }
-  `,
-
-  computePressure: `
-    precision highp float;
-    uniform highp sampler2D texDens;
-    uniform float u_count;
-    uniform float u_pressureK;
-
-    void main() {
-        int idx = int(gl_FragCoord.y);
-        if (idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-        int px = int(gl_FragCoord.x);
-        float dens = texelFetch(texDens, ivec2(px, idx), 0).x;
-        float pressure = u_pressureK * (dens - 1000.0);
-        gl_FragColor = vec4(pressure, 0.0, 0.0, 0.0);
-    }
-  `,
-
-  // Forces: Pressure + Viscosity + Gravity. Velocity is updated via grid-FLIP style or pure SPH.
-  computeForce: `
-    precision highp float;
-    uniform highp sampler2D texPos;
-    uniform highp sampler2D texVel;
-    uniform highp sampler2D texDens;
-    uniform highp sampler2D texPress;
-    uniform float u_count;
-    uniform float u_h;
-    uniform float u_mass;
-    uniform float u_visc;
-    uniform float u_gravY;
-    uniform float u_h2;
-
-    // Viscosity kernel (Stam style simplified)
-    float viscKernel(float r2, float h) {
-        if (r2 < h*h) return (1.0 - r2/h/h);
-        return 0.0;
-    }
-
-    void main() {
-        int idx = int(gl_FragCoord.y);
-        if (idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-        int px = int(gl_FragCoord.x);
-        
-        vec4 p = texelFetch(texPos, ivec2(px, idx), 0);
-        if (p.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-        vec3 pos = p.xyz;
-        vec3 vel = texelFetch(texVel, ivec2(px, idx), 0).xyz;
-        float dens = texelFetch(texDens, ivec2(px, idx), 0).x;
-        float press = texelFetch(texPress, ivec2(px, idx), 0).x;
-
-        vec3 force = vec3(0.0);
-        force.y = u_gravY;
-
-        // Pressure + Viscosity
-        float cellGrid = floor(pos.x * 1.0/u_h) + floor(pos.y * 1.0/u_h)*2048.0; // simplified key
-        vec2 ncell = floor(pos * vec2(1.0/u_h));
-        float hkey = fract(sin(dot(ncell, vec2(12.9898, 78.233))) * 43758.5453);
-        ivec2 gpos = ivec2(int(hkey*2048.0), int(ncell.y));
-
-        vec4 cell = texelFetch(texGrid, gpos, 0);
-        float c = cell.r;
-        for(int i=0; i<3; i++) {
-            float pidx = cell.g + float(i);
-            if(pidx >= c) break;
-            ivec2 pip = ivec2(px, int(pidx));
-            vec4 np = texelFetch(texPos, pip, 0);
-            vec3 npos = np.xyz;
-            if (npos.x < pos.x - u_h) continue; // optimization
-
-            vec3 d = pos - npos;
-            float r2 = dot(d,d);
-            if (r2 < u_h2) {
-                float w = 1.0 - 0.5 * r2 / u_h2;
-                // Pressure force
-                float pressureGrad = 0.5 * (press + texelFetch(texPress, pip, 0).x) / dens;
-                force -= u_mass * pressureGrad * w * d;
-                // Viscosity
-                vec3 nvel = texelFetch(texVel, pip, 0).xyz;
-                force += u_visc * u_mass * (nvel - vel) * w;
-            }
+        const rtOpts = (type) => ({ minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, type, format: THREE.RGBAFormat, depthBuffer: false });
+        let sceneRT, depthRT, blurRT1, blurRT2, thickRT;
+        function makeTargets() {
+            const w = renderer.domElement.width, h = renderer.domElement.height;
+            [sceneRT, depthRT, blurRT1, blurRT2, thickRT].forEach(t => t && t.dispose());
+            sceneRT = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
+            depthRT = new THREE.WebGLRenderTarget(w, h, { ...rtOpts(THREE.FloatType), depthBuffer: true });
+            blurRT1 = new THREE.WebGLRenderTarget(w, h, rtOpts(THREE.FloatType));
+            blurRT2 = new THREE.WebGLRenderTarget(w, h, rtOpts(THREE.FloatType));
+            thickRT = new THREE.WebGLRenderTarget(w, h, { ...rtOpts(THREE.HalfFloatType), minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter });
         }
-        gl_FragColor = vec4(force, 0.0);
-    }
-  `,
+        makeTargets();
 
-  integrate: `
-    precision highp float;
-    uniform highp sampler2D texPos;
-    uniform highp sampler2D texVel;
-    uniform highp sampler2D texForce;
-    uniform float u_count;
-    uniform float u_dt;
-    uniform float u_mass;
-    uniform float u_gravY;
-    uniform float u_h;
-
-    void main() {
-        int idx = int(gl_FragCoord.y);
-        if (idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-        int px = int(gl_FragCoord.x);
-        
-        vec4 p = texelFetch(texPos, ivec2(px, idx), 0);
-        if (p.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-        
-        vec3 force = texelFetch(texForce, ivec2(px, idx), 0).xyz;
-        // Fallback gravity if force is 0
-        if (length(force) < 0.001) force.y = u_gravY * u_mass;
-
-        vec3 vel = texelFetch(texVel, ivec2(px, idx), 0).xyz;
-        vec3 pos = p.xyz;
-
-        // Semi-implicit Euler
-        vel += force * u_dt / u_mass;
-        pos += vel * u_dt;
-
-        // Wall collision (Axis aligned box, center at origin)
-        float box = u_h * 20.0;
-        vec3 n = vec3(0.0);
-        if (pos.x < -box) { pos.x = -box; n.x = 1.0; }
-        else if (pos.x > box) { pos.x = box; n.x = -1.0; }
-        if (pos.y < -box) { pos.y = -box; n.y = 1.0; }
-        else if (pos.y > box) { pos.y = box; n.y = -1.0; }
-        if (pos.z < -box) { pos.z = -box; n.z = 1.0; }
-        else if (pos.z > box) { pos.z = box; n.z = -1.0; }
-
-        if (dot(n,n) > 0.0) {
-            pos += n * (u_h * 0.5); // push back slightly
-            vel -= n * dot(vel, n) * 0.5; // damp
-        }
-
-        texelFetch(texPos, ivec2(px, idx), 0) = vec4(pos, 1.0);
-        texelFetch(texVel, ivec2(px, idx), 0) = vec4(vel, 0.0);
-    }
-  `,
-
-  // Render particles as quads to depth texture (Raymarch source)
-  renderDepth: `
-    precision highp float;
-    uniform highp sampler2D texPos;
-    uniform float u_count;
-    uniform vec2 u_res;
-    uniform float u_fov;
-    uniform mat4 u_proj;
-    uniform mat4 u_view;
-
-    void main() {
-        // One particle per pixel? No, particles might not fill screen.
-        // We render to a quad with particles mapped by pixel coordinate.
-        int px = int(gl_FragCoord.x);
-        int py = int(gl_FragCoord.y);
-        if (px >= int(u_res.x) || py >= int(u_res.y)) { gl_FragColor = vec4(0.0,0.0,0.0,0.0); return; } // wait, resolution is screen res
-
-        // To render ALL particles, we render to screen resolution and map pixel -> particle?
-        // No. We need a 1:1 mapping. Standard trick: render particles as points 
-        // to a texture sized u_resolution.
-        
-        // Map pixel to particle index
-        float fx = gl_FragCoord.x / u_res.x;
-        float fy = gl_FragCoord.y / u_res.y;
-        int idx = int(fx * u_count); // WRONG: fx is 0..1. This works for x-axis only.
-
-        // CORRECT approach: We map the 1D particle buffer to the 2D texture coordinates
-        // using the standard fluid approach: texture coordinates [0..u_count, 0..grid_rows]
-        // But here texture IS the screen. 
-    }
-  `,
-};
-
-
-// ============================================================
-// ACTUAL ROBUST SOLVER ENGINE
-// We'll use a proven structure:
-// 1. 2 Float2D textures: Position, Velocity (x=col=particle index).
-// 2. Grid texture (2048x2048).
-// 3. Compute passes.
-// 4. Render: Particles to depth texture (rendering particles as quads).
-// 5. SSFR: Raymarch depth texture.
-// ============================================================
-
-// We cannot use texelWrite (requires OES_texture_float or texture write extensions not universal).
-// We use render-to-texture with a simple quad shader that reads old and writes new.
-
-class Solver {
-    constructor(gl, width, height) {
-        this.gl = gl;
-        this.width = width;
-        this.height = height;
-        this.init();
-    }
-
-    createTexture(w, h, internalFormat = gl.RGBA32F, wrap = gl.CLAMP_TO_EDGE) {
-        const t = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, t);
-        gl.texImage2D(gl.TEXTURE_2D, 0, internalFormat, w, h, 0, gl.RGBA, gl.FLOAT, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap);
-        return t;
-    }
-
-    createProgram(vs, fs) {
-        const p = gl.createProgram();
-        gl.attachShader(p, this.loadShader(gl.VERTEX_SHADER, vs));
-        gl.attachShader(p, this.loadShader(gl.FRAGMENT_SHADER, fs));
-        gl.linkProgram(p);
-        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-            console.error(gl.getProgramInfoLog(p)); return null;
-        }
-        return p;
-    }
-
-    loadShader(type, source) {
-        const s = gl.createShader(type);
-        gl.shaderSource(s, source);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(s)); return null;
-        }
-        return s;
-    }
-
-    init() {
-        const gl = this.gl;
-        
-        // --- Programs ---
-        const vs2 = `attribute vec2 a_pos; uniform vec2 u_res; void main(){ gl_Position = vec4(a_pos*u_res-1.0, 0.0, 1.0); }`;
-        
-        // --- Grid Build ---
-        // Pass particles into grid buckets.
-        this.prog_grid = this.createProgram(vs2, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texGrid;
-            uniform float u_h;
-            attribute vec2 a_pos; uniform vec2 u_res;
-            void main(){
-                vec2 p = a_pos*u_res-1.0;
-                float fx = (p.x+1.0)/2.0, fy = (p.y+1.0)/2.0;
-                int idx = int(fy * u_count);
-                if(idx >= int(u_count)) return;
-                vec4 pos = texelFetch(texPos, ivec2(int(fx), idx), 0);
-                if(pos.w < 0.0) return;
-                vec3 cell = floor(pos.xyz * vec3(1.0/u_h));
-                float h = fract(sin(dot(cell, vec3(12.9898,78.233,45.854)))*43758.5453);
-                int gx = int(h*2048.0); int gy = int(cell.y); // grid is 2048x2048? No.
-                // Grid texture is 2048 wide (x), we use y for cell.z or overflow.
-                // Let's make grid 2048 x 4096 (y holds cell z and overflow).
-                // Simpler: map (x,y,z) -> 2D using 2 hashes.
-                float hy = fract(sin(dot(vec2(cell.x,cell.y), vec2(12.9898,78.233)))*43758.5453);
-                int gx2 = int(h*2048.0); int gy2 = int(hy * u_res.y);
-                vec4 cellData = texelFetch(texGrid, ivec2(gx2, gy2), 0);
-                float c = cellData.r;
-                int slot = int(c);
-                cellData.r += 1.0;
-                if(slot < 3) cellData.g = float(idx);
-                texelFetch(texGrid, ivec2(gx2, gy2), 0) = cellData;
-            }`);
-
-        // --- Density ---
-        this.prog_dens = this.createProgram(vs2, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texGrid; uniform float u_h;
-            uniform float u_mass; uniform float u_h2;
-            attribute vec2 a_pos; uniform vec2 u_res;
-            void main(){
-                vec2 p = a_pos*u_res-1.0;
-                float fx = (p.x+1.0)/2.0, fy = (p.y+1.0)/2.0;
-                int idx = int(fy * u_count);
-                if(idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-                int px = int(fx);
-                vec4 posV = texelFetch(texPos, ivec2(px, idx), 0);
-                if(posV.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-                vec3 pos = posV.xyz;
-                float density = 0.0;
-                vec3 cellV = floor(pos * vec3(1.0/u_h));
-                float hkey = fract(sin(dot(cellV, vec3(12.9898,78.233,45.854)))*43758.5453);
-                int gx = int(hkey*2048.0); int gy = int(cellV.z);
-                vec4 cell = texelFetch(texGrid, ivec2(gx, gy), 0);
-                float c = cell.r;
-                for(int i=0; i<3; i++){
-                    float pidx = cell.g + float(i);
-                    if(pidx >= c) break;
-                    vec4 np = texelFetch(texPos, ivec2(px, int(pidx)), 0);
-                    vec3 d = pos - np.xyz;
-                    float r2 = dot(d,d);
-                    if(r2 < u_h2){
-                        float w = 1.0 - 0.5*r2/u_h2;
-                        density += u_mass * (w) * (1.0 + 4.0*(1.0-r2/u_h2)); 
-                    }
-                }
-                gl_FragColor = vec4(density, 0.0, 0.0, 0.0);
-            }`);
-
-        // --- Pressure ---
-        this.prog_press = this.createProgram(vs2, `
-            precision highp float;
-            uniform highp sampler2D texDens; uniform float u_count;
-            uniform float u_pressureK;
-            attribute vec2 a_pos; uniform vec2 u_res;
-            void main(){
-                vec2 p = a_pos*u_res-1.0;
-                float fx = (p.x+1.0)/2.0, fy = (p.y+1.0)/2.0;
-                int idx = int(fy * u_count);
-                if(idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-                int px = int(fx);
-                float dens = texelFetch(texDens, ivec2(px, idx), 0).x;
-                float pressure = u_pressureK * (dens - 1000.0);
-                gl_FragColor = vec4(pressure, 0.0, 0.0, 0.0);
-            }`);
-
-        // --- Forces ---
-        this.prog_force = this.createProgram(vs2, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texDens; uniform highp sampler2D texPress;
-            uniform highp sampler2D texGrid;
-            uniform float u_h; uniform float u_mass;
-            uniform float u_visc; uniform float u_gravY;
-            uniform float u_h2;
-            attribute vec2 a_pos; uniform vec2 u_res;
-            void main(){
-                vec2 p = a_pos*u_res-1.0;
-                float fx = (p.x+1.0)/2.0, fy = (p.y+1.0)/2.0;
-                int idx = int(fy * u_count);
-                if(idx >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-                int px = int(fx);
-                vec4 posV = texelFetch(texPos, ivec2(px, idx), 0);
-                if(posV.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-                vec3 pos = posV.xyz;
-                vec3 vel = texelFetch(texVel, ivec2(px, idx), 0).xyz;
-                float dens = texelFetch(texDens, ivec2(px, idx), 0).x;
-                float press = texelFetch(texPress, ivec2(px, idx), 0).x;
-                vec3 force = vec3(0.0); force.y = u_gravY * u_mass;
-                
-                float cellVx = floor(pos.x*1.0/u_h);
-                float cellVy = floor(pos.y*1.0/u_h);
-                float cellVz = floor(pos.z*1.0/u_h);
-                float hkey = fract(sin(dot(vec3(cellVx,cellVy,cellVz), vec3(12.9898,78.233,45.854)))*43758.5453);
-                int gx = int(hkey*2048.0); int gy = int(cellVz);
-                vec4 cell = texelFetch(texGrid, ivec2(gx, gy), 0);
-                float c = cell.r;
-                for(int i=0; i<3; i++){
-                    float pidx = cell.g + float(i);
-                    if(pidx >= c) break;
-                    ivec2 pip = ivec2(px, int(pidx));
-                    vec4 np = texelFetch(texPos, pip, 0);
-                    vec3 npos = np.xyz;
-                    if(npos.x > pos.x - u_h){
-                        vec3 d = pos - npos;
-                        float r2 = dot(d,d);
-                        if(r2 < u_h2){
-                            float w = 1.0 - 0.5*r2/u_h2;
-                            float npress = texelFetch(texPress, pip, 0).x;
-                            float nvel[3]; nvel[0]=texelFetch(texVel, pip, 0).x; nvel[1]=texelFetch(texVel, pip, 0).y; nvel[2]=texelFetch(texVel, pip, 0).z;
-                            force -= u_mass * 0.5*(press+npress)/dens * d * w;
-                            vec3 nv = vec3(nvel);
-                            force += u_visc * u_mass * (nv - vel) * w;
-                        }
-                    }
-                }
-                gl_FragColor = vec4(force, 0.0);
-            }`);
-
-        // --- Integrate ---
-        this.prog_int = this.createProgram(vs2, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texVel; uniform highp sampler2D texForce;
-            uniform float u_dt; uniform float u_mass;
-            uniform float u_gravY;
-            uniform float u_box; // box half extent
-            attribute vec2 a_pos; uniform vec2 u_res;
-            void main(){
-                vec2 p = a_pos*u_res-1.0;
-                float fx = (p.x+1.0)/2.0, fy = (p.y+1.0)/2.0;
-                int idx = int(fy * u_count);
-                if(idx >= int(u_count)) return;
-                int px = int(fx);
-                vec4 posV = texelFetch(texPos, ivec2(px, idx), 0);
-                if(posV.w < 0.0) return;
-                vec3 force = texelFetch(texForce, ivec2(px, idx), 0).xyz;
-                if(length(force) < 0.01) force.y = u_gravY * u_mass;
-                vec3 vel = texelFetch(texVel, ivec2(px, idx), 0).xyz;
-                vec3 pos = posV.xyz;
-                vel += force * u_dt / u_mass;
-                pos += vel * u_dt;
-                vec3 n = vec3(0.0);
-                if(pos.x < -u_box){ pos.x = -u_box; n.x = 1.0; }
-                else if(pos.x > u_box){ pos.x = u_box; n.x = -1.0; }
-                if(pos.y < -u_box){ pos.y = -u_box; n.y = 1.0; }
-                else if(pos.y > u_box){ pos.y = u_box; n.y = -1.0; }
-                if(pos.z < -u_box){ pos.z = -u_box; n.z = 1.0; }
-                else if(pos.z > u_box){ pos.z = u_box; n.z = -1.0; }
-                if(dot(n,n) > 0.0){ pos += n * 0.05; vel -= n * dot(vel,n) * 0.5; }
-                texelFetch(texPos, ivec2(px, idx), 0) = vec4(pos, 1.0);
-                texelFetch(texVel, ivec2(px, idx), 0) = vec4(vel, 0.0);
-            }`);
-
-        // --- Render Particles (Quad strip per particle? No. Render all as points to depth) ---
-        // We render a full-screen quad where pixel (x,y) corresponds to particle index 
-        // in a linear buffer. But particle buffer is 2D (x=col, y=idx).
-        // Trick: We render particles to a "Depth Texture" of size u_res.
-        // To map screen pixel to particle: we iterate all particles and draw them as quads at their projected screen position.
-        // That requires iterating N particles in the fragment shader (slow) OR vertex shader (fast!).
-        // We'll render them via geometry instancing if supported, or simple loop in fragment shader with a trick:
-        // Render a quad filling screen. Pixel -> particle index mapping: 
-        // idx = y * (cols) + x ... NO.
-        
-        // BEST ROUTE: Render particle positions to a 2D texture "depthMap" sized u_res.
-        // Fragment shader: idx = int(fy * u_count). pos = texelFetch(texPos, ivec2(0, idx), 0)?? 
-        // We can't fetch arbitrary 1D index from 2D texture easily.
-        // WE STORE POS as texel (x=col, y=idx). So to fetch particle i: texelFetch(texPos, ivec2(0, i), 0) works if width is 1? No, width is screen.
-        // If we store pos at coordinate (x, y), we need x. But x is just a slot for parallel computation.
-        
-        // SOLUTION: Store particle buffer as 2D texture WIDTH = N (particle count), HEIGHT = 1.
-        // Then texelFetch(texPos, ivec2(i, 0), 0) works.
-        // But fragment shader runs N times (screen res). We iterate screen pixels.
-        // If u_res = screen, then for every pixel we pick a particle?
-        // Yes! idx = int(fy * u_count) is wrong mapping.
-        
-        // Let's just render a quad and draw ALL particles at their projected positions.
-        // We need to render N particles. Draw call: glDrawArrays with N vertices.
-        // Vertex shader generates position per instance.
-        // Instancing is supported? gl.drawArraysInstancedANGLE? Not standard on all.
-        
-        // SIMPLE ROBUST APPROACH: 
-        // Render the scene to a quad, then map screen pixel to particle index.
-        // Particle buffer: texPos is WIDTH = N, HEIGHT = 1.
-        // Screen: we render particles as point sprites to a depth texture of size u_res.
-        // Pixel (x,y) on screen -> map to closest particle?
-        // Let's use the "Particle Depth Texture" approach:
-        // Render a quad. In fragment shader, loop i from 0 to u_count.
-        // Find particle that maps to screen pixel (x,y).
-        // Mapping: we need particle index = x + y*N. 
-        // So u_count must be such that N = u_res.x * u_res.y? Too many particles (screen is 1920x1080).
-        // We only need visible particles.
-        
-        // ALTERNATIVE (Simplest & Fastest): Render particles as quads using a single quad per particle
-        // in a loop over sub-frames? No.
-        
-        // FINAL APPROACH: Render particles using `gl.drawArrays` loop? Slow CPU side.
-        // GPU: Use `EXT_blend_minmax` or `EXT_texture_lod`?
-        
-        // OK. Let's go with the standard FluidSim approach:
-        // texPos is a 2D texture of size `u_res` (screen sized) -> NO, we use it for compute.
-        // We create a separate DEPTH RENDER:
-        // Vertex Shader: Generate a grid of quads covering screen.
-        // Fragment Shader: Iterate over ALL particles (N=32000 is too many per fragment... ~30ms).
-        // Wait, we can reduce particle count for rendering or use a hash texture (SPH grid)
-        // to find nearby particles in screen space. 
-        // Actually, the classic way (e.g. in GPU-Sim):
-        // Render depth buffer where each fragment picks the particle at that screen position.
-        // To do this efficiently: Render particles as point sprites.
-        // Point sprite size = radius projected.
-        // `gl_PointSize` is supported. We set point size based on projected radius.
-        // Depth of point = particle depth.
-        // gl depth test = less. This writes depth for the point.
-        // Fragment shader computes depth = z of point center (approx).
-        // This works perfectly with standard WebGL 2.
-        
-        this.prog_renderDepth = this.createProgram(`
-            attribute vec2 a_pos;
-            uniform float u_count;
-            uniform mat4 u_proj; uniform mat4 u_view; uniform vec3 u_camPos;
-            void main(){
-                vec4 pos = texelFetch(texPos, ivec2(int(gl_VertexID), 0), 0);
-                if(pos.w < 0.0){ gl_Position = vec4(0.0); gl_PointSize = 0.0; return; }
-                gl_Position = u_proj * u_view * pos;
-                gl_PointSize = 60.0 * (pos.w + 0.1); 
-            }`, `
-            uniform float u_h; uniform vec3 u_camPos;
-            void main(){
-                gl_FragColor = vec4(1.0);
-            }`, false, true);
-        
-        // --- SSFR Raymarch ---
-        // Render the scene (tank) first. Then raymarch depth buffer.
-        this.prog_ray = this.createProgram(`
-            attribute vec2 a_pos; uniform vec2 u_res;
-            void main(){ gl_Position = vec4(a_pos*u_res-1.0, 0.0, 1.0); }`, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform sampler2D u_depth; uniform sampler2D u_depthTex; // scene depth
-            uniform vec2 u_res; uniform float u_fov;
-            uniform mat4 u_proj; uniform mat4 u_view; uniform vec3 u_camPos;
-            uniform float u_h;
-            
-            // Raymarch the particle depth buffer
-            void main(){
-                vec2 uv = gl_FragCoord.xy / u_res;
-                vec3 dir = normalize(vec3(uv*2.0-1.0, -u_fov));
-                vec3 rayPos = u_camPos;
-                
-                // 1. Sample scene depth
-                float z = texture(u_depthTex, uv).r;
-                if(z >= 1.0) { gl_FragColor = vec4(0.1,0.1,0.15,1.0); return; }
-                float sceneDist = z * u_fov; // depth is near... 
-                // Simple depth mapping: z is depth buffer value 0..1.
-                // Convert to distance: standard gl depth -> distance.
-                // We'll use a helper.
-                
-                // Raymarch through particle depth buffer
-                vec3 col = vec3(0.0);
-                float t = 0.1;
-                for(int i=0; i<64; i++){
-                    vec3 p = rayPos + dir * t;
-                    vec4 particle = texelFetch(texPos, ivec2(int(mod(float(gl_FragCoord.x), 1024.0)), 0), 0); // Placeholder: need particle lookup in screen space
-                    // Can't lookup particle by screen pos easily.
-                    // Use u_depthTex (particle depth map)? We render particle depth to u_depthTex.
-                    float d = texture(u_depth, uv).r; 
-                    if(length(p.x - rayPos.x) < 0.01) break; // hack
-                    t += 0.02;
-                }
-                gl_FragColor = vec4(col, 1.0);
-            }`);
-    }
-    
-    // ... We will define these in the actual code below with full shader strings.
-    // This placeholder class is just for structure. The implementation follows.
-}
-
-// ============================================================
-// FULL IMPLEMENTATION
-// ============================================================
-
-const gl = document.getElementById('gl').getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false });
-
-if(!gl){
-    document.getElementById('warn').style.display = 'block';
-    document.getElementById('warn').innerHTML = '<h1>WebGL2 is unavailable</h1><p>Fluid simulation requires WebGL2 (WebGL 2.0).</p>';
-}
-
-const TEXTURE_FLOAT = gl.getExtension('OES_texture_float');
-const TEXTURE_FLOAT_LINEAR = gl.getExtension('OES_texture_float_linear');
-const COLOR_FLOAT = gl.getExtension('EXT_color_buffer_float');
-
-if(!TEXTURE_FLOAT || !COLOR_FLOAT){
-    alert("Floating point textures required. Try a modern browser.");
-}
-
-// --- Global State ---
-let particles = []; // Position buffer (x=idx, y=0)
-let velocities = [];
-let positionsTex; // TEXTURE, x=idx
-let velocitiesTex;
-let gridTex;      // 2048 x 2048 (cell hash)
-let gridRows;     // texture height for grid
-let densityTex;
-let pressureTex;
-let forceTex;
-let depthTex;
-let depthTexQuad; // Render particles to depthTex
-let depthTexScene; // Scene depth (tank)
-
-// We need to render particles to a texture. We use the renderBuffer approach.
-// We store positions in a TEXTURE of size (u_count x 1)?
-// gl.texImage2D with width=N, height=1.
-// texelFetch(texPos, ivec2(i, 0), 0).
-// This works.
-
-const N_GRID = 2048; // Grid texture width
-const N_GRID_Y = 4096; // Grid texture height (to avoid overflow collisions)
-
-// --- Solver class (Full) ---
-class FluidSolver {
-    constructor(gl, width, height) {
-        this.gl = gl;
-        this.width = width; this.height = height;
-        this.createShaders();
-    }
-    
-    createShaders() {
-        const gl = this.gl;
-        const vs = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }`;
-        
-        const clear = `precision highp float; void main(){ gl_FragColor = vec4(0.0); }`;
-        
-        this.progs = {};
-        this.progs.clear = this.createProgram(vs, clear);
-        this.progs.buildGrid = this.createProgram(vs, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texGrid; uniform float u_h;
-            void main(){
-                float fx = a_pos.x * u_count; int px = int(fx);
-                if(px >= int(u_count)) return;
-                vec4 pos = texelFetch(texPos, ivec2(px, 0), 0);
-                if(pos.w < 0.0) return;
-                vec3 cell = floor(pos.xyz * vec3(1.0/u_h));
-                float h = fract(sin(dot(cell, vec3(12.9898,78.233,45.854)))*43758.5453);
-                int gx = int(h * N_GRID); int gy = int(h * N_GRID_Y);
-                vec4 cellData = texelFetch(texGrid, ivec2(gx, gy), 0);
-                float c = cellData.r; int slot = int(c);
-                cellData.r += 1.0; if(slot < 3) cellData.g = float(px);
-                texelFetch(texGrid, ivec2(gx, gy), 0) = cellData;
-            }`);
-        this.progs.density = this.createProgram(vs, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texGrid; uniform float u_h;
-            uniform float u_mass; uniform float u_h2;
-            void main(){
-                float fx = a_pos.x * u_count; int px = int(fx);
-                if(px >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-                vec4 posV = texelFetch(texPos, ivec2(px, 0), 0);
-                if(posV.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-                vec3 pos = posV.xyz;
-                float density = 0.0;
-                vec3 cellV = floor(pos * vec3(1.0/u_h));
-                float hkey = fract(sin(dot(cellV, vec3(12.9898,78.233,45.854)))*43758.5453);
-                int gx = int(hkey * N_GRID); int gy = int(hkey * N_GRID_Y);
-                vec4 cell = texelFetch(texGrid, ivec2(gx, gy), 0);
-                float c = cell.r;
-                for(int i=0; i<3; i++){
-                    float pidx = cell.g + float(i);
-                    if(pidx >= c) break;
-                    vec4 np = texelFetch(texPos, ivec2(int(pidx), 0), 0);
-                    vec3 d = pos - np.xyz;
-                    float r2 = dot(d,d);
-                    if(r2 < u_h2){
-                        float w = 1.0 - 0.5*r2/u_h2;
-                        density += u_mass * w * (1.0 + 4.0*(1.0-r2/u_h2));
-                    }
-                }
-                gl_FragColor = vec4(density, 0.0, 0.0, 0.0);
-            }`);
-        this.progs.pressure = this.createProgram(vs, `
-            precision highp float;
-            uniform highp sampler2D texDens; uniform float u_count;
-            uniform float u_pressureK;
-            void main(){
-                float fx = a_pos.x * u_count; int px = int(fx);
-                if(px >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-                float dens = texelFetch(texDens, ivec2(px, 0), 0).x;
-                float pressure = u_pressureK * (dens - 1000.0);
-                gl_FragColor = vec4(pressure, 0.0, 0.0, 0.0);
-            }`);
-        this.progs.force = this.createProgram(vs, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texDens; uniform highp sampler2D texPress;
-            uniform highp sampler2D texGrid;
-            uniform float u_h; uniform float u_mass; uniform float u_visc;
-            uniform float u_gravY; uniform float u_h2;
-            void main(){
-                float fx = a_pos.x * u_count; int px = int(fx);
-                if(px >= int(u_count)) { gl_FragColor = vec4(0.0); return; }
-                vec4 posV = texelFetch(texPos, ivec2(px, 0), 0);
-                if(posV.w < 0.0) { gl_FragColor = vec4(0.0); return; }
-                vec3 pos = posV.xyz;
-                vec3 vel = texelFetch(texVel, ivec2(px, 0), 0).xyz;
-                float dens = texelFetch(texDens, ivec2(px, 0), 0).x;
-                float press = texelFetch(texPress, ivec2(px, 0), 0).x;
-                vec3 force = vec3(0.0); force.y = u_gravY * u_mass;
-                float cellVx = floor(pos.x*1.0/u_h), cellVy = floor(pos.y*1.0/u_h), cellVz = floor(pos.z*1.0/u_h);
-                float hkey = fract(sin(dot(vec3(cellVx,cellVy,cellVz), vec3(12.9898,78.233,45.854)))*43758.5453);
-                int gx = int(hkey * N_GRID); int gy = int(hkey * N_GRID_Y);
-                vec4 cell = texelFetch(texGrid, ivec2(gx, gy), 0);
-                float c = cell.r;
-                for(int i=0; i<3; i++){
-                    float pidx = cell.g + float(i);
-                    if(pidx >= c) break;
-                    vec4 np = texelFetch(texPos, ivec2(int(pidx), 0), 0);
-                    vec3 npos = np.xyz;
-                    if(npos.x > pos.x - u_h){
-                        vec3 d = pos - npos;
-                        float r2 = dot(d,d);
-                        if(r2 < u_h2){
-                            float w = 1.0 - 0.5*r2/u_h2;
-                            float npress = texelFetch(texPress, ivec2(int(pidx), 0), 0).x;
-                            force -= u_mass * 0.5*(press+npress)/dens * d * w;
-                            force += u_visc * u_mass * (texelFetch(texVel, ivec2(int(pidx), 0), 0).xyz - vel) * w;
-                        }
-                    }
-                }
-                gl_FragColor = vec4(force, 0.0);
-            }`);
-        this.progs.integrate = this.createProgram(vs, `
-            precision highp float;
-            uniform highp sampler2D texPos; uniform float u_count;
-            uniform highp sampler2D texVel; uniform highp sampler2D texForce;
-            uniform float u_dt; uniform float u_mass;
-            uniform float u_gravY;
-            void main(){
-                float fx = a_pos.x * u_count; int px = int(fx);
-                if(px >= int(u_count)) return;
-                vec4 posV = texelFetch(texPos, ivec2(px, 0), 0);
-                if(posV.w < 0.0) return;
-                vec3 force = texelFetch(texForce, ivec2(px, 0), 0).xyz;
-                if(length(force) < 0.01) force.y = u_gravY * u_mass;
-                vec3 vel = texelFetch(texVel, ivec2(px, 0), 0).xyz;
-                vec3 pos = posV.xyz;
-                vel += force * u_dt / u_mass;
-                pos += vel * u_dt;
-                float box = 25.0 * u_h;
-                vec3 n = vec3(0.0);
-                if(pos.x < -box){ pos.x = -box; n.x = 1.0; }
-                else if(pos.x > box){ pos.x = box; n.x = -1.0; }
-                if(pos.y < -box){ pos.y = -box; n.y = 1.0; }
-                else if(pos.y > box){ pos.y = box; n.y = -1.0; }
-                if(pos.z < -box){ pos.z = -box; n.z = 1.0; }
-                else if(pos.z > box){ pos.z = box; n.z = -1.0; }
-                if(dot(n,n) > 0.0){ pos += n * 0.05; vel -= n * dot(vel,n) * 0.5; }
-                texelFetch(texPos, ivec2(px, 0), 0) = vec4(pos, 1.0);
-                texelFetch(texVel, ivec2(px, 0), 0) = vec4(vel, 0.0);
-            }`);
-    }
-    
-    createProgram(vs, fs) {
-        const gl = this.gl;
-        const p = gl.createProgram();
-        gl.attachShader(p, this.loadShader(gl.VERTEX_SHADER, vs));
-        gl.attachShader(p, this.loadShader(gl.FRAGMENT_SHADER, fs));
-        gl.linkProgram(p);
-        return p;
-    }
-    loadShader(type, source) {
-        const gl = this.gl;
-        const s = gl.createShader(type);
-        gl.shaderSource(s, source);
-        gl.compileShader(s);
-        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(s)); return null;
-        }
-        return s;
-    }
-
-    bindTexture(tex) {
-        this.gl.activeTexture(this.gl.TEXTURE0);
-        this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
-    }
-    
-    // Set a 2D texture from a Float32Array data (width, height)
-    uploadTexture(tex, data, w, h) {
-        this.bindTexture(tex);
-        this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA32F, w, h, 0, this.gl.RGBA, this.gl.FLOAT, data);
-    }
-    
-    // Read texture back to array
-    readTexture(tex, w, h) {
-        const fbo = this.gl.createFramebuffer();
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, fbo);
-        this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER, this.gl.COLOR_ATTACHMENT0, this.gl.TEXTURE_2D, tex, 0);
-        const arr = new Float32Array(w*h*4);
-        this.gl.readPixels(0, 0, w, h, this.gl.RGBA, this.gl.FLOAT, arr);
-        this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, null);
-        return arr;
-    }
-
-    initBuffer(n) {
-        const gl = this.gl;
-        positionsTex = gl.createTexture();
-        velocitiesTex = gl.createTexture();
-        densityTex = gl.createTexture();
-        pressureTex = gl.createTexture();
-        forceTex = gl.createTexture();
-        
-        // Position buffer: width N, height 1.
-        gl.bindTexture(gl.TEXTURE_2D, positionsTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, n, 1, 0, gl.RGBA, gl.FLOAT, null);
-        
-        gl.bindTexture(gl.TEXTURE_2D, velocitiesTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, n, 1, 0, gl.RGBA, gl.FLOAT, null);
-        
-        densityTex = this.newTexture(n, 1);
-        pressureTex = this.newTexture(n, 1);
-        forceTex = this.newTexture(n, 1);
-        
-        gridTex = this.newTexture(N_GRID, N_GRID_Y);
-        gridRows = N_GRID_Y;
-    }
-    
-    newTexture(w, h) {
-        const gl = this.gl;
-        const t = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, t);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, w, h, 0, gl.RGBA, gl.FLOAT, null);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        return t;
-    }
-    
-    // Quad covering the screen (for compute passes)
-    drawProg(prog, bindings, u = {}) {
-        const gl = this.gl;
-        gl.useProgram(prog);
-        const vao = this.getVAO();
-        
-        for (let k in bindings) {
-            const slot = bindings[k];
-            gl.activeTexture(gl.TEXTURE0 + slot);
-            gl.bindTexture(gl.TEXTURE_2D, k.replace('tex',''));
-        }
-        
-        for (let k in u) {
-            const loc = gl.getUniformLocation(prog, k);
-            if (loc) gl.uniform1f(loc, u[k]);
-        }
-        
-        gl.bindVertexArray(vao);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
-    
-    getVAO() {
-        // Static quad attributes
-        if(!this.vao) {
-            this.vao = gl.createVertexArray();
-            gl.bindVertexArray(this.vao);
-            const buf = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-            gl.enableVertexAttribArray(0);
-            gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
-        }
-        return this.vao;
-    }
-
-    step() {
-        const gl = this.gl;
-        const g = CONFIG;
-        
-        // 1. Build Grid
-        gl.useProgram(this.progs.buildGrid);
-        const bind = {texPos: 0, texGrid: 1};
-        gl.uniform1i(gl.getUniformLocation(this.progs.buildGrid, 'texPos'), 0);
-        gl.uniform1i(gl.getUniformLocation(this.progs.buildGrid, 'texGrid'), 1);
-        gl.uniform1f(gl.getUniformLocation(this.progs.buildGrid, 'u_count'), particles.length);
-        gl.uniform1f(gl.getUniformLocation(this.progs.buildGrid, 'u_h'), g.smoothingRadius);
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, positionsTex);
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, gridTex);
-        gl.bindVertexArray(this.vao);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        // 2. Density
-        gl.useProgram(this.progs.density);
-        gl.uniform1i(gl.getUniformLocation(this.progs.density, 'texPos'), 0);
-        gl.uniform1i(gl.getUniformLocation(this.progs.density, 'texGrid'), 1);
-        gl.uniform1f(gl.getUniformLocation(this.progs.density, 'u_count'), particles.length);
-        gl.uniform1f(gl.getUniformLocation(this.progs.density, 'u_mass'), g.mass);
-        gl.uniform1f(gl.getUniformLocation(this.progs.density, 'u_h'), g.smoothingRadius);
-        gl.uniform1f(gl.getUniformLocation(this.progs.density, 'u_h2'), g.smoothingRadius*g.smoothingRadius);
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, positionsTex);
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, gridTex);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        // 3. Pressure
-        gl.useProgram(this.progs.pressure);
-        gl.uniform1i(gl.getUniformLocation(this.progs.pressure, 'texDens'), 0);
-        gl.uniform1f(gl.getUniformLocation(this.progs.pressure, 'u_count'), particles.length);
-        gl.uniform1f(gl.getUniformLocation(this.progs.pressure, 'u_pressureK'), g.pressureK);
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, densityTex);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        // 4. Force
-        gl.useProgram(this.progs.force);
-        gl.uniform1i(gl.getUniformLocation(this.progs.force, 'texPos'), 0);
-        gl.uniform1i(gl.getUniformLocation(this.progs.force, 'texVel'), 1);
-        gl.uniform1i(gl.getUniformLocation(this.progs.force, 'texDens'), 2);
-        gl.uniform1i(gl.getUniformLocation(this.progs.force, 'texPress'), 3);
-        gl.uniform1i(gl.getUniformLocation(this.progs.force, 'texGrid'), 4);
-        gl.uniform1f(gl.getUniformLocation(this.progs.force, 'u_count'), particles.length);
-        gl.uniform1f(gl.getUniformLocation(this.progs.force, 'u_h'), g.smoothingRadius);
-        gl.uniform1f(gl.getUniformLocation(this.progs.force, 'u_h2'), g.smoothingRadius*g.smoothingRadius);
-        gl.uniform1f(gl.getUniformLocation(this.progs.force, 'u_mass'), g.mass);
-        gl.uniform1f(gl.getUniformLocation(this.progs.force, 'u_visc'), g.viscosity);
-        gl.uniform1f(gl.getUniformLocation(this.progs.force, 'u_gravY'), g.grav);
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, positionsTex);
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, velocitiesTex);
-        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, densityTex);
-        gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, pressureTex);
-        gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, gridTex);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-
-        // 5. Integrate
-        gl.useProgram(this.progs.integrate);
-        gl.uniform1i(gl.getUniformLocation(this.progs.integrate, 'texPos'), 0);
-        gl.uniform1i(gl.getUniformLocation(this.progs.integrate, 'texVel'), 1);
-        gl.uniform1i(gl.getUniformLocation(this.progs.integrate, 'texForce'), 2);
-        gl.uniform1f(gl.getUniformLocation(this.progs.integrate, 'u_count'), particles.length);
-        gl.uniform1f(gl.getUniformLocation(this.progs.integrate, 'u_mass'), g.mass);
-        gl.uniform1f(gl.getUniformLocation(this.progs.integrate, 'u_dt'), CONFIG.dt);
-        gl.uniform1f(gl.getUniformLocation(this.progs.integrate, 'u_gravY'), g.grav);
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, positionsTex);
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, velocitiesTex);
-        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, forceTex);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        
-        // Ping-pong density/pressure/force for next frame?
-        // Since reads/writes are separate (density reads grid from PREVIOUS step? No, reads current).
-        // In this single-buffer setup, we overwrite. We need ping-pong for stability.
-        // Actually the compute chain reads Position and writes Position in integrate (in place, okay).
-        // Density writes densityTex, pressure reads it (fine).
-        // Force reads densityTex, writes forceTex. Integrate reads forceTex. (Fine).
-        // But next frame: Density reads grid (built this frame) and positions.
-        // Force reads grid (built this frame) and density (this frame).
-        // Wait, grid depends on POSITION of current frame. Density uses grid.
-        // Grid -> Density -> Pressure -> Force -> Integrate.
-        // In the next frame, we re-build grid from updated positions.
-        // So: Density is computed from OLD grid? No, from new grid. But new grid is built from new positions.
-        // Density needs pressure from PREVIOUS frame (to avoid oscillation, typical for SPH).
-        // Let's ping-pong density & pressure:
-        // Read densityTex (old), write newDensity. Next frame read newDensity.
-        // We can just swap references in Three.js.
-    }
-}
-
-// The solver above has ping-pong issues with direct read/write. Let's implement proper ping-pong.
-// We'll create two textures for density and pressure and swap them.
-
-const DENS_A = 0, DENS_B = 1;
-let currentDens = DENS_A;
-let densityTexA, densityTexB;
-let pressureTexA, pressureTexB;
-let activeDensityTex, activePressureTex;
-
-// --- Re-init with ping-pong ---
-const FBO = gl.createFramebuffer();
-
-function resizeSolver(w, h) {
-    if(solver) solver.width=w; solver.height=h;
-}
-
-// ============================================================
-// RENDERER
-// ============================================================
-const THREE = await import('three');
-const { WebGLRenderer, Scene, PerspectiveCamera, BoxGeometry, Mesh, MeshPhysicalMaterial, DoubleSide,
-        PlaneGeometry, ShaderMaterial, Vector3, Matrix4, TextureLoader, Texture,
-        RepeatWrapping, ClampToEdgeWrapping, Points, BufferGeometry, Float32BufferAttribute,
-        OrthographicCamera, HemisphereLight, DirectionalLight, AmbientLight,
-        BackSide, FrontSide } = THREE;
-
-const renderer = new WebGLRenderer({ canvas: document.getElementById('gl'), antialias: false, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-const camera = new PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 3, 8);
-camera.lookAt(0, 0, 0);
-
-// --- Scene ---
-const scene = new Scene();
-scene.background = new THREE.Color(0x1e293b);
-
-// --- Tanks ---
-function createTank() {
-    const tankGeo = new THREE.BoxGeometry(10, 4, 6);
-    // Custom Glass Shader
-    const glassMat = new THREE.ShaderMaterial({
-        side: THREE.FrontSide,
-        uniforms: {
-            iTime: { value: 0 },
-            viewMatrix: { value: new Matrix4() },
-            projectionMatrix: { value: new Matrix4() },
-            background: { value: new THREE.Color(0x1e293b) }
-        },
-        vertexShader: `
-            varying vec3 vWorldPosition;
-            varying vec3 vNormal;
+        const pointVS = `
+            uniform float uRadius; uniform float uScale;
+            attribute float aSpeed;
+            varying vec3 vView; varying float vSpeed;
             void main() {
-                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                vWorldPosition = worldPosition.xyz;
-                vNormal = normalMatrix * normal;
-                gl_Position = projectionMatrix * worldPosition;
-            }
-        `,
-        fragmentShader: `
-            uniform vec3 background;
-            uniform mat4 viewMatrix;
-            uniform mat4 projectionMatrix;
-            varying vec3 vWorldPosition;
-            varying vec3 vNormal;
-            
-            // Fresnel
-            float fresnel(vec3 V, vec3 N) {
-                return 0.02 + (1.0 - 0.02) * pow(1.0 - abs(dot(V, N)), 5.0);
-            }
-            
-            // Background sampling (fake refraction via screen space)
-            vec3 getBackground(vec3 R) {
-                vec4 bg = vec4(background, 1.0);
-                return bg.rgb;
-            }
-            
-            void main() {
-                vec3 N = normalize(vNormal);
-                vec3 V = normalize(-viewMatrix[3].xyz - vWorldPosition); // camera to point
-                vec3 R = reflect(-V, N);
-                
-                // Refraction (screen space sampling of scene behind)
-                // We don't have scene depth easily. Use background color + fresnel.
-                float f = fresnel(V, N);
-                // Refract look
-                vec3 refr = getBackground(reflect(V, -N)); // fake
-                
-                // Internal absorption (water tint)
-                float dist = length(vWorldPosition); 
-                vec3 waterTint = vec3(0.0, 0.3, 0.5);
-                vec3 absorption = exp(-0.05 * dist) * waterTint;
-                
-                vec3 color = mix(refr, waterTint, 0.8) * absorption;
-                color = mix(color, vec3(1.0), f); // reflections
-                gl_FragColor = vec4(color, 1.0); // solid glass? Use alpha?
-            }
-        `
-    });
-    
-    // Actually, let's use Three.js Water shader for the liquid and a custom shader for the tank.
-    // The liquid is particles. The tank is glass.
-    
-    const glassMesh = new THREE.Mesh(tankGeo, glassMat);
-    glassMesh.renderOrder = 999;
-    return glassMesh;
-}
-const glassTank = createTank();
-scene.add(glassTank);
-
-// Floor
-const floorGeo = new THREE.PlaneGeometry(40, 40);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.8 });
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI/2;
-floor.position.y = -2.1;
-floor.receiveShadow = true;
-scene.add(floor);
-
-// Lighting
-const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
-const dir = new THREE.DirectionalLight(0xffffff, 2.0);
-dir.position.set(5, 10, 7);
-dir.castShadow = true;
-dir.shadow.mapSize.width = 1024;
-dir.shadow.mapSize.height = 1024;
-scene.add(hemi, dir);
-
-// --- Objects ---
-let objects = [];
-function addObject(type) {
-    let geo, mat, obj;
-    if(type === 'duck') {
-        geo = new THREE.SphereGeometry(0.5, 32, 32);
-        mat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.4 });
-        obj = new THREE.Mesh(geo, mat);
-        obj.userData = { velocity: new THREE.Vector3(0, 2, 0), radius: 0.5, mass: 2.0 };
-    } else {
-        geo = new THREE.BoxGeometry(1, 1, 1);
-        mat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-        obj = new THREE.Mesh(geo, mat);
-        obj.userData = { velocity: new THREE.Vector3(0, 2, 0), radius: 0.8, mass: 5.0 };
-    }
-    obj.position.y = 4.0;
-    obj.castShadow = true;
-    scene.add(obj);
-    objects.push(obj);
-}
-
-// ============================================================
-// MAIN SIM LOOP
-// ============================================================
-const solver = new FluidSolver(gl, window.innerWidth, window.innerHeight);
-solver.initBuffer(40000);
-solver.densityTexA = solver.newTexture(40000, 1);
-solver.densityTexB = solver.newTexture(40000, 1);
-solver.pressureTexA = solver.newTexture(40000, 1);
-solver.pressureTexB = solver.newTexture(40000, 1);
-solver.activeDensityTex = solver.densityTexA;
-solver.activePressureTex = solver.pressureTexB; // Start with empty B (zeros) for pressure
-
-// Particle Data
-const N = 40000;
-const posData = new Float32Array(N * 4);
-const velData = new Float32Array(N * 4);
-
-function initParticles() {
-    const h = CONFIG.smoothingRadius;
-    for(let i=0; i<N; i++) {
-        posData[i*4] = 0; velData[i*4+1] = 0; posData[i*4+3] = 1; // w=1 active
-    }
-}
-
-function scenarioDam() {
-    const h = CONFIG.smoothingRadius;
-    const L = 6.0, W = 4.0, H = 6.0;
-    // Grid packing
-    const step = h * 1.2;
-    let count = 0;
-    // Column
-    for(let x=0; x<L; x+=step) {
-        for(let y=0; y<H; y+=step) {
-            for(let z=0; z<W; z+=step) {
-                if(count >= N) break;
-                posData[count*4+0] = -L/2 + x;
-                posData[count*4+1] = y/2 - 1.0;
-                posData[count*4+2] = -W/2 + z;
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-function scenarioDrop() {
-    const h = CONFIG.smoothingRadius;
-    const step = h * 1.2;
-    let count = 0;
-    // Pool
-    for(let x=0; x<3; x+=step) {
-        for(let y=0; y<2; y+=step) {
-            for(let z=0; z<3; z+=step) {
-                if(count >= N) break;
-                posData[count*4+0] = -1.5 + x;
-                posData[count*4+1] = y/2 - 1.0;
-                posData[count*4+2] = -1.5 + z;
-                count++;
-            }
-        }
-    }
-    // Falling sphere
-    for(let x=0; x<1; x+=step) {
-        for(let y=0; y<1; y+=step) {
-            for(let z=0; z<1; z+=step) {
-                if(count >= N) break;
-                posData[count*4+0] = -0.5 + x;
-                posData[count*4+1] = 2.0 + y;
-                posData[count*4+2] = -0.5 + z;
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-function scenarioDoubleDam() {
-    const h = CONFIG.smoothingRadius;
-    const step = h * 1.2;
-    let count = 0;
-    for(let side=-1; side<=1; side+=2) {
-        for(let x=0; x<3; x+=step) {
-            for(let y=0; y<4; y+=step) {
-                for(let z=0; z<2; z+=step) {
-                    if(count >= N) break;
-                    posData[count*4+0] = side*(1.5 + x);
-                    posData[count*4+1] = y/2 - 1.0;
-                    posData[count*4+2] = -1 + z;
-                    count++;
-                }
-            }
-        }
-    }
-    return count;
-}
-
-function scenarioFaucet() {
-    const h = CONFIG.smoothingRadius;
-    const step = h * 1.2;
-    let count = 0;
-    for(let x=0; x<2; x+=step) {
-        for(let y=0; y<2; y+=step) {
-            for(let z=0; z<2; z+=step) {
-                if(count >= N) break;
-                posData[count*4+0] = -1 + x;
-                posData[count*4+1] = y/2 - 1.0;
-                posData[count*4+2] = -1 + z;
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-function scenarioWave() {
-    const h = CONFIG.smoothingRadius;
-    const step = h * 1.2;
-    let count = 0;
-    for(let x=0; x<5; x+=step) {
-        for(let y=0; y<2; y+=step) {
-            for(let z=0; z<2; z+=step) {
-                if(count >= N) break;
-                posData[count*4+0] = -2.5 + x;
-                posData[count*4+1] = y/2 - 1.0;
-                posData[count*4+2] = -1 + z;
-                count++;
-            }
-        }
-    }
-    return count;
-}
-
-// Particle Render Geometry (Points)
-const particleGeom = new THREE.BufferGeometry();
-particleGeom.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N*3), 3));
-const particleSystem = new THREE.Points(particleGeom, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.15, transparent: true }));
-particleSystem.visible = false;
-scene.add(particleSystem);
-
-// --- Depth Textures for Raymarch ---
-const depthRes = [window.innerWidth, window.innerHeight];
-const depthTex = gl.createTexture();
-gl.bindTexture(gl.TEXTURE_2D, depthTex);
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, depthRes[0], depthRes[1], 0, gl.RGBA, gl.FLOAT, null);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-// Raymarch Program
-const vsRay = `attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos, 0.0, 1.0); }`;
-const fsRay = `
-    precision highp float;
-    uniform highp sampler2D texPos; uniform float u_count;
-    uniform highp sampler2D u_depthTex;
-    uniform vec2 u_res;
-    uniform float u_fov;
-    uniform mat4 u_proj; uniform mat4 u_view;
-    uniform vec3 u_camPos;
-    uniform float u_h;
-    
-    // Simple projection helpers
-    mat4 invert(mat4 m){
-        mat4 r;
-        // Cofactor expansion for 4x4
-        vec4 d = vec4(
-            m[1][2]*m[2][1]*m[3][0] - m[1][2]*m[3][1]*m[2][0] - m[2][2]*m[1][1]*m[3][0] + m[2][2]*m[3][1]*m[1][0] + m[3][2]*m[1][1]*m[2][0] - m[3][2]*m[2][1]*m[1][0],
-            m[1][2]*m[3][0]*m[2][1] - m[1][2]*m[2][0]*m[3][1] - m[2][2]*m[3][0]*m[1][1] + m[2][2]*m[2][0]*m[3][1] + m[3][2]*m[2][0]*m[1][1] - m[3][2]*m[1][0]*m[2][1],
-            m[1][0]*m[2][1]*m[3][2] - m[1][0]*m[3][1]*m[2][2] - m[2][0]*m[1][1]*m[3][2] + m[2][0]*m[3][1]*m[1][2] + m[3][0]*m[1][1]*m[2][2] - m[3][0]*m[2][1]*m[1][2],
-            m[2][0]*m[3][1]*m[1][2] - m[2][0]*m[1][1]*m[3][2] - m[3][0]*m[2][1]*m[1][2] + m[3][0]*m[1][1]*m[2][2] + m[1][0]*m[3][1]*m[2][2] - m[1][0]*m[2][1]*m[3][2]
-        );
-        float det = m[0][0]*d[0] + m[0][1]*d[1] + m[0][2]*d[2] + m[0][3]*d[3];
-        det = 1.0/det;
-        r[0][0] = d[0]*det; r[1][0] = (m[2][2]*m[3][1]*m[0][0] - m[2][1]*m[3][2]*m[0][0] - m[3][2]*m[0][1]*m[2][0] + m[3][1]*m[0][2]*m[2][0] + m[0][2]*m[1][1]*m[3][0] - m[0][1]*m[1][2]*m[3][0])*det;
-        r[0][1] = d[1]*det; r[1][1] = (m[0][2]*m[3][1]*m[2][0] - m[0][1]*m[3][2]*m[2][0] - m[2][2]*m[0][1]*m[3][0] + m[2][1]*m[0][2]*m[3][0] + m[3][2]*m[1][1]*m[0][0] - m[3][1]*m[1][2]*m[0][0])*det;
-        r[0][2] = d[2]*det; r[1][2] = (m[0][1]*m[2][2]*m[3][0] - m[0][2]*m[2][1]*m[3][0] - m[2][2]*m[0][1]*m[3][0] + m[3][1]*m[0][2]*m[2][0] - m[1][2]*m[3][1]*m[0][0] + m[1][1]*m[3][2]*m[0][0])*det;
-        r[0][3] = d[3]*det; r[1][3] = (m[3][1]*m[2][2]*m[0][0] - m[3][2]*m[2][1]*m[0][0] - m[2][1]*m[0][2]*m[3][0] + m[2][2]*m[0][1]*m[3][0] + m[0][1]*m[3][2]*m[2][0] - m[0][2]*m[3][1]*m[2][0])*det;
-        r[2][0] = (m[1][2]*m[3][0]*m[2][1] - m[1][1]*m[3][2]*m[2][0] - m[2][2]*m[1][0]*m[3][1] + m[2][1]*m[1][2]*m[3][0] + m[3][2]*m[1][0]*m[2][1] - m[3][1]*m[1][2]*m[2][0])*det;
-        r[2][1] = (m[2][2]*m[0][0]*m[1][1] - m[2][1]*m[0][2]*m[1][0] - m[1][2]*m[0][0]*m[2][1] + m[1][1]*m[0][2]*m[2][0] + m[0][2]*m[1][0]*m[2][1] - m[0][1]*m[1][2]*m[2][0])*det;
-        r[2][2] = (m[1][1]*m[0][2]*m[3][0] - m[1][2]*m[0][1]*m[3][0] - m[2][1]*m[0][2]*m[1][0] + m[2][2]*m[0][1]*m[1][0] + m[3][1]*m[0][2]*m[1][0] - m[3][2]*m[0][1]*m[1][0])*det;
-        r[2][3] = (m[0][1]*m[2][2]*m[3][0] - m[0][2]*m[2][1]*m[3][0] - m[2][2]*m[0][1]*m[3][0] + m[2][1]*m[0][2]*m[3][0] + m[0][2]*m[3][1]*m[2][0] - m[0][1]*m[3][2]*m[2][0])*det;
-        r[3][0] = (m[2][1]*m[3][2]*m[1][0] - m[2][2]*m[3][1]*m[1][0] - m[3][1]*m[2][2]*m[1][0] + m[3][2]*m[2][1]*m[1][0] + m[1][1]*m[3][2]*m[2][0] - m[1][2]*m[3][1]*m[2][0])*det;
-        r[3][1] = (m[2][2]*m[0][1]*m[1][0] - m[2][1]*m[0][2]*m[1][0] - m[1][2]*m[0][1]*m[2][0] + m[1][1]*m[0][2]*m[2][0] - m[0][1]*m[1][2]*m[2][0] + m[0][2]*m[1][1]*m[2][0])*det;
-        r[3][2] = (m[0][2]*m[1][1]*m[3][0] - m[0][1]*m[1][2]*m[3][0] - m[1][2]*m[0][1]*m[3][0] + m[1][1]*m[0][2]*m[3][0] + m[3][2]*m[0][1]*m[1][0] - m[3][1]*m[0][2]*m[1][0])*det;
-        r[3][3] = (m[1][2]*m[0][1]*m[3][0] - m[1][1]*m[0][2]*m[3][0] - m[0][2]*m[1][1]*m[3][0] + m[0][1]*m[1][2]*m[3][0] + m[0][2]*m[3][1]*m[1][0] - m[0][1]*m[3][2]*m[1][0])*det;
-        return r;
-    }
-    
-    // Camera ray generation
-    vec3 getRayOrigin() { return u_camPos; }
-    vec3 getRayDir(vec2 uv) {
-        float aspect = u_res.x/u_res.y;
-        vec4 dir = inverse(u_proj) * vec4(uv.x/aspect, uv.y, -1.0, 1.0);
-        return normalize(dir.xyz);
-    }
-    
-    // Screen depth -> world distance
-    float getWorldDistance(vec2 uv) {
-        float z = texture(u_depthTex, uv).r;
-        return z * 0.5 * (1.0 - u_fov); // rough mapping
-    }
-    
-    float fresnel(vec3 V, vec3 N) {
-        return 0.02 + 0.98 * pow(1.0 - abs(dot(V, N)), 5.0);
-    }
-    
-    void main(){
-        vec2 uv = gl_FragCoord.xy / u_res;
-        vec3 ro = getRayOrigin();
-        vec3 rd = getRayDir(uv);
-        
-        // Find scene surface distance
-        vec4 bg = vec4(0.1, 0.15, 0.2, 1.0);
-        vec3 col = bg.rgb;
-        float tMax = getWorldDistance(uv) * 1.0; // distance to nearest object (tank)
-        if(tMax < 0.1) tMax = 0.1;
-        
-        // Raymarch into the depth buffer
-        float t = 0.1;
-        for(int i=0; i<80; i++){
-            if(t > tMax) break;
-            vec3 p = ro + rd * t;
-            vec2 uv2 = ((p * u_view) + vec3(0.5,0.5,0.5)).xy; // project
-            // Check against particle depth map... 
-            // We don't have particle depth map rendered separately.
-            // Instead, raymarch into the particle position buffer.
-            // Find nearest particle to screen ray? Too slow.
-            t += 0.05;
-        }
-        
-        // Fallback: Render particles as points, depth test.
-        // Since we render particles to u_depthTex? No, we render scene there.
-        // Let's just blend particles based on projected position.
-        
-        gl_FragColor = vec4(col, 1.0);
-    }`;
-
-// Since writing a robust SSFR from scratch in one file is error prone and the prompt allows "particles coloured by speed" or "ray-marched surface",
-// Let's go with a RELIABLE hybrid:
-// 1. Raymarch the depth buffer of the particle system.
-// We render particles to u_depthTex (the SAME texture used for raymarching).
-// But we need scene depth too. We'll render scene to a SECOND depth texture (sceneDepthTex).
-// In the raymarch pass:
-//   - Ray origin/dir.
-//   - t = distance to scene surface (from sceneDepthTex).
-//   - Raymarch through the PARTICLE depth map (u_depthTex). If ray intersects particle depth -> surface hit.
-//   - Particle depth map is generated by rendering particles with depth writes.
-//   - We render particles BEFORE the scene? No.
-//   - Order: Render particles (depth only) -> Store in u_depthTex. Render scene (color + depth) -> Store in sceneDepthTex.
-//   - Raymarch: Check u_depthTex first. If hit -> liquid. Else check sceneDepthTex -> glass.
-// This gives: Particles are drawn first (depth), then scene. Raymarch checks particles first.
-// But the tank is a closed box. Particles are inside. Ray from camera hits tank wall first.
-// We need the tank to be transparent in depth? No, the tank IS glass.
-// The ray should hit the particle depth map IF the particle is closer than the glass?
-// No, particles are inside. Glass is closer.
-// Solution: Raymarch into u_depthTex (particle depths) for t in [inside_tank, outside_tank].
-// We can use sceneDepthTex to find the front glass surface distance (d1) and back surface (d2).
-// Then raymarch u_depthTex in range [d1 + epsilon, d2].
-
-// --- FINAL RENDER PIPELINE SHADERS ---
-
-const shaderRay = `
-    precision highp float;
-    uniform highp sampler2D u_depth;       // Particle depth (rendered with depth write)
-    uniform highp sampler2D u_sceneDepth;  // Scene depth (tank)
-    uniform vec2 u_res;
-    uniform float u_fov;
-    uniform mat4 u_proj; uniform mat4 u_view;
-    uniform vec3 u_camPos;
-    uniform float u_h;
-
-    mat4 inverse(mat4 m) {
-        vec4 d = vec4(
-            m[1][2]*m[2][1]*m[3][0] - m[1][2]*m[3][1]*m[2][0] - m[2][2]*m[1][1]*m[3][0] + m[2][2]*m[3][1]*m[1][0] + m[3][2]*m[1][1]*m[2][0] - m[3][2]*m[2][1]*m[1][0],
-            m[1][2]*m[3][0]*m[2][1] - m[1][2]*m[2][0]*m[3][1] - m[2][2]*m[3][0]*m[1][1] + m[2][2]*m[2][0]*m[3][1] + m[3][2]*m[2][0]*m[1][1] - m[3][2]*m[1][0]*m[2][1],
-            m[1][0]*m[2][1]*m[3][2] - m[1][0]*m[3][1]*m[2][2] - m[2][0]*m[1][1]*m[3][2] + m[2][0]*m[3][1]*m[1][2] + m[3][0]*m[1][1]*m[2][2] - m[3][0]*m[2][1]*m[1][2],
-            m[2][0]*m[3][1]*m[1][2] - m[2][0]*m[1][1]*m[3][2] - m[3][0]*m[2][1]*m[1][2] + m[3][0]*m[1][1]*m[2][2] + m[1][0]*m[3][1]*m[2][2] - m[1][0]*m[2][1]*m[3][2]
-        );
-        float det = m[0][0]*d[0] + m[0][1]*d[1] + m[0][2]*d[2] + m[0][3]*d[3];
-        det = 1.0/det;
-        return mat4(
-            d[0], (m[2][2]*m[3][1]*m[0][0] - m[2][1]*m[3][2]*m[0][0] - m[3][2]*m[0][1]*m[2][0] + m[3][1]*m[0][2]*m[2][0] + m[0][2]*m[1][1]*m[3][0] - m[0][1]*m[1][2]*m[3][0]),
-            d[1], (m[0][2]*m[3][1]*m[2][0] - m[0][1]*m[3][2]*m[2][0] - m[2][2]*m[0][1]*m[3][0] + m[2][1]*m[0][2]*m[3][0] + m[3][2]*m[1][1]*m[0][0] - m[3][1]*m[1][2]*m[0][0]),
-            d[2], (m[0][1]*m[2][2]*m[3][0] - m[0][2]*m[2][1]*m[3][0] - m[2][2]*m[0][1]*m[3][0] + m[3][1]*m[0][2]*m[2][0] - m[1][2]*m[3][1]*m[0][0] + m[1][1]*m[3][2]*m[0][0]),
-            d[3], (m[3][1]*m[2][2]*m[0][0] - m[3][2]*m[2][1]*m[0][0] - m[2][1]*m[0][2]*m[3][0] + m[2][2]*m[0][1]*m[3][0] + m[0][1]*m[3][2]*m[2][0] - m[0][2]*m[3][1]*m[2][0]),
-            (m[1][2]*m[3][0]*m[2][1] - m[1][1]*m[3][2]*m[2][0] - m[2][2]*m[1][0]*m[3][1] + m[2][1]*m[1][2]*m[3][0] + m[3][2]*m[1][0]*m[2][1] - m[3][1]*m[1][2]*m[2][0]),
-            (m[2][2]*m[0][0]*m[1][1] - m[2][1]*m[0][2]*m[1][0] - m[1][2]*m[0][0]*m[2][1] + m[1][1]*m[0][2]*m[2][0] + m[0][2]*m[1][0]*m[2][1] - m[0][1]*m[1][2]*m[2][0]),
-            (m[1][1]*m[0][2]*m[3][0] - m[1][2]*m[0][1]*m[3][0] - m[2][1]*m[0][2]*m[1][0] + m[2][2]*m[0][1]*m[1][0] + m[3][1]*m[0][2]*m[1][0] - m[3][2]*m[0][1]*m[1][0]),
-            (m[0][1]*m[2][2]*m[3][0] - m[0][2]*m[2][1]*m[3][0] - m[2][2]*m[0][1]*m[3][0] + m[2][1]*m[0][2]*m[3][0] + m[0][2]*m[3][1]*m[2][0] - m[0][1]*m[3][2]*m[2][0]),
-            (m[2][1]*m[3][2]*m[1][0] - m[2][2]*m[3][1]*m[1][0] - m[3][1]*m[2][2]*m[1][0] + m[3][2]*m[2][1]*m[1][0] + m[1][1]*m[3][2]*m[2][0] - m[1][2]*m[3][1]*m[2][0]),
-            (m[2][2]*m[0][1]*m[1][0] - m[2][1]*m[0][2]*m[1][0] - m[1][2]*m[0][1]*m[2][0] + m[1][1]*m[0][2]*m[2][0] - m[0][1]*m[1][2]*m[2][0] + m[0][2]*m[1][1]*m[2][0]),
-            (m[0][2]*m[1][1]*m[3][0] - m[0][1]*m[1][2]*m[3][0] - m[1][2]*m[0][1]*m[3][0] + m[1][1]*m[0][2]*m[3][0] + m[3][2]*m[0][1]*m[1][0] - m[3][1]*m[0][2]*m[1][0]),
-            (m[1][2]*m[0][1]*m[3][0] - m[1][1]*m[0][2]*m[3][0] - m[0][2]*m[1][1]*m[3][0] + m[0][1]*m[1][2]*m[3][0] + m[0][2]*m[3][1]*m[1][0] - m[0][1]*m[3][2]*m[1][0])
-        ) * det;
-    }
-
-    vec3 getOrigin() { return u_camPos; }
-    vec3 getDir(vec2 uv) {
-        float aspect = u_res.x/u_res.y;
-        vec4 v = inverse(u_proj) * vec4(uv.x/aspect, uv.y, -1.0, 1.0);
-        return normalize(v.xyz);
-    }
-    float getDist(vec2 uv) { return texture(u_sceneDepth, uv).r; }
-
-    float fresnel(vec3 V, vec3 N) { return 0.05 + 0.95 * pow(max(0.0, dot(-V, N)), 5.0); }
-
-    void main() {
-        vec2 uv = gl_FragCoord.xy / u_res;
-        vec3 ro = getOrigin();
-        vec3 rd = getDir(uv);
-        vec3 col = vec3(0.1, 0.1, 0.18);
-        
-        float d = getDist(uv);
-        if(d < 1.0) {
-            float f = fresnel(rd, normalize((u_view * vec4(ro + rd*0.1, 1.0)).xyz));
-            col = mix(col, vec3(0.5), f);
-        }
-
-        // Raymarch particles
-        float t = d + 0.05;
-        if(d < 1.0) {
-            for(int i=0; i<64; i++) {
-                if(t > 50.0) break;
-                vec3 p = ro + rd * t;
-                vec4 proj = u_view * vec4(p, 1.0);
-                vec2 uv2 = (proj.xy / proj.w + 1.0) * 0.5;
-                float dz = texture(u_depth, uv2).r;
-                if(dz > 0.5) {
-                    // We hit a particle
-                    float density = 1.0;
-                    // Smooth normal?
-                    col = vec3(0.0, 0.3, 0.5);
-                    // Absorption
-                    col *= exp(-0.04 * t);
-                    float f = fresnel(rd, normalize(p - ro));
-                    col = mix(col, vec3(1.0), f);
-                    col *= 0.9;
-                    break;
-                }
-                t += 0.03;
-            }
-        }
-        gl_FragColor = vec4(col, 1.0);
-    }`;
-
-let progRay;
-
-// ============================================================
-// SCENARIO & INIT
-// ============================================================
-let simCount = 0;
-
-function setScenario(name) {
-    const N = Math.min(40000, parseInt(document.getElementById('inp-count').value));
-    if(N !== particles.length) {
-        particles = new Float32Array(N*4);
-        velocities = new Float32Array(N*4);
-        solver.initBuffer(N);
-    }
-    if(name === 'dam') simCount = scenarioDam();
-    else if(name === 'double') simCount = scenarioDoubleDam();
-    else if(name === 'drop') simCount = scenarioDrop();
-    else if(name === 'faucet') simCount = scenarioFaucet();
-    else if(name === 'wave') simCount = scenarioWave();
-    
-    solver.uploadTexture(solver.positionsTex, particles, N, 1);
-    solver.uploadTexture(solver.velocitiesTex, velocities, N, 1);
-    initParticles();
-}
-
-// ============================================================
-// INPUT & UI
-// ============================================================
-let mouse = new THREE.Vector2();
-let isMouseDown = false;
-let isDragging = false;
-let tilt = 0;
-let paused = false;
-let viewMode = 'liquid';
-let ray = new THREE.Ray();
-let camPlane = new THREE.Plane(new THREE.Vector3(0,0,-1), 0);
-
-document.addEventListener('pointermove', e => {
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-    if(isMouseDown) {
-        // Raycast to water plane
-        ray.setFromCamera(mouse, camera);
-        const p = new THREE.Vector3();
-        ray.intersectPlane(camPlane, p);
-        if(p) {
-            // Force particles near cursor
-            const spread = 1.0;
-            const dx = mouse.x * 2 * spread;
-            const dz = mouse.y * 1 * spread;
-            // Update a global force vector applied in force shader?
-            // Simpler: apply velocity directly to nearby particles in JS (CPU) - 40k iterations, ~5ms. OK.
-            const N = simCount;
-            const px = p.x, py = p.y, pz = p.z;
-            for(let i=0; i<N; i++) {
-                const ix = i*4;
-                const ox = particles[ix], oy = particles[ix+1], oz = particles[ix+2];
-                const d = Math.sqrt((ox-px)**2 + (oy-py)**2 + (oz-pz)**2);
-                if(d < 0.8) {
-                    const fx = (Math.random()-0.5) * 10;
-                    particles[ix] += fx * 0.05;
-                    velocities[ix+1] += (Math.random()-0.5) * 5;
-                    velocities[ix+3] += (Math.random()-0.5) * 5;
-                }
-            }
-        }
-    }
-});
-document.addEventListener('pointerdown', () => { isMouseDown = true; });
-document.addEventListener('pointerup', () => { isMouseDown = false; });
-
-// --- Tilt Logic ---
-// Tilt = rotate world around X. Gravity follows.
-// camera rotates with world too.
-const worldRot = new THREE.Quaternion();
-let gravity = new THREE.Vector3(0, -CONFIG.grav, 0);
-
-document.getElementById('inp-tilt').addEventListener('input', e => {
-    tilt = parseFloat(e.target.value);
-    worldRot.setFromAxisAngle(new THREE.Vector3(1,0,0), THREE.MathUtils.degToRad(tilt));
-    gravity.set(0, -CONFIG.grav, 0).applyQuaternion(worldRot);
-});
-
-// Controls
-document.getElementById('btn-pause').addEventListener('click', e => {
-    paused = !paused; e.target.textContent = paused ? 'Resume' : 'Pause';
-});
-document.getElementById('btn-step').addEventListener('click', () => { solver.step(); });
-document.getElementById('inp-count').addEventListener('input', e => {
-    document.getElementById('val-count').textContent = e.target.value;
-});
-document.getElementById('inp-grav').addEventListener('input', e => CONFIG.grav = parseFloat(e.target.value));
-document.getElementById('inp-visc').addEventListener('input', e => CONFIG.viscosity = parseFloat(e.target.value));
-
-['scen-dam','scen-double','scen-drop','scen-faucet','scen-wave'].forEach(id => {
-    document.getElementById(id).addEventListener('click', () => setScenario(id.replace('scen-','')));
-});
-document.getElementById('btn-reset').addEventListener('click', () => setScenario('dam'));
-document.getElementById('btn-duck').addEventListener('click', () => addObject('duck'));
-document.getElementById('btn-crate').addEventListener('click', () => addObject('crate'));
-document.getElementById('sel-mode').addEventListener('change', e => viewMode = e.target.value);
-document.getElementById('toggle-ui').addEventListener('click', () => {
-    document.body.classList.toggle('hidden-ui');
-});
-
-// ============================================================
-// RENDER LOOP
-// ============================================================
-let lastTime = 0;
-let fps = 0;
-let frameCount = 0;
-
-// Initialize scenario
-setScenario('dam');
-document.getElementById('mode-text').textContent = "GPU FLIP-SPH";
-
-function render() {
-    requestAnimationFrame(render);
-    const now = performance.now();
-    const dt = (now - lastTime) / 1000;
-    lastTime = now;
-    
-    if(!paused) {
-        const sub = CONFIG.subSteps;
-        for(let s=0; s<sub; s++) {
-            solver.step();
-        }
-        // Update object physics & collisions
-        objects.forEach(obj => {
-            const ud = obj.userData;
-            ud.velocity.y += -0.5 * 9.8 * dt; // gravity in world space (y up in world)
-            obj.position.addScaledVector(ud.velocity, dt);
-            // Particle repulsion
-            const pPos = new THREE.Vector3();
-            for(let i=0; i<simCount; i++) {
-                const ix = i*4;
-                pPos.set(particles[ix], particles[ix+1], particles[ix+2]);
-                const d = pPos.distanceTo(obj.position);
-                if(d < ud.radius + 0.05) {
-                    const n = pPos.clone().sub(obj.position).normalize();
-                    const push = (ud.radius + 0.05 - d) * 10;
-                    velocities[ix+1] += n.y * push * dt * 10;
-                    velocities[ix] += n.x * push * dt * 10;
-                    velocities[ix+2] += n.z * push * dt * 10;
-                    ud.velocity.addScaledVector(n, push * 2 * dt);
-                }
-            }
-            // Floor collision
-            if(obj.position.y < -1.55) {
-                obj.position.y = -1.55;
-                ud.velocity.y *= -0.6;
-            }
+                vec4 mv = modelViewMatrix * vec4(position, 1.0);
+                vView = mv.xyz; vSpeed = aSpeed;
+                gl_Position = projectionMatrix * mv;
+                gl_PointSize = max(1.0, uRadius * 2.0 * uScale / max(0.1, -mv.z));
+            }`;
+        const depthMat = new THREE.ShaderMaterial({
+            uniforms: { uRadius: { value: 0.6 }, uScale: { value: 1 }, uProj: { value: new THREE.Matrix4() } },
+            vertexShader: pointVS,
+            fragmentShader: `
+                uniform float uRadius; uniform mat4 uProj;
+                varying vec3 vView; varying float vSpeed;
+                void main() {
+                    vec2 c = gl_PointCoord * 2.0 - 1.0; c.y = -c.y;
+                    float r2 = dot(c, c);
+                    if (r2 > 1.0) discard;
+                    float nz = sqrt(1.0 - r2);
+                    vec3 p = vView + vec3(c, nz) * uRadius;
+                    vec4 clip = uProj * vec4(p, 1.0);
+                    gl_FragDepth = (clip.z / clip.w) * 0.5 + 0.5;
+                    gl_FragColor = vec4(-p.z, 0.0, 0.0, 1.0);
+                }`
         });
-        
-        solver.uploadTexture(solver.positionsTex, particles, simCount, 1);
-        solver.uploadTexture(solver.velocitiesTex, velocities, simCount, 1);
-    }
+        const thickMat = new THREE.ShaderMaterial({
+            uniforms: { uRadius: { value: 0.6 }, uScale: { value: 1 } },
+            vertexShader: pointVS,
+            fragmentShader: `
+                varying vec3 vView; varying float vSpeed;
+                void main() {
+                    vec2 c = gl_PointCoord * 2.0 - 1.0;
+                    float r2 = dot(c, c);
+                    if (r2 > 1.0) discard;
+                    gl_FragColor = vec4(sqrt(1.0 - r2) * 0.6, 0.0, 0.0, 1.0);
+                }`,
+            blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
+            depthTest: false, depthWrite: false, transparent: true
+        });
+        const dotMat = new THREE.ShaderMaterial({
+            uniforms: { uRadius: { value: 0.3 }, uScale: { value: 1 }, uRing: { value: 0 }, uVel: { value: 0 } },
+            vertexShader: pointVS,
+            fragmentShader: `
+                uniform float uRing; uniform float uVel;
+                varying vec3 vView; varying float vSpeed;
+                void main() {
+                    vec2 c = gl_PointCoord * 2.0 - 1.0;
+                    float r2 = dot(c, c);
+                    if (r2 > 1.0) discard;
+                    if (uRing > 0.5 && r2 < 0.55) discard;
+                    float s = clamp(vSpeed / 12.0, 0.0, 1.0);
+                    vec3 col = mix(vec3(0.15, 0.45, 1.0), vec3(0.85, 0.95, 1.0), s);
+                    if (uVel > 0.5) col = mix(mix(vec3(0.1, 0.2, 0.9), vec3(0.1, 0.9, 0.7), clamp(s * 2.0, 0.0, 1.0)), mix(vec3(0.1, 0.9, 0.7), vec3(1.0, 0.35, 0.1), clamp(s * 2.0 - 1.0, 0.0, 1.0)), step(0.5, s));
+                    gl_FragColor = vec4(col, 1.0);
+                }`
+        });
+        const fluidPoints = new THREE.Points(geometry, dotMat);
+        fluidPoints.frustumCulled = false;
+        tank.add(fluidPoints);
 
-    // Apply world rotation
-    const tankPos = new THREE.Vector3(0, -1.5, 0);
-    glassTank.position.copy(tankPos).applyQuaternion(worldRot);
-    glassTank.quaternion.copy(worldRot);
-    scene.rotation.setFromQuaternion(worldRot);
-    camera.quaternion.copy(worldRot);
-    camera.position.set(0, 3, 8).applyQuaternion(worldRot);
-    
-    // Render Particles (Depth)
-    gl.viewport(0, 0, window.innerWidth, window.innerHeight);
-    gl.bindTexture(gl.TEXTURE_2D, depthTex);
-    gl.clear(gl.DEPTH_BUFFER_BIT);
-    
-    particleSystem.material.size = 0.08; // point size
-    particleSystem.position.copy(tankPos); // particles move in world
-    // Actually particles are simulated in TANK local space. 
-    // We need to apply world rotation to particle system.
-    
-    // Update particle geometry positions for PointsMaterial
-    if(viewMode === 'liquid') {
-        // Do raymarch pass
-        if(!progRay) progRay = solver.createProgram(vsRay, shaderRay);
-        gl.useProgram(progRay);
-        const u = {
-            u_depth: { tex: depthTex },
-            u_sceneDepth: { tex: depthSceneTex },
-            u_res: new THREE.Vector2(window.innerWidth, window.innerHeight),
-            u_fov: 0.5,
-            u_proj: renderer.projectionMatrix,
-            u_view: renderer.camera.matrixWorldInverse,
-            u_camPos: camera.position,
-            u_h: CONFIG.smoothingRadius
+        // Screen-space helper scenes (share the particle geometry and the tank transform)
+        const depthScene = new THREE.Scene(), thickScene = new THREE.Scene();
+        const depthPts = new THREE.Points(geometry, depthMat), thickPts = new THREE.Points(geometry, thickMat);
+        depthPts.frustumCulled = thickPts.frustumCulled = false;
+        depthPts.matrixAutoUpdate = thickPts.matrixAutoUpdate = false;
+        depthScene.add(depthPts); thickScene.add(thickPts);
+
+        const quadGeo = new THREE.PlaneGeometry(2, 2);
+        const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        const quadVS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+        const blurMat = new THREE.ShaderMaterial({
+            uniforms: { tDepth: { value: null }, uDir: { value: new THREE.Vector2() } },
+            vertexShader: quadVS,
+            fragmentShader: `
+                uniform sampler2D tDepth; uniform vec2 uDir; varying vec2 vUv;
+                void main() {
+                    float d0 = texture2D(tDepth, vUv).r;
+                    if (d0 <= 0.0) { gl_FragColor = vec4(0.0); return; }
+                    float sum = 0.0, wsum = 0.0;
+                    for (int i = -9; i <= 9; i++) {
+                        float d = texture2D(tDepth, vUv + uDir * float(i)).r;
+                        if (d <= 0.0) continue;
+                        float ws = exp(-float(i * i) / 40.0);
+                        float diff = d - d0;
+                        float wr = exp(-diff * diff / 0.35);
+                        sum += d * ws * wr; wsum += ws * wr;
+                    }
+                    gl_FragColor = vec4(sum / max(wsum, 1e-5), 0.0, 0.0, 1.0);
+                }`,
+            depthTest: false, depthWrite: false
+        });
+        const compositeMat = new THREE.ShaderMaterial({
+            uniforms: {
+                tScene: { value: null }, tDepth: { value: null }, tThick: { value: null },
+                uTexel: { value: new THREE.Vector2() }, uTanHalf: { value: 0.4 }, uAspect: { value: 1 },
+                uAbsorb: { value: 0.8 }, uReflect: { value: 0.5 }, uFresnel: { value: 1.0 },
+                uView: { value: new THREE.Matrix3() }
+            },
+            vertexShader: quadVS,
+            fragmentShader: `
+                uniform sampler2D tScene, tDepth, tThick;
+                uniform vec2 uTexel; uniform float uTanHalf, uAspect, uAbsorb, uReflect, uFresnel;
+                uniform mat3 uView;
+                varying vec2 vUv;
+                vec3 viewPos(vec2 uv, float d) {
+                    vec2 ndc = uv * 2.0 - 1.0;
+                    return vec3(ndc.x * d * uTanHalf * uAspect, ndc.y * d * uTanHalf, -d);
+                }
+                float depthAt(vec2 uv) { return texture2D(tDepth, uv).r; }
+                void main() {
+                    vec4 scn = texture2D(tScene, vUv);
+                    float d = depthAt(vUv);
+                    if (d <= 0.0) { gl_FragColor = vec4(scn.rgb, 1.0); return; }
+                    vec3 P = viewPos(vUv, d);
+                    vec2 ex = vec2(uTexel.x, 0.0), ey = vec2(0.0, uTexel.y);
+                    float dR = depthAt(vUv + ex), dL = depthAt(vUv - ex), dU = depthAt(vUv + ey), dD = depthAt(vUv - ey);
+                    if (dR <= 0.0) dR = d; if (dL <= 0.0) dL = d; if (dU <= 0.0) dU = d; if (dD <= 0.0) dD = d;
+                    vec3 ddx = (abs(dR - d) < abs(d - dL)) ? viewPos(vUv + ex, dR) - P : P - viewPos(vUv - ex, dL);
+                    vec3 ddy = (abs(dU - d) < abs(d - dD)) ? viewPos(vUv + ey, dU) - P : P - viewPos(vUv - ey, dD);
+                    vec3 N = normalize(cross(ddx, ddy));
+                    if (N.z < 0.0) N = -N;
+                    vec3 V = normalize(-P);
+                    float thick = texture2D(tThick, vUv).r;
+                    float cosT = clamp(dot(N, V), 0.0, 1.0);
+                    float fres = (0.02 + 0.98 * pow(1.0 - cosT, 5.0)) * uFresnel;
+                    vec2 off = N.xy * 0.035 * clamp(thick * 0.5, 0.0, 1.5);
+                    vec3 refr = texture2D(tScene, clamp(vUv + off, 0.001, 0.999)).rgb;
+                    vec3 tint = exp(-thick * uAbsorb * vec3(0.55, 0.16, 0.06));
+                    vec3 deep = vec3(0.04, 0.32, 0.62);
+                    vec3 body = mix(deep, refr, 0.35) * tint + deep * (1.0 - tint.b) * 0.5;
+                    vec3 R = reflect(-V, N);
+                    vec3 Rw = transpose(uView) * R;
+                    float sky = clamp(Rw.y * 0.5 + 0.5, 0.0, 1.0);
+                    vec3 env = mix(vec3(0.16, 0.2, 0.28), vec3(0.75, 0.88, 1.0), sky);
+                    vec3 L = normalize(uView * vec3(0.4, 0.8, 0.5));
+                    float spec = pow(max(dot(R, L), 0.0), 90.0);
+                    float foam = smoothstep(1.6, 0.2, thick) * 0.3;
+                    vec3 col = mix(body, env, clamp(fres * uReflect * 1.6, 0.0, 1.0)) + vec3(spec) * 0.9 + vec3(foam);
+                    gl_FragColor = vec4(col, 1.0);
+                }`,
+            depthTest: false, depthWrite: false
+        });
+        const quadScene = new THREE.Scene();
+        const quad = new THREE.Mesh(quadGeo, blurMat);
+        quad.frustumCulled = false;
+        quadScene.add(quad);
+
+        // ------------------------------------------------------------------
+        // Simulation setup
+        // ------------------------------------------------------------------
+        function allocate(n) {
+            N = n;
+            pos = new Float32Array(N * 3); vel = new Float32Array(N * 3); pred = new Float32Array(N * 3);
+            lam = new Float32Array(N); dpos = new Float32Array(N * 3); speedAttr = new Float32Array(N);
+            nbr = new Int32Array(N * MAX_NEIGHBORS); nbrCount = new Uint8Array(N);
+            cellOf = new Int32Array(N); cellOrder = new Int32Array(N);
+            posAttr = new THREE.BufferAttribute(pos, 3); posAttr.setUsage(THREE.DynamicDrawUsage);
+            speedAttrBuf = new THREE.BufferAttribute(speedAttr, 1); speedAttrBuf.setUsage(THREE.DynamicDrawUsage);
+            geometry.setAttribute('position', posAttr);
+            geometry.setAttribute('aSpeed', speedAttrBuf);
+            geometry.setDrawRange(0, 0);
+        }
+
+        function setSpacing(r) {
+            spacing = r; kh = 2.0 * r;
+            gx = Math.floor((BOX.x * 2) / kh) + 3; gy = Math.floor((BOX.y * 2) / kh) + 3; gz = Math.floor((BOX.z * 2) / kh) + 3;
+            cellStart = new Int32Array(gx * gy * gz + 1);
+            // rest density from the lattice the particles start on
+            const h2 = kh * kh, c6 = 315 / (64 * Math.PI * Math.pow(kh, 9));
+            let sum = 0;
+            for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) for (let k = -3; k <= 3; k++) {
+                const d2 = (i * i + j * j + k * k) * r * r;
+                if (d2 < h2) sum += c6 * Math.pow(h2 - d2, 3);
+            }
+            rho0 = sum;
+            let g2 = 0;
+            const cs0 = 45 / (Math.PI * Math.pow(kh, 6));
+            for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) for (let k = -3; k <= 3; k++) {
+                const d = Math.sqrt(i * i + j * j + k * k) * r;
+                if (d > 1e-6 && d < kh) g2 += Math.pow(cs0 * (kh - d) * (kh - d) / rho0, 2);
+            }
+            epsG2 = Math.max(g2 * 0.1, 1e-4);
+            depthMat.uniforms.uRadius.value = r * 1.5;
+            thickMat.uniforms.uRadius.value = r * 1.9;
+            dotMat.uniforms.uRadius.value = r * 0.55;
+        }
+
+        function fillBox(x0, x1, y0, y1, z0, z1, r, list) {
+            for (let z = z0 + r / 2; z < z1; z += r) for (let y = y0 + r / 2; y < y1; y += r) for (let x = x0 + r / 2; x < x1; x += r) list.push(x, y, z);
+        }
+
+        function buildScenario(name) {
+            const volumes = {
+                'dam-break': [[-9.8, -3.0, -5.8, 3.6, -4.8, 4.8]],
+                'double-dam': [[-9.8, -6.3, -5.8, 3.2, -4.8, 4.8], [6.3, 9.8, -5.8, 3.2, -4.8, 4.8]],
+                'drop': [[-9.8, 9.8, -5.8, -3.0, -4.8, 4.8]],
+                'faucet': [[-9.8, 9.8, -5.8, -4.6, -4.8, 4.8]],
+                'wave-machine': [[-8.0, 9.8, -5.8, -0.8, -4.8, 4.8]]
+            }[name];
+            let vol = 0;
+            for (const b of volumes) vol += (b[1] - b[0]) * (b[3] - b[2]) * (b[5] - b[4]);
+            if (name === 'drop') vol += (4 / 3) * Math.PI * Math.pow(2.3, 3);
+            const initial = name === 'faucet' ? Math.floor(N / 3) : N;
+            const r = Math.cbrt(vol / initial);
+            setSpacing(r);
+            const list = [];
+            for (const b of volumes) fillBox(b[0], b[1], b[2], b[3], b[4], b[5], r, list);
+            if (name === 'drop') {
+                for (let z = -2.3; z <= 2.3; z += r) for (let y = -2.3; y <= 2.3; y += r) for (let x = -2.3; x <= 2.3; x += r)
+                    if (x * x + y * y + z * z < 5.29) list.push(x, y + 3.2, z);
+            }
+            count = Math.min(N, list.length / 3);
+            pos.fill(0); vel.fill(0);
+            for (let i = 0; i < count * 3; i++) pos[i] = list[i];
+            // tiny jitter so the lattice does not lock up
+            for (let i = 0; i < count * 3; i++) pos[i] += (Math.random() - 0.5) * r * 0.02;
+            emitCursor = 0;
+            paddle.visible = name === 'wave-machine';
+            nozzle.visible = name === 'faucet';
+            geometry.setDrawRange(0, count);
+        }
+
+        function resetSimulation() {
+            simTime = 0;
+            for (const b of balls) tank.remove(b.mesh);
+            balls.length = 0;
+            buildScenario(scenario);
+            $('particles-stats').textContent = count;
+        }
+
+        function changeParticleCount(n) {
+            n = clamp(Math.floor(n) || 8000, 2000, MAX_PARTICLES);
+            $('inp-count').value = n; $('val-count').textContent = n;
+            allocate(n);
+            resetSimulation();
+        }
+
+        // ------------------------------------------------------------------
+        // Position based fluids
+        // ------------------------------------------------------------------
+        const gLocal = new THREE.Vector3();
+        const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3();
+        const stir = { active: false, p: new THREE.Vector3(), v: new THREE.Vector3(), seen: false };
+
+        function paddleX(t) { return 1.6 * (1 + Math.sin(t * 2.4)) + 0.3; }
+
+        function applyBounds(i3, wallX) {
+            const m = spacing * 0.5;
+            const x = pred[i3], y = pred[i3 + 1], z = pred[i3 + 2];
+            const lo = -BOX.x + wallX + m;
+            if (x < lo) pred[i3] = lo + Math.random() * 1e-3; else if (x > BOX.x - m) pred[i3] = BOX.x - m - Math.random() * 1e-3;
+            if (y < -BOX.y + m) pred[i3 + 1] = -BOX.y + m + Math.random() * 1e-3; else if (y > BOX.y - m) pred[i3 + 1] = BOX.y - m;
+            if (z < -BOX.z + m) pred[i3 + 2] = -BOX.z + m + Math.random() * 1e-3; else if (z > BOX.z - m) pred[i3 + 2] = BOX.z - m - Math.random() * 1e-3;
+        }
+
+        function buildGrid() {
+            const cells = gx * gy * gz;
+            cellStart.fill(0);
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                const cx = clamp(Math.floor((pred[i3] + BOX.x) / kh) + 1, 0, gx - 1);
+                const cy = clamp(Math.floor((pred[i3 + 1] + BOX.y) / kh) + 1, 0, gy - 1);
+                const cz = clamp(Math.floor((pred[i3 + 2] + BOX.z) / kh) + 1, 0, gz - 1);
+                const c = cx + gx * (cy + gy * cz);
+                cellOf[i] = c; cellStart[c + 1]++;
+            }
+            for (let c = 0; c < cells; c++) cellStart[c + 1] += cellStart[c];
+            const fillPos = cellStart.slice(0, cells);
+            for (let i = 0; i < count; i++) cellOrder[fillPos[cellOf[i]]++] = i;
+        }
+
+        function buildNeighbors() {
+            const h2 = kh * kh;
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                const px = pred[i3], py = pred[i3 + 1], pz = pred[i3 + 2];
+                const cx = clamp(Math.floor((px + BOX.x) / kh) + 1, 0, gx - 1);
+                const cy = clamp(Math.floor((py + BOX.y) / kh) + 1, 0, gy - 1);
+                const cz = clamp(Math.floor((pz + BOX.z) / kh) + 1, 0, gz - 1);
+                let n = 0;
+                const base = i * MAX_NEIGHBORS;
+                for (let dz = -1; dz <= 1 && n < MAX_NEIGHBORS; dz++) {
+                    const zz = cz + dz; if (zz < 0 || zz >= gz) continue;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        const yy = cy + dy; if (yy < 0 || yy >= gy) continue;
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const xx = cx + dx; if (xx < 0 || xx >= gx) continue;
+                            const c = xx + gx * (yy + gy * zz);
+                            for (let k = cellStart[c], e = cellStart[c + 1]; k < e; k++) {
+                                const j = cellOrder[k];
+                                if (j === i) continue;
+                                const j3 = j * 3;
+                                const ddx = px - pred[j3], ddy = py - pred[j3 + 1], ddz = pz - pred[j3 + 2];
+                                if (ddx * ddx + ddy * ddy + ddz * ddz < h2 && n < MAX_NEIGHBORS) nbr[base + n++] = j;
+                            }
+                        }
+                    }
+                }
+                nbrCount[i] = n;
+            }
+        }
+
+        function solveDensity(wallX, measure) {
+            const h = kh, h2 = h * h;
+            const c6 = 315 / (64 * Math.PI * Math.pow(h, 9));
+            const cs = -45 / (Math.PI * Math.pow(h, 6));
+            const invRho0 = 1 / rho0;
+            let err = 0, errN = 0;
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                const px = pred[i3], py = pred[i3 + 1], pz = pred[i3 + 2];
+                let rho = c6 * h2 * h2 * h2;
+                let gxs = 0, gys = 0, gzs = 0, sumG2 = 0;
+                const n = nbrCount[i], base = i * MAX_NEIGHBORS;
+                for (let k = 0; k < n; k++) {
+                    const j3 = nbr[base + k] * 3;
+                    const dx = px - pred[j3], dy = py - pred[j3 + 1], dz = pz - pred[j3 + 2];
+                    const r2 = dx * dx + dy * dy + dz * dz;
+                    const w = h2 - r2;
+                    rho += c6 * w * w * w;
+                    const r = Math.sqrt(r2) + 1e-6;
+                    const f = cs * (h - r) * (h - r) / r * invRho0;
+                    const gxj = f * dx, gyj = f * dy, gzj = f * dz;
+                    gxs += gxj; gys += gyj; gzs += gzj;
+                    sumG2 += gxj * gxj + gyj * gyj + gzj * gzj;
+                }
+                sumG2 += gxs * gxs + gys * gys + gzs * gzs;
+                const C = rho * invRho0 - 1;
+                if (measure && i % 8 === 0) { err += Math.abs(C); errN++; }
+                lam[i] = C > 0 ? -C / (sumG2 + epsG2) : 0;
+            }
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                const px = pred[i3], py = pred[i3 + 1], pz = pred[i3 + 2];
+                let sx = 0, sy = 0, sz = 0;
+                const n = nbrCount[i], base = i * MAX_NEIGHBORS, li = lam[i];
+                for (let k = 0; k < n; k++) {
+                    const j = nbr[base + k], j3 = j * 3;
+                    const dx = px - pred[j3], dy = py - pred[j3 + 1], dz = pz - pred[j3 + 2];
+                    const r = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-6;
+                    const f = (li + lam[j]) * cs * (h - r) * (h - r) / r * invRho0;
+                    sx += f * dx; sy += f * dy; sz += f * dz;
+                }
+                dpos[i3] = sx; dpos[i3 + 1] = sy; dpos[i3 + 2] = sz;
+            }
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                pred[i3] += dpos[i3] * 0.8; pred[i3 + 1] += dpos[i3 + 1] * 0.8; pred[i3 + 2] += dpos[i3 + 2] * 0.8;
+                applyBounds(i3, wallX);
+            }
+            if (measure && errN) densityError = (err / errN) * 100;
+        }
+
+        function stepBalls(dt) {
+            for (const b of balls) {
+                b.vel.addScaledVector(gLocal, dt * 0.45);
+                b.vel.multiplyScalar(1 - 0.35 * dt);
+                const R = b.r, R2 = (R + spacing * 0.5) * (R + spacing * 0.5);
+                let px = 0, py = 0, pz = 0, hits = 0;
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    const dx = pred[i3] - b.pos.x, dy = pred[i3 + 1] - b.pos.y, dz = pred[i3 + 2] - b.pos.z;
+                    const d2 = dx * dx + dy * dy + dz * dz;
+                    if (d2 < R2) {
+                        const d = Math.sqrt(d2) + 1e-6, pen = (R + spacing * 0.5) - d;
+                        const nx = dx / d, ny = dy / d, nz = dz / d;
+                        pred[i3] += nx * pen; pred[i3 + 1] += ny * pen; pred[i3 + 2] += nz * pen;
+                        px -= nx * pen; py -= ny * pen; pz -= nz * pen; hits++;
+                    }
+                }
+                if (hits) b.vel.addScaledVector(tmpV.set(px, py, pz), 1.1);
+                if (b.vel.length() > 14) b.vel.setLength(14);
+                b.pos.addScaledVector(b.vel, dt);
+                if (b.pos.x < -BOX.x + R) { b.pos.x = -BOX.x + R; b.vel.x *= -0.4; } else if (b.pos.x > BOX.x - R) { b.pos.x = BOX.x - R; b.vel.x *= -0.4; }
+                if (b.pos.y < -BOX.y + R) { b.pos.y = -BOX.y + R; b.vel.y *= -0.3; } else if (b.pos.y > BOX.y - R) { b.pos.y = BOX.y - R; b.vel.y *= -0.3; }
+                if (b.pos.z < -BOX.z + R) { b.pos.z = -BOX.z + R; b.vel.z *= -0.4; } else if (b.pos.z > BOX.z - R) { b.pos.z = BOX.z - R; b.vel.z *= -0.4; }
+                b.mesh.position.copy(b.pos);
+            }
+        }
+
+        function spawnBall(kind = 'duck') {
+            const r = 1.1;
+            const mesh = new THREE.Group();
+            if (kind === 'crate') {
+                const box = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.7, 1.7), new THREE.MeshStandardMaterial({ color: 0xb07a3c, roughness: 0.8 }));
+                const band = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.2, 1.74), new THREE.MeshStandardMaterial({ color: 0x6b4420, roughness: 0.9 }));
+                mesh.add(box, band);
+                mesh.rotation.y = Math.random() * 3;
+            } else {
+                const yellow = new THREE.MeshStandardMaterial({ color: 0xffd23c, roughness: 0.4 });
+                const body = new THREE.Mesh(new THREE.SphereGeometry(0.95, 24, 16), yellow); body.scale.set(1.1, 0.8, 0.9);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 20, 14), yellow); head.position.set(0.55, 0.85, 0);
+                const beak = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 12), new THREE.MeshStandardMaterial({ color: 0xff8c1a }));
+                beak.rotation.z = -Math.PI / 2; beak.position.set(1.1, 0.8, 0);
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+                eye.position.set(0.85, 1.05, 0.3);
+                const eye2 = eye.clone(); eye2.position.z = -0.3;
+                mesh.add(body, head, beak, eye, eye2);
+                mesh.rotation.y = Math.random() * 6;
+            }
+            const b = { pos: new THREE.Vector3((Math.random() - 0.5) * 8, BOX.y - 1.8, (Math.random() - 0.5) * 4), vel: new THREE.Vector3(0, -2, 0), r, mesh };
+            mesh.position.copy(b.pos);
+            tank.add(mesh);
+            balls.push(b);
+            if (balls.length > 4) { tank.remove(balls.shift().mesh); }
+        }
+
+        function emitFaucet() {
+            if (count === 0) return;
+            for (let e = 0; e < 5; e++) {
+                let idx;
+                if (count < N) { idx = count++; } else { idx = emitCursor; emitCursor = (emitCursor + 1) % N; }
+                const a = Math.random() * Math.PI * 2, rad = Math.random() * 0.45;
+                const i3 = idx * 3;
+                pos[i3] = Math.cos(a) * rad; pos[i3 + 1] = BOX.y - 0.9 - Math.random() * 0.6; pos[i3 + 2] = Math.sin(a) * rad;
+                vel[i3] = (Math.random() - 0.5) * 0.4; vel[i3 + 1] = -6.5; vel[i3 + 2] = (Math.random() - 0.5) * 0.4;
+            }
+            geometry.setDrawRange(0, count);
+            $('particles-stats').textContent = count;
+        }
+
+        let frameCount = 0;
+        function simulateStep() {
+            const dt = cfg.dt;
+            simTime += dt;
+            const wallX = scenario === 'wave-machine' ? paddleX(simTime) : 0;
+            if (scenario === 'wave-machine') paddle.position.set(-BOX.x + wallX - 0.3, 0, 0);
+            if (scenario === 'faucet') emitFaucet();
+
+            // gravity in the tank's own frame
+            tmpM.makeRotationFromEuler(tank.rotation).invert();
+            gLocal.set(0, -cfg.gravity, 0).applyMatrix4(tmpM);
+
+            const stirOn = stir.active;
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                if (stirOn) {
+                    const dx = pos[i3] - stir.p.x, dy = pos[i3 + 1] - stir.p.y, dz = pos[i3 + 2] - stir.p.z;
+                    const d2 = dx * dx + dy * dy + dz * dz;
+                    if (d2 < 6) { const f = (1 - d2 / 6) * 0.12; vel[i3] += stir.v.x * f; vel[i3 + 1] += stir.v.y * f; vel[i3 + 2] += stir.v.z * f; }
+                }
+                vel[i3] += gLocal.x * dt; vel[i3 + 1] += gLocal.y * dt; vel[i3 + 2] += gLocal.z * dt;
+                const sp2 = vel[i3] * vel[i3] + vel[i3 + 1] * vel[i3 + 1] + vel[i3 + 2] * vel[i3 + 2];
+                if (sp2 > 400) { const s = 20 / Math.sqrt(sp2); vel[i3] *= s; vel[i3 + 1] *= s; vel[i3 + 2] *= s; }
+                pred[i3] = pos[i3] + vel[i3] * dt; pred[i3 + 1] = pos[i3 + 1] + vel[i3 + 1] * dt; pred[i3 + 2] = pos[i3 + 2] + vel[i3 + 2] * dt;
+                applyBounds(i3, wallX);
+            }
+            stepBalls(dt);
+            buildGrid();
+            buildNeighbors();
+            const measureAt = (frameCount++ % 12) === 0;
+            for (let it = 0; it < cfg.iterations; it++) solveDensity(wallX, measureAt && it === cfg.iterations - 1);
+
+            // velocities from displacement + XSPH smoothing
+            const vmix = clamp(cfg.viscosity * 6, 0, 0.9);
+            const inv = 1 / dt;
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                vel[i3] = (pred[i3] - pos[i3]) * inv; vel[i3 + 1] = (pred[i3 + 1] - pos[i3 + 1]) * inv; vel[i3 + 2] = (pred[i3 + 2] - pos[i3 + 2]) * inv;
+            }
+            if (vmix > 0.001) {
+                for (let i = 0; i < count; i++) {
+                    const n = nbrCount[i]; if (!n) continue;
+                    const i3 = i * 3, base = i * MAX_NEIGHBORS;
+                    let ax = 0, ay = 0, az = 0;
+                    for (let k = 0; k < n; k++) { const j3 = nbr[base + k] * 3; ax += vel[j3]; ay += vel[j3 + 1]; az += vel[j3 + 2]; }
+                    dpos[i3] = ax / n; dpos[i3 + 1] = ay / n; dpos[i3 + 2] = az / n;
+                }
+                for (let i = 0; i < count; i++) {
+                    if (!nbrCount[i]) continue;
+                    const i3 = i * 3;
+                    vel[i3] += (dpos[i3] - vel[i3]) * vmix; vel[i3 + 1] += (dpos[i3 + 1] - vel[i3 + 1]) * vmix; vel[i3 + 2] += (dpos[i3 + 2] - vel[i3 + 2]) * vmix;
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const i3 = i * 3;
+                pos[i3] = pred[i3]; pos[i3 + 1] = pred[i3 + 1]; pos[i3 + 2] = pred[i3 + 2];
+                speedAttr[i] = Math.sqrt(vel[i3] * vel[i3] + vel[i3 + 1] * vel[i3 + 1] + vel[i3 + 2] * vel[i3 + 2]);
+            }
+            posAttr.needsUpdate = true; speedAttrBuf.needsUpdate = true;
+        }
+
+        // ------------------------------------------------------------------
+        // Rendering
+        // ------------------------------------------------------------------
+        const normalView = new THREE.Matrix3();
+        function renderFrame() {
+            const w = renderer.domElement.width, h = renderer.domElement.height;
+            const scale = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
+            for (const m of [depthMat, thickMat, dotMat]) m.uniforms.uScale.value = scale;
+            fluidPoints.visible = renderMode !== 'screen-space';
+            dotMat.uniforms.uRing.value = renderMode === 'wireframe' ? 1 : 0;
+            dotMat.uniforms.uVel.value = renderMode === 'velocity' ? 1 : 0;
+            if (renderMode !== 'screen-space' || count === 0) {
+                renderer.setRenderTarget(null);
+                renderer.render(scene, camera);
+                return;
+            }
+            // 1. everything except the water
+            renderer.setRenderTarget(sceneRT);
+            renderer.render(scene, camera);
+            // 2. particle depth and thickness
+            tank.updateMatrixWorld(true);
+            camera.updateMatrixWorld(true);
+            depthPts.matrixWorld.copy(tank.matrixWorld); thickPts.matrixWorld.copy(tank.matrixWorld);
+            depthPts.matrixWorldNeedsUpdate = false;
+            depthMat.uniforms.uProj.value.copy(camera.projectionMatrix);
+            renderer.setRenderTarget(depthRT);
+            renderer.setClearColor(0x000000, 0); renderer.clear(true, true, false);
+            renderer.render(depthScene, camera);
+            renderer.setRenderTarget(thickRT);
+            renderer.clear(true, false, false);
+            renderer.render(thickScene, camera);
+            // 3. bilateral blur
+            quad.material = blurMat;
+            blurMat.uniforms.tDepth.value = depthRT.texture; blurMat.uniforms.uDir.value.set(1 / w, 0);
+            renderer.setRenderTarget(blurRT1); renderer.render(quadScene, quadCam);
+            blurMat.uniforms.tDepth.value = blurRT1.texture; blurMat.uniforms.uDir.value.set(0, 1 / h);
+            renderer.setRenderTarget(blurRT2); renderer.render(quadScene, quadCam);
+            blurMat.uniforms.tDepth.value = blurRT2.texture; blurMat.uniforms.uDir.value.set(1 / w, 0);
+            renderer.setRenderTarget(blurRT1); renderer.render(quadScene, quadCam);
+            // 4. composite
+            quad.material = compositeMat;
+            const u = compositeMat.uniforms;
+            u.tScene.value = sceneRT.texture; u.tDepth.value = blurRT1.texture; u.tThick.value = thickRT.texture;
+            u.uTexel.value.set(1 / w, 1 / h);
+            u.uTanHalf.value = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)); u.uAspect.value = camera.aspect;
+            u.uAbsorb.value = cfg.absorption; u.uReflect.value = cfg.reflection; u.uFresnel.value = cfg.fresnel;
+            u.uView.value.setFromMatrix4(camera.matrixWorldInverse);
+            renderer.setRenderTarget(null);
+            renderer.render(quadScene, quadCam);
+        }
+
+        // ------------------------------------------------------------------
+        // UI
+        // ------------------------------------------------------------------
+        function updateTank() { tank.rotation.set(THREE.MathUtils.degToRad(cfg.tiltX), 0, THREE.MathUtils.degToRad(cfg.tiltY)); }
+        const bindRange = (id, valId, fmt, fn) => {
+            const el = $(id);
+            const apply = () => { $(valId).textContent = fmt(+el.value); fn(+el.value); };
+            el.addEventListener('input', apply);
+            apply();
         };
-        // Binding textures... simplified.
-        // Render scene depth FIRST, then particles depth, then raymarch.
-    }
-
-    // --- Simplified Rendering Order ---
-    // 1. Render Scene (Tank) -> depthSceneTex
-    // 2. Render Particles (Points) -> depthTex
-    // 3. Raymarch depthTex vs depthSceneTex -> Main FBO
-    
-    // This is getting complex for a single file. 
-    // Let's just render the particles as POINTS onto the main canvas (no raymarch)
-    // plus the tank, for stability and guaranteed correctness.
-    // Then add SSFR if time permits.
-    
-    renderer.render(scene, camera);
-    
-    // Particle depth pre-pass
-    if(viewMode === 'liquid') {
-        // Raymarch fallback: We skip raymarch and rely on PointsMaterial + blending
-        // to render particles on top.
-    }
-    
-    // --- FINAL PASS: Raymarch for Liquid Surface ---
-    // We render the scene (with particles as points for depth) to a texture, 
-    // then raymarch into the texture? No.
-    
-    // Let's implement the Raymarch properly now.
-    // Step 1: Render scene (tank, floor, objects) into depthSceneTex.
-    // Step 2: Render particles (points) into depthTex (depth only).
-    // Step 3: Raymarch.
-    
-    const fboScene = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fboScene);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, depthSceneTex, 0);
-    
-    // Clear main FBO
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
-    // Render Scene (Tank)
-    renderer.render(scene, camera); // depth written to depthSceneTex? 
-    // Renderer depth buffer is not depthSceneTex. 
-    // We need a manual render.
-    
-    // --- Manual Render to depth texture ---
-    // We'll write the raymarch shaders into the renderer... too complex.
-    // FALLBACK: Just render particles as points + tank + objects. 
-    // It looks okay. But prompt wants "liquid, not dots".
-    
-    // OK let's do the Raymarch properly but simply.
-    // We render the "scene" (without particles) to depthSceneTex manually.
-    // We render particles to depthTex manually (Points).
-    // Then full-screen quad with raymarch shader.
-    
-    if(viewMode === 'liquid') {
-        gl.bindFramebuffer(gl.FRAMEBUFFER, fboScene);
-        gl.viewport(0, 0, window.innerWidth, window.innerHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.enable(gl.DEPTH_TEST);
-        
-        // Render Scene (tank + floor + objects) into depthSceneTex
-        // We can reuse THREE renderer if we attach depthSceneTex as its depth target
-        renderer.autoClearColor = false;
-        renderer.render(scene, camera); // Writes to depthSceneTex (bound FBO)
-        
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.disable(gl.DEPTH_TEST);
-        gl.viewport(0, 0, window.innerWidth, window.innerHeight);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.enable(gl.DEPTH_TEST);
-        
-        // Render particles into depthTex
-        gl.bindTexture(gl.TEXTURE_2D, depthTex);
-        gl.clear(gl.DEPTH_BUFFER_BIT);
-        particleSystem.visible = true;
-        particleSystem.material.depthTest = true;
-        particleSystem.render(renderer); // writes to depthTex (bound texture?) 
-        // THREE PointsMaterial depthWrite works if bound.
-        // Actually THREE renderers use its own depth buffer by default.
-        // We need to pass depth texture to renderer.
-        // renderer.render(scene, camera, fbo, depthTex) works in newer THREE.
-    }
-    
-    frameCount++;
-    // Stats
-    if(frameCount % 10 === 0) {
-        document.getElementById('fps').textContent = Math.round(1/dt);
-        document.getElementById('stat-count').textContent = simCount;
-    }
-    
-    requestAnimationFrame(render); // recursive, but we have a loop already? 
-}
-
-// Fix: Use one loop with requestAnimationFrame inside.
-// Also, we need depthSceneTex and depthTex to be bound to FBOs.
-// The renderer supports depthRenderTarget.
-const depthRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-    depthBuffer: true,
-    depthTexture: true,
-    format: THREE.RGBAFormat,
-    type: THREE.FloatType
-});
-const depthSceneRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-    depthBuffer: true,
-    depthTexture: true,
-    format: THREE.RGBAFormat,
-    type: THREE.FloatType
-});
-
-// Override render to use raymarch
-let renderCall = 0;
-function loop() {
-    requestAnimationFrame(loop);
-    // physics already handled
-    renderer.render(scene, camera);
-    
-    if(viewMode === 'liquid' || true) {
-        // Raymarch pass
-        if(!progRay) {
-            progRay = solver.createProgram(vsRay, shaderRay);
-            gl.useProgram(progRay);
-            // Uniforms
-            gl.uniform1i(gl.getUniformLocation(progRay, 'u_depth'), 0); // depthTex
-            gl.uniform1i(gl.getUniformLocation(progRay, 'u_sceneDepth'), 1); // scene depth
-            gl.uniform1i(gl.getUniformLocation(progRay, 'texPos'), 2); // particle positions (for normals)
-            gl.uniform1i(gl.getUniformLocation(progRay, 'u_h'), CONFIG.smoothingRadius);
+        bindRange('inp-grav', 'val-grav', (v) => v.toFixed(1), (v) => { cfg.gravity = v; });
+        bindRange('inp-visc', 'val-visc', (v) => v.toFixed(1), (v) => { cfg.viscosity = v * 0.03; });
+        bindRange('inp-tilt', 'val-tilt', (v) => v + '°', (v) => { cfg.tiltY = v; updateTank(); });
+        $('inp-count').addEventListener('input', (e) => { $('val-count').textContent = e.target.value; });
+        $('inp-count').addEventListener('change', (e) => changeParticleCount(+e.target.value));
+        const sliders = {
+            'camera-y': { set(v) { cfg.tiltY = clamp(v, -45, 45); $('inp-tilt').value = cfg.tiltY; $('val-tilt').textContent = Math.round(cfg.tiltY) + '°'; updateTank(); } },
+            'camera-x': { set(v) { cfg.tiltX = clamp(v, -45, 45); updateTank(); } }
+        };
+        function setPaused(p) { paused = p; $('btn-pause').textContent = p ? 'Resume' : 'Pause'; }
+        $('btn-pause').addEventListener('click', () => setPaused(!paused));
+        $('btn-step').addEventListener('click', () => { setPaused(true); stepOnce = true; });
+        $('btn-reset').addEventListener('click', () => { cfg.tiltX = 0; cfg.tiltY = 0; $('inp-tilt').value = 0; $('val-tilt').textContent = '0°'; updateTank(); resetSimulation(); });
+        const scenarioButtons = { 'scen-dam': 'dam-break', 'scen-double': 'double-dam', 'scen-drop': 'drop', 'scen-faucet': 'faucet', 'scen-wave': 'wave-machine' };
+        for (const [id, name] of Object.entries(scenarioButtons)) {
+            $(id).addEventListener('click', () => {
+                scenario = name;
+                for (const other of Object.keys(scenarioButtons)) $(other).style.borderColor = other === id ? '#38bdf8' : '';
+                resetSimulation();
+            });
         }
-        
-        gl.viewport(0, 0, window.innerWidth, window.innerHeight);
-        gl.bindTexture(gl.TEXTURE_2D, depthTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, window.innerWidth, window.innerHeight, 0, gl.RGBA, gl.FLOAT, null);
-        
-        // 1. Render scene to depthSceneRenderTarget
-        renderer.render(scene, camera, depthSceneRenderTarget, true);
-        
-        // 2. Render particles to depthTex (render target with depth)
-        // We need depthTexture binding.
-        // THREE PointsMaterial writes depth to FBO's depth attachment.
-        const pFBO = depthSceneRenderTarget;
-        // Simple trick: clear main canvas, draw scene depth manually
-        gl.bindFramebuffer(gl.FRAMEBUFFER, depthSceneRenderTarget.glFramebuffer);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        // Render scene geometry again manually? Too much code.
-        // Instead, render particles to a temp FBO attached to depthSceneRenderTarget's depth buffer?
-        // Simpler: Render particles to depthTex using a custom manual quad?
-    }
-}
+        $('scen-dam').style.borderColor = '#38bdf8';
+        $('sel-mode').addEventListener('change', (e) => { renderMode = { liquid: 'screen-space', particles: 'particles', vel: 'velocity' }[e.target.value]; });
+        $('btn-duck').addEventListener('click', () => spawnBall('duck'));
+        $('btn-crate').addEventListener('click', () => spawnBall('crate'));
+        $('toggle-ui').addEventListener('click', () => document.body.classList.toggle('hidden-ui'));
 
-// --- REAL FINAL RENDER PIPELINE ---
-// 1. Clear FBO (sceneDepth).
-// 2. Draw Scene (tank, floor, objects) -> sceneDepth.
-// 3. Draw Particles -> depthTex.
-// 4. Raymarch.
-
-// We need to draw geometry manually in JS? No.
-// We use THREE for the scene geometry (tank).
-// THREE renderers: renderer.render(scene, camera, target, clear).
-// The depth is written to target.depthTexture.
-// So:
-// a) depthTexture = sceneDepthTex. render scene.
-// b) depthTexture = depthTex. render particles.
-// c) Raymarch quad.
-
-const sceneDepthTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-    format: THREE.RGBAFormat, type: THREE.FloatType, depthBuffer: true, depthTexture: depthSceneTex
-});
-
-const particleDepthTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-    format: THREE.RGBAFormat, type: THREE.FloatType, depthBuffer: true, depthTexture: depthTex
-});
-
-function finalRender() {
-    // 1. Scene
-    renderer.render(scene, camera, sceneDepthTarget, true);
-    // 2. Particles
-    particleSystem.visible = true;
-    renderer.render(particleSystem, camera, particleDepthTarget, true);
-    // 3. Raymarch
-    gl.viewport(0, 0, window.innerWidth, window.innerHeight);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.disable(gl.DEPTH_TEST);
-    if(progRay) {
-        gl.useProgram(progRay);
-        gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, depthTex);
-        gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, depthSceneTex);
-        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, solver.positionsTex);
-        gl.uniform2f(gl.getUniformLocation(progRay, 'u_res'), window.innerWidth, window.innerHeight);
-        gl.uniform1f(gl.getUniformLocation(progRay, 'u_fov'), THREE.MathUtils.degToRad(60));
-        // projection matrix (camera is static in world)
-        const pm = new THREE.Matrix4().makePerspective(THREE.MathUtils.degToRad(60), window.innerWidth/window.innerHeight, 0.1, 100);
-        const vm = new THREE.Matrix4().makeLookAt(new THREE.Vector3(0,3,8), new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0));
-        vm.premultiply(worldRot);
-        vm.invert();
-        gl.uniformMatrix4fv(gl.getUniformLocation(progRay, 'u_proj'), false, pm.elements);
-        gl.uniformMatrix4fv(gl.getUniformLocation(progRay, 'u_view'), false, vm.elements);
-        gl.uniform3fv(gl.getUniformLocation(progRay, 'u_camPos'), camera.position.toArray());
-        solver.drawQuad(progRay);
-    }
-    gl.enable(gl.DEPTH_TEST);
-}
-
-// Add drawQuad to solver
-solver.drawQuad = function(prog) {
-    gl.useProgram(prog);
-    const vao = solver.getVAO();
-    gl.bindVertexArray(vao);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-};
-
-// Start loop
-document.getElementById('loading-text').textContent = "Rendering Fluid Surface...";
-setTimeout(() => document.getElementById('loader').classList.add('hidden'), 1500);
-
-// Handle resize
-window.addEventListener('resize', () => {
-    const w = window.innerWidth, h = window.innerHeight;
-    renderer.setSize(w, h);
-    camera.aspect = w/h;
-    camera.updateProjectionMatrix();
-    sceneDepthTarget.setSize(w, h);
-    particleDepthTarget.setSize(w, h);
-    depthTex = solver.newTexture(w, h);
-    depthSceneTex = solver.newTexture(w, h);
-    sceneDepthTarget.depthTexture = depthSceneTex;
-    particleDepthTarget.depthTexture = depthTex;
-});
-
-// Start
-camera.position.set(0, 3, 8);
-camera.lookAt(0, 0, 0);
-loop();
-
-// Fix recursive loop issue: use one loop
-function loop2() {
-    requestAnimationFrame(loop2);
-    if(!paused) {
-        for(let s=0; s<CONFIG.subSteps; s++) solver.step();
-        objects.forEach(obj => {
-            const ud = obj.userData;
-            ud.velocity.y += -0.5 * 9.8 * dt? 0 : 0; // gravity
+        // Stir with the left mouse button on a plane through the tank centre
+        const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), stirPlane = new THREE.Plane(), hitW = new THREE.Vector3();
+        let lastStirP = null, lastStirT = 0;
+        function stirPoint(e) {
+            ndc.set(e.clientX / window.innerWidth * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+            ray.setFromCamera(ndc, camera);
+            stirPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(tmpV).negate(), tank.position);
+            if (!ray.ray.intersectPlane(stirPlane, hitW)) return null;
+            return tank.worldToLocal(hitW.clone());
+        }
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            const p = stirPoint(e); if (!p) return;
+            stir.active = true; stir.p.copy(p); stir.v.set(0, 0, 0); lastStirP = p; lastStirT = performance.now();
         });
-    }
-}
+        canvas.addEventListener('pointermove', (e) => {
+            if (!stir.active) return;
+            const p = stirPoint(e); if (!p) return;
+            const now = performance.now(), dt = Math.max(0.008, (now - lastStirT) / 1000);
+            stir.v.copy(p).sub(lastStirP).multiplyScalar(1 / dt);
+            if (stir.v.length() > 30) stir.v.setLength(30);
+            stir.p.copy(p); lastStirP = p; lastStirT = now;
+        });
+        const endStir = () => { stir.active = false; };
+        window.addEventListener('pointerup', endStir);
+        canvas.addEventListener('pointerleave', endStir);
 
-// Actually, let's clean up the loop to be single-pass.
-// (Code in browser handles the flow via the loop() function above, ignoring loop2)
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            keys[k] = true;
+            if (e.key.startsWith('Arrow')) e.preventDefault();
+            if (e.code === 'Space') { e.preventDefault(); spawnBall('duck'); }
+            else if (k === 'r') resetSimulation();
+            else if (k === 'p') { if (e.shiftKey) { setPaused(true); stepOnce = true; } else setPaused(!paused); }
+            else if (k === 'u') document.body.classList.toggle('hidden-ui');
+        });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            makeTargets();
+        });
 
-// --- Gravity for objects (fix in loop) ---
-const realLoop = function() {
-    requestAnimationFrame(realLoop);
-    const t = performance.now();
-    const dt = Math.min((t - lastTime)/1000, 0.1);
-    lastTime = t;
-    
-    if(!paused) {
-        for(let s=0; s<CONFIG.subSteps; s++) solver.step();
-        objects.forEach(obj => {
-            const ud = obj.userData;
-            const gw = 9.8 * dt;
-            ud.velocity.y -= gw;
-            obj.position.addScaledVector(ud.velocity, dt);
-            const pPos = new THREE.Vector3();
-            for(let i=0; i<simCount; i++) {
-                const ix = i*4;
-                pPos.set(particles[ix], particles[ix+1], particles[ix+2]);
-                const d = pPos.distanceTo(obj.position);
-                if(d < ud.radius + 0.05) {
-                    const n = pPos.clone().sub(obj.position).normalize();
-                    const push = (ud.radius + 0.05 - d) * 5.0;
-                    ud.velocity.addScaledVector(n, push * dt);
-                    velocities[ix] += n.x * push * dt;
-                    velocities[ix+1] += n.y * push * dt;
-                    velocities[ix+2] += n.z * push * dt;
-                }
+        function handleKeys(dt) {
+            if (keys['arrowleft']) sliders['camera-y'].set(cfg.tiltY - 40 * dt);
+            if (keys['arrowright']) sliders['camera-y'].set(cfg.tiltY + 40 * dt);
+            if (keys['arrowup']) sliders['camera-x'].set(cfg.tiltX - 40 * dt);
+            if (keys['arrowdown']) sliders['camera-x'].set(cfg.tiltX + 40 * dt);
+            const off = camera.position.clone().sub(controls.target);
+            const sph = new THREE.Spherical().setFromVector3(off);
+            let moved = false;
+            if (keys['a']) { sph.theta -= 1.2 * dt; moved = true; }
+            if (keys['d']) { sph.theta += 1.2 * dt; moved = true; }
+            if (keys['w']) { sph.phi = clamp(sph.phi - 0.9 * dt, 0.15, 1.5); moved = true; }
+            if (keys['s']) { sph.phi = clamp(sph.phi + 0.9 * dt, 0.15, 1.5); moved = true; }
+            if (moved) camera.position.copy(controls.target).add(off.setFromSpherical(sph));
+        }
+
+        // ------------------------------------------------------------------
+        // Main loop
+        // ------------------------------------------------------------------
+        let last = performance.now(), fpsFrames = 0, fpsTime = 0, simMs = 0, renderMs = 0;
+        function animate(now) {
+            requestAnimationFrame(animate);
+            const dt = Math.min((now - last) / 1000, 0.1); last = now;
+            handleKeys(dt);
+            if (!paused || stepOnce) {
+                const t0 = performance.now();
+                simulateStep();
+                simMs = simMs * 0.9 + (performance.now() - t0) * 0.1;
+                stepOnce = false;
             }
-            if(obj.position.y < -1.55) { obj.position.y = -1.55; ud.velocity.y *= -0.6; }
-        });
-        solver.uploadTexture(solver.positionsTex, particles, simCount, 1);
-        solver.uploadTexture(solver.velocitiesTex, velocities, simCount, 1);
-    }
-    finalRender();
-};
-realLoop();
+            controls.update();
+            const t1 = performance.now();
+            renderFrame();
+            renderMs = renderMs * 0.9 + (performance.now() - t1) * 0.1;
+            fpsFrames++; fpsTime += dt;
+            if (fpsTime >= 0.5) {
+                const fps = Math.round(fpsFrames / fpsTime);
+                $('fps').textContent = fps; $('sd-fps').textContent = fps;
+                $('stat-count').textContent = count;
+                $('stat-time').textContent = simMs.toFixed(1) + ' ms';
+                $('sd-render').textContent = renderMs.toFixed(1);
+                $('sd-load').textContent = Math.round(count / Math.max(1, gx * gy * gz) * 100) / 100;
+                $('sd-iters').textContent = cfg.iterations;
+                $('density').textContent = densityError.toFixed(2) + '%';
+                fpsFrames = 0; fpsTime = 0;
+            }
+        }
 
-</script>
+        if (!renderer.capabilities.isWebGL2) {
+            const msg = document.createElement('div');
+            msg.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font:16px sans-serif;background:#000;z-index:99';
+            msg.textContent = 'This simulation needs WebGL 2.';
+            document.body.appendChild(msg);
+        }
+        $('loader').classList.add('hidden');
+                allocate(N);
+        resetSimulation();
+        requestAnimationFrame(animate);
+        window.__FLUID__ = { cfg, get count() { return count; }, resetSimulation, spawnBall };
+    </script>
 </body>
 </html>

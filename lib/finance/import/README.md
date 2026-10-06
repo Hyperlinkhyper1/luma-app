@@ -21,7 +21,16 @@ amounts are parsed as integer cents. The new parsers reject malformed rows with
 the row number and reject non-EUR bookings, since Finance records use euros.
 Zero-value status records do not create transactions. Transfers are presented
 as income or expense for review, as in the existing import flow. Re-importing a
-file does not automatically deduplicate transactions.
+file shows possible existing matches for confirmation, rather than automatically
+deduplicating transactions. The review suggests entries with the same income/
+expense kind and amount within three calendar days, including pending recurring
+occurrences. Select the same payment and choose **Match & next** to reuse an
+existing entry or link a pending recurring occurrence. Existing ledger entries
+keep their assignments; pending occurrences use the recurring rule's assignments.
+The persisted occurrence link prevents recurring processing from booking the
+import again. **Add & next** still creates a separate payment when no match is
+selected. Payments outside this date window can be skipped manually when already
+recorded.
 
 ## Format references
 

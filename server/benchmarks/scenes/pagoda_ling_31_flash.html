@@ -204,7 +204,7 @@ function buildFloor(i){
   pillarPos.forEach(([px,pz])=> fillColumn(P.vermillion, PX+px, PZ+pz, y0+1, top));
   // walls (cream) with door + windows
   const wallTop = top;
-  for(let x=-hw;x<=hw;x++) for(let z=-hz_;z<=hz_;z++){} // noop guard
+  
   const hz_ = hw;
   for(let x=-hw;x<=hw;x++){
     for(const z of [-hw, hw]){
@@ -579,9 +579,9 @@ const petals=new THREE.Points(petalGeo, petalMat);
 scene.add(petals);
 
 /* ============================== INSTANCED MESH BUILD ============================== */
-const matCache = new Map();
+var matCache = matCache || new Map();
 function getMat(c){
-  if(matCache.has(c)) return matCache.get(c);
+  matCache = matCache || new Map(); if(matCache.has(c)) return matCache.get(c);
   const m=new THREE.MeshStandardMaterial({ color:c, roughness:0.85, metalness:0.05, flatShading:true });
   matCache.set(c,m);
   return m;

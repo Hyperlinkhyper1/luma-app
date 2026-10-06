@@ -38,6 +38,10 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
   bool _saving = false;
   int _savedCount = 0;
   int _skippedCount = 0;
+  List<FinanceImportMatch> _matches = [];
+  FinanceImportMatch? _match;
+  bool _loadingMatches = true;
+  String? _error;
 
   ParsedBankEntry get _current => widget.entries[_index];
 
@@ -46,6 +50,29 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
     super.initState();
     _potId = widget.pots.isNotEmpty ? widget.pots.first.id : null;
     _autofillFromExisting();
+    _loadMatches();
+  }
+
+  Future<void> _loadMatches() async {
+    final index = _index;
+    try {
+      final matches = await widget.repo.findImportMatches(
+        kind: _current.isIncome ? TxnKind.income : TxnKind.expense,
+        amountCents: _current.amountCents,
+        date: _current.date,
+      );
+      if (!mounted || index != _index) return;
+      setState(() {
+        _matches = matches;
+        _loadingMatches = false;
+      });
+    } catch (error) {
+      if (!mounted || index != _index) return;
+      setState(() {
+        _error = '$error';
+        _loadingMatches = false;
+      });
+    }
   }
 
   void _autofillFromExisting() {
@@ -79,17 +106,31 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
   }
 
   Future<void> _saveCurrent() async {
+    if (_saving || _loadingMatches) return;
     setState(() => _saving = true);
 
-    await widget.repo.addTransaction(
-      kind: _current.isIncome ? TxnKind.income : TxnKind.expense,
-      amountCents: _current.amountCents,
-      date: _current.date,
-      note: _current.description,
-      potId: _current.isIncome ? null : _potId,
-      merchantId: _merchant?.id,
-      categoryId: _categoryId,
-    );
+    try {
+      await widget.repo.importTransaction(
+        kind: _current.isIncome ? TxnKind.income : TxnKind.expense,
+        amountCents: _current.amountCents,
+        date: _current.date,
+        note: _current.description,
+        potId: _current.isIncome ? null : _potId,
+        merchantId: _merchant?.id,
+        categoryId: _categoryId,
+        match: _match,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = '$error';
+        _match = null;
+        _loadingMatches = true;
+      });
+      await _loadMatches();
+      return;
+    }
 
     // The dialog may have been dismissed while the insert was in flight.
     if (!mounted) return;
@@ -113,8 +154,13 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
       _categoryId = null;
       _merchant = null;
       _saving = false;
+      _matches = [];
+      _match = null;
+      _error = null;
+      _loadingMatches = true;
     });
     _autofillFromExisting();
+    _loadMatches();
   }
 
   @override
@@ -247,6 +293,32 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  if (_loadingMatches) const LinearProgressIndicator(),
+                  if (_error != null) Text(_error!),
+                  if (_matches.isNotEmpty) ...[
+                    const Text(
+                      'Possible matches',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const Text(
+                      'Select the same payment to count it once. Existing entries keep their pot and category.',
+                    ),
+                    for (final match in _matches)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: identical(_match, match),
+                        title: Text(match.name),
+                        subtitle: Text(
+                          '${_formatDate(match.date)} · ${match.transaction != null ? "Already recorded" : "Recurring payment"}',
+                        ),
+                        onChanged: _saving
+                            ? null
+                            : (selected) => setState(() {
+                                _match = selected == true ? match : null;
+                              }),
+                      ),
+                    const SizedBox(height: 14),
+                  ],
                   // Assignment fields
                   if (!entry.isIncome) ...[
                     _FieldLabel('Pot'),
@@ -296,10 +368,10 @@ class _ImportReviewDialogState extends State<ImportReviewDialog> {
                 onTap: () => Navigator.of(context).pop(),
               ),
               LumaPrimaryButton(
-                label: 'Add & next',
+                label: _match == null ? 'Add & next' : 'Match & next',
                 icon: Icons.check_rounded,
                 loading: _saving,
-                onTap: _saveCurrent,
+                onTap: _saving || _loadingMatches ? null : _saveCurrent,
               ),
             ],
           ),

@@ -6,8 +6,9 @@ import 'package:flutter/material.dart';
 /// An IntelliJ-style startup splash with a luma (lunar) theme: a deep night-sky
 /// window with a star field, a glowing crescent moon, and the wordmark.
 ///
-/// The artwork stays still while [bootstrap] runs, then briefly fades out.
-/// There is no artificial minimum loading time or continuous rendering loop.
+/// The artwork stays still for at least five seconds while [bootstrap] runs,
+/// then briefly fades out. The minimum display time uses a timer, so waiting
+/// does not continuously render frames.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({
     super.key,
@@ -19,7 +20,8 @@ class SplashScreen extends StatefulWidget {
   });
 
   /// Real startup work the splash is covering. The splash will not dismiss
-  /// until this completes (errors are ignored — startup must never hang here).
+  /// until this completes and five seconds have elapsed (errors are ignored —
+  /// startup must never hang here).
   final Future<void> bootstrap;
 
   /// Called once the splash has fully faded out.
@@ -48,11 +50,17 @@ class _SplashScreenState extends State<SplashScreen>
   );
 
   late final List<_Star> _stars = _buildStars(110);
+  final Completer<void> _minimumDisplay = Completer<void>();
+  late final Timer _minimumDisplayTimer;
 
   @override
   void initState() {
     super.initState();
 
+    _minimumDisplayTimer = Timer(
+      const Duration(seconds: 5),
+      () => _minimumDisplay.complete(),
+    );
     unawaited(_finishAfterBootstrap());
   }
 
@@ -63,12 +71,16 @@ class _SplashScreenState extends State<SplashScreen>
       // Storage errors must still release the app.
     }
     if (!mounted) return;
+    await _minimumDisplay.future;
+    if (!mounted) return;
     if (!MediaQuery.disableAnimationsOf(context)) await _fade.reverse();
     if (mounted) widget.onDone();
   }
 
   @override
   void dispose() {
+    _minimumDisplayTimer.cancel();
+    if (!_minimumDisplay.isCompleted) _minimumDisplay.complete();
     _fade.dispose();
     super.dispose();
   }

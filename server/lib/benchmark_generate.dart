@@ -76,8 +76,12 @@ const kBenchmarkEfforts = <String, String>{
 /// not to), else the span from `<!doctype`/`<html` to the last `</html>`,
 /// or to the end of the reply when the closing tag never came.
 String? extractBenchmarkHtml(String reply) {
-  final text = reply.replaceAll(
+  var text = reply.replaceAll(
       RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '');
+  // Some providers drop the opening tag, so a draft page in the reasoning
+  // ends at a bare </think> and the real answer follows it.
+  final thinkEnd = text.toLowerCase().lastIndexOf('</think>');
+  if (thinkEnd >= 0) text = text.substring(thinkEnd + '</think>'.length);
   String? best;
   for (final m in RegExp(r'```[A-Za-z0-9_-]*[ \t]*\r?\n([\s\S]*?)```')
       .allMatches(text)) {

@@ -475,7 +475,7 @@ function setInstance(mesh,i,x,y,z,sx,sy,sz,ry=0,rz=0){
 
 function updateDynamic(t,dt){
   for(const wb of windBatches){
-    wb.items.forEach((v,i)=>{
+    wb.forEach((v,i)=>{
       const spec=treeSpecs[v.tree];if(!spec)return;
       const dx=v.x-spec.x,dz=v.z-spec.z,dist=Math.hypot(dx,dz);
       const sway=Math.sin(t*1.25+v.tree*1.8)*(.025+dist*.012);
@@ -493,7 +493,7 @@ function updateDynamic(t,dt){
     setInstance(koiMesh,i*4+3,x+Math.cos(ry)*.32,yy+.13,z-Math.sin(ry)*.32,.18,.16,.18,ry);
     setInstance(koiWhite,i,x+Math.cos(ry)*.05,yy+.125,z-Math.sin(ry)*.05,.23,.025,.14,ry);
   });
-  koiMesh.instanceMatrix.needsUpdate=true;koiWhite.mesh.instanceMatrix.needsUpdate=true;
+  koiMesh.instanceMatrix.needsUpdate=true;koiWhite.instanceMatrix.needsUpdate=true;
   petalData.forEach((p,i)=>{
     p.y-=dt*p.speed;if(p.y<.15){p.y=18+rand()*8;p.x=-17+rand()*34;p.z=-15+rand()*29}
     setInstance(petalMesh,i,p.x+Math.sin(t*1.4+p.phase)*.8,p.y,p.z+Math.cos(t+p.phase)*.45,.12,.045,.24,t*.8+p.phase,t*.6);
@@ -515,7 +515,7 @@ function updateDynamic(t,dt){
   doorPanels.forEach(d=>{d.pivot.rotation.y=THREE.MathUtils.damp(d.pivot.rotation.y,d.target,5,dt)});
 }
 
-function updateDay(dt){
+function updateDay(dt){const t=elapsed;
   if(cycleRunning)timeOfDay=(timeOfDay+dt*24/90)%24;
   const angle=(timeOfDay-6)/24*Math.PI*2,alt=Math.sin(angle);
   nightFactor=THREE.MathUtils.clamp((.28-alt)/.58,0,1);
@@ -526,7 +526,7 @@ function updateDay(dt){
   const bg=dayColor.clone();if(nightFactor>0)bg.lerp(duskColor,Math.min(1,nightFactor*1.8));bg.lerp(nightColor,Math.max(0,nightFactor-.35)/.65);scene.background.copy(bg);scene.fog.color.copy(bg);
   sunDisc.position.copy(sunLight.position).multiplyScalar(1.6);sunDisc.visible=alt>-.1;sunDisc.material.color.set(timeOfDay<9?'#ffb36c':'#ffe2a0');
   moonDisc.position.copy(sunLight.position).multiplyScalar(-1.5);moonDisc.visible=alt<.05;
-  stars.material.opacity=Math.max(0,nightFactor-.25)*.85;stars.rotation.y=t*.002;
+  stars.material.opacity=Math.max(0,nightFactor-.25)*.85;stars.rotation.y=elapsed*.002;
   lanternLights.forEach((l,i)=>{
     const on=lanternState[i]??nightFactor>.28;
     const flicker=1+Math.sin(t*11+i*2.1)*.07+Math.sin(t*17.7+i)*.035;

@@ -336,8 +336,8 @@ for(let fx of [-0.72,0.72]) for(let fz of [-0.36,0.36]){
 }
 // top frame
 const topFrame=new THREE.Mesh(new THREE.BoxGeometry(caseW,0.04,caseD), matMetal(0x15181D,0.32,0.42)); topFrame.position.y=0.71; topFrame.castShadow=true; pc.add(topFrame);
-lidMesh=topFrame; // for toggle via lidOn
-let lidMesh;
+ // for toggle via lidOn
+let lidMesh=topFrame;
 // PSU shroud
 const shroud=new THREE.Mesh(new THREE.BoxGeometry(caseW-0.02,0.28,caseD-0.02), matMetal(0x0f1216,0.55,0.18)); shroud.position.y=-0.56; shroud.receiveShadow=true; shroud.castShadow=true; pc.add(shroud);
 // shroud grill front

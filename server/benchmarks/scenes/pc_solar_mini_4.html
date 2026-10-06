@@ -595,7 +595,7 @@ for (let r = 0; r < 3; r++) {
   for (let c = 0; c < 2; c++) {
     const d = new THREE.Mesh(
       new THREE.CylinderGeometry(0.12, 0.18, 0.25, 12),
-      matRail
+      matMetal
     );
     d.rotation.x = Math.PI / 2;
     d.position.set((c - 0.5) * 0.7, 0.06, -1.4 + r * 0.4);
@@ -617,7 +617,7 @@ gpuGroup.add(gpuChassis);
 // GPU heatsink fins
 const finGeo = new THREE.BoxGeometry(1.4, 0.12, 0.04);
 for (let i = 0; i < 4; i++) {
-  const f = new THREE.Mesh(finGeo, matMildMetal);
+  const f = new THREE.Mesh(finGeo, matMetal);
   f.position.set(-0.7 + i * 0.22, 0.45, 0.3);
   f.castShadow = true;
   gpuGroup.add(f);
@@ -637,7 +637,7 @@ chassisGroup.add(gpuGroup);
 // GPU slat
 const gpuSlat = new THREE.Mesh(
   new THREE.BoxGeometry(1.7, 0.04, 0.75),
-  matMildMetal
+  matMetal
 );
 gpuSlat.position.set(0, 0.05, 0);
 gpuGroup.add(gpuSlat);
@@ -645,7 +645,7 @@ gpuGroup.add(gpuSlat);
 // VRM heatsink
 const vrm = new THREE.Mesh(
   new THREE.BoxGeometry(1.2, 0.1, 0.5),
-  matMildMetal
+  matMetal
 );
 vrm.position.set(-1.15, 0.55, 0);
 chassisGroup.add(vrm);
@@ -654,14 +654,14 @@ chassisGroup.add(vrm);
 for (let i = 0; i < 2; i++) {
   const stick = new THREE.Mesh(
     new THREE.BoxGeometry(0.04, 0.35, 0.04),
-    matSliver
+    matChrome
   );
   stick.position.set(-1.15 - (i - 0.5) * 0.28, 0.18, 0);
   chassisGroup.add(stick);
   // RAM heatsink on stick
   const hs = new THREE.Mesh(
     new THREE.CylinderGeometry(0.04, 0.06, 0.15, 4),
-    matMildMetal
+    matMetal
   );
   hs.position.set(-1.15 - (i - 0.5) * 0.28, 0.35, 0);
   chassisGroup.add(hs);
@@ -671,7 +671,7 @@ for (let i = 0; i < 2; i++) {
 const psuGroup = new THREE.Group();
 const psuBody = new THREE.Mesh(
   new THREE.CylinderGeometry(0.35, 0.3, 0.6, 16),
-  matCage
+  matMetal
 );
 psuBody.rotation.x = Math.PI / 2;
 psuBody.position.set(-1.1, -0.4, -1.6);

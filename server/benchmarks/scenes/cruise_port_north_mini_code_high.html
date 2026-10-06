@@ -1788,11 +1788,11 @@
             scene.add(portLife);
             
             // Get references for ship elements
-            bowLine = ship.children.find(child => child.geometry.type === 'BoxGeometry' && 
+            bowLine = ship.children.find(child => child.geometry && child.geometry.type === 'BoxGeometry' && 
                 child.position.x === 12 && child.position.z === -50);
-            sternLine = ship.children.find(child => child.geometry.type === 'BoxGeometry' && 
+            sternLine = ship.children.find(child => child.geometry && child.geometry.type === 'BoxGeometry' && 
                 child.position.x === -12 && child.position.z === -50);
-            gangway = ship.children.find(child => child.geometry.type === 'BoxGeometry' && 
+            gangway = ship.children.find(child => child.geometry && child.geometry.type === 'BoxGeometry' && 
                 child.position.y === 5 && child.position.z === -50 && 
                 Math.abs(child.position.x + 12) < 0.5);
             

@@ -1923,7 +1923,7 @@
       }
     }
 
-    let lastFpsTime = performance.now(), fpsFrames = 0, fpsEstimate = 0, monitorClock = 0;
+    var lastFpsTime = performance.now(), fpsFrames = 0, fpsEstimate = 0, monitorClock = 0;
     function animate() {
       requestAnimationFrame(animate);
       const dt = Math.min(.05, clock ? clock.getDelta() : .016);

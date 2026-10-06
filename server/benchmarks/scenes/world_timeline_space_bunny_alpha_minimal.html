@@ -397,7 +397,7 @@
     const {i,local}=chapterAt(t);
     if(i!==current) setChapter(i);
     const a=band(i), b=band(i+1), u=smoothstep(local);
-    for(let k=0;k<4;k++) $(ids[k]).setAttribute("d",smooth(landSets[a][k].map((p,j)=>mix(p,landSets[b][k][j],u))));
+    for(let k=0;k<4;k++) $(ids[k]).setAttribute("d",smooth(landSets[a][k].map((p,j)=>mix(p,landSets[b][k][j]||p,u))));
     mixSky(skies[i],skies[i+1],u);
     const e=local;
     const magma=Math.max(0,1-i*1.55);
@@ -429,7 +429,7 @@
     op("digital",i===18?Math.min(1,local*4):0);
     const zoom=1+Math.sin(t/duration*Math.PI*2)*.018;
     const panX=Math.sin(t*.12)*8+Math.sin(t*.035)*18;
-    $("camera").setAttribute("transform",`translate(${800 800*0} ${405 405*0}) translate(${panX} 0) translate(800 405) scale(${zoom}) translate(-800 -405)`);
+    $("camera").setAttribute("transform",`translate(${800-800*0} ${405-405*0}) translate(${panX} 0) translate(800 405) scale(${zoom}) translate(-800 -405)`);
     const px=chapters[i].x+(chapters[i+1]?.x-chapters[i].x||0)*local;
     $("playhead").setAttribute("transform",`translate(${px} 9)`);
     const captionFade=Math.min(1,local/.09);

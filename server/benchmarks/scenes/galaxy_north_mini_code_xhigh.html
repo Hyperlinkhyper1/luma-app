@@ -1,102 +1,4 @@
-Now, also need to make sure we hide loading after init. We'll set loading display none after init.
-
-Now, we need to ensure `app.minimapCtx` is defined after canvas. Yes.
-
-Now, need to ensure the canvas for minimap is correctly referenced: In HTML we used id="minimap". In JS we used `app.minimapCanvas = document.getElementById('minimap');`. Good.
-
-Now, we need to fix the missing event listener for speedControl: we used `document.getElementId('speedControl')` which is a typo. Should be `getElementById`.
-
-Now, correct that.
-
-Now, fix the `btnHideUI` event listener: we wrote `document.getElementById('btnHideUI')` which is correct.
-
-Now, other issues: We referenced `app.voyage.speedMultiplier` as a property, but we also set `app.voyage.speedMultiplier = 1;` earlier (in VoyageTimeline constructor). But we also have `this.speedMultiplier` inside VoyageTimeline. So we shouldn't set external property. In UI we set `app.voyage.speedMultiplier = parseFloat(e.target.value);` but that's okay because the class has that property.
-
-Now, need to ensure that the `VoyageTimeline` class has `speedMultiplier` property.
-
-We defined `this.speedMultiplier = 1;` in constructor.
-
-Now, UI button `btnPlayPause` toggles pause.
-
-Now, we need to adjust the `updateHud` to use ship.velocity; need to define ship variable.
-
-Let's re-implement the VoyageTimeline methods to be clearer.
-
-We'll refactor VoyageTimeline to reference `app.ship` directly (the group) rather than `this.app.shipGroup`.
-
-Thus, modify VoyageTimeline methods:
-
-- In `departure()`, set `this.app.ship.velocity = ...` (or `this.app.shipGroup.velocity`). We'll decide.
-
-- In `cruise()`, same.
-
-- In `hyperdrive()`, same.
-
-- In `core()`, same.
-
-- In `nebula()`, same.
-
-- In `arrival()`, same.
-
-Thus, we need to make sure `app.ship` is defined. In createShip, we'll set `app.ship = ship;` and `app.shipGroup = ship;`. Or just use `app.ship`.
-
-Now, adjust code accordingly.
-
-Also, in VoyageTimeline, we used `this.app.shipGroup.position` for distance. We'll use `this.app.ship.position`.
-
-Now, also need to adjust `this.app.shipGroup` references in other places like updateShipMovement: use `this.app.ship.position`.
-
-Now, also need to adjust the `updateShipMovement` method to use `this.app.ship` instead of `ship`.
-
-Now, we need to ensure we don't have variable name collisions.
-
-Also, we used `app.voyage` reference inside `animate` for updating.
-
-Now, we need to ensure the `voyage` object has the property `paused` and `phase` etc.
-
-Now, we need to check the `app.voyage.update()` call in animate; that's okay.
-
-Now, we need to ensure we defined `app.voyage` after timeline instantiation.
-
-Now, we need to ensure the timeline's `update` method is called each frame.
-
-Now, we need to handle `app.voyage` existence before calling.
-
-Now, we need to add proper import of `WEBGL`? No.
-
-Now, we need to check for any syntax errors.
-
-Given the length and complexity, there are likely many errors. However, we need to produce a final answer with a working page, but given the constraints, we might not be able to fully test. But we can try to correct the code to be syntactically correct.
-
-We'll go through the code, fix issues, add missing definitions, and produce final HTML.
-
-Let's edit the code step by step.
-
-We will rewrite the code more cleanly, focusing on fixing errors.
-
-We'll produce final HTML with corrected code.
-
-We will need to keep everything inside a single `<script type="module">`.
-
-We'll start editing:
-
-- Remove the `WEBGL` usage and replace with custom check.
-
-- Fix the speedControl element ID.
-
-- Ensure `app.ship` defined.
-
-- Ensure `app.voyage` defined.
-
-- Fix typos.
-
-Now, let's produce the final code.
-
-Given the complexity, we may need to prune some parts for brevity while still meeting requirements. However, we can try to keep all features but reduce some details.
-
-But maybe it's okay to keep many features even if some are approximate.
-
-We'll produce the final answer now.<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -228,6 +130,7 @@ We'll produce the final answer now.<!DOCTYPE html>
       );
       app.composer.addPass(bloomPass);
       app.bloomPass = bloomPass;
+      bloomPass.enabled = false;
 
       // Warp shader for gravitational lensing
       const warpShader = {
@@ -447,7 +350,7 @@ We'll produce the final answer now.<!DOCTYPE html>
       geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
 
-      const starMat = new THREE.ShaderMaterial({
+      const starMat = new THREE.ShaderMaterial({ vertexColors: true,
         uniforms: { uTime: { value: 0 } },
         vertexShader: `
           attribute float size;

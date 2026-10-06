@@ -588,6 +588,10 @@ function atlasLocation(x, y, z, dims) {
 }
 function volumeGLSL(d) {
   return `
+const float W=${W.toFixed(5)};
+const float H=${H.toFixed(5)};
+const float D=${D.toFixed(5)};
+const float CELL=${CELL.toFixed(5)};
 const int NX=${d.nx}; const int NY=${d.ny}; const int NZ=${d.nz};
 const int TX=${d.tilesX}; const int TY=${d.tilesY};
 const vec2 ATLAS=vec2(${d.aw}.0,${d.ah}.0);
@@ -599,16 +603,16 @@ vec4 volume4(sampler2D tex, vec3 p) {
   p=clamp(p,vec3(0.0),vec3(float(NX-1),float(NY-1),float(NZ-1)));
   vec3 b=floor(p), f=fract(p);
   int z0=int(b.z), z1=min(z0+1,NZ-1);
-  float a0=mix(texture(tex,atlasUV(ivec3(int(b.xy),z0))).r,
-               texture(tex,atlasUV(ivec3(int(b.xy)+ivec2(1,0),z0))).r,f.x);
-  float a1=mix(texture(tex,atlasUV(ivec3(int(b.xy),z1))).r,
-               texture(tex,atlasUV(ivec3(int(b.xy)+ivec2(1,0),z1))).r,f.x);
-  float b0=mix(texture(tex,atlasUV(ivec3(int(b.xy)+ivec2(0,1),z0))).r,
-               texture(tex,atlasUV(ivec3(int(b.xy)+ivec2(1,1),z0))).r,f.x);
-  float b1=mix(texture(tex,atlasUV(ivec3(int(b.xy)+ivec2(0,1),z1))).r,
-               texture(tex,atlasUV(ivec3(int(b.xy)+ivec2(1,1),z1))).r,f.x);
-  float a=mix(a0,a1,f.z), b=mix(b0,b1,f.z);
-  return vec4(mix(a,b,f.y));
+  float a0=mix(texture(tex,atlasUV(ivec3(ivec2(b.xy),z0))).r,
+               texture(tex,atlasUV(ivec3(ivec2(b.xy)+ivec2(1,0),z0))).r,f.x);
+  float a1=mix(texture(tex,atlasUV(ivec3(ivec2(b.xy),z1))).r,
+               texture(tex,atlasUV(ivec3(ivec2(b.xy)+ivec2(1,0),z1))).r,f.x);
+  float b0=mix(texture(tex,atlasUV(ivec3(ivec2(b.xy)+ivec2(0,1),z0))).r,
+               texture(tex,atlasUV(ivec3(ivec2(b.xy)+ivec2(1,1),z0))).r,f.x);
+  float b1=mix(texture(tex,atlasUV(ivec3(ivec2(b.xy)+ivec2(0,1),z1))).r,
+               texture(tex,atlasUV(ivec3(ivec2(b.xy)+ivec2(1,1),z1))).r,f.x);
+  float a=mix(a0,a1,f.z), bb=mix(b0,b1,f.z);
+  return vec4(mix(a,bb,f.y));
 }
 float volume1(sampler2D tex,vec3 p){return volume4(tex,p).r;}
 vec3 cellLocal(ivec3 c) {
@@ -617,13 +621,13 @@ vec3 cellLocal(ivec3 c) {
               -D*0.5+(float(c.z)+0.5)*CELL);
 }
 vec3 gridLocal(vec3 p) { return (p-vec3(-W*0.5,0.0,-D*0.5))/CELL-0.5; }
+ivec3 atlasCell(vec2 fc) {
+  ivec2 q=ivec2(fc); int tx=q.x/(NX+2), ty=q.y/(NY+2);
+  return ivec3(q.x-tx*(NX+2)-1, q.y-ty*(NY+2)-1, ty*TX+tx);
+}
 `;
 }
 const commonFluidGLSL = `
-const float W=${W.toFixed(5)};
-const float H=${H.toFixed(5)};
-const float D=${D.toFixed(5)};
-const float CELL=${CELL.toFixed(5)};
 uniform int uScenario;
 uniform float uTime;
 uniform float uWave;
@@ -718,7 +722,7 @@ class GPUSimulation {
 ${this.volume}
 ${commonFluidGLSL}
 out vec4 outState;
-void main(){outState=initialState(cellLocal(ivec3(gl_FragCoord.xy)));}
+void main(){outState=initialState(cellLocal(atlasCell(gl_FragCoord.xy)));}
 `, this.commonUniforms);
 
     this.advect = rawMaterial(`
@@ -733,7 +737,7 @@ uniform vec3 uStirPos;
 uniform vec3 uStirVel;
 out vec4 outState;
 void main(){
-  ivec3 c=ivec3(gl_FragCoord.xy);
+  ivec3 c=atlasCell(gl_FragCoord.xy);
   vec3 p=cellLocal(c);
   vec4 old=initialState(p);
   vec3 grid=gridLocal(p);
@@ -782,11 +786,11 @@ bool fluid(ivec3 c,vec3 p){
   return volume1(uState,vec3(c))>.115 && objectMask(cellLocal(c))<.35;
 }
 void main(){
-  ivec3 c=ivec3(gl_FragCoord.xy); vec3 p=cellLocal(c);
+  ivec3 c=atlasCell(gl_FragCoord.xy); vec3 p=cellLocal(c);
   vec4 s=volume4(uState,vec3(c));
   float pc=volume1(uPressure,vec3(c));
   if(s.w<.115){outPressure=vec4(0.0);return;}
-  vec3 vl,vu,vb,vf;
+  vec3 vl,vr,vd,vu,vb,vf;
   if(fluid(c+ivec3(-1,0,0),p))vl=volume4(uState,vec3(c)+vec3(-1,0,0)).xyz; else vl=vec3(-s.x,0,0);
   if(fluid(c+ivec3(1,0,0),p))vr=volume4(uState,vec3(c)+vec3(1,0,0)).xyz;
   else if(c.x==NX-1&&uWave>.5)vr=vec3(wallVelocity(),0,0); else vr=vec3(-s.x,0,0);
@@ -815,7 +819,7 @@ uniform sampler2D uPressure;
 out vec4 outState;
 bool fluid(ivec3 c){return c.x>=0&&c.x<NX&&c.y>=0&&c.y<NY&&c.z>=0&&c.z<NZ&&volume1(uState,vec3(c))>.115&&objectMask(cellLocal(c))<.35;}
 void main(){
-  ivec3 c=ivec3(gl_FragCoord.xy); vec3 p=cellLocal(c);
+  ivec3 c=atlasCell(gl_FragCoord.xy); vec3 p=cellLocal(c);
   vec4 s=volume4(uState,vec3(c)); float d=s.w;
   float pc=volume1(uPressure,vec3(c));
   float px=fluid(c+ivec3(1,0,0))?volume1(uPressure,vec3(c)+vec3(1,0,0))-pc:0.0;
@@ -847,7 +851,7 @@ void main(){
   float a=hash(id),b=hash(id+19.0),c=hash(id+77.0);
   vec3 p=vec3(-W*.5+a*W,CELL*.15+b*(H-CELL*.15),-D*.5+c*D);
   float d=initialDensity(p);
-  outParticle=vec4(p,step(.025,d),0.0,1.0);
+  outParticle=vec4(p,step(.025,d));
 }
 `, { ...this.commonUniforms, uParticleSize: { value: new THREE.Vector2(this.pw, this.ph) } });
 
@@ -877,7 +881,7 @@ void main(){
   if(p.y<CELL*.15)p.y=CELL*.15;
   if(p.y>H-.025)p.y=H-.025;
   p.z=clamp(p.z,-D*.5+.025,D*.5-.025);
-  outParticle=vec4(p,part.w,length(v),1.0);
+  outParticle=vec4(p,part.w);
 }
 `, { ...this.commonUniforms, uParticles: { value: null }, uState: { value: null }, uDt: { value: 1 / 60 }, uStirVel: { value: new THREE.Vector3() } });
 
@@ -908,7 +912,7 @@ void main(){
       ${this.volume}
       ${commonFluidGLSL}
       out vec4 outState;
-      void main(){outState=initialState(cellLocal(ivec3(gl_FragCoord.xy)));}
+      void main(){outState=initialState(cellLocal(atlasCell(gl_FragCoord.xy)));}
     `, this.commonUniforms)), this.state[0]);
     renderPass(this.init, this.state[1]);
     for (const p of this.pressure) { renderer.setRenderTarget(p); renderer.clear(); }

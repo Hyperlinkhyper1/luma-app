@@ -88,12 +88,7 @@ function getGroup(colorHex, opts={}){
       color: colorHex, roughness: opts.rough??0.9, metalness: opts.metal??0,
       flatShading:true
     });
-    const geo = new THREE.BoxGeometry(1,1,1);
-    const mesh = new THREE.InstancedMesh(geo, mat, 1);
-    mesh.castShadow = true; mesh.receiveShadow = true;
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    scene.add(mesh);
-    voxelGroups.set(key, { mat, mesh, items:[], dummy:new THREE.Object3D() });
+    voxelGroups.set(key, { mat, mesh:null, items:[], dummy:new THREE.Object3D() });
   }
   return voxelGroups.get(key);
 }
@@ -107,8 +102,12 @@ function addVoxel(x,y,z,color,opts={}){
 function addVoxelObj(pos, color, opts={}){ addVoxel(pos.x,pos.y,pos.z,color,opts); }
 
 function finalizeVoxels(){
+  const geo = new THREE.BoxGeometry(1,1,1);
   for(const g of voxelGroups.values()){
-    g.mesh.count = g.items.length;
+    g.mesh = new THREE.InstancedMesh(geo, g.mat, Math.max(1, g.items.length));
+    g.mesh.castShadow = true; g.mesh.receiveShadow = true;
+    g.mesh.frustumCulled = false;
+    scene.add(g.mesh);
     g.items.forEach((it,i)=>{
       g.dummy.position.set(it.x, it.y, it.z);
       g.dummy.updateMatrix();

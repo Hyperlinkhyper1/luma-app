@@ -364,7 +364,7 @@ function gear(parent, radius, width, material, teeth=24) {
   }
   for(let i=0;i<6;i++){
     const a=i/6*TAU;
-    bolt(g,Math.cos(a)*radius*.43,Math.sin(a)*radius*.43,width*.58,axis='Z');
+    bolt(g,Math.cos(a)*radius*.43,Math.sin(a)*radius*.43,width*.58,undefined,'Z');
   }
   return g;
 }
@@ -410,9 +410,9 @@ class Piston {
     this.group=new THREE.Group();
     parent.add(this.group);
     this.material=materials.piston.clone();
-    this.group.add(mesh(new THREE.CylinderGeometry(.61,.61,.72,40),this.material,[0,-.15,0]));
-    this.group.add(mesh(new THREE.CylinderGeometry(.625,.625,.18,40),this.material,[0,.31,0]));
-    this.group.add(mesh(new THREE.CylinderGeometry(.60,.61,.11,40),materials.pistonDark,[0,.43,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.61,.61,.72,40),this.material,null,[0,-.15,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.625,.625,.18,40),this.material,null,[0,.31,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.60,.61,.11,40),materials.pistonDark,null,[0,.43,0]));
     for(const y of [.27,.14,.02]) torus(this.group,.607,.024,materials.black,0,y,0,'Y');
     const pin=mesh(new THREE.CylinderGeometry(.115,.115,1.36,24),materials.steel,this.group);
     pin.rotation.x=Math.PI/2;
@@ -468,8 +468,8 @@ class Valve {
     this.group=new THREE.Group();
     parent.add(this.group);
     this.group.position.set(x,this.baseY,z);
-    this.group.add(mesh(new THREE.CylinderGeometry(.205,.225,.095,28),materials.valve,[0,0,0]));
-    this.group.add(mesh(new THREE.CylinderGeometry(.19,.205,.09,28),materials.valve,[0,.10,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.205,.225,.095,28),materials.valve,null,[0,0,0]));
+    this.group.add(mesh(new THREE.CylinderGeometry(.19,.205,.09,28),materials.valve,null,[0,.10,0]));
     cylinderY(this.group,.038,1.23,materials.valve,0,.66,0,18);
     cylinderY(this.group,.115,.075,materials.spring,0,1.19,0,22);
     cylinderY(this.group,.07,.12,materials.steel,0,1.28,0,16);
@@ -498,7 +498,7 @@ class CylinderUnit {
     this.rod.group.position.z=this.z;
 
     this.train=new THREE.Group();
-    bankRoot.head.add(this.train);
+    banks[bankIndex].head.add(this.train);
     const exhaustSide=bankIndex===0?-1:1;
     this.intakeX=-exhaustSide*.31;
     this.exhaustX=exhaustSide*.31;
@@ -630,7 +630,7 @@ class Bank {
     this.head.add(this.cover);
     for(const x of [-.35,.35]) box(this.cover,.58,.18,7.20,materials.block,x,5.79,0);
     for(const z of zList) box(this.cover,1.42,.13,.35,materials.blockEdge,0,5.87,z);
-    for(const z of zList) for(const x of [-.57,.57]) bolt(this.cover,x,5.95,z,axis='Y');
+    for(const z of zList) for(const x of [-.57,.57]) bolt(this.cover,x,5.95,z,undefined,'Y');
     this.cover.userData.baseY=0;
   }
   update(camAngle,explode) {
@@ -690,7 +690,7 @@ function buildFlywheel() {
   }
   for(let i=0;i<8;i++){
     const a=i/8*TAU;
-    bolt(fly,Math.cos(a)*.28,Math.sin(a)*.28,.22,axis='Z');
+    bolt(fly,Math.cos(a)*.28,Math.sin(a)*.28,.22,undefined,'Z');
   }
   const timingMark=box(fly,.08,.38,.03,materials.gold,1.18,0,.18);
   timingMark.rotation.z=.1;
@@ -705,7 +705,7 @@ function buildFlywheel() {
     const spoke=box(pulley,.55,.10,.12,materials.steel,Math.cos(a)*.27,Math.sin(a)*.27,0);
     spoke.rotation.z=a;
   }
-  bolt(pulley,0,0,.27,materials.gold,axis='Z');
+  bolt(pulley,0,0,.27,materials.gold,'Z');
 }
 buildFlywheel();
 

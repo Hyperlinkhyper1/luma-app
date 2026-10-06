@@ -82,14 +82,14 @@ for(let j=0;j<3;j++){let pts=[];for(let i=0;i<16;i++)pts.push(new THREE.Vector3(
 // landmarks
 function curveLine(pts,c,w,parent){return mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),64,w,6,false),new THREE.MeshStandardMaterial({color:c,roughness:1}),parent)}
 // Castle
-const castle=new THREE.Group();castle.position.set(-115,112,560);scene.add(castle);cyl([0,15,0],[92,98,30,8,4],0,3,8,new THREE.MeshStandardMaterial({color:0xb6aa8d,roughness:1}),castle); // overwritten
+const castle=new THREE.Group();castle.position.set(-115,112,560);scene.add(castle);/* cyl([0,15,0],[92,98,30,8,4],0,3,8,...,castle); // overwritten */
 const castleMat=new THREE.MeshStandardMaterial({color:0xb9ad91,roughness:1});const wall=cyl([0,14,0],96,104,28,castleMat,castle,32);wall.scale.z=.62;for(let i=0;i<36;i++){let a=i/36*Math.PI*2;box([Math.cos(a)*95,30,Math.sin(a)*58],[5,5,5],castleMat,castle)}for(let a of [0,Math.PI*.5,Math.PI,1.5*Math.PI]){let t=box([Math.cos(a)*94,43,Math.sin(a)*57],[18,32,18],castleMat,castle);cyl([t.position.x,61,t.position.z],7,9,12,castleMat,castle)}
 // Pantheon
 const pantheon=new THREE.Group();pantheon.position.set(88,26,174);scene.add(pantheon);cyl([0,20,0],24,29,40,mat.white,pantheon,24);cyl([0,43,0],25,25,6,mat.white,pantheon,24);sphere([0,50,0],24,new THREE.MeshStandardMaterial({color:0xf5f2e6,roughness:.7}),pantheon,24);cyl([0,69,0],4,7,10,mat.gold,pantheon);sphere([0,76,0],4,mat.gold,pantheon);
 // Cathedral twins
 for(let x of [18,42]){const t=new THREE.Group();t.position.set(x,25,185);scene.add(t);box([0,25,0],[16,50,18],mat.white,t);box([0,53,0],[18,7,20],mat.white,t);cyl([0,63,0],4,5,15,mat.white,t);sphere([0,72,0],4,mat.gold,t)}
 // Comercio arcade compressed west
-const commerce=new THREE.Group();commerce.position.set(-590,15,105);scene.add(commerce);box([0,23,0],[190,46,24],new THREE.MeshStandardMaterial({color:0xe3b948,roughness:.8}),commerce);for(let x=-80;x<=80;x+=12){cyl([x,13,14],4,4,24,mat.white,commerce);arch=new THREE.Mesh(new THREE.TorusGeometry(5,2,6,12,Math.PI),mat.white);arch.position.set(x,27,14);commerce.add(arch)}const triumph=new THREE.Group();triumph.position.set(0,46,0);commerce.add(triumph);for(let x of [-9,9])box([x,11,0],[7,22,12],new THREE.MeshStandardMaterial({color:0xdba638}),triumph);box([0,15,0],[12,7,13],new THREE.MeshStandardMaterial({color:0xdba638}),triumph);
+const commerce=new THREE.Group();commerce.position.set(-590,15,105);scene.add(commerce);box([0,23,0],[190,46,24],new THREE.MeshStandardMaterial({color:0xe3b948,roughness:.8}),commerce);for(let x=-80;x<=80;x+=12){cyl([x,13,14],4,4,24,mat.white,commerce);const arch=new THREE.Mesh(new THREE.TorusGeometry(5,2,6,12,Math.PI),mat.white);arch.position.set(x,27,14);commerce.add(arch)}const triumph=new THREE.Group();triumph.position.set(0,46,0);commerce.add(triumph);for(let x of [-9,9])box([x,11,0],[7,22,12],new THREE.MeshStandardMaterial({color:0xdba638}),triumph);box([0,15,0],[12,7,13],new THREE.MeshStandardMaterial({color:0xdba638}),triumph);
 for(let i=0;i<6;i++)sphere([0,24+i*2,5],4-i*.35,mat.gold,triumph);
 // bridge, west across water
 const bridge=new THREE.Group();bridge.position.set(-820,0,315);bridge.rotation.y=.08;scene.add(bridge);const cableMat=mat.red;const towerMat=new THREE.MeshStandardMaterial({color:0xa52b32,roughness:.55});

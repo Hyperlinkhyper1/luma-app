@@ -68,99 +68,22 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// ============== UTILS ==============
+/* ============== UTILS ============== */
 const C = {
-  VERMILION: 0xC73E1D, GOLD: 0xE8B86D, TEAK: 0x4A2C1A,
+  VERM: 0xC73E1D, VERM_D: 0x9E2F14, GOLD: 0xE8B86D, TEAK: 0x4A2C1A, TEAK_D: 0x33200F,
   JADE_D: 0x2D6A4F, JADE_L: 0x40916C,
-  SAKURA_D: 0xFF8FAB, SAKURA_M: 0xFFB7C5, SAKURA_L: 0xFFE5EC,
-  STONE: 0x9AA0A6, POND: 0x7ED6DF, MOSS: 0x606C38,
-  BAMBOO: 0x8A9A5B, BAMBOO_D: 0x5E6B3A, SNOW: 0xF0F0F0,
-  WATER: 0x7ED6DF, WATER_D: 0x4B8B9A
+  SAK_D: 0xFF8FAB, SAK_M: 0xFFB7C5, SAK_L: 0xFFE5EC,
+  STONE: 0x9AA0A6, STONE_D: 0x6E7379, MOSS: 0x606C38, MOSS_L: 0x74824B,
+  BAMBOO: 0x8A9A5B, MAPLE: 0xD3401E, WATER: 0x7ED6DF
 };
+const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+const smooth = t => t * t * (3 - 2 * t);
+let seed = 4242;
+const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+function noise(x, z) { return Math.sin(x * 1.7 + z * 0.9) * Math.cos(z * 1.3 - x * 0.6) * 0.5 + 0.5; }
+function fbm(x, z) { let v = 0, a = 0.5, f = 1, m = 0; for (let i = 0; i < 3; i++) { v += a * noise(x * f, z * f); m += a; a *= 0.5; f *= 2; } return v / m; }
 
-function lerp(a, b, t) { return a + (b - a) * t; }
-function clamp(v, a, b) { return Math.min(Math.max(v, a), b); }
-
-// Simple pseudo-noise for voxel generation (fast, no external lib)
-const NOISE_SEED = Math.random() * 1000;
-function noise(x, z) {
-  const sin = Math.sin; const cos = Math.cos;
-  const n = sin(x * 0.3 + NOISE_SEED) * cos(z * 0.25 + NOISE_SEED) * 0.5 + 0.5;
-  return n;
-}
-function fbm(x, z) {
-  let v = 0, a = 0.5, f = 1.0, max = 0;
-  for (let i = 0; i < 3; i++) { v += a * noise(x * f, z * f); max += a; a *= 0.5; f *= 2; }
-  return v / max;
-}
-
-// ============== VOXEL ENGINE ==============
-class VoxelBatcher {
-  constructor(scene, voxelCountCap = 40000) {
-    this.batches = {}; // key -> { positions, colors, count, geometry }
-    this.meshes = [];
-    this.scene = scene;
-  }
-
-  add(key, x, y, z) {
-    if (!this.batches[key]) {
-      const geo = new THREE.BoxGeometry(1, 1, 1);
-      // Compute AO offsets for this geometry type?
-      // We apply AO to color directly in add()
-      this.batches[key] = { positions: [], colors: [], mat: null };
-    }
-    const b = this.batches[key];
-    b.positions.push(x, y, z);
-    // Basic edge AO: check 6 neighbors (cheaply via Map or just geometry logic)
-    // To keep it fast for 24k, we use a hash map of occupied neighbors.
-    // Ideally done in build, but doing it here is O(N). 
-    // Optimization: calculate AO in build() using a voxel map.
-    b.colors.push(0xFFFFFF);
-  }
-
-  // Build meshes. Returns total count.
-  build(materials) {
-    let total = 0;
-    for (const key in this.batches) {
-      const b = this.batches[key];
-      const n = b.positions.length / 3;
-      total += n;
-      const mat = materials[key];
-      const mesh = new THREE.InstancedMesh(b.positions, mat, n);
-      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      // Precompute AO
-      const color = new THREE.Color(0xFFFFFF);
-      const occ = new Map();
-      for(let i=0; i<n; i++){
-        occ.set(`${Math.round(b.positions[i*3])},${Math.round(b.positions[i*3+1])},${Math.round(b.positions[i*3+2])}`, true);
-      }
-      for(let i=0; i<n; i++){
-        const x=b.positions[i*3], y=b.positions[i*3+1], z=b.positions[i*3+2];
-        let edges=0;
-        const dirs=[1,0,0,-1,0,0,0,1,0,0,-1,0,0,0,1,0,0,-1];
-        for(let d=0; d<dirs.length; d+=3){
-            if(!occ.has(`${x+dirs[d]},${y+dirs[d+1]},${z+dirs[d+2]}`)) edges++;
-        }
-        // Ambient Occlusion factor
-        const dark = 1 - (edges / 12) * 0.55;
-        color.setHex(mat.color.getHex()).multiplyScalar(dark);
-        mesh.setInstanceColor(i, color);
-      }
-      mesh.castShadow = true; mesh.receiveShadow = true;
-      mesh.userData = { key };
-      this.meshes.push(mesh);
-      this.scene.add(mesh);
-    }
-    return total;
-  }
-
-  dispose() {
-    this.meshes.forEach(m => { this.scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
-    this.batches = {};
-  }
-}
-
-// ============== SCENE ==============
+/* ============== RENDERER / SCENE ============== */
 const scene = new THREE.Scene();
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
@@ -168,680 +91,420 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = 1.1;
 document.body.appendChild(renderer.domElement);
 
-const cam = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
-cam.position.set(40, 25, 50);
-cam.lookAt(0, 8, 0);
-
+const cam = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 600);
+cam.position.set(70, 40, 90);
 const controls = new OrbitControls(cam, renderer.domElement);
+controls.target.set(0, 16, 0);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.maxPolarAngle = Math.PI / 2 - 0.05;
-controls.minDistance = 8;
-controls.maxDistance = 120;
+controls.maxPolarAngle = Math.PI / 2 - 0.03;
+controls.minDistance = 10;
+controls.maxDistance = 160;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 0.5;
+controls.autoRotateSpeed = 0.4;
 
-// ============== LIGHTING ==============
-const hemi = new THREE.HemisphereLight(0xffffff, 0x112233, 0.4);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 0.6);
 scene.add(hemi);
-
-const sun = new THREE.DirectionalLight(0xffe0b0, 1.0);
-sun.position.set(30, 40, 20);
+const sun = new THREE.DirectionalLight(0xffe0b0, 2.4);
 sun.castShadow = true;
-sun.shadow.mapSize.width = 2048;
-sun.shadow.mapSize.height = 2048;
-sun.shadow.camera.near = 0.5;
-sun.shadow.camera.far = 150;
-sun.shadow.camera.left = -60; sun.shadow.camera.right = 60;
-sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -60;
-scene.add(sun);
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 5; sun.shadow.camera.far = 260;
+sun.shadow.camera.left = -55; sun.shadow.camera.right = 55;
+sun.shadow.camera.top = 60; sun.shadow.camera.bottom = -40;
+sun.shadow.bias = -0.0006;
+scene.add(sun, sun.target);
 
-const pointLights = [];
-const lanterns = []; // interactive
-function createLantern(x, y, z, color) {
-  const group = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.6,0.8), new THREE.MeshStandardMaterial({color:C.STONE}));
-  base.position.y = 0.3; base.receiveShadow=true; base.castShadow=true;
-  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.7,1.2,0.7), new THREE.MeshStandardMaterial({color:0x333, roughness:0.5}));
-  lamp.position.y = 0.9;
-  const glow = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.8,0.55), new THREE.MeshBasicMaterial({color: color}));
-  glow.position.y = 0.9;
-  group.add(base, lamp, glow);
-  group.position.set(x, y, z);
-  scene.add(group);
-
-  const light = new THREE.PointLight(color, 0, 20, 2);
-  light.position.y = 1.8;
-  light.castShadow = true; light.shadow.bias = -0.002;
-  group.add(light);
-  pointLights.push(light);
-  lanterns.push({ group, light, glowMesh: glow, active: true });
-  return group;
-}
-
-// ============== TERRAIN & VOXELS ==============
-const world = new VoxelBatcher(scene);
-const materials = {
-  'moss': new THREE.MeshStandardMaterial({color:C.MOSS}),
-  'stone': new THREE.MeshStandardMaterial({color:C.STONE}),
-  'pond': new THREE.MeshStandardMaterial({color:C.POND, transparent:true, opacity:0.85}),
-  'snow': new THREE.MeshStandardMaterial({color:C.SNOW}),
-  'water': new THREE.MeshStandardMaterial({color:C.WATER_D}),
-};
-
-// Terrain Generation
-const TS = 64; // tile size
-const grid = [];
-for (let x = 0; x < TS; x++) {
-  grid[x] = [];
-  for (let z = 0; z < TS; z++) {
-    // Map -32..32 to x,z
-    const xx = x - TS/2, zz = z - TS/2;
-    let h = Math.floor(fbm(xx*0.04, zz*0.04) * 6 + 4); 
-    h = clamp(h, 2, 10);
-    grid[x][z] = h;
+/* ============== VOXEL ENGINE ============== */
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+const matCache = {};
+function voxMat(color, emissive) {
+  const k = color + ':' + (emissive ? 1 : 0);
+  if (!matCache[k]) {
+    matCache[k] = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0.02 });
+    if (emissive) { matCache[k].emissive = new THREE.Color(color); matCache[k].emissiveIntensity = 0.8; }
   }
+  return matCache[k];
+}
+const key = (x, y, z) => x + ',' + y + ',' + z;
+const world = new Map();
+function V(x, y, z, c, e = false) { world.set(key(Math.round(x), Math.round(y), Math.round(z)), { c, e }); }
+const DIRS = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+// Turn a Map of voxels into one InstancedMesh per colour, tinted by neighbour occlusion.
+function bake(map, parent, cast = true) {
+  const groups = new Map();
+  for (const [k, cell] of map) {
+    const gk = cell.c + ':' + (cell.e ? 1 : 0);
+    let arr = groups.get(gk); if (!arr) groups.set(gk, arr = []);
+    const [x, y, z] = k.split(',').map(Number);
+    arr.push([x, y, z]);
+  }
+  const m4 = new THREE.Matrix4(), col = new THREE.Color();
+  let total = 0;
+  for (const [gk, list] of groups) {
+    const [c, e] = gk.split(':').map(Number);
+    const im = new THREE.InstancedMesh(boxGeo, voxMat(c, e === 1), list.length);
+    im.castShadow = cast; im.receiveShadow = true; im.frustumCulled = false;
+    list.forEach(([x, y, z], i) => {
+      m4.makeTranslation(x, y, z); im.setMatrixAt(i, m4);
+      let n = 0;
+      for (const [dx, dy, dz] of DIRS) if (map.has(key(x + dx, y + dy, z + dz))) n++;
+      col.setHex(c).multiplyScalar(clamp(1 - n * 0.07 + (rnd() - 0.5) * 0.06, 0.55, 1.08));
+      im.setColorAt(i, col);
+    });
+    im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true;
+    parent.add(im); total += list.length;
+  }
+  return total;
 }
 
-// Pond hole & Pagoda Platform
-const pondRadius = 8;
-const platX = 12, platZ = -12;
-const platH = 16;
-for (let x = 0; x < TS; x++) {
-  for (let z = 0; z < TS; z++) {
-    const xx = x - TS/2, zz = z - TS/2;
-    const dist = Math.hypot(xx - platX, zz - platZ);
-    if (dist < pondRadius) {
-      grid[x][z] = 3; // pond level
-    } else if (dist < platRadius(0)) {
-        grid[x][z] = platH + 2; // plateau
+/* ============== TERRAIN ============== */
+const HALF = 32;
+const PLAT = 11, H = 5;                       // pagoda platform half-width and height
+const POND = { x: 18, z: -16, r: 7 };
+const pondD = (x, z) => Math.hypot(x - POND.x, z - POND.z);
+function heightAt(x, z) {
+  if (Math.abs(x) <= PLAT && Math.abs(z) <= PLAT) return H;
+  if (Math.abs(x) <= 2 && z > PLAT && z <= PLAT + 2) return H - (z - PLAT);   // entrance steps
+  if (pondD(x, z) < POND.r) return 1;
+  return 3 + Math.floor(fbm(x * 0.09, z * 0.09) * 3);
+}
+const onPath = (x, z) => z > PLAT && z < 28 && Math.abs(x - Math.sin(z * 0.25) * 3) < 1.3;
+const hts = {};
+for (let x = -HALF; x < HALF; x++) for (let z = -HALF; z < HALF; z++) hts[key(x, 0, z)] = heightAt(x, z);
+const hAt = (x, z) => hts[key(Math.round(x), 0, Math.round(z))] ?? 0;
+for (let x = -HALF; x < HALF; x++) {
+  for (let z = -HALF; z < HALF; z++) {
+    const h = hAt(x, z);
+    const nb = Math.min(hAt(x + 1, z), hAt(x - 1, z), hAt(x, z + 1), hAt(x, z - 1));
+    const y0 = Math.max(0, Math.min(h - 1, nb));
+    for (let y = y0; y < h; y++) {
+      const top = y === h - 1;
+      let c;
+      if (Math.abs(x) <= PLAT && Math.abs(z) <= PLAT) c = top ? ((x + z) & 1 ? C.STONE : C.STONE_D) : C.STONE_D;
+      else if (pondD(x, z) < POND.r) c = top ? C.STONE_D : C.TEAK_D;
+      else if (pondD(x, z) < POND.r + 1.2 && top) c = C.STONE;
+      else if (top && (onPath(x, z) || (Math.abs(x) <= 2 && z > PLAT && z <= PLAT + 2))) c = C.STONE;
+      else if (top) c = (x * 7 + z * 13) % 3 === 0 ? C.MOSS_L : C.MOSS;
+      else c = y > h - 3 ? C.TEAK : C.STONE_D;
+      V(x, y, z, c);
     }
   }
 }
 
-// Fill terrain voxels
-for (let x = 0; x < TS; x++) {
-  for (let z = 0; z < TS; z++) {
-    const h = grid[x][z];
-    // Water plane at bottom of pond
-    if (h === 3) continue;
-    for (let y = 0; y < h; y++) {
-      let m = 'moss';
-      if (y < 2) m = 'stone'; // dirt/stone bed
-      if (h === 3) m = 'pond'; // top of water
-      world.add(m, x, y, z);
-    }
-  }
-}
-
-// ============== PAGODA (The Main Event) ==============
-const pagodaMat = new THREE.MeshStandardMaterial({color:C.VERMILION});
-const roofMat = new THREE.MeshStandardMaterial({color:C.JADE_D});
-const goldMat = new THREE.MeshStandardMaterial({color:C.GOLD});
-const woodMat = new THREE.MeshStandardMaterial({color:C.TEAK});
-const paperMat = new THREE.MeshStandardMaterial({color:0xFFFFE0, emissive:0xFFE0B0});
-const floorPlankMat = new THREE.MeshStandardMaterial({color:C.TEAK});
-
-// Interactive doors (separate meshes)
-const pagodaDoors = [];
-
-function pagodaFloor(r, y, floorIndex) {
-  // Base platform
-  for (let x = -r; x <= r; x++) {
-    for (let z = -r; z <= r; z++) {
-      const d = Math.hypot(x, z);
-      if (d <= r + 1) world.add('moss', x, y, z);
-      if (d <= r) world.add('stone', x, y+1, z); // edge stone
-    }
-  }
-  // Pillars
-  const cols = 6; // hexagonal-ish feel
-  const angleStep = (Math.PI * 2) / cols;
-  for (let i = 0; i < cols; i++) {
-    const px = Math.round(Math.cos(angleStep*i)*(r-0.6));
-    const pz = Math.round(Math.sin(angleStep*i)*(r-0.6));
-    const py = y+1;
-    for (let j=0; j<4; j++) world.add('verm', px, py+j, pz);
-    world.add('gold', px, py+4, pz);
-    world.add('gold', px, py, pz);
-  }
-  // Interior
-  for (let x=-r+1; x<r; x++){
-    for (let z=-r+1; z<r; z++){
-      if(Math.hypot(x,z) < r-1) world.add('verm', x, y+1, z);
-      for(let k=0;k<2;k++) world.add('gold', x, y+1+k, z);
-    }
-  }
-  // Doors (Openable)
-  const open = Math.random() > 0.5;
-  const doorW = 1.4, doorH = 2.6;
-  const doorMesh = new THREE.Group();
-  const dGeom = new THREE.BoxGeometry(doorW, doorH, 0.3);
-  const dMat = new THREE.MeshStandardMaterial({color: C.TEAK, map: null});
-  // Create left and right leaves
-  const l = new THREE.Mesh(dGeom, woodMat);
-  l.position.set(-(doorW/2 + 0.05), y + 1 + doorH/2, 0);
-  l.userData = { hingeZ: 0, yOff: y+1, rot: open ? Math.PI/2 : 0 };
-  const r_leaf = new THREE.Mesh(dGeom, woodMat);
-  r_leaf.position.set((doorW/2 + 0.05), y + 1 + doorH/2, 0);
-  r_leaf.userData = { hingeZ: 0, yOff: y+1, rot: open ? -Math.PI/2 : 0 };
-  doorMesh.add(l, r_leaf);
-  doorMesh.position.set(0, 0, 0); // relative to floor group
-  pagodaDoors.push(doorMesh);
-  
-  // Store reference to find exact instance? 
-  // We'll add these to a separate batch for animation
-  return { r, y, open, doorMesh };
-}
-
-const pagodaBase = new THREE.Group();
+/* ============== PAGODA ============== */
 const floors = [];
-// Build 5 stories
 for (let i = 0; i < 5; i++) {
-  const h = 14 - i*1.6; // decreasing height
-  const r = 8 - i*0.9;  // decreasing radius
-  floors.push(pagodaFloor(r, i*h, i));
-}
-
-// Roofs
-// Helper to add roof voxels
-function roofSection(x, y, z, r, angle, curve, dir) {
-  // Curved, stepped roof
-  for (let a = 0; a < angle; a++) {
-    const cx = Math.cos(a), cz = Math.sin(a);
-    for (let d = 0; d <= r; d++) {
-      const xx = x + cx*d;
-      const zz = z + cz*d;
-      // Arch curve
-      const cy = y + Math.floor((d*d) / (r*1.6)); 
-      // Upturn at corners
-      let cyOff = 0;
-      if (d > r - 1.5) cyOff = (d - (r-1.5)) * 1.5; 
-      world.add('roof', xx, cy + cyOff, zz);
-      // Eaves overhang detail (gold)
-      if (d === Math.floor(r)) world.add('gold', xx, cy+cyOff-1, zz);
+  const r = 7 - i, b = H + i * 6;
+  const F = { i, y: b, r, open: false, leaves: [] };
+  floors.push(F);
+  for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) V(x, b, z, C.TEAK);          // floor slab
+  for (let y = b + 1; y <= b + 3; y++) {
+    for (let x = -r; x <= r; x++) for (let z = -r; z <= r; z++) {
+      if (Math.abs(x) !== r && Math.abs(z) !== r) continue;
+      if (z === r && Math.abs(x) <= 1) continue;                                          // door bay
+      const pillar = (Math.abs(x) === r && Math.abs(z) === r) || ((x + z) % 2 === 0 && y !== b + 2);
+      V(x, y, z, pillar ? C.VERM : (y === b + 2 ? C.GOLD : C.VERM_D));
     }
+  }
+  for (let y = b + 1; y <= b + 3; y++) V(0, y, 0, C.GOLD, true);                          // glowing shrine core
+  for (let x = -r - 2; x <= r + 2; x++) for (let z = -r - 2; z <= r + 2; z++) {           // eave ring
+    if (Math.abs(x) === r + 2 || Math.abs(z) === r + 2) V(x, b + 4, z, C.JADE_D);
+    else V(x, b + 4, z, C.TEAK_D);
+  }
+  for (let x = -r - 1; x <= r + 1; x++) for (let z = -r - 1; z <= r + 1; z++) V(x, b + 5, z, C.JADE_L);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {                                   // upturned corners
+    V(sx * (r + 2), b + 5, sz * (r + 2), C.JADE_D);
+    V(sx * (r + 3), b + 6, sz * (r + 3), C.GOLD);
+  }
+  if (i > 0) {                                                                             // balcony rail
+    for (let x = -r; x <= r; x++) { V(x, b + 1, r + 1, C.TEAK); V(x, b + 1, -r - 1, C.TEAK); }
+    for (let z = -r; z <= r; z++) { V(r + 1, b + 1, z, C.TEAK); V(-r - 1, b + 1, z, C.TEAK); }
+  }
+}
+// top roof tiers + finial
+{
+  const b = H + 4 * 6;
+  for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) V(x, b + 6, z, C.JADE_D);
+  for (let x = -1; x <= 1; x++) for (let z = -1; z <= 1; z++) V(x, b + 7, z, C.JADE_L);
+  for (let y = b + 8; y <= b + 13; y++) V(0, y, 0, C.GOLD);
+  for (let y = b + 9; y <= b + 12; y += 2) { V(1, y, 0, C.GOLD); V(-1, y, 0, C.GOLD); }
+}
+// door leaves: separate meshes so they can swing
+const leafMat = new THREE.MeshStandardMaterial({ color: C.TEAK, roughness: 0.8 });
+const goldTrim = new THREE.MeshStandardMaterial({ color: C.GOLD, metalness: 0.6, roughness: 0.3 });
+const leafGeo = new THREE.BoxGeometry(1.45, 3, 0.25);
+for (const F of floors) {
+  for (const s of [-1, 1]) {
+    const hinge = new THREE.Group();
+    hinge.position.set(s * 1.5, F.y + 2.5, F.r);
+    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    leaf.position.x = -s * 0.75; leaf.castShadow = true;
+    const knob = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.35), goldTrim);
+    knob.position.set(-s * 1.35, 0, 0);
+    leaf.userData.floor = F;
+    hinge.add(leaf, knob);
+    scene.add(hinge);
+    F.leaves.push({ hinge, leaf, s, a: 0, target: 0 });
   }
 }
 
-// Roof for floor i: hexagonal-ish, stepped, upturned corners
-for (let i = 0; i < 5; i++) {
-  const r = 8 - i*0.9;
-  const baseY = (i*h || i*(14-i*1.6)); // height calc repeat logic
-  // Simpler height tracking
+/* ============== TORII, FENCE, FLOWERS ============== */
+{
+  const z = 27, g = hAt(0, z);
+  for (const sx of [-1, 1]) for (let y = 0; y < 6; y++) V(sx * 4, g + y, z, C.VERM);
+  for (let x = -5; x <= 5; x++) { V(x, g + 6, z, C.VERM); V(x, g + 7, z, C.TEAK_D); }
+  for (let x = -3; x <= 3; x++) V(x, g + 4, z, C.TEAK_D);
+  V(-6, g + 7, z, C.VERM); V(6, g + 7, z, C.VERM); V(0, g + 5, z, C.GOLD);
+  for (let x = -30; x <= -14; x++) {                                                      // bamboo fence
+    const g2 = hAt(x, 20);
+    V(x, g2, 20, C.BAMBOO); V(x, g2 + 1, 20, x % 2 ? C.BAMBOO : C.TEAK);
+    if (x % 3 === 0) V(x, g2 + 2, 20, C.BAMBOO);
+  }
+  for (let i = 0; i < 40; i++) {                                                          // flowers
+    const x = Math.floor(rnd() * 54 - 27), zz = Math.floor(rnd() * 54 - 27);
+    if (Math.abs(x) <= PLAT + 1 && Math.abs(zz) <= PLAT + 1) continue;
+    if (pondD(x, zz) < POND.r + 2 || onPath(x, zz)) continue;
+    V(x, hAt(x, zz), zz, [C.SAK_D, C.SAK_M, C.GOLD, C.SAK_L, C.VERM][i % 5]);
+  }
 }
 
-// Let's rebuild roofs cleanly using a flat offset array
-const heights = [0, 14, 26.4, 37.2, 46.6];
-for (let i = 0; i < 5; i++) {
-  const r = 8 - i*0.9;
-  const baseY = i === 0 ? 0 : heights[i];
-  
-  // Roof geometry
-  // Hexagon with 6 segments, stepped radius, upturned corners
-  const segs = 6;
-  const rad = r + 1.6;
-  for (let s = 0; s < segs; s++) {
-    const ang = (Math.PI * 2 / segs) * s;
-    for (let k = 1; k <= rad; k++) {
-      for (let j = 0; j <= 1; j++) { // width of segment
-         const px = Math.round(Math.cos(ang) * k - Math.sin(ang) * (j-0.5));
-         const pz = Math.round(Math.sin(ang) * k + Math.cos(ang) * (j-0.5));
-         const py = baseY + Math.floor(k*k / (r*2.2)); // arch
-         // Upturn corners
-         if (k > rad - 1.8) py += (k - (rad-1.8)) * 1.4;
-         world.add('roof', px, py, pz);
+/* ============== FLOATING ISLAND + WATERFALL ============== */
+const ISL = { x: -22, y: 30, z: -6 };
+for (let x = -10; x <= 10; x++) for (let y = -7; y <= 3; y++) for (let z = -8; z <= 8; z++) {
+  const d = (x / 10) ** 2 + (y / 6.5) ** 2 + (z / 8) ** 2;
+  const cone = y < 0 ? (x / (10 + y * 1.2)) ** 2 + (z / (8 + y)) ** 2 : 0;
+  if (d < 0.9 && (y >= 0 || cone < 1)) {
+    const top = y >= 2;
+    V(ISL.x + x, ISL.y + y, ISL.z + z, top ? (fbm(x * 0.4, z * 0.4) > 0.5 ? C.MOSS_L : C.MOSS) : (y > -2 ? C.TEAK : C.STONE_D));
+  }
+}
+const FALL = { x: ISL.x + 10, z: ISL.z };
+const dropCount = 140;
+const drops = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.9, 0.5), new THREE.MeshBasicMaterial({ color: C.WATER, transparent: true, opacity: 0.8 }), dropCount);
+drops.frustumCulled = false;
+const dropState = [];
+for (let i = 0; i < dropCount; i++) dropState.push({ y: rnd() * (ISL.y - 2), dx: (rnd() - 0.5) * 1.2, dz: (rnd() - 0.5) * 3, v: 10 + rnd() * 6 });
+scene.add(drops);
+
+/* ============== TREES (voxel, wind-swayed) ============== */
+const trees = [];
+function blob(m, cx, cy, cz, rx, ry, rz, c, c2) {
+  for (let x = Math.ceil(cx - rx); x <= Math.floor(cx + rx); x++)
+    for (let y = Math.ceil(cy - ry); y <= Math.floor(cy + ry); y++)
+      for (let z = Math.ceil(cz - rz); z <= Math.floor(cz + rz); z++) {
+        const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + ((z - cz) / rz) ** 2;
+        if (d <= 1.05 && (d > 0.5 || rnd() > 0.3)) m.set(key(x, y, z), { c: rnd() < 0.25 ? c2 : c, e: false });
       }
+}
+function addTree(x, z, type) {
+  const m = new Map(), t = (px, py, pz, c) => m.set(key(px, py, pz), { c, e: false });
+  const g = new THREE.Group();
+  g.position.set(x, hAt(x, z), z);
+  if (type === 'sakura') { for (let y = 0; y < 6; y++) t(0, y, 0, C.TEAK); blob(m, 0, 8, 0, 3.6, 2.4, 3.6, C.SAK_M, C.SAK_D); blob(m, 2.5, 6.5, 1, 1.8, 1.4, 1.8, C.SAK_D, C.SAK_L); }
+  else if (type === 'pine') { for (let y = 0; y < 8; y++) t(0, y, 0, C.TEAK); blob(m, 0, 8, 0, 3.2, 1.2, 3.2, C.JADE_D, C.JADE_L); blob(m, 0, 10, 0, 2.2, 1.1, 2.2, C.JADE_D, C.JADE_L); blob(m, 0, 12, 0, 1.2, 1, 1.2, C.JADE_D, C.JADE_L); }
+  else if (type === 'maple') { for (let y = 0; y < 6; y++) t(0, y, 0, C.TEAK); blob(m, 0, 8, 0, 3.2, 2.2, 3.2, C.MAPLE, C.GOLD); blob(m, 1.8, 9, 0.8, 1.7, 1.3, 1.7, C.VERM, C.MAPLE); }
+  else {
+    for (let y = 0; y < 5; y++) t(0, y, 0, C.TEAK);
+    blob(m, 0, 6, 0, 2.6, 1.2, 2.6, C.JADE_L, C.MOSS_L);
+    for (let a = 0; a < 6.28; a += 0.55) {
+      const px = Math.round(Math.cos(a) * 2.7), pz = Math.round(Math.sin(a) * 2.7);
+      for (let d = 0; d < 5; d++) t(px, 5 - d, pz, d % 2 ? C.JADE_D : C.JADE_L);
     }
   }
-  world.add('roof', 0, baseY + Math.floor(rad*rad/(r*2.2)) + 1, 0); // ridge center
+  const n = bake(m, g, true);
+  scene.add(g);
+  trees.push({ g, ph: rnd() * 9, amp: type === 'willow' ? 0.03 : 0.015 });
+  return n;
 }
+let extraVox = 0;
+[[-20, 10, 'sakura'], [22, 8, 'sakura'], [-14, -18, 'sakura'], [-24, -6, 'pine'], [26, -4, 'pine'],
+ [-8, 24, 'maple'], [12, 22, 'maple'], [11, -12, 'willow']].forEach(([x, z, t]) => { extraVox += addTree(x, z, t); });
 
-// Finial
-const finial = new THREE.Mesh(new THREE.CylinderGeometry(0, 0.4, 4, 4), goldMat);
-finial.position.y = 60; finial.rotation.z = 0.5; finial.rotation.x = 0.5;
-pagodaBase.add(finial);
-
-// Assign materials to keys
-materials['verm'] = pagodaMat;
-materials['roof'] = roofMat;
-materials['gold'] = goldMat;
-materials['wood'] = woodMat;
-
-// Place Pagoda
-pagodaBase.position.set(platX, platH - 2, platZ);
-scene.add(pagodaBase);
-
-// ============== FLOATING ISLAND ==============
-const islandGroup = new THREE.Group();
-islandGroup.position.set(-18, 32, -10);
-// Floating island voxels (ellipsoid noise)
-for (let x = -12; x <= 12; x++) {
-  for (let y = -8; y <= 6; y++) {
-    for (let z = -10; z <= 10; z++) {
-      const nx = x/10, ny = y/7, nz = z/9;
-      const d = nx*nx + ny*ny + nz*nz;
-      if (d < 0.8) {
-        const n = fbm(x*0.2, z*0.2);
-        let m = n > 0.4 ? 'moss' : 'stone';
-        if (y > 2) m = 'moss';
-        world.add(m, x + islandGroup.position.x, y + islandGroup.position.y, z + islandGroup.position.z);
-      }
-    }
-  }
+/* ============== LANTERNS ============== */
+const lanterns = [];
+const lampStone = new THREE.MeshStandardMaterial({ color: C.STONE, roughness: 0.9 });
+function addLantern(x, z, y) {
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.6, 1.2), lampStone);
+  base.position.y = 0.3;
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.4, 0.5), lampStone);
+  post.position.y = 1.3;
+  const glowMat = new THREE.MeshStandardMaterial({ color: 0x3a2a14, emissive: 0xffb45e, emissiveIntensity: 0.0 });
+  const glow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.9, 0.9), glowMat);
+  glow.position.y = 2.4;
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.35, 1.4), lampStone);
+  cap.position.y = 3.05;
+  const light = new THREE.PointLight(0xffb45e, 0, 22, 2);
+  light.position.y = 2.4;
+  const hit = new THREE.Mesh(new THREE.BoxGeometry(1.8, 3.6, 1.8), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.y = 1.8;
+  g.add(base, post, glow, cap, light, hit);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  scene.add(g);
+  const L = { g, hit, light, glowMat, user: null, on: false, ph: rnd() * 9 };
+  hit.userData.lantern = L;
+  lanterns.push(L);
 }
-// Small satellites
-const satellites = [[12, 20, 14], [-10, 18, 16], [15, 26, -4]];
-satellites.forEach(pos => {
-  const s = new THREE.Group(); s.position.set(...pos);
-  for (let x=-4; x<=4; x++){ for (let y=-3; y<=3; y++){ for (let z=-4; z<=4; z++){
-     if (x*x+y*y+z*z < 16) world.add('moss', x+s.position.x, y+s.position.y, z+s.position.z);
-  }}}
-  islandGroup.add(s);
-});
+[[5, 14], [-5, 14], [7, 22], [-7, 22]].forEach(([x, z]) => addLantern(x, z, hAt(x, z) - 0.5));
 
-// Waterfall
-for (let i = 0; i < 60; i++) {
-    const px = (Math.random()-0.5)*6;
-    const pz = (Math.random()-0.5)*6;
-    const py = Math.random()*25 + 15;
-    world.add('water', px+islandGroup.position.x, py, pz+islandGroup.position.z);
+/* ============== WATER, KOI, BIRDS, PETALS ============== */
+const waterMat = new THREE.MeshStandardMaterial({ color: C.WATER, transparent: true, opacity: 0.72, roughness: 0.1, metalness: 0.15 });
+const pond = new THREE.Mesh(new THREE.CircleGeometry(POND.r - 0.2, 40), waterMat);
+pond.rotation.x = -Math.PI / 2; pond.position.set(POND.x, 2.3, POND.z); pond.receiveShadow = true;
+scene.add(pond);
+const splash = new THREE.Mesh(new THREE.CircleGeometry(3, 20), waterMat);
+splash.rotation.x = -Math.PI / 2; splash.position.set(FALL.x + 3, hAt(FALL.x + 3, FALL.z) + 0.1, FALL.z);
+scene.add(splash);
+
+const koi = [];
+for (let i = 0; i < 6; i++) {
+  const f = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.6), new THREE.MeshStandardMaterial({ color: i % 2 ? 0xff6a1f : 0xf4f0e6 }));
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.8), new THREE.MeshStandardMaterial({ color: 0xff3b1f }));
+  tail.position.x = -0.9;
+  f.add(body, tail);
+  f.userData = { r: 2 + rnd() * 3.2, a: rnd() * 6.28, s: (0.3 + rnd() * 0.35) * (i % 2 ? 1 : -1) };
+  scene.add(f); koi.push(f);
 }
-// Simple flowing water plane below
-const wGeom = new THREE.PlaneGeometry(8, 8, 8, 8);
-const wPos = wGeom.attributes.position;
-for(let i=0; i<wPos.count; i++){ wPos.setZ(i, Math.sin(i)*0.5); }
-const waterMesh = new THREE.Mesh(wGeom, materials['water']);
-waterMesh.rotation.x = -Math.PI/2;
-waterMesh.position.set(islandGroup.position.x, 0, islandGroup.position.z);
-islandGroup.add(waterMesh);
-scene.add(islandGroup);
-
-// ============== DECORATIONS ==============
-
-// Bamboo Fence
-for (let i=0; i<12; i++){
-    const b = new THREE.Group();
-    const segH = 0.8;
-    for(let y=0; y<8; y+=1.2){
-        world.add('bamboo', -30, y, -20+i*4);
-    }
-}
-
-// Torii Gate
-const torii = new THREE.Group();
-torii.position.set(0, 0, -35);
-const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.8,8,8), new THREE.MeshStandardMaterial({color:C.VERMILION}));
-const lintelL = new THREE.Mesh(new THREE.BoxGeometry(14,0.8,1.4), new THREE.MeshStandardMaterial({color:C.VERMILION}));
-const lintelU = new THREE.Mesh(new THREE.BoxGeometry(14,0.8,1.8), new THREE.MeshStandardMaterial({color:C.GOLD}));
-lintelU.position.y = 6.5;
-torii.add(pillar, pillar.clone().position.set(6.5,4,0), lintelL, lintelU);
-scene.add(torii);
-
-// Trees
-const treeCount = { sakura:3, pine:2, maple:2, willow:1 };
-const treePositions = [
-  [-22, 5, 20], [-28, 8, -22], [-30, 4, -30],
-  [15, 3, 25], [28, 6, 15], [32, 3, -20], [-5, 3, -40], [-15, 2, -20]
-];
-treePositions.forEach((pos, i) => {
-    const type = Object.keys(treeCount)[i];
-    const group = new THREE.Group();
-    group.position.set(...pos);
-    
-    // Wind pivot
-    const windNode = new THREE.Group();
-    group.add(windNode);
-    
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.8,2.5,6), woodMat);
-    trunk.position.y = 1.25; trunk.castShadow=true;
-    windNode.add(trunk);
-
-    let leavesMat;
-    if (type==='sakura') leavesMat = new THREE.MeshStandardMaterial({color:C.SAKURA_D});
-    if (type==='maple') leavesMat = new THREE.MeshStandardMaterial({color:0xd3401e});
-    if (type==='pine') leavesMat = new THREE.MeshStandardMaterial({color:C.JADE_D});
-    if (type==='willow') leavesMat = new THREE.MeshStandardMaterial({color:C.JADE_L});
-
-    let leafGeom;
-    if (type==='sakura') leafGeom = new THREE.DodecahedronGeometry(2.2,0);
-    if (type==='maple') leafGeom = new THREE.DodecahedronGeometry(1.8,0);
-    if (type==='pine') leafGeom = new THREE.ConeGeometry(2.4, 4, 6);
-    if (type==='willow') leafGeom = new THREE.IcosahedronGeometry(2.5,1);
-    
-    const leaves = new THREE.Mesh(leafGeom, leavesMat);
-    leaves.position.y = type==='willow'?0.5:(type==='pine'?0.5:2.8);
-    windNode.add(leaves);
-    
-    // Wind data
-    windNode.userData = { speed: 1 + Math.random(), rotSpeed: 0.005 + Math.random()*0.01 };
-    scene.add(group);
-});
-
-// Jizo Statues
-for(let i=0; i<2; i++){
-    const j = new THREE.Group();
-    j.position.set(-8+i*4, 0.6, -38);
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.9,2.2,0.9), new THREE.MeshStandardMaterial({color:C.STONE}));
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5,6,6), new THREE.MeshStandardMaterial({color:C.STONE}));
-    head.position.y = 1.5;
-    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.6,0.6,4), new THREE.MeshStandardMaterial({color:C.VERMILION}));
-    hat.position.y = 2.1;
-    j.add(body, head, hat);
-    j.userData = { yOff: 0.6 };
-    scene.add(j);
-}
-
-// Stone Path (zigzag)
-const path = [[-10, -35], [-12, -28], [-18, -20], [-14, -10], [-22, -2], [-28, 6], [-24, 14], [-16, 18], [0, 20], [8, 24]];
-const stones = new THREE.Group();
-path.forEach((p, i) => {
-  const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.6 + Math.random()*0.4, 0), new THREE.MeshStandardMaterial({color:C.STONE}));
-  s.position.set(p[0]*1.8, 0.4, p[1]*1.8);
-  stones.add(s);
-});
-scene.add(stones);
-
-// Flowers (40)
-const flowerGeom = new THREE.ConeGeometry(0.15, 0.6, 3);
-const flowers = new THREE.Group();
-for(let i=0; i<40; i++){
-  const m = Math.random()>0.5 ? goldMat : new THREE.MeshStandardMaterial({color:C.GOLD});
-  const f = new THREE.Mesh(flowerGeom, m);
-  f.position.set((Math.random()-0.5)*40, 0.5, (Math.random()-0.5)*40);
-  f.rotation.x = Math.random()*0.5;
-  f.scale.setScalar(0.5+Math.random());
-  flowers.add(f);
-}
-scene.add(flowers);
-
-// Lanterns
-createLantern(4, 1.3, -8);
-createLantern(-4, 1.3, -8);
-createLantern(8, 2.5, 22);
-createLantern(-8, 2.5, 22);
-
-// ============== ANIMATION OBJECTS ==============
-
-// Koi
-const fishes = [];
-for(let i=0; i<6; i++){
-    const f = new THREE.Group();
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.5,6,4), new THREE.MeshStandardMaterial({color: 0xff6600}));
-    const t = new THREE.Mesh(new THREE.ConeGeometry(0.5,0.8,6), new THREE.MeshStandardMaterial({color:0xff0000}));
-    t.rotation.x = Math.PI/2;
-    f.add(b, t);
-    const r = 4 + Math.random()*3;
-    const ang = Math.random()*Math.PI*2;
-    f.userData = { r, ang, speed: 0.005+Math.random()*0.01, dy: Math.random()*4-2 };
-    f.position.set(Math.cos(ang)*r, 1.5, Math.sin(ang)*r);
-    scene.add(f);
-    fishes.push(f);
-}
-
-// Birds
 const birds = [];
-for(let i=0; i<3; i++){
-    const b = new THREE.Mesh(new THREE.ConeGeometry(0.3,0.8,4), new THREE.MeshStandardMaterial({color:0xffffff}));
-    b.rotation.x = Math.PI/2;
-    b.userData = { t: Math.random(), speed: 0.01+Math.random()*0.01, amp: 2+Math.random()*3 };
-    scene.add(b);
-    birds.push(b);
+for (let i = 0; i < 3; i++) {
+  const b = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.35, 0.35), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.08, 2.2), new THREE.MeshStandardMaterial({ color: 0xeeeeee }));
+  b.add(body, wing); b.userData = { t: rnd() * 6.28, s: 0.12 + rnd() * 0.08, h: 28 + i * 4, wing };
+  scene.add(b); birds.push(b);
 }
-
-// Sakura Petals (InstancedMesh)
-const petalCount = 400;
-const petalGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-const petalMat = new THREE.MeshBasicMaterial({color:C.SAKURA_L});
-const petals = new THREE.InstancedMesh(petalGeo, petalMat, petalCount);
-const petalMats = [];
-for(let i=0; i<petalCount; i++){
-    const m = new THREE.Matrix4();
-    m.setPosition((Math.random()-0.5)*60, Math.random()*25, (Math.random()-0.5)*60);
-    m.scale.setScalar(0.2+Math.random()*0.5);
-    petalMats.push(m);
-}
-petals.instanceMatrix.setFromArray(petalMats);
-petals.instanceMatrix.needsUpdate = true;
+const PET = 320;
+const petals = new THREE.InstancedMesh(new THREE.BoxGeometry(0.25, 0.05, 0.25), new THREE.MeshBasicMaterial({ color: C.SAK_L }), PET);
+petals.frustumCulled = false;
+const petalData = [];
+for (let i = 0; i < PET; i++) petalData.push({ x: (rnd() - 0.5) * 60, y: rnd() * 30, z: (rnd() - 0.5) * 60, ph: rnd() * 9 });
 scene.add(petals);
 
-// ============== BUILD WORLD ==============
-const voxelCount = world.build(materials);
-console.log("Voxels built:", voxelCount);
+/* ============== BAKE ============== */
+const voxelCount = bake(world, scene, true) + extraVox;
+const dummy = new THREE.Object3D();
 
-// ============== HUD & INTERACTION ==============
+/* ============== HUD / TIME ============== */
 const overlay = document.getElementById('overlay');
 const hudV = document.getElementById('stat-voxels');
 const hudF = document.getElementById('stat-fps');
 const hudT = document.getElementById('stat-time');
 const slider = document.getElementById('time-slider');
 const pauseBtn = document.getElementById('pause-btn');
+hudV.textContent = voxelCount.toLocaleString();
+window.__VOXEL__ = { voxelCount, fps: 60, pagodaFloors: 5, timeOfDay: 0.4 };
 
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
+let time = 0.4, paused = false;
+slider.value = time;
+slider.addEventListener('input', () => { time = parseFloat(slider.value); });
+pauseBtn.addEventListener('click', () => { paused = !paused; pauseBtn.textContent = paused ? 'Play' : 'Pause'; });
 
-window.addEventListener('click', (e) => {
-  if (e.target !== renderer.domElement) return;
-  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, cam);
-
-  // Lanterns
-  lanterns.forEach(l => {
-    const hits = raycaster.intersectObjects(l.group.children);
-    if (hits.length > 0) {
-      l.active = !l.active;
-      l.light.intensity = l.active ? 3 : 0;
-      l.glowMesh.material.opacity = l.active ? 1 : 0;
-      l.glowMesh.visible = l.active;
-    }
-  });
-
-  // Pagoda Doors
-  pagodaDoors.forEach(door => {
-      const hits = raycaster.intersectObject(door, true);
-      if(hits.length > 0) {
-          const leaves = door.children;
-          leaves.forEach((leaf, i) => {
-              leaf.userData.rot = leaf.userData.rot === 0 ? (i===0 ? Math.PI/2 : -Math.PI/2) : 0;
-          });
-      }
-  });
-});
-
-window.__VOXEL__ = { voxelCount: voxelCount, fps: 60, pagodaFloors: 5, timeOfDay: 0 };
-
-// ============== TIME CYCLE ==============
-let time = 0.25; // 0..1
-let paused = false;
-
-function updateSky(t) {
-  // t 0 = dawn-ish... let's map: 0-1 = day, 1-2 = night. Slider 0-1 controls this.
-  const day = t * 1.0; // 0..1 full day
-  const cycle = day; // use full range 0..1 for simplicity, map to colors
-  // Colors
-  const dusk = 0.85, dawn = 0.15, night = 0.5;
-  let skyColor, sunColor, sunInt;
-  if (day < dawn) { // night->dawn
-     const tt = day/dawn;
-     skyColor = new THREE.Color().setHSL(0.7, 0.5, 0.05*(1-tt)+0.2*tt);
-     sunColor = new THREE.Color().setHSL(0.7, 0.9, 0.5);
-     sunInt = 0.1;
-  } else if (day < 0.5) { // dawn -> noon
-     const tt = (day-dawn)/0.5;
-     skyColor = new THREE.Color().setHSL(0.6, 0.6, 0.2*(1-tt)+0.5*tt);
-     sunColor = new THREE.Color().setHSL(0.1, 0.9, 0.7);
-     sunInt = 0.8+0.2*tt;
-  } else if (day < 0.85) { // noon -> dusk
-     const tt = (day-0.5)/0.35;
-     skyColor = new THREE.Color().setHSL(0.1, 0.5, 0.5*(1-tt)+0.3*tt);
-     sunColor = new THREE.Color().setHSL(0.05, 0.8, 0.5);
-     sunInt = 1.0;
-  } else if (day < 1) { // dusk -> night
-     const tt = (day-0.85)/0.15;
-     skyColor = new THREE.Color().setHSL(0.65, 0.6, 0.1*(1-tt)+0.02*tt);
-     sunColor = new THREE.Color().setHSL(0.35, 0.8, 0.3);
-     sunInt = 0.1;
-  }
-  scene.background = skyColor;
-  scene.fog = new THREE.Fog(skyColor, 20, 140);
-  sun.color = sunColor;
-  sun.intensity = sunInt;
-  hemi.intensity = lerp(0.2, 0.6, skyColor.brightness);
-  
-  // Lanterns auto
-  const autoOn = day > 0.85 || day < 0.15;
-  lanterns.forEach(l => {
-    if(!l.active) l.light.intensity = autoOn ? 3 : 0;
-  });
+const skyDay = new THREE.Color(0x9fd3f0), skyDusk = new THREE.Color(0xf2a06b), skyNight = new THREE.Color(0x0b1030), sky = new THREE.Color();
+const sunDay = new THREE.Color(0xfff2d8), sunDusk = new THREE.Color(0xff9a52);
+scene.background = sky;
+scene.fog = new THREE.Fog(0x9fd3f0, 90, 260);
+function applyTime() {
+  const ang = (time - 0.25) * Math.PI * 2, h = Math.sin(ang);
+  sun.position.set(Math.cos(ang) * 80, Math.max(h, 0.1) * 80 + 6, 36);
+  sun.target.position.set(0, 10, 0);
+  const day = smooth(clamp((h + 0.12) / 0.4, 0, 1)), dusk = clamp(1 - Math.abs(h) / 0.28, 0, 1);
+  sky.copy(skyNight).lerp(skyDay, day).lerp(skyDusk, dusk * 0.65);
+  sun.color.copy(sunDay).lerp(sunDusk, dusk);
+  sun.intensity = 2.4 * day + 0.05;
+  hemi.intensity = 0.14 + 0.6 * day;
+  scene.fog.color.copy(sky);
+  renderer.toneMappingExposure = 0.85 + 0.3 * day;
+  hudT.textContent = day < 0.15 ? 'Night' : dusk > 0.4 ? (time < 0.5 ? 'Dawn' : 'Dusk') : 'Day';
+  return 1 - day;
 }
 
-// ============== RENDER LOOP ==============
-let lastTime = performance.now();
-let frames = 0;
-let fpsTime = 0;
+/* ============== INTERACTION ============== */
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let dx0 = 0, dy0 = 0;
+renderer.domElement.addEventListener('pointerdown', e => { dx0 = e.clientX; dy0 = e.clientY; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (Math.hypot(e.clientX - dx0, e.clientY - dy0) > 5) return;
+  mouse.set(e.clientX / window.innerWidth * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+  ray.setFromCamera(mouse, cam);
+  const lh = lanterns.map(L => L.hit);
+  const dh = floors.flatMap(F => F.leaves.map(l => l.leaf));
+  const hits = ray.intersectObjects([...lh, ...dh], false);
+  if (!hits.length) return;
+  const o = hits[0].object;
+  if (o.userData.lantern) { const L = o.userData.lantern; L.user = !(L.user === null ? L.on : L.user); }
+  else { const F = o.userData.floor; F.open = !F.open; for (const l of F.leaves) l.target = F.open ? 1 : 0; }
+});
+window.addEventListener('resize', () => {
+  cam.aspect = window.innerWidth / window.innerHeight; cam.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
-function animate() {
+/* ============== LOOP ============== */
+let last = performance.now(), frames = 0, fpsT = 0;
+function animate(now) {
   requestAnimationFrame(animate);
-  
-  const now = performance.now();
-  const dt = (now - lastTime) / 1000;
-  lastTime = now;
-  
-  frames++;
-  fpsTime += dt;
-  if (fpsTime >= 1) {
-    hudF.textContent = frames;
-    window.__VOXEL__.fps = frames;
-    frames = 0; fpsTime = 0;
+  const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  const t = now / 1000;
+  frames++; fpsT += dt;
+  if (fpsT >= 0.5) { const f = Math.round(frames / fpsT); hudF.textContent = f; window.__VOXEL__.fps = f; frames = 0; fpsT = 0; }
+  if (!paused) { time = (time + dt / 90) % 1; slider.value = time; }
+  window.__VOXEL__.timeOfDay = time;
+  const night = applyTime();
+
+  for (const L of lanterns) {
+    L.on = L.user === null ? night > 0.55 : L.user;
+    const want = L.on ? 1 : 0, fl = L.on ? 0.9 + 0.1 * Math.sin(t * 7 + L.ph) : 1;
+    L.light.intensity += (want * 30 * fl - L.light.intensity) * Math.min(1, dt * 6);
+    L.glowMat.emissiveIntensity += (want * 1.6 - L.glowMat.emissiveIntensity) * Math.min(1, dt * 6);
   }
-
-  if (!paused) {
-    // Time slider controls cycle
-    const sVal = parseFloat(slider.value);
-    time = time + (sVal - time) * 0.05; // smooth lerp to slider (paused-ish drag)
-    if(Math.abs(sVal-time)>0.001) time = sVal;
-    
-    if (!slider.matches(':active')) {
-        time = (time + 1/90) % 1; // 90s cycle
-    }
-    window.__VOXEL__.timeOfDay = time;
-
-    // Update Sun position
-    const t = time * Math.PI * 2;
-    sun.position.x = Math.sin(t) * 80;
-    sun.position.y = Math.cos(t) * 80;
-    
-    updateSky(time);
+  for (const F of floors) for (const l of F.leaves) {
+    l.a += (l.target - l.a) * Math.min(1, dt * 5);
+    l.hinge.rotation.y = l.s * smooth(clamp(l.a, 0, 1)) * 1.6;
   }
-
-  // Animation items
-  const wind = Date.now() * 0.001;
-  pagodaDoors.forEach(d => {
-     d.children.forEach((leaf, i) => {
-        // smooth door swing
-        const target = leaf.userData.rot;
-        leaf.rotation.z += (target - leaf.rotation.z) * 0.1;
-     });
-  });
-
-  lanterns.forEach((l, i) => {
-    if (l.active) {
-        l.light.intensity = 3 + Math.sin(now*0.015 + i) * 0.5; // flicker
-    }
-  });
-
-  fishes.forEach(f => {
-     f.userData.ang += f.userData.speed;
-     f.position.x = Math.cos(f.userData.ang)*f.userData.r;
-     f.position.z = Math.sin(f.userData.ang)*f.userData.r;
-     f.position.y = 1.5 + Math.sin(now*0.005 + f.userData.ang)*2;
-     f.lookAt(f.position.x + Math.cos(f.userData.ang)*2, f.position.y, f.position.z + Math.sin(f.userData.ang)*2);
-  });
-
-  birds.forEach(b => {
-      b.userData.t += b.userData.speed;
-      b.position.x = Math.cos(b.userData.t)*60;
-      b.position.z = Math.sin(b.userData.t)*60;
-      b.position.y = 15 + Math.sin(b.userData.t*3)*b.userData.amp;
-      b.rotation.z = Math.sin(b.userData.t)*0.5;
-      b.rotation.y = Math.cos(b.userData.t);
-  });
-
-  // Petals
-  const pos = petalMats;
-  for(let i=0; i<petalCount; i++){
-      const m = new THREE.Matrix4();
-      m.copy(pos[i]);
-      const p = m.position;
-      p.y -= 0.02 + Math.sin(now*0.002+i)*0.01;
-      p.x += Math.sin(now*0.003+i)*0.01;
-      p.z += Math.cos(now*0.003+i)*0.005;
-      m.setPosition(p);
-      m.rotateY(Math.sin(now*0.002+i)*0.05);
-      if (p.y < 0) p.y = 25;
-      pos[i] = m;
+  for (const T of trees) { T.g.rotation.z = Math.sin(t * 0.8 + T.ph) * T.amp; T.g.rotation.x = Math.cos(t * 0.6 + T.ph) * T.amp * 0.7; }
+  for (const f of koi) {
+    const u = f.userData; u.a += u.s * dt;
+    f.position.set(POND.x + Math.cos(u.a) * u.r, 2.0 + Math.sin(t * 2 + u.a) * 0.08, POND.z + Math.sin(u.a) * u.r);
+    f.rotation.y = -u.a + (u.s > 0 ? -Math.PI / 2 : Math.PI / 2);
   }
-  petals.instanceMatrix.setFromArray(pos);
+  for (const b of birds) {
+    const u = b.userData; u.t += u.s * dt;
+    b.position.set(Math.cos(u.t) * 55, u.h + Math.sin(u.t * 3) * 2, Math.sin(u.t) * 55);
+    b.rotation.y = -u.t - Math.PI / 2;
+    u.wing.rotation.x = Math.sin(t * 9 + u.t) * 0.5;
+  }
+  dummy.rotation.set(0, 0, 0);
+  for (let i = 0; i < dropCount; i++) {
+    const d = dropState[i]; d.y -= d.v * dt;
+    if (d.y < hAt(FALL.x + 1, FALL.z)) d.y = ISL.y - 1;
+    dummy.position.set(FALL.x + 1 + d.dx, d.y, FALL.z + d.dz); dummy.updateMatrix();
+    drops.setMatrixAt(i, dummy.matrix);
+  }
+  drops.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < PET; i++) {
+    const p = petalData[i];
+    p.y -= (0.8 + Math.sin(p.ph) * 0.2) * dt; p.x += Math.sin(t * 0.7 + p.ph) * 0.6 * dt;
+    if (p.y < 0.5) p.y = 30;
+    dummy.position.set(p.x, p.y, p.z); dummy.rotation.set(t + p.ph, t * 0.7, 0); dummy.updateMatrix();
+    petals.setMatrixAt(i, dummy.matrix);
+  }
   petals.instanceMatrix.needsUpdate = true;
-
-  // Trees wind
-  scene.traverse(o => {
-     if (o.userData.rotSpeed) {
-        o.rotation.y = Math.sin(now * o.userData.rotSpeed) * 0.1;
-     }
-  });
+  waterMat.opacity = 0.7 + 0.04 * Math.sin(t * 1.3);
 
   controls.update();
   renderer.render(scene, cam);
 }
 
-// INTRO
 setTimeout(() => {
-    overlay.style.opacity = 0;
-    setTimeout(()=>overlay.style.display='none', 2000);
-    
-    // Intro move
-    const start = new THREE.Vector3(-5, 2, -40);
-    const end = new THREE.Vector3(30, 15, 50);
-    const t0 = Date.now();
-    function intro(){
-        const p = (Date.now()-t0)/4000;
-        if(p<1){
-            cam.position.lerpVectors(start, end, p);
-            cam.lookAt(0, 8, 0);
-            requestAnimationFrame(intro);
-        } else {
-            controls.enabled = true;
-        }
-    }
-    controls.enabled = false;
-    intro();
-}, 500);
-
-pauseBtn.addEventListener('click', () => {
-    paused = !paused;
-    pauseBtn.textContent = paused ? 'Play' : 'Pause';
-    slider.disabled = paused;
-});
-
-// Resize
-window.addEventListener('resize', () => {
-  cam.aspect = window.innerWidth / window.innerHeight;
-  cam.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-animate();
-
-// Expose window.__VOXEL__ updates
-setInterval(()=>{
-    window.__VOXEL__.voxelCount = voxelCount;
-}, 500);
-
+  overlay.style.opacity = 0;
+  setTimeout(() => overlay.style.display = 'none', 2000);
+}, 400);
+requestAnimationFrame(animate);
 </script>
 </body>
 </html>

@@ -299,7 +299,7 @@ function buildHullMesh() {
       sn.push(0,1,0); sn.push(0,1,0);
     }
   }
-  sideGeom.setFromPoints(new THREE.Vector3().setFromArray(sv)); // hacky reset, cleaner below
+
   sideGeom.setAttribute('position', new THREE.Float32BufferAttribute(sv,3));
   sideGeom.setAttribute('normal', new THREE.Float32BufferAttribute(sn,3));
   const sideMesh = new THREE.Mesh(sideGeom, new THREE.MeshStandardMaterial({...WHITE_ROUGH, color: WHITE}));

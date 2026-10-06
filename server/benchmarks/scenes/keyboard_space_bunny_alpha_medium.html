@@ -604,6 +604,7 @@
   </main>
 
   <script type="module">
+    let switchesStart = 4.6, capsStart = Infinity;
     import * as THREE from 'three';
     import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -1031,7 +1032,7 @@
         layer.object.scale.setScalar(0.64);
       });
 
-      const switchesStart = 4.6;
+      switchesStart = 4.6;
       switchGroups.forEach((group, i) => {
         const base = group.userData.basePosition;
         const start = switchesStart + i * 0.027;
@@ -1052,7 +1053,7 @@
         group.scale.setScalar(0.38);
       });
 
-      const capsStart = switchesStart + switchGroups.length * 0.027 + 0.48;
+      capsStart = switchesStart + switchGroups.length * 0.027 + 0.48;
       capGroups.forEach((group, i) => {
         const base = group.userData.basePosition;
         const row = Math.floor(i / 15);

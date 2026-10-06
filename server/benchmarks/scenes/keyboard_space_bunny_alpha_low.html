@@ -414,7 +414,7 @@ for (let i = 0; i < 4; i++) {
 
 const traceMat = new THREE.MeshBasicMaterial({ color: 0x4aa9a1, transparent: true, opacity: .45 });
 for (let i = 0; i < 10; i++) {
-  const trace = addMesh(layers.pcb, new THREE.BoxGeometry(2.3 + i * .2, .012, .025), -3.2, .355, -2.1 + i * .42, false);
+  const trace = addMesh(layers.pcb, new THREE.Mesh(new THREE.BoxGeometry(2.3 + i * .2, .012, .025), traceMat), -3.2, .355, -2.1 + i * .42, false);
   trace.rotation.y = (i % 2 ? 1 : -1) * .07;
   trace.material = traceMat;
 }
@@ -541,14 +541,14 @@ rows.forEach((row, r) => {
 
 const knob = new THREE.Group();
 knob.position.set(6.72, 1.04, -1.95);
-addMesh(knob, new THREE.CylinderGeometry(.31, .34, .28, 40), 0, 0, 0);
+addMesh(knob, new THREE.Mesh(new THREE.CylinderGeometry(.31, .34, .28, 40), materials.case), 0, 0, 0);
 const knurlMat = materials.case;
 for (let i = 0; i < 24; i++) {
   const a = i / 24 * Math.PI * 2;
   const tooth = addMesh(knob, rounded(.045, .20, .045, .01, knurlMat, 2), Math.cos(a) * .32, 0, Math.sin(a) * .32, false);
   tooth.rotation.y = -a;
 }
-addMesh(knob, new THREE.CylinderGeometry(.25, .25, .015, 40), 0, .16, 0);
+addMesh(knob, new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .015, 40), materials.case), 0, .16, 0);
 addMesh(knob, rounded(.025, .018, .14, .006, materials.cyan), 0, .175, -.08, false);
 keyboard.add(knob);
 
@@ -598,6 +598,7 @@ function setStage(index) {
   stageEls.status.textContent = index < 5 ? 'Positioning component layer' : 'Build complete · sound test ready';
 }
 
+let capsStart = Infinity;
 function buildTimeline() {
   timelines.length = 0;
   addTween(layers.pcb, .05, 1.0, new THREE.Vector3(0,-5,1.5), finalPositions.pcb, easeBack);
@@ -612,7 +613,7 @@ function buildTimeline() {
     addTween(d.sw, t, .9, new THREE.Vector3(d.x, 4.8 + (i%3)*.18, d.z - .7), new THREE.Vector3(d.x,.98,d.z), easeBack);
   });
 
-  const capsStart = Math.max(switchStart + keyData.length * switchStagger + .55, 6.55);
+  capsStart = Math.max(switchStart + keyData.length * switchStagger + .55, 6.55);
   const capStagger = reducedMotion ? .001 : .032;
   keyData.forEach((d, i) => {
     const t = capsStart + i * capStagger;
@@ -624,6 +625,7 @@ function buildTimeline() {
 
 let duration = buildTimeline();
 let assemblyStart = performance.now();
+
 let assemblyRunning = true;
 let lastStage = -1;
 setStage(0);

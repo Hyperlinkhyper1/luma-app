@@ -135,6 +135,27 @@ void main() {
       expect(demo.toJson().containsKey('vendor'), isFalse);
     });
 
+    test('a pasted reply is trimmed to its page', () async {
+      final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
+      for (final (id, reply) in [
+        ('keyboard_prose', 'I will write it now.<!DOCTYPE html>\n<html>k</html>'),
+        ('keyboard_fenced', '```html\n<!DOCTYPE html>\n<html>k</html>\n```\n'),
+      ]) {
+        await store.saveUpload(
+          kind: 'keyboard',
+          id: id,
+          model: 'Demo',
+          vendor: '',
+          description: 'A keyboard',
+          bytes: utf8.encode(reply),
+        );
+        expect(utf8.decode((await store.readScene(id))!.bytes),
+            '<!DOCTYPE html>\n<html>k</html>\n');
+      }
+      final clean = utf8.encode('<!DOCTYPE html>\n<html>k</html>\n');
+      expect(AiBenchmarkStore.trimToPage(clean), same(clean));
+    });
+
     test('an upload replaces a seeded scene until the seed is newer', () async {
       final store = await AiBenchmarkStore.open(dir.path, seedDir: seed.path);
       final past = DateTime.now().subtract(const Duration(hours: 1));

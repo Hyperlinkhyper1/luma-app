@@ -598,7 +598,7 @@ const atmosphereMaterial = new THREE.ShaderMaterial({
   depthWrite: false,
   blending: THREE.AdditiveBlending
 });
-function makePlanet(radius, base, high, atmosphere = 0x3b9dff, bands = false) {
+function makePlanet(radius, base, high, atmosphereColor = 0x3b9dff, bands = false) {
   const g = new THREE.Group();
   const surface = new THREE.Mesh(new THREE.SphereGeometry(radius, 40, 24), new THREE.MeshStandardMaterial({ map: planetTexture(base, high, bands), roughness: .78, metalness: .05 }));
   surface.userData.spin = .025 + rnd() * .035;
@@ -607,7 +607,7 @@ function makePlanet(radius, base, high, atmosphere = 0x3b9dff, bands = false) {
   clouds.userData.spin = .045;
   g.add(clouds);
   const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.12, 32, 18), atmosphereMaterial.clone());
-  atmosphere.material.uniforms.uColor.value = new THREE.Color(atmosphere);
+  atmosphere.material.uniforms.uColor.value = new THREE.Color(atmosphereColor);
   atmosphere.renderOrder = 4;
   g.add(atmosphere);
   g.userData.surface = surface;

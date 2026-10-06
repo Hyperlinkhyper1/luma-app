@@ -239,6 +239,8 @@ class AiUsageRepository extends ChangeNotifier {
   /// cheaply by the scanners, and a scan already in flight is not
   /// duplicated. The scanners touch disjoint file paths and only ever
   /// insert distinctly-sourced rows, so running them concurrently is safe.
+  /// File decoding and external SQLite reads run in a worker isolate so large
+  /// logs cannot block UI callbacks during startup, resume, or manual refresh.
   Future<void> rescan() async {
     if (_scanning) return;
     _scanning = true;
@@ -252,13 +254,16 @@ class AiUsageRepository extends ChangeNotifier {
         antigravityResult,
         opencodeResult,
         freebuffResult,
-      ) = await (
-        _claudeScanner.scan(_db),
-        _codexScanner.scan(_db),
-        _antigravityScanner.scan(_db),
-        _opencodeScanner.scan(_db),
-        _freebuffScanner.scan(_db),
-      ).wait;
+      ) = await _db.computeWithDatabase(
+        connect: AiUsageDatabase.new,
+        computation: _LocalScanJob(
+          claude: _claudeScanner,
+          codex: _codexScanner,
+          antigravity: _antigravityScanner,
+          opencode: _opencodeScanner,
+          freebuff: _freebuffScanner,
+        ).run,
+      );
       _lastClaudeResult = claudeResult;
       _lastCodexResult = codexResult;
       _lastAntigravityResult = antigravityResult;
@@ -357,4 +362,36 @@ class AiUsageRepository extends ChangeNotifier {
     }
     return query.watch();
   }
+}
+
+typedef _LocalScanResult = (
+  ClaudeCodeScanResult,
+  CodexCliScanResult,
+  AntigravityScanResult,
+  OpencodeScanResult,
+  FreebuffScanResult,
+);
+
+class _LocalScanJob {
+  const _LocalScanJob({
+    required this.claude,
+    required this.codex,
+    required this.antigravity,
+    required this.opencode,
+    required this.freebuff,
+  });
+
+  final ClaudeCodeScanner claude;
+  final CodexCliScanner codex;
+  final AntigravityScanner antigravity;
+  final OpencodeScanner opencode;
+  final FreebuffScanner freebuff;
+
+  Future<_LocalScanResult> run(AiUsageDatabase db) => (
+    claude.scan(db),
+    codex.scan(db),
+    antigravity.scan(db),
+    opencode.scan(db),
+    freebuff.scan(db),
+  ).wait;
 }

@@ -1,68 +1,4 @@
-Also, `brakeLightOn` maybe not needed.
-
-Also, there is a stray reference to `vehicle.brakeLightOn` in updateVehicle? Not used.
-
-Now, let's patch the script.
-
-I will modify the script in the response.
-
-Given the massive code, I need to rewrite with corrections.
-
-I'll produce the final code with corrections.
-
-Because it's huge, I will try to keep it concise but include the needed parts.
-
-Now, I will write the final HTML document with corrected script.
-
-Given the length, I must ensure it's syntactically correct.
-
-I will produce the final answer as a single HTML document, with all inline code.
-
-Let's construct the final code.
-
-I'll re-write the script with corrected parts.
-
-**Plan**:
-
-- Import Three, OrbitControls.
-
-- Set up renderer, scene, camera, controls.
-
-- Add lighting and floor/track.
-
-- Define procedural textures (createCanvasTexture and createCarbonFiberTexture). Even if createCarbonFiberTexture is not used, we can keep.
-
-- Define helper functions: createBody, createCanopy, createWheel, updateWing, updateHUD, formatTime, animateDoor (just log), startEngineAudio, updateVehicle, updateControls, animate.
-
-- Create car model: body, canopy, wheels, wing, headlights, taillights, chassis (for X-ray), interior seats, steering wheel, dashboard.
-
-- Add car to scene.
-
-- UI: config panel elements, event listeners for paint color, rim finish, caliper color, doors (open/close logs), headlights toggle, X-ray toggle, mode buttons.
-
-- Define vehicle object with necessary state and parameters.
-
-- Add keyboard listeners for controls.
-
-- In animate loop, update vehicle, wings, wheel rotation, HUD, camera.
-
-- Define camera presets and testCamPositions.
-
-- Define function setCameraPreset, attach to window.
-
-- Define `cameraUserSet` variable.
-
-- Start loading overlay (fade after short delay).
-
-- Add toggleUI event.
-
-- Ensure that audio context resume on first user interaction.
-
-Now, let's write the code with proper indentation.
-
-Because it's lengthy, I'll try to be systematic.
-
-I'll produce the code now.<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -384,6 +320,7 @@ const wheelPos = [
   { x: -1.2, z: 0.8 },
   { x: -1.2, z: -0.8 }
 ];
+const carGroup = new THREE.Group();
 wheelPos.forEach((p, i) => {
   wheels[i].position.set(p.x, 0.15, p.z);
   wheels[i].rotation.y = Math.PI / 2;
@@ -459,7 +396,7 @@ dashboard.rotation.y = Math.PI / 2;
 carGroup.add(dashboard);
 
 // Add car group to scene
-const carGroup = new THREE.Group();
+
 carGroup.add(bodyMesh, canopyMesh, chassisMesh, wingMesh, leftHL, rightHL, leftTL, rightTL, leftSeat, rightSeat, steeringWheel, dashboard);
 scene.add(carGroup);
 

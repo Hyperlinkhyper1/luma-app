@@ -630,7 +630,7 @@ const stage=new THREE.Group(); stage.visible=false; scene.add(stage);
     l.rotation.x=-Math.PI/2; l.rotation.z=a; l.position.y=0.5; cross.add(l); });
   stage.add(cross);
   for(let i=0;i<4;i++){
-    const a=i*Math.PI/2+Math.PI/4, m=mesh(box(3,0.6,3,MAT.aluD));
+    const a=i*Math.PI/2+Math.PI/4, m=box(3,0.6,3,MAT.aluD);
     m.position.set(Math.cos(a)*104,0.8,Math.sin(a)*104); stage.add(m);
   }
   LABEL.spr.renderOrder=99; scene.add(LABEL.spr);
@@ -1972,7 +1972,7 @@ function buildRack(){
     new THREE.MeshBasicMaterial({color:0xd0642a,transparent:true,opacity:0.07,side:THREE.DoubleSide,depthWrite:false}));
   hot.position.set(0,100,-80); aisleGroup.add(hot);
 }
-let rackSides,rackDoorF,rackDoorR,aisleGroup; const rackPDUs=[];
+let rackSides,rackDoorF,rackDoorR,aisleGroup; let rackPDUs=[];
 function makeDoor(front){
   const g=new THREE.Group();
   const w=57.5,hh=RACK_TOP-U0Y+6;

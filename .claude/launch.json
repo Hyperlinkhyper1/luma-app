@@ -91,6 +91,18 @@
       ],
       "port": 8128,
       "autoPort": true
+    },
+    {
+      "name": "pagoda-scenes",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8129",
+        "--directory",
+        "server/benchmarks/scenes"
+      ],
+      "port": 8129
     }
   ]
 }
