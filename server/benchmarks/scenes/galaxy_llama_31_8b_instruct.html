@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>3D Galaxy Benchmark</title>
+    <style>
+        /* Global Styles */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: monospace;
+        }
+        .info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+        }
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+        }
+        #fps {
+            position: absolute;
+            top: 30px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+        }
+        #controls {
+            position: absolute;
+            top: 60px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+        }
+        #hud {
+            position: absolute;
+            top: 150px;
+            left: 10px;
+            font-size: 20px;
+            color: white;
+        }
+        /* How it works */
+        .layered {
+            width: 100px;
+            text-align: left;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.5)
+        }
+        #howitworks {
+            position: absolute;
+            top: 200px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        /* UI controls */
+        input[type=range]::-webkit-inner-spin-button,
+        input[type=range]::-webkit-scrollbar {
+            display: none;
+        }
+        input[type=range] {
+            transform: translateX(25px);
+        }
+    </style>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
+</head>
+<body>
+    <div id="stats">
+        Region:
+        <span id="region"></span>
+        <br>
+        Distance:
+        <span id="distance"></span>
+        km/s (sublight):
+        <span id="speed-sublight"></span>
+        c (hyperdrive):
+        <span id="speed-hyperdrive"></span>
+    </div>
+    <div id="fps">
+        FPS: <span id="fps-counter"></span>
+    </div>
+    <div id="controls">
+        <button id="cine-mode">CINE</button>
+        <button id="galaxy-map">GALAXY MAP</button>
+        <input id="speed-range" type="range" min="0.1" max="1" value="0.5" step="0.1">
+        <label>Speed: <span id="speed"></span></label>
+        <button id="play-pause">PLAY/PAUSE</button>
+        <button id="mute-toggle">MUTE</button>
+    </div>
+    <div id="hud">
+        <canvas id="minimap"></canvas>
+    </div>
+    <div id="stats"></div>
+    <div id="howitworks">
+        <p>
+            This scene uses a logarithmic depth buffer to achieve
+            smooth scaling.
+        </p>
+        <p>
+            It also uses two floating origins: one for the ship and one for the
+            galaxy. This helps maintain a seamless transition between these
+            vastly different scales.
+        </p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/effects/EffectComposer.js';
+        import { UnrealBloomPass } from 'three/addons/effects/UnrealBloomPass.js';
+
+        let scene, camera, renderer;
+        let controls;
+        let stats;
+        let bloomPass;
+        let composer;
+        let galaxy;
+        let ship;
+        let planet;
+        let moon;
+        let star;
+        let core;
+        let nebula;
+        let minimap;
+        let hud;
+        let regionText;
+        let distanceText;
+        let speedSublightText;
+        let speedHyperdriveText;
+        let speedText;
+        let minDistance;
+        let maxDistance;
+        let currentSpeed;
+
+        async function main() {
+            await init();
+            animate();
+        }
+
+        function init() {
+            return new Promise((resolve, reject) => {
+                renderer = new THREE.WebGLRenderer({
+                    canvas: document.createElement('canvas'),
+                    antialias: true,
+                    alpha: true,
+                    devicePixelRatio: Math.min(window.devicePixelRatio, 2)
+                });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                document.body.appendChild(renderer.domElement);
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x000022);
+
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200000000);
+                camera.position.set(0, 0, 20000);
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.minPolarAngle = -Math.PI / 2;
+                controls.maxPolarAngle = Math.PI / 2;
+                controls.minDistance = 10;
+                controls.maxDistance = 200000;
+                controls.target = new THREE.Vector3(0, 0, 0);
+                controls.update();
+
+                scene.add(new THREE.AmbientLight(0x222222));
+
+                // galaxy
+                const spiral = getLogarithmicSpiral(200000, 50);
+                const colors = getTemperatureColors();
+                const stars = spiral.map((p) => {
+                    const starGeometry = new THREE.PointGeometry(new THREE.Vector3(p.x, p.y, p.z));
+                    starGeometry.setAttribute('size', new THREE.Float32BufferAttribute([10], 1));
+                    starGeometry.setAttribute('color', new THREE.Float32BufferAttribute([colors[Math.floor(p.r * 100)].r, colors[Math.floor(p.r * 100)].g, colors[Math.floor(p.r * 100)].b], 3));
+                    const starMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, vertexColors: true });
+                    const star = new THREE.Points(starGeometry, starMaterial);
+                    star.position.copy(p);
+                    scene.add(star);
+                    return star;
+                });
+
+                const bar = getCylindricalSection(1000, 50, Math.PI * 0.8, Math.PI * 1.2);
+                const barGeometry = getPlaneGeometry(1000, 50);
+                barGeometry.setAttribute('size', new THREE.Float32BufferAttribute([100, 100], 1));
+                const barMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
+                const barMesh = new THREE.Mesh(barGeometry, barMaterial);
+                barMesh.rotation.x = Math.PI / 2;
+                scene.add(barMesh);
+
+                const bulge = getCylindricalSection(200, 20, Math.PI * 0.8, Math.PI * 1.2);
+                const bulgeGeometry = getPlaneGeometry(200, 20);
+                bulgeGeometry.setAttribute('size', new THREE.Float32BufferAttribute([200, 200], 1));
+                const bulgeMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5 });
+                const bulgeMesh = new THREE.Mesh(bulgeGeometry, bulgeMaterial);
+                bulgeMesh.rotation.x = Math.PI / 2;
+                scene.add(bulgeMesh);
+
+                const halo = getHalo(500);
+                const haloGeometry = getCircleGeometry(500, 100);
+                haloGeometry.setAttribute('size', new THREE.Float32BufferAttribute([500], 1));
+                const haloMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.05 });
+                const haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
+                haloMesh.rotation.x = Math.PI / 2;
+                scene.add(haloMesh);
+
+                // ship
+                const hullGeometry = getBoxGeometry(20, 10, 5);
+                const hullMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+                scene.add(hull);
+
+                const engineGeometry = getBoxGeometry(4, 2, 2);
+                const engineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+                const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+                engine.position.set(-10, 2, 0);
+                scene.add(engine);
+
+                const thrusterGeometry = getBoxGeometry(2, 1, 1);
+                const thrusterMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const thruster = new THREE.Mesh(thrusterGeometry, thrusterMaterial);
+                thruster.position.set(-6, 3, 0);
+                scene.add(thruster);
+
+                const cockpitGeometry = getBoxGeometry(4, 2, 2);
+                const cockpitMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
+                const cockpit = new THREE.Mesh(cockpitGeometry, cockpitMaterial);
+                cockpit.position.set(-5, 2, -5);
+                cockpit.rotation.x = -Math.PI / 2;
+                scene.add(cockpit);
+
+                const antennaGeometry = getSphereGeometry(1, 10, 10);
+                const antennaMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+                const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+                antenna.position.set(10, 2, 0);
+                scene.add(antenna);
+
+                const navigationLightGeometry = getSphereGeometry(0.5, 10, 10);
+                const navigationLightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5 });
+                const navigationLight = new THREE.Mesh(navigationLightGeometry, navigationLightMaterial);
+                navigationLight.position.set(-8, 4, 0);
+                scene.add(navigationLight);
+
+                const navigationLightGeometry2 = getSphereGeometry(0.5, 10, 10);
+                const navigationLightMaterial2 = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5 });
+                const navigationLight2 = new THREE.Mesh(navigationLightGeometry2, navigationLightMaterial2);
+                navigationLight2.position.set(-4, 4, 0);
+                scene.add(navigationLight2);
+
+                ship = new THREE.Group();
+                ship.add(hull);
+                ship.add(engine);
+                ship.add(thruster);
+                ship.add(cockpit);
+                ship.add(antenna);
+                ship.add(navigationLight);
+                ship.add(navigationLight2);
+                ship.position.set(0, 0, 0);
+                controls.target = ship.position;
+                controls.update();
+
+                // minimap
+                minimap = new THREE.CanvasTexture(new Array(200).fill(0).map(() => Array(200).fill(0).map(() => Math.floor(Math.random() * 255 / 255))));
+                minimap.minFilter = THREE.LinearFilter;
+                minimap.magFilter = THREE.LinearFilter;
+                minimap.generateMipmaps = false;
+                minimap.anisotropicFiltering = 16;
+                const minimapMaterial = new THREE.MeshBasicMaterial({ map: minimap, transparent: true, opacity: 0.5 });
+                const minimapGeometry = getPlaneGeometry(200, 200);
+                const minimapMesh = new THREE.Mesh(minimapGeometry, minimapMaterial);
+                minimapMesh.position.set(0, 0, 0);
+                minimapMesh.rotation.x = Math.PI / 2;
+                scene.add(minimapMesh);
+
+                // core
+                const coreGeometry = getSphereGeometry(50, 100, 100);
+                const coreMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+                const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+                coreMesh.position.set(0, 0, 0);
+                coreMesh.rotation.x = Math.PI / 2;
+                scene.add(coreMesh);
+
+                const accretionDiscGeometry = getRingGeometry(100, 50);
+                const accretionDiscMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+                const accretionDisc = new THREE.Mesh(accretionDiscGeometry, accretionDiscMaterial);
+                accretionDisc.position.set(0, 0, 0);
+                accretionDisc.rotation.x = Math.PI / 2;
+                scene.add(accretionDisc);
+
+                core = new THREE.Group();
+                core.add(coreMesh);
+                core.add(accretionDisc);
+                core.position.set(0, 0, 0);
+                controls.target = core.position;
+                controls.update();
+
+                // nebula
+                const nebulaGeometry = getPlaneGeometry(100, 100);
+                const nebulaMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+                const nebulaMesh = new THREE.Mesh(nebulaGeometry, nebulaMaterial);
+                nebulaMesh.position.set(0, 0, 0);
+                nebulaMesh.rotation.x = Math.PI / 2;
+                scene.add(nebulaMesh);
+
+                nebula = new THREE.Group();
+                nebula.add(nebulaMesh);
+                nebula.position.set(0, 0, 0);
+                scene.add(nebula);
+
+                resolve();
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            controls.update();
+            TWEEN.update();
+            stats.update();
+            camera.position.copy(controls.target);
+            galaxy.rotation.y += 0.001;
+            camera.lookAt(controls.target);
+
+            if (core.position.z > -5000) {
+                core.position.z -= 1;
+                accretionDisc.position.z -= 1;
+            }
+            if (core.position.z < -10000) {
+                core.position.z = -5000;
+                accretionDisc.position.z = -5000;
+            }
+
+            bloomPass.render(renderer, scene, camera);
+            composer.render();
+
+            renderer.render(scene, camera);
+            document.getElementById('fps-counter').textContent = stats.fps.toPrecision(2);
+
+            if (document.getElementById('play-pause').textContent === 'PLAY') {
+                controls.autoRotate = true;
+            } else {
+                controls.autoRotate = false;
+            }
+        }
+
+        function getPointsInSpiral(start, count, radius, angle) {
+            const points = new Array(count);
+            for (let i = 0; i < count; i++) {
+                const r = Math.pow(Math.random(), radius) * radius;
+                const theta = Math.random() * 2 * Math.PI;
+                const phi = Math.random() * 2 * Math.PI;
+                points[i] = new THREE.Vector3(r * Math.sin(theta) * Math.cos(phi), r * Math.sin(theta) * Math.sin(phi), r * Math.cos(theta));
+            }
+            const t = start;
+            const points2 = new Array(count);
+            for (let i = 0; i < count; i++) {
+                points2[i] = new THREE.Vector3(points[i].x * Math.cos(t) - points[i].z * Math.sin(t), points[i].y, points[i].x * Math.sin(t) + points[i].z * Math.cos(t));
+                t += angle;
+            }
+            return points2;
+        }
+
+        function getLogarithmicSpiral(count, radius) {
+            const points = [];
+            for (let i = 0; i < count; i++) {
+                const phi = i / count * 2 * Math.PI;
+                const r = Math.pow(2, Math.sin(phi) * radius);
+                points.push(new THREE.Vector3(r * Math.cos(phi), r * Math.sin(phi), 0));
+            }
+            return points;
+        }
+
+        function getTemperatureColors() {
+            const colors = [];
+            for (let i = 0; i <= 100; i++) {
+                colors.push(new THREE.Color(Math.sin(i / 5), Math.sin(i / 3), Math.sin(i / 1)));
+            }
+            return colors;
+        }
+
+        function getCircleGeometry(radius, segments) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array(segments * 3);
+            const indices = new Uint16Array(segments * 3);
+            for (let i = 0; i < segments; i++) {
+                const phi = i / segments * 2 * Math.PI;
+                vertices[i * 3] = radius * Math.cos(phi);
+                vertices[i * 3 + 1] = radius * Math.sin(phi);
+                vertices[i * 3 + 2] = 0;
+                if (i > 0) {
+                    indices[i * 3] = i - 1;
+                    indices[i * 3 + 1] = i + 1;
+                    indices[i * 3 + 2] = i;
+                    indices[i * 3 + 1] = i - 1;
+                    indices[i * 3 + 2] = i;
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            geometry.computeBoundingSphere();
+            return geometry;
+        }
+
+        function getHalo(radius) {
+            const geometry = getCircleGeometry(radius, 100);
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute([...Array(100)].map(() => Math.random()), 3));
+            return geometry;
+        }
+
+        function getCylindricalSection(radius, height, start, end) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array(height * 6);
+            const indices = new Uint16Array(height * 6);
+            for (let i = 0; i < height; i++) {
+                const phi = (start + (end - start) * i / (height - 1)) / (2 * Math.PI);
+                const v = i * 6;
+                vertices[v + 0] = radius;
+                vertices[v + 1] = Math.sin(phi) * radius;
+                vertices[v + 2] = height / 2 - i;
+                vertices[v + 3] = radius;
+                vertices[v + 4] = Math.cos(phi) * radius;
+                vertices[v + 5] = height / 2 - i;
+                if (i > 0) {
+                    indices[i * 6] = i - 1;
+                    indices[i * 6 + 1] = i - 1 + 3;
+                    indices[i * 6 + 2] = i;
+                    indices[i * 6 + 1] = i;
+                    indices[i * 6 + 2] = i + 3;
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            geometry.computeBoundingSphere();
+            return geometry;
+        }
+
+        function getPlaneGeometry(radius, segments) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array(segments * 6);
+            const indices = new Uint16Array(radius);
+            for (let i = 0; i < segments; i++) {
+                const phi = i / segments * 2 * Math.PI;
+                vertices[i * 6 + 0] = radius * Math.cos(phi);
+                vertices[i * 6 + 1] = radius * Math.sin(phi);
+                vertices[i * 6 + 2] = 0;
+                if (i > 0) {
+                    indices[i] = i - 6;
+                    indices[i + 7] = i - 6;
+                }
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            geometry.computeBoundingSphere();
+            return geometry;
+        }
+
+        function getRingGeometry(radius, thickness) {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array((radius * 2 * Math.PI / 10) * 3);
+            const indices = new Uint16Array(geometry.attributes.position.count / 3 * 6);
+            for (let i = 0; i < radius * 2 * Math.PI; i += 0.1) {
+                vertices[i * 3 + 0] = Math.cos(i);
+                vertices[i * 3 + 1] = Math.sin(i);
+                vertices[i * 3 + 2] = 0;
+                const v = i * 3;
+                indices[i * 6] = radius * 2 * Math.PI / -10 + v;
+                indices[i * 6 + 1] = radius * 2 * Math.PI / -10 + v;
+                indices[i * 6 + 2] = radius * 2 * Math.PI / 10 + v;
+                indices[i * 6 + 1] = radius * 2 * Math.PI / 10 + v;
+                indices[i * 6 + 2] = radius * 2 * Math.PI / 20 + v;
+            }
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setIndex(indices);
+            geometry.computeVertexNormals();
+            geometry.computeBoundingSphere();
+            return geometry;
+        }
+
+        function getSphereGeometry(radius, segments, stack) {
+            const geometry = new THREE.SphereGeometry(radius, segments, stack);
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute([...Array(10)].map(() => Math.random()), 3));
+            return geometry;
+        }
+
+        async function setupPostProcess() {
+            return new Promise((resolve, reject) => {
+                const composer = new EffectComposer(renderer);
+                const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    format: THREE.RGBAFormat
+                });
+                const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+                composer.addPass(bloomPass);
+                const renderScene = new THREE.RenderPass(scene, camera);
+                composer.addPass(renderScene);
+                resolve({
+                    composer: composer,
+                    rt: renderTarget,
+                    bloomPass: bloomPass,
+                    renderScene: renderScene
+                });
+            });
+        }
+
+        function setupScene() {
+            TWEENWEEN.Tween({ x: -10 }).to({ x: 10 }, 500).easing(TWEEN.Easing.Quadratic.InOut).onUpdate((t) => {
+                controls.target.set(t.x, 0, 0);
+            }).onComplete(() => {
+                TWEENWEEN.Tween({ y: -10 }).to({ y: 10 }, 500).easing(TWEEN.Easing.Quadratic.InOut).onUpdate((t) => {
+                    controls.target.set(0, t.y, 0);
+                }).onComplete(() => {
+                    controls.target.set(0, 0, 0);
+                }).start();
+            }).start();
+            controls.update();
+            if (controls.autoRotate) {
+                TWEENWEEN.Tween({ angle: 0 }).to({ angle: Math.PI * 2 }, 500).easing(TWEEN.Easing.Linear.None).onUpdate((t) => {
+                    galaxy.rotation.y = t.angle;
+                }).start();
+            }
+        }
+
+        function renderGalaxy() {
+            camera.position.copy(controls.target);
+            camera.lookAt(controls.target);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        main();
+        setupScene();
+        setupPostProcess().then((options) => {
+            bloomPass = options.bloomPass;
+            composer = options.composer;
+            composer.renderToScreen = true;
+        });
+
+        const stats = new Stats();
+        document.body.appendChild(stats.dom);
+
+        const fpsCounter = document.getElementById('fps-counter');
+        const speedSlider = document.getElementById('speed-range');
+        const speedDisplay = document.getElementById('speed');
+        const playPauseButton = document.getElementById('play-pause');
+        const muteButton = document.getElementById('mute-toggle');
+        const cineModeButton = document.getElementById('cine-mode');
+        const galaxyMapButton = document.getElementById('galaxy-map');
+
+        stats.setMode(0);
+
+        document.addEventListener('visibilitychange', () => {
+            controls.update();
+        });
+
+        window.addEventListener('resize', onWindowResize);
+
+        speedSlider.addEventListener('input', () => {
+            currentSpeed = parseFloat(speedSlider.value);
+            speedDisplay.textContent = currentSpeed;
+        });
+
+        speedSlider.addEventListener('change', () => {
+            currentSpeed = parseFloat(speedSlider.value);
+            speedDisplay.textContent = currentSpeed;
+        });
+
+        playPauseButton.addEventListener('click', () => {
+            if (playPauseButton.textContent === 'PLAY') {
+                playPauseButton.textContent = 'PAUSE';
+                controls.autoRotate = true;
+                controls.maxDistance = 200000;
+                core.position.z = 0;
+                accretionDisc.position.z = 0;
+            } else {
+                playPauseButton.textContent = 'PLAY';
+                controls.autoRotate = false;
+                controls.maxDistance = 100000;
+                core.position.z = -5000;
+                accretionDisc.position.z = -5000;
+            }
+        });
+
+        muteButton.addEventListener('click', () => {
+            const audio = document.getElementById('audio');
+            if (audio.muted) {
+                audio.muted = false;
+            } else {
+                audio.muted = true;
+            }
+        });
+
+        cineModeButton.addEventListener('click', () => {
+            if (cineModeButton.textContent === 'CINEMATIC') {
+                cineModeButton.textContent = 'CHASE';
+                controls.target = ship.position;
+            } else {
+                cineModeButton.textContent = 'CINEMATIC';
+                controls.target = new THREE.Vector3(0, 0, 0);
+            }
+        });
+
+        galaxyMapButton.addEventListener('click', () => {
+            if (galaxyMapButton.textContent === 'GALAXY MAP') {
+                galaxyMapButton.textContent = 'CHASE';
+                controls.target = ship.position;
+                renderGalaxy();
+                galaxyMapButton.style.background = 'red';
+            } else {
+                galaxyMapButton.textContent = 'GALAXY MAP';
+                controls.target = new THREE.Vector3(0, 0, 0);
+                renderScene();
+                galaxyMapButton.style.background = 'blue';
+            }
+        });
+
+        const hud = document.getElementById('hud');
+        const minimapCanvas = document.getElementById('minimap');
+        const minimap = new THREE.CanvasTexture(minimapCanvas);
+        hud.style.filter = 'none';
+
+        if ('webaudio' in window) {
+            const audio = document.getElementById('audio');
+            audio.src = (window.url || window.location.href).replace('https://', '');
+            audio.muted = true;
+            audio.volume = 0.1;
+            setTimeout(() => {
+                document.getElementById('mute-toggle').style.display = 'block';
+                document.getElementById('mute-toggle').addEventListener('click', () => {
+                    if (document.getElementById('mute-toggle').textContent === 'MUTE') {
+                        audio.muted = false;
+                        document.getElementById('mute-toggle').textContent = 'UNMUTE';
+                    } else {
+                        audio.muted = true;
+                        document.getElementById('mute-toggle').textContent = 'MUTE';
+                    }
+                });
+            }, 1000);
+        }
+
+        minimapCanvas.height = 200;
+        minimapCanvas.width = 200;
+        const ctx = minimapCanvas.getContext('2d');
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, 200, 200);
+        let minimapX = 0;
+        let minimapY = 0;
+
+        const raycaster = new THREE.Raycaster();
+        const mouseDown = false;
+
+        document.addEventListener('mousemove', (e) => {
+            const rect = document.body.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const ray = new THREE.Vector2(x, y);
+            const dir = ray.normalize();
+            raycaster.setFromCamera(dir, camera);
+            const intersect = raycaster.ray.intersectObject(minimapMesh);
+            if (intersect.length > 0) {
+                const coord = new THREE.Vector2(minimapX, minimapY);
+                coord.multiplyScalar(200 / Math.sqrt(minimapMesh.geometry.attributes.position.count));
+                coord.x += 50;
+                coord.y += 50;
+                raycast(coord, raycastCallback);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const rect = document.body.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const ray = new THREE.Vector2(x, y);
+            const dir = ray.normalize();
+            raycaster.setFromCamera(dir, camera);
+            const intersect = raycaster.ray.intersectObject(minimapMesh);
+            if (intersect.length > 0) {
+                const coord = new THREE.Vector2(minimapX, minimapY);
+                coord.multiplyScalar(200 / Math.sqrt(minimapMesh.geometry.attributes.position.count));
+                coord.x += 50;
+                coord.y += 50;
+                raycast(coord, raycastCallback);
+            }
+        });
+
+        function raycast(coord, callback) {
+            raycaster.setFromCamera(new THREE.Vector2(coord.x, coord.y), camera);
+            const intersect = raycaster.ray.intersectObject(scene);
+            if (intersect.length > 0) {
+                callback(coord.x, coord.y, Math.sqrt(coord.x * coord.x + coord.y * coord.y));
+            }
+        }
+
+        function raycastCallback(x, y, distance) {
+            const region = getRegion(x, y);
+            if (region !== 'Unknown') {
+                const distanceText = document.getElementById('distance');
+                const speedSublightText = document.getElementById('speed-sublight');
+                const speedHyperdriveText = document.getElementById('speed-hyperdrive');
+                distanceText.textContent = Math.round(distance);
+                speedSublightText.textContent = Math.round(0.5);
+                speedHyperdriveText.textContent = Math.round(5);
+                const regionDisplay = document.getElementById('region');
+                regionDisplay.textContent = region;
+                hud.style.display = 'block';
+            } else {
+                hud.style.display = 'none';
+            }
+        }
+
+        function getRegion(x, y) {
+            const minDistance = Math.min(Math.abs(x - 50), Math.abs(y - 50));
+            const maxDistance = Math.max(Math.abs(x - 50), Math.abs(y - 50));
+            let region = '';
+            if (Math.max(Math.abs(x - 100), Math.abs(y - 50)) < Math.max(minDistance, maxDistance)) {
+                region = 'Andromeda';
+            } else if (Math.max(Math.abs(x - 20), Math.abs(y - 80)) < Math.max(minDistance, maxDistance)) {
+                region = 'Orion';
+            } else if (Math.max(Math.abs(x - 150), Math.abs(y - 100)) < Math.max(minDistance, maxDistance)) {
+                region = 'Perseus Arm';
+            } else if (Math.max(Math.abs(x - 220), Math.abs(y - 80)) < Math.max(minDistance, maxDistance)) {
+                region = 'Sagittarius Arm';
+            } else if (Math.max(Math.abs(x - 300), Math.abs(y - 0)) < Math.max(minDistance, maxDistance)) {
+                region = 'Carina-Sagittarius';
+            } else if (Math.max(Math.abs(x - 20), Math.abs(y - 0)) < Math.max(minDistance, maxDistance)) {
+                region = 'Cygnus X-1';
+            } else {
+                region = 'Unknown';
+            }
+            return region;
+        }
+
+        stats.dom.style.left = '0px';
+        stats.dom.style.top = '0px';
+    </script>
+</body>
+</html>
