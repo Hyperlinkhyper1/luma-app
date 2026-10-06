@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, height=device-height, user-scalable=no">
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}  
+  </script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      overflow: hidden;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 20px;
+      color: #fff;
+      pointer-events: none;
+    }
+    #hud span {
+      display: inline-block;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="hud">VOXEL GARDEN<span> | </span><span id="fps"></span><span> | </span><span id="voxelCount"></span><span> | </span><span id="lightControl">Click lanterns<span>|</span><span> Time: <span id="timeOfDay"></span></span></div>
+  <script type="module">
+    import * as THREE from 'three';
+
+    let camera, scene, renderer, controls, clock;
+    let pagodaFloors, voxelCount;
+    let timeOfDay = 0.1;
+    let lanterns = [];
+
+    init();
+    animate();
+
+    function init() {
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+      scene = new THREE.Scene();
+
+      const light = new THREE.HemisphereLight(0xffffff, 0xffffff, 2);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+      scene.add(light);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+
+      const sunGeometry = new THREE.Sprite(new THREE.TextureLoader().load('https://i.imgur.com/4Y2y5fF.png'));
+      sunGeometry.scale.set(0.5, 0.5, 0.5);
+      scene.add(sunGeometry);
+
+      for (let i = 0; i < 4; i++) {
+        const lanternGeometry = new THREE.SphereGeometry(0.1, 10, 10);
+        const lanternMaterial = new THREE.MeshStandardMaterial({ metalness: 0.5, roughness: 0.0, emissive: 0xffffff });
+        const lantern = new THREE.Mesh(lanternGeometry, lanternMaterial);
+        lantern.position.set(i * 5, 2.5, 0);
+        lantern.castShadow = true;
+        lantern.name = 'lantern';
+        scene.add(lantern);
+
+        lanterns.push(lantern);
+      }
+
+      const geometry = new THREE.BoxGeometry(10, 10, 10);
+      const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+
+      const skyGeometry = new THREE.PlaneGeometry(1000, 1000);
+      const skyMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+      sky.rotation.x = -Math.PI / 2;
+      scene.add(sky);
+
+      const terrain = createTerrain(64, 64);
+      for (let i = 0; i < terrain.length; i++) {
+        for (let j = 0; j < terrain[i].length; j++) {
+          const voxelGeometry = new THREE.BoxGeometry(1, 1, 1);
+          const voxelMaterial = new THREE.MeshStandardMaterial({ color: 0xbbbbbb });
+          const voxel = new THREE.Mesh(voxelGeometry, voxelMaterial);
+          voxel.position.set(i * 2 - 32, 0.5 + terrain[i][j], j * 2 - 32);
+          voxel.receiveShadow = true;
+          voxel.castShadow = true;
+          scene.add(voxel);
+
+          voxel.group = 'stone';
+          voxel.name = `terrain_${i}_${j}`;
+
+          voxelCount++;
+        }
+      }
+
+      const pathGeometry = new THREE.PlaneGeometry(10, 10);
+      const pathMaterial = new THREE.MeshBasicMaterial({ color: 0x999999 });
+      const path = new THREE.Mesh(pathGeometry, pathMaterial);
+      path.position.set(0, 5, 0);
+      scene.add(path);
+      path.receiveShadow = true;
+
+      const bridgeGeometry = new THREE.PlaneGeometry(3, 1);
+      const bridgeMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+      const bridge = new THREE.Mesh(bridgeGeometry, bridgeMaterial);
+      bridge.position.set(0, 6, 0);
+      scene.add(bridge);
+      bridge.receiveShadow = true;
+
+      const pagodaGeometry = new THREE.BoxGeometry(4, 4, 4);
+      const pagodaMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const pagoda = new THREE.Mesh(pagodaGeometry, pagodaMaterial);
+      scene.add(pagoda);
+
+      const doorsGeometry = new THREE.PlaneGeometry(1, 1);
+      const doorsMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const doors = new THREE.Mesh(doorsGeometry, doorsMaterial);
+      doors.position.set(0, 2, 0);
+      scene.add(doors);
+
+      const pagodaFloor = new THREE.Mesh(pagodaGeometry, pagodaMaterial);
+      pagodaFloor.position.set(0, 2.5, 0);
+      scene.add(pagodaFloor);
+
+      const pagodaRoof = new THREE.PlaneGeometry(4, 4);
+      const pagodaRoofMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const pagodaRoofMesh = new THREE.Mesh(pagodaRoof, pagodaRoofMaterial);
+      pagodaRoofMesh.position.set(0, 4.5, 0);
+      scene.add(pagodaRoofMesh);
+
+      const pagodaColumn = new THREE.BoxGeometry(1, 4, 1);
+      const pagodaColumnMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const pagodaColumnMesh = new THREE.Mesh(pagodaColumn, pagodaColumnMaterial);
+      pagodaColumnMesh.position.set(0, 5.5, 0);
+      scene.add(pagodaColumnMesh);
+
+      const jizo = new THREE.BoxGeometry(2, 4, 2);
+      const jizoMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+      const jizoMesh = new THREE.Mesh(jizo, jizoMaterial);
+      jizoMesh.position.set(0, -2, 0);
+      scene.add(jizoMesh);
+
+      const jizo = new THREE.BoxGeometry(2, 4, 2);
+      const jizoMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+      const jizoMesh = new THREE.Mesh(jizo, jizoMaterial);
+      jizoMesh.position.set(0, 10, 0);
+      scene.add(jizoMesh);
+
+      const koiGeometry = new THREE.SphereGeometry(1, 10, 10);
+      const koiMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+      const koi = new THREE.Mesh(koiGeometry, koiMaterial);
+      koi.position.set(0, 0, 0);
+      scene.add(koi);
+
+      const toriiGeometry = new THREE.PlaneGeometry(2, 2);
+      const toriiMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const torii = new THREE.Mesh(toriiGeometry, toriiMaterial);
+      torii.position.set(0, -4, 0);
+      scene.add(torii);
+
+      const bambooGeometry = new THREE.PlaneGeometry(5, 5);
+      const bambooMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const bamboo = new THREE.Mesh(bambooGeometry, bambooMaterial);
+      bamboo.position.set(0, 0, 0);
+      scene.add(bamboo);
+
+      const flowerGeometry = new THREE.SphereGeometry(0.5, 10, 10);
+      const flowerMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+      flower.position.set(0, 0, 0);
+      scene.add(flower);
+
+      const treesGeometry = new Array(8).fill(0).map(() => {
+        const treeGeometry = new THREE.SphereGeometry(2, 10, 10);
+        const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x808000 });
+        const tree = new THREE.Mesh(treeGeometry, treeMaterial);
+        tree.position.set(Math.random() * 100 - 50, Math.random() * 100 - 50 + 5, Math.random() * 100 - 50);
+        tree.receiveShadow = true;
+        tree.castShadow = true;
+        scene.add(tree);
+
+        tree.group = 'tree';
+        tree.name = `tree_${Math.random()}`;
+
+        voxelCount++;
+
+        return tree;
+      });
+
+      const waterGeometry = new THREE.PlaneGeometry(1, 1);
+      const waterMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+      waterMesh.position.set(0, -2, 0);
+      scene.add(waterMesh);
+
+      const waterfallGeometry = new THREE.PlaneGeometry(2, 2);
+      const waterfallMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+      const waterfallMesh = new THREE.Mesh(waterfallGeometry, waterfallMaterial);
+      waterfallMesh.position.set(0, -5, 1);
+      scene.add(waterfallMesh);
+
+      const treeWindGeometry = new THREE.PlaneGeometry(100, 100);
+      const treeWindMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+      const treeWindMesh = new THREE.Mesh(treeWindGeometry, treeWindMaterial);
+      treeWindMesh.position.set(0, 0, 0);
+      scene.add(treeWindMesh);
+
+      const trees = treesGeometry;
+      const treeWind = treeWindMesh;
+
+      const flowersGeometry = new Array(40).fill(0).map(() => {
+        const flowerGeometry = new THREE.SphereGeometry(0.5, 10, 10);
+        const flowerMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+        flower.position.set(Math.random() * 100 - 50, Math.random() * 10, Math.random() * 100 - 50);
+        flower.receiveShadow = true;
+        flower.castShadow = true;
+        scene.add(flower);
+
+        flower.group = 'flower';
+        flower.name = `flower_${Math.random()}`;
+
+        voxelCount++;
+
+        return flower;
+      });
+
+      const treesAndFlowers = [];
+
+      for (let i = 0; i < trees.length; i++) {
+        treesAndFlowers.push(trees[i]);
+      }
+
+      for (let i = 0; i < flowersGeometry.length; i++) {
+        treesAndFlowers.push(flowersGeometry[i]);
+      }
+
+      voxelCount++;
+
+      pagodaFloors = 5;
+
+      const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+      const orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+      orbitControls.enableDamping = true;
+      orbitControls.dampingFactor = 0.05;
+      orbitControls.screenSpacePanning = true;
+      orbitControls.target.set(0, 5, 0);
+
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const time = clock.getDelta();
+
+        update(time);
+        render();
+
+        updateLight();
+      }
+
+      function update(time) {
+        treeWind.position.x = trees[0].position.x + Math.sin(time * 0.1) * time * 5;
+        treeWind.position.y = trees[0].position.y + Math.sin(time * 0.1) * time * 5;
+
+        if (timeOfDay > 0.85) {
+          sunGeometry.material.emissiveStrength = 0;
+        } else {
+          sunGeometry.material.emissiveStrength = 1 - timeOfDay * 0.85;
+        }
+
+        timeOfDay += 0.001;
+
+        if (timeOfDay > 1) timeOfDay = 0;
+
+        if (timeOfDay < 0.5) {
+          trees.forEach(tree => {
+            if (tree.position.y < trees[0].position.y + 1) {
+              tree.position.y += 0.01;
+            } else {
+              tree.position.y -= 0.005;
+            }
+          });
+        } else {
+          trees.forEach(tree => {
+            if (tree.position.y < trees[0].position.y + 0.5) {
+              tree.position.y += 0.01;
+            } else {
+              tree.position.y -= 0.005;
+            }
+          });
+        }
+
+        treesAndFlowers.forEach(voxel => {
+          if (voxel.position.y > 5 && voxel.group === 'flower' && Math.random() < 0.1) {
+            voxel.position.y -= 0.01;
+          }
+
+          if (voxel.position.y < 5 && voxel.group === 'tree' && Math.random() < 0.1) {
+            voxel.position.y += 0.01;
+          }
+        });
+
+        koi.position.y = Math.sin(time * 0.1) * 10;
+
+        trees.forEach(tree => {
+          if (tree.position.y > trees[0].position.y + 8) {
+            tree.position.y -= 0.01;
+          } else {
+            tree.position.y += 0.005;
+          }
+        });
+
+        trees.forEach(tree => {
+          if (tree.position.y > trees[0].position.y - 2) {
+            tree.position.y -= 0.01;
+          }
+        });
+
+        pagoda.position.y = trees[0].position.y;
+
+        pagodaColumnMesh.position.y = 5;
+
+        doorPosition = pagodaFloors;
+      }
+
+      function updateLight() {
+        const light = lanterns[0].material.emissive;
+        lanterns.forEach(lantern => {
+          lantern.material.emissive = new THREE.Color(Math.sin(timeOfDay) * 0.5 + 0.5, Math.sin(timeOfDay) * 0.5 + 0.5, Math.sin(timeOfDay) * 0.5 + 0.5);
+        });
+      }
+
+      function render() {
+        renderer.setAnimationLoop(animate);
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        controls.update();
+        renderer.render(scene, camera);
+
+        document.getElementById('fps').innerText = Math.round(1000 / (clock.getDelta() * 1000));
+        document.getElementById('voxelCount').innerText = voxelCount;
+
+        const intro = new Promise(resolve => {
+          window.requestAnimationFrame(() => {
+            const cameraPosition = new THREE.Vector3(0, 10, 0);
+            camera.position.set(cameraPosition.x, cameraPosition.y, cameraPosition.z);
+
+            if (camera.position.distanceTo(pagoda.position) > 50) {
+              camera.position.x -= (cameraPosition.x - pagoda.position.x) * 0.1;
+              camera.position.y -= (cameraPosition.y - pagoda.position.y) * 0.1;
+              camera.position.z -= (cameraPosition.z - pagoda.position.z) * 0.1;
+
+              requestAnimationFrame(() => {
+                intro();
+              });
+            } else {
+              camera.position.x = cameraPosition.x;
+              camera.position.y = cameraPosition.y;
+              camera.position.z = cameraPosition.z;
+              resolve();
+            }
+          });
+        });
+
+        intro.then(() => {
+          window.addEventListener('click', () => {
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(scene.children);
+
+            for (let i = 0; i < intersects.length; i++) {
+              const object = intersects[i].object;
+
+              if (object.name === 'lantern') {
+                object.material.emissive.set(0, 0, 0);
+
+                setTimeout(() => {
+                  object.material.emissive.set(Math.sin(timeOfDay) * 0.5 + 0.5, Math.sin(timeOfDay) * 0.5 + 0.5, Math.sin(timeOfDay) * 0.5 + 0.5);
+                }, 100);
+              }
+
+              if (object.name === 'door') {
+                object.material.opacity = 0;
+                setTimeout(() => {
+                  object.material.opacity = 1;
+                }, 1000);
+              }
+            }
+          });
+        });
+      }
+
+      function createTerrain(width, length) {
+        const terrain = [];
+
+        for (let i = 0; i < width; i++) {
+          const row = [];
+
+          for (let j = 0; j < length; j++) {
+            const x = i - width / 2;
+            const z = j - length / 2;
+
+            const height = Math.abs(x) * 0.05 + Math.abs(z) * 0.05 + (timeOfDay * 10);
+
+            row.push(height);
+          }
+
+          terrain.push(row);
+        }
+
+        return terrain;
+      }
+
+      // create and add pagoda
+      function addLayer(geometry, material, x, z, offset) {
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(x, 5 + offset, z);
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
+        scene.add(mesh);
+
+        const column = new THREE.BoxGeometry(0.5, 5, 0.5);
+        const columnMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+        const columnMesh = new THREE.Mesh(column, columnMaterial);
+        columnMesh.position.set(x + 1.5, 5 + offset + 5, z + 1.5);
+        columnMesh.receiveShadow = true;
+        columnMesh.castShadow = true;
+        scene.add(columnMesh);
+
+        return mesh;
+      }
+
+      const pagodaGeometry = new THREE.BoxGeometry(4, 4, 4);
+      const pagodaMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      addLayer(pagodaGeometry, pagodaMaterial, 0, 0, 0);
+      addLayer(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0, 0, 0.5);
+      addLayer(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0, 0, 1);
+      addLayer(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0, 0, 1.5);
+      addLayer(new THREE.PlaneGeometry(2, 2), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0, 0, 2);
+      const pagodaColumn = new THREE.BoxGeometry(2, 4, 2);
+      const pagodaColumnMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const pagodaColumnMesh = new THREE.Mesh(pagodaColumn, pagodaColumnMaterial);
+      pagodaColumnMesh.position.set(1, 5, 1);
+      scene.add(pagodaColumnMesh);
+    }
+
+    // add pagoda details
+    function addDetails(geometry, material, height, position, offset) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(position.x, position.y + height + offset, position.z);
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      scene.add(mesh);
+    }
+
+    addDetails(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0.1, new THREE.Vector3(-0.75, 4.5, 0.75), 0);
+    addDetails(new THREE.PlaneGeometry(0.5, 1.5), new THREE.MeshStandardMaterial({ color: 0xff00ff }), 0.05, new THREE.Vector3(0.25, 4.5, 1), 0);
+    addDetails(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0.05, new THREE.Vector3(-0.75, 5, 0.75), 0);
+    addDetails(new THREE.PlaneGeometry(0.5, 1.5), new THREE.MeshStandardMaterial({ color: 0xff00ff }), 0.05, new THREE.Vector3(0.25, 5, 1), 0);
+    addDetails(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshStandardMaterial({ color: 0xff0000 }), 0.05, new THREE.Vector3(-0.75, 4.5 + 1.5, 0.75), 0);
+    addDetails(new THREE.PlaneGeometry(0.5, 1.5), new THREE.MeshStandardMaterial({ color: 0xff00ff }), 0.05, new THREE.Vector3(0.25, 4.5 + 1.5, 1), 0);
+
+    // add pagoda roof
+    function addRoof(geometry, material, position) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(position.x, position.y, position.z);
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      scene.add(mesh);
+    }
+
+    function createRoofGeometry() {
+      const geometry = new THREE.PlaneGeometry(4, 4);
+      const vertices = geometry.attributes.position.array;
+
+      for (let i = 0; i < vertices.length; i += 3) {
+        const x = vertices[i];
+        const y = vertices[i + 1];
+        const z = vertices[i + 2];
+
+        vertices[i + 1] = y + Math.sin(x / 2) * 0.1 - Math.sin(z / 2) * 0.1;
+      }
+
+      geometry.attributes.position.needsUpdate = true;
+
+      return geometry;
+    }
+
+    const roofGeometry = createRoofGeometry();
+    const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    addRoof(roofGeometry, roofMaterial, new THREE.Vector3(0.25, 3, 0.75));
+
+    // add pagoda columns
+    function addColumn(geometry, material, height, position, offset) {
+      const column = new THREE.Mesh(geometry, material);
+      column.position.set(position.x + 1.5, 5 + height + offset, position.y + 1.5);
+      column.receiveShadow = true;
+      column.castShadow = true;
+      scene.add(column);
+
+      const capGeometry = new THREE.PlaneGeometry(0.5, 0.5);
+      const capMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+      const cap = new THREE.Mesh(capGeometry, capMaterial);
+      cap.position.set(position.x + 1.25, 5 + height + offset + 2.5, position.y + 1.25);
+      cap.receiveShadow = true;
+      cap.castShadow = true;
+      scene.add(cap);
+
+      return column;
+    }
+
+    const columnGeometry = new THREE.BoxGeometry(0.5, 5, 0.5);
+    const columnMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const leftColumn = addColumn(columnGeometry, columnMaterial, 0.05, new THREE.Vector3(-1.25, 0.5, 0.25), 0);
+    const rightColumn = addColumn(columnGeometry, columnMaterial, 0.05, new THREE.Vector3(1.25, 0.5, 0.25), 0);
+
+    // add lanterns
+    function addLantern(position) {
+      const geometry = new THREE.SphereGeometry(0.1, 10, 10);
+      const material = new THREE.MeshStandardMaterial({ metalness: 0.5, roughness: 0.0, emissive: new THREE.Color(Math.sin(timeOfDay) * 0.5 + 0.5, Math.sin(timeOfDay) * 0.5 + 0.5, Math.sin(timeOfDay) * 0.5 + 0.5) });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(position.x, position.y, position.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+    }
+
+    const leftLanternPosition = new THREE.Vector3(-1.25, 2.5, 0.25);
+    const rightLanternPosition = new THREE.Vector3(1.25, 2.5, 0.25);
+    addLantern(leftLanternPosition);
+    addLantern(rightLanternPosition);
+
+    // add trees
+    function addTree(geometry, material, height, position) {
+      const tree = new THREE.Mesh(geometry, material);
+      tree.position.set(position.x, position.y - height, position.z);
+      tree.receiveShadow = true;
+      tree.castShadow = true;
+      scene.add(tree);
+    }
+
+    const treeGeometry = new THREE.SphereGeometry(2, 10, 10);
+    const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x808000 });
+    addTree(treeGeometry, treeMaterial, 1, new THREE.Vector3(-1, 10, 0));
+    addTree(treeGeometry, treeMaterial, 1, new THREE.Vector3(1, 10, 0));
+    addTree(treeGeometry, treeMaterial, 1, new THREE.Vector3(-5, 0, 4));
+    addTree(treeGeometry, treeMaterial, 1, new THREE.Vector3(-2, 0, -4));
+    addTree(treeGeometry, treeMaterial, 1, new THREE.Vector3(3, 0, 2));
+    addTree(treeGeometry, treeMaterial, 1, new THREE.Vector3(-3, 0, -2));
+
+    // add flowers
+    function addFlower(geometry, material, height, position) {
+      const flower = new THREE.Mesh(geometry, material);
+      flower.position.set(position.x, position.y + height, position.z);
+      flower.receiveShadow = true;
+      flower.castShadow = true;
+      scene.add(flower);
+    }
+
+    const flowerGeometry = new THREE.SphereGeometry(0.5, 10, 10);
+    const flowerMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(-5, 5, -4));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(-2, 5, 4));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(3, 5, 2));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(-3, 5, -2));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(1, 5, 6));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(-4, 5, -6));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(3, 5, -4));
+    addFlower(flowerGeometry, flowerMaterial, 0, new THREE.Vector3(-1, 5, 2));
+
+    // add bridge
+    function addBridge(geometry, material, start, end) {
+      const bridge = new THREE.Mesh(geometry, material);
+      bridge.position.set(start.position.x + (end.position.x - start.position.x) / 2, start.position.y + (end.position.y - start.position.y) / 2, start.position.z + (end.position.z - start.position.z) / 2);
+      bridge.receiveShadow = true;
+      bridge.castShadow = true;
+      scene.add(bridge);
+    }
+
+    const bridgeGeometry = new THREE.PlaneGeometry(3, 1);
+    const bridgeMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+    addBridge(bridgeGeometry, bridgeMaterial, new THREE.Vector3(0, 5, 0), new THREE.Vector3(0, 6, 0));
+
+    // add water
+    function addWater(geometry, material, height, position) {
+      const water = new THREE.Mesh(geometry, material);
+      water.position.set(position.x, position.y + height, position.z);
+      water.receiveShadow = true;
+      water.castShadow = true;
+      scene.add(water);
+    }
+
+    const waterGeometry = new THREE.PlaneGeometry(10, 10);
+    const waterMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    addWater(waterGeometry, waterMaterial, 0, new THREE.Vector3(0, 5, 0));
+
+    // add waterfall
+    function addWaterfall(geometry, material, height, position) {
+      const waterfall = new THREE.Mesh(geometry, material);
+      waterfall.position.set(position.x, position.y + height, position.z);
+      waterfall.receiveShadow = true;
+      waterfall.castShadow = true;
+      scene.add(waterfall);
+    }
+
+    const waterfallGeometry = new THREE.PlaneGeometry(2, 2);
+    const waterfallMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    addWaterfall(waterfallGeometry, waterfallMaterial, 0, new THREE.Vector3(0, 5, 1));
+
+    // add trees
+    function addSmallTrees(geometry, material, height, position, count) {
+      for (let i = 0; i < count; i++) {
+        const smallTree = new THREE.Mesh(geometry, material);
+        smallTree.position.set(position.x + (Math.random() - 0.5) * 10, position.y - height, position.z + (Math.random() - 0.5) * 10);
+        smallTree.receiveShadow = true;
+        smallTree.castShadow = true;
+        scene.add(smallTree);
+      }
+    }
+
+    const smallTreeGeometry = new THREE.SphereGeometry(1, 10, 10);
+    const smallTreeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000});
+    addSmallTrees(smallTreeGeometry, smallTreeMaterial, 1, new THREE.Vector3(0, 5, 0), 10);
+  </script>
+</body>
+</html>
