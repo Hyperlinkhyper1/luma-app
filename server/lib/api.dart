@@ -13,6 +13,7 @@ import 'ai_book_review.dart';
 import 'ai_detector_review.dart';
 import 'ai_image.dart';
 import 'ai_mode_routing.dart';
+import 'ai_mistral_models.dart';
 import 'ai_model_catalog.dart';
 import 'ai_model_refresh.dart';
 import 'ai_model_sources.dart';
@@ -10851,9 +10852,10 @@ syncToolbar();
             '${price(m.inputPricePerM)} in / ${price(m.outputPricePerM)} out per M'
             '</option>')
         .join();
+    final mistralSuggestions = mistralModelSuggestions(mistralModels);
     final mistralOptions = {
       ...kDefaultAiModeModels[AiUpstream.mistral]!.values,
-      ...mistralModels,
+      ...mistralSuggestions,
     }.map((m) => '<option value="${esc(m)}">').join();
     Map<String, Object?> modelStats(AiModel? model, {required bool pricing}) => {
           if (model != null) 'name': model.name,
@@ -10889,12 +10891,14 @@ syncToolbar();
         },
       for (final id in {
         ...kDefaultAiModeModels[AiUpstream.mistral]!.values,
-        ...mistralModels,
+        ...mistralSuggestions,
       })
         {
           'upstream': 'mistral',
           'id': id,
           ...modelStats(catalogById['mistralai/$id'], pricing: false),
+          if (documentedMistralChatModels.containsKey(id))
+            'name': documentedMistralChatModels[id],
         },
     ];
     // JSON in a script element must not contain a literal closing tag.
