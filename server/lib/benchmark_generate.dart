@@ -1,7 +1,41 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'ai_mode_routing.dart';
 import 'ai_usage_store.dart';
+
+/// Restarts one interrupted transport without joining two generated pages.
+/// Provider errors and completed model responses are never retried.
+Future<T> retryBenchmarkStream<T>(
+  ChatStreamAccumulator acc,
+  Future<T> Function() request, {
+  required bool Function() canRetry,
+  required Future<void> Function() beforeRetry,
+}) async {
+  for (var attempt = 0;; attempt++) {
+    try {
+      return await request();
+    } on IOException {
+      if (attempt >= 1 ||
+          !canRetry() ||
+          acc.done ||
+          acc.finishReason != null ||
+          acc.error != null) {
+        rethrow;
+      }
+      await beforeRetry();
+      if (!canRetry()) rethrow;
+      acc.reset();
+    }
+  }
+}
+
+/// EOF without a terminal event is a broken stream, even if HTTP was 200.
+void checkBenchmarkStreamEnd(ChatStreamAccumulator acc) {
+  if (!acc.done && acc.finishReason == null && acc.error == null) {
+    throw const HttpException('Connection closed before generation finished');
+  }
+}
 
 Future<void> recordBenchmarkGenerationUsage(
   AiUsageStore store,
@@ -219,6 +253,18 @@ class ChatStreamAccumulator {
 
   String get content => _content.toString();
   int get contentChars => _content.length;
+
+  void reset() {
+    _content.clear();
+    reasoningChars = 0;
+    finishReason = null;
+    nativeFinishReason = null;
+    usage = const AiCallUsage();
+    error = null;
+    errorCode = null;
+    providerStatus = null;
+    done = false;
+  }
 
   void addLine(String line) {
     if (!line.startsWith('data:')) return;

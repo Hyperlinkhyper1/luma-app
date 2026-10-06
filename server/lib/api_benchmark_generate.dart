@@ -568,19 +568,41 @@ extension BenchmarkGenerateApi on Api {
 
   Future<void> _runBenchmarkStream(
       BenchmarkGenJob job, ChatStreamAccumulator acc) async {
-    var (status, errorBody) =
-        await _streamBenchmarkGen(job, acc, withMaxTokens: true);
-    // Some models cap output below what was asked and refuse the request
-    // outright; their own maximum is the next best thing.
-    if (status == HttpStatus.badRequest &&
-        acc.contentChars == 0 &&
-        RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
-                caseSensitive: false)
-            .hasMatch(errorBody) &&
-        !job.stopRequested) {
-      (status, errorBody) =
-          await _streamBenchmarkGen(job, acc, withMaxTokens: false);
-    }
+    final deadline =
+        DateTime.fromMillisecondsSinceEpoch(job.startedAtMs).add(_totalTimeout);
+    final (status, errorBody) = await retryBenchmarkStream(
+      acc,
+      () async {
+        var result = await _streamBenchmarkGen(job, acc, withMaxTokens: true);
+        // Some models cap output below what was asked and refuse the request
+        // outright; their own maximum is the next best thing.
+        if (result.$1 == HttpStatus.badRequest &&
+            acc.contentChars == 0 &&
+            RegExp(r'max[_ ]?(output[_ ]?)?tokens|max_completion',
+                    caseSensitive: false)
+                .hasMatch(result.$2) &&
+            !job.stopRequested) {
+          result = await _streamBenchmarkGen(job, acc, withMaxTokens: false);
+        }
+        return result;
+      },
+      canRetry: () => !job.stopRequested && DateTime.now().isBefore(deadline),
+      beforeRetry: () async {
+        job.client?.close(force: true);
+        job.client = null;
+        await _saveBenchmarkGenOutput(job, acc.content);
+        try {
+          await recordBenchmarkGenerationUsage(
+              aiUsage, store.userIdByEmail, job.route, acc.usage);
+        } catch (error) {
+          stderr.writeln('[luma] benchmark usage recording failed: $error');
+        }
+        job.chars = 0;
+        job.reasoningChars = 0;
+        job.tokens = 0;
+        job.httpStatus = null;
+      },
+    );
     await _saveBenchmarkGenOutput(job, acc.content);
     job.httpStatus = status;
     if (job.stopRequested) {
@@ -789,6 +811,7 @@ extension BenchmarkGenerateApi on Api {
     req.headers.contentType = ContentType.json;
     req.add(utf8.encode(jsonEncode(body)));
     final res = await req.close().timeout(_idleTimeout);
+    job.httpStatus = res.statusCode;
     if (res.statusCode != HttpStatus.ok) {
       final text = await res
           .transform(utf8.decoder)
@@ -814,6 +837,7 @@ extension BenchmarkGenerateApi on Api {
         throw TimeoutException('total');
       }
     }
+    if (!job.stopRequested) checkBenchmarkStreamEnd(acc);
     return (HttpStatus.ok, '');
   }
 
