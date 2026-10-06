@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Your Name">
+  <meta name="description" content="Interactive Mechanical Keyboard Showcase">
+  <title>Mechanical Keyboard Showcase</title>
+  <style>
+    /* Global Styles */
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    
+    /* Keyboard Showcase */
+    #keyboard-showcase {
+      position: relative;
+      width: 600px;
+      height: 400px;
+      margin: 50px auto;
+      perspective: 600px;
+    }
+    
+    .keycap {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+    
+    .switch {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+    
+    .keycap, .switch {
+      background-color: #2F3238;
+      border-radius: 5px;
+      width: 40px;
+      height: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      color: #F7F7F7;
+    }
+    
+    .switch {
+      width: 20px;
+      height: 15px;
+    }
+    
+    .foam {
+      position: absolute;
+      width: 500px;
+      height: 300px;
+      background-color: #F0F0F0;
+      transform: rotateX(90deg) rotateZ(-45deg);
+    }
+    
+    .plate {
+      position: absolute;
+      width: 500px;
+      height: 300px;
+      background-color: #C6C7CA;
+      transform: rotateX(180deg) rotateZ(-45deg);
+    }
+    
+    .pcb {
+      position: absolute;
+      width: 500px;
+      height: 300px;
+      background-color: #455A64;
+      transform: rotateX(270deg) rotateZ(90deg);
+    }
+    
+    .case {
+      position: absolute;
+      width: 600px;
+      height: 400px;
+      background-color: #2F3238;
+      cursor: default;
+    }
+    
+    .control-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      font-size: 14px;
+    }
+    
+    #replay-button {
+      border: none;
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: #F7F7F7;
+      cursor: pointer;
+    }
+    
+    #mute-switch {
+      position: relative;
+      width: 40px;
+      height: 20px;
+      background-color: #F0F0F0;
+      cursor: pointer;
+    }
+    
+    #mute-switch:checked + .handle {
+      left: 20px;
+    }
+    
+    #mute-switch:hover + .handle {
+      left: 15px;
+    }
+    
+    .handle {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: #4CAF50;
+      cursor: pointer;
+    }
+    
+    #hint {
+      position: absolute;
+      top: 0;
+      right: 20px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    /* Keyboard Layout */
+    .row {
+      display: flex;
+      align-items: center;
+    }
+    
+    .column {
+      margin: 10px;
+    }
+    
+    .key {
+      width: 40px;
+      height: 20px;
+      border-radius: 5px;
+      background-color: #2F3238;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 14px;
+      color: #F7F7F7;
+      cursor: pointer;
+    }
+    
+    .group-1 {
+      background-color: #FFC107;
+    }
+    
+    .group-2 {
+      background-color: #8BC34A;
+    }
+    
+    .sound-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #2F3238;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="keyboard-showcase">
+    <div class="pcb" id="pcb"></div>
+    <div class="foam" id="foam"></div>
+    <div class="plate" id="plate"></div>
+    <div class="case" id="case">
+      
+      <!-- Keycaps -->
+      <div class="row">
+        <div class="key column" id="key-1"></div>
+        <div class="key column" id="key-2"></div>
+        <div class="key column" id="key-3"></div>
+        <div class="key column" id="key-4"></div>
+        <div class="key column" id="key-5"></div>
+        <div class="key column" id="key-6"></div>
+        <div class="key column" id="key-7"></div>
+        <div class="key column" id="key-8"></div>
+        <div class="key column" id="key-9"></div>
+        <div class="key column" id="key-10"></div>
+        <div class="key column" id="key-11"></div>
+        <div class="key column" id="key-12"></div>
+        <div class="key column" id="key-13"></div>
+        <div class="key column" id="key-14"></div>
+        <div class="key column" id="key-15"></div>
+        <div class="key column" id="key-16"></div>
+      </div>
+      <div class="row">
+        <div class="key column" id="key-17"></div>
+        <div class="key column" id="key-18"></div>
+        <div class="key column" id="key-19"></div>
+        <div class="key column" id="key-20"></div>
+        <div class="key column" id="key-21"></div>
+        <div class="key column" id="key-22"></div>
+        <div class="key column" id="key-23"></div>
+        <div class="key column" id="key-24"></div>
+        <div class="key" id="spacebar" class="key column group-1"></div>
+      </div>
+      <div class="row">
+        <div class="key" id="enter" class="key column group-2"></div>
+        <div class="key" id="backspace" class="key column group-2"></div>
+      </div>
+      
+      <!-- Rotary Knob -->
+      <div class="rotary-knob" id="rotary-knob"></div>
+    </div>
+    
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <input type="checkbox" id="mute-switch" />
+      <label for="mute-switch"><span class="handle"></span></label>
+      <button id="replay-button">Replay Assembly</button>
+    </div>
+  </div>
+  
+  <!-- Hint for sound permission -->
+  <div id="hint">Click to enable sound</div>
+  
+  <script>
+    // Get elements
+    const pcb = document.getElementById('pcb');
+    const foam = document.getElementById('foam');
+    const plate = document.getElementById('plate');
+    const caseDiv = document.getElementById('case');
+    const keycaps = document.querySelectorAll('.key');
+    const spacebar = document.getElementById('spacebar');
+    const enter = document.getElementById('enter');
+    const backspace = document.getElementById('backspace');
+    const rotaryKnob = document.getElementById('rotary-knob');
+    const muteSwitch = document.getElementById('mute-switch');
+    const replayButton = document.getElementById('replay-button');
+    const soundHint = document.getElementById('hint');
+    
+    // Initialize sound variables
+    let hasSound = false;
+    let audioContext;
+    
+    // Get and set audio context
+    (function() {
+      if (typeof AudioContext !== 'undefined') {
+        audioContext = new AudioContext();
+        // Try to get default gain node
+        try {
+          audioContext.defaultGain = audioContext.createGain();
+          audioContext.defaultGain.gain.value = 0.2;
+          audioContext.defaultGain.connect(audioContext.destination);
+        } catch (error) {
+          console.log('Could not create default gain node.', error);
+        }
+      }
+    })();
+    
+    // Function to generate audio
+    function generateAudio(frequency, duration) {
+      const gain = audioContext ? audioContext.defaultGain : null;
+      if (audioContext && gain) {
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = 'sine';
+        oscillator.frequency.value = frequency;
+        oscillator.connect(gain);
+        oscillator.start();
+        setTimeout(() => {
+          oscillator.stop();
+        }, duration);
+      }
+    }
+    
+    // Function to play key sound
+    function playKeySound(key) {
+      const soundClass = key.classList.contains('group-1') ? 'click' : 'typewriter';
+      switch (soundClass) {
+        case 'click':
+          generateAudio(150, 100);
+          break;
+        case 'typewriter':
+          generateAudio(250, 100);
+          break;
+        default:
+          generateAudio(150, 100);
+      }
+    }
+    
+    // Event listeners for key presses
+    document.addEventListener('keydown', (event) => {
+      const key = document.querySelector(`#${event.key.toLowerCase().replace(/[^a-z]/g, '')}`);
+      if (key) {
+        key.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+          key.style.transform = '';
+        }, 100);
+        hasSound && playKeySound(key);
+        if (event.key === ' ') {
+          spacebar.style.transform = 'scale(0.9)';
+          setTimeout(() => {
+            spacebar.style.transform = '';
+          }, 100);
+          hasSound && playKeySound(spacebar);
+        } else if (event.key === 'Enter') {
+          enter.style.transform = 'scale(0.9)';
+          setTimeout(() => {
+            enter.style.transform = '';
+          }, 100);
+          hasSound && playKeySound(enter);
+        } else if (event.key === 'Backspace') {
+          backspace.style.transform = 'scale(0.9)';
+          setTimeout(() => {
+            backspace.style.transform = '';
+          }, 100);
+          hasSound && playKeySound(backspace);
+        }
+      }
+    });
+    
+    // Event listeners for mouse clicks
+    keycaps.forEach((key) => {
+      key.addEventListener('click', () => {
+        hasSound && playKeySound(key);
+        key.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+          key.style.transform = '';
+        }, 100);
+      });
+    });
+    spacebar.addEventListener('click', () => {
+      hasSound && playKeySound(spacebar);
+      spacebar.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        spacebar.style.transform = '';
+      }, 100);
+    });
+    enter.addEventListener('click', () => {
+      hasSound && playKeySound(enter);
+      enter.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        enter.style.transform = '';
+      }, 100);
+    });
+    backspace.addEventListener('click', () => {
+      hasSound && playKeySound(backspace);
+      backspace.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        backspace.style.transform = '';
+      }, 100);
+    });
+    
+    // Animations
+    const assemblySteps = [
+      {pcb: -200, foam: -300, plate: -100, case: 0, knob: 0},
+      // Add more assembly steps as needed
+    ];
+    let animationStep = 0;
+    let animationStarted = false;
+    function animateAssembly() {
+      if (animationStarted) return;
+      animationStarted = true;
+      const step = assemblySteps[animationStep];
+      pcb.style.transform = `rotateX(${step.pcb}deg) rotateZ(${step.pcb * 0.1}deg) translateZ(0) translateX(0)`;
+      foam.style.transform = `rotateX(${step.foam}deg) rotateZ(${step.foam * 0.1}deg) translateZ(0) translateX(0)`;
+      plate.style.transform = `rotateX(${step.plate}deg) rotateZ(${step.plate * 0.1}deg) translateZ(0) translateX(0)`;
+      caseDiv.style.transform = `rotateX(${step.case}deg) rotateZ(${step.case * 0.1}deg) translateZ(0) translateX(0}`;
+      rotaryKnob.style.transform = `rotateY(${step.knob}deg) rotateX(${step.knob * 0.1}deg) translateZ(0) translateX(0)`;
+      animationStep++;
+      if (animationStep < assemblySteps.length) {
+        setTimeout(animateAssembly, 10); // animate every 10ms
+      } else {
+        animationStarted = false;
+        keycaps.forEach((key, index) => {
+          function animateKeycap() {
+            key.style.transform = `translateZ(0) translateX(-${index * 10}px) rotateX(${index * 10}deg) rotateZ(${index * 10}deg)`;
+            setTimeout(() => {
+              key.style.transform = `translateZ(0) rotateX(0) rotateZ(0)`;
+              const switchElement = document.createElement('div');
+              switchElement.classList.add('switch', 'switch-' + (index % 2 === 0 ? 'red' : 'blue'));
+              switchElement.style.transform = `rotateX(${index * 10}deg) rotateZ(${index * 10}deg) translateX(${index * 10}px)`;
+              caseDiv.appendChild(switchElement);
+              switchElement.style.transform = '';
+              switchElement.style.marginTop = '10px';
+              switchElement.style.marginLeft = '-' + index + 'px';
+            }, 100);
+          }
+          animateKeycap();
+        });
+      }
+    }
+    
+    // Event listener for replay button
+    replayButton.addEventListener('click', () => {
+      animationStep = 0;
+      animateAssembly();
+    });
+    
+    // Event listener for mute switch
+    muteSwitch.addEventListener('change', () => {
+      hasSound = muteSwitch.checked;
+      if (!hasSound) {
+        document.body.style.cursor = 'not-allowed';
+        animateAssembly();
+        soundHint.style.display = 'block';
+      } else {
+        document.body.style.cursor = 'default';
+        soundHint.style.display = 'none';
+      }
+    });
+    
+    // Add event listener for hint
+    soundHint.addEventListener('click', () => {
+      hasSound = true;
+      document.body.style.cursor = 'default';
+      soundHint.style.display = 'none';
+    });
+    
+    // Add initial animation
+    animateAssembly();
+  </script>
+</body>
+</html>
