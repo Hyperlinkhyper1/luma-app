@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D PC Builder</title>
+    <style>
+        /* Basic styling to get rid of browser defaults */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: monospace; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; }
+        #scene { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #hud { position: absolute; bottom: 30px; right: 30px; }
+        button { position: relative; margin: 5px; border: none; padding: 5px; cursor: pointer; }
+        .rgb-control { display: flex; gap: 5px; }
+        .color { width: 50px; height: 50px; border-radius: 9999px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <canvas id="scene"></canvas>
+    <div id="hud">
+        <button id="power-button">Power</button>
+        <div class="rgb-control">
+            <span class="label">RGB:</span>
+            <button class="red">R</button>
+            <button class="green">G</button>
+            <button class="blue">B</button>
+            <input type="color" id="color-picker" value="#ffffff">
+        </div>
+        <span id="fps"></span>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/exporters/GLTFExporter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/examples/js/loaders/OBJLoader.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('scene'), antialias: true });
+        document.body.appendChild(renderer.domElement);
+        const hud = document.getElementById('hud');
+        const powerButton = document.getElementById('power-button');
+        const colorPicker = document.getElementById('color-picker');
+        const rgbControl = hud.querySelector('.rgb-control');
+        const redButton = rgbControl.querySelector('.red');
+        const greenButton = rgbControl.querySelector('.green');
+        const blueButton = rgbControl.querySelector('.blue');
+
+        scene.background = new THREE.Color(0xf2f2f2);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        directionalLight.position.set(200, 200, 200);
+        scene.add(directionalLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 0.7);
+        pointLight.position.set(200, 200, 200);
+        scene.add(pointLight);
+
+        // Define shapes for the PC components
+        const shapes = {
+            case: {
+                geometry: new THREE.BoxGeometry(50, 20, 10),
+                material: new THREE.MeshPhongMaterial({ color: 0x444444 }),
+            },
+            gpu: {
+                geometry: new THREE.BoxGeometry(10, 10, 5),
+                material: new THREE.MeshPhongMaterial({ color: 0xff0000 }),
+            },
+            motherboard: {
+                geometry: new THREE.BoxGeometry(10, 10, 5),
+                material: new THREE.MeshPhongMaterial({ color: 0x0000ff }),
+            },
+            fans: {
+                geometry: new THREE.CylinderGeometry(2, 2, 5, 32),
+                material: new THREE.MeshPhongMaterial({ color: 0xffff00 }),
+            },
+            ram: {
+                geometry: new THREE.BoxGeometry(5, 5, 10),
+                material: new THREE.MeshPhongMaterial({ color: 0x00ff00 }),
+            },
+            power Supply: {
+                geometry: new THREE.BoxGeometry(10, 5, 5),
+                material: new THREE.MeshPhongMaterial({ color: 0xff0000 }),
+            },
+            rgb Led: {
+                geometry: new THREE.CylinderGeometry(0.5, 0.5, 2, 32),
+                material: new THREE.MeshPhongMaterial({ color: 0xffffff }),
+            },
+        };
+
+        // Create components
+        const caseMesh = new THREE.Mesh(shapes.case.geometry, shapes.case.material);
+        scene.add(caseMesh);
+
+        const gpuMesh = new THREE.Mesh(shapes.gpu.geometry, shapes.gpu.material);
+        gpuMesh.position.set(5, 10, 0);
+        scene.add(gpuMesh);
+
+        const motherboardMesh = new THREE.Mesh(shapes.motherboard.geometry, shapes.motherboard.material);
+        motherboardMesh.position.set(15, 10, 0);
+        scene.add(motherboardMesh);
+
+        const fansMesh = new THREE.Mesh(shapes.fans.geometry, shapes.fans.material);
+        fansMesh.position.set(25, 10, 0);
+        fansMesh.rotation.y = Math.PI / 4;
+        scene.add(fansMesh);
+
+        const ramMesh = new THREE.Mesh(shapes.ram.geometry, shapes.ram.material);
+        ramMesh.position.set(35, 10, 0);
+        scene.add(ramMesh);
+
+        const powerSupplyMesh = new THREE.Mesh(shapes.PowerSupply.geometry, shapes.PowerSupply.material);
+        powerSupplyMesh.position.set(45, 10, 0);
+        scene.add(powerSupplyMesh);
+
+        const rgbLedMesh = new THREE.Mesh(shapes.rgbLed.geometry, shapes.rgbLed.material);
+        rgbLedMesh.position.set(5, 10, 2);
+        scene.add(rgbLedMesh);
+
+        // Add light sources
+        const gpuLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        gpuLight.position.set(0, 0, 5);
+        scene.add(gpuLight);
+
+        const moboLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        moboLight.position.set(0, 0, 5);
+        scene.add(moboLight);
+
+        // Animation and interaction
+        let powerOn = false;
+        let color = 0xffffff;
+
+        camera.position.set(100, 100, 100);
+
+        function animate(timestamp) {
+            requestAnimationFrame(animate);
+
+            if (powerOn) {
+                // GPU
+                gpuMesh.rotation.y += 0.01;
+                gpuLight.position.y = Math.sin(timestamp * 0.01) * 20;
+
+                // Motherboard
+                motherboardMesh.rotation.x += 0.01;
+                moboLight.position.x = Math.sin(timestamp * 0.01) * 20;
+
+                // Fans
+                fansMesh.rotation.x += 0.01;
+                fansMesh.rotation.y += 0.01;
+
+                // RGB LED
+                rgbLedMesh.scale.x += 0.001;
+                rgbLedMesh.scale.y += 0.001;
+                rgbLedMesh.material.color.set(color);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onPowerClick() {
+            powerOn = !powerOn;
+            if (powerOn) {
+                document.getElementById('power-button').textContent = 'Power Off';
+            } else {
+                document.getElementById('power-button').textContent = 'Power On';
+            }
+        }
+
+        function onRgbChange() {
+            color = colorPicker.value.match(/#([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})/)[1].toInt(16) + 'ff';
+        }
+
+        powerButton.addEventListener('click', onPowerClick);
+        colorPicker.addEventListener('change', onRgbChange);
+
+        animate();
+
+        function resize() {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(animate);
+        document.body.addEventListener('click', () => {
+            if (!powerOn) {
+                onPowerClick();
+            }
+        });
+        // Update FPS counter
+        setInterval(() => {
+            const fps = Math.round(1 / (Date.now() - performance.now()) * 1000);
+            document.getElementById('fps').textContent = `FPS: ${fps}`;
+        }, 250);
+    </script>
+</body>
+</html>
