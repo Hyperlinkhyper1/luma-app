@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG Animation Benchmark - A Timeline of the World</title>
+  <style>
+    body, html { margin: 0; padding: 0; font-family: system-ui; }
+    #timeline { position: fixed; bottom: 0; left: 0; width: 100%; height: 40px; background: rgba(0, 0, 0, 0.8); color: #fff; display: flex; align-items: center; }
+    #timeline svg { height: 100%; }
+    #controls { position: fixed; bottom: 0; right: 0; display: flex; align-items: center; background: rgba(0, 0, 0, 0.8); padding: 0 10px; }
+    #controls button { margin: 0 5px; }
+    #playhead { position: absolute; height: 100%; width: 10px; background: #fff; cursor: pointer; }
+    #playhead::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: #fff; transform: rotate(45deg); }
+    #playhead:hover { background: #ddd; }
+    #playhead:hover::before { background: #ddd; }
+    #playhead.active { background: #000; }
+    #playhead.active::before { background: #000; }
+  </style>
+</head>
+<body>
+
+<svg id="animation" viewBox="0 0 1920 1080" style="width: 100%; height: 100%;">
+  <!-- Paths, shapes, gradients, patterns, masks, clip paths and filters here -->
+</svg>
+
+<div id="timeline">
+  <svg width="100%" height="100%">
+    <!-- Timeline bar paths and text here -->
+  </svg>
+  <div id="playhead"></div>
+</div>
+
+<div id="controls">
+  <button id="play-pause">Play</button>
+  <button id="restart">Restart</button>
+  <button id="speed-05">0.5x</button>
+  <button id="speed-1">1x</button>
+  <button id="speed-2">2x</button>
+</div>
+
+<script>
+  const animation = document.getElementById('animation');
+  const timeline = document.getElementById('timeline');
+  const playhead = document.getElementById('playhead');
+  const playPauseBtn = document.getElementById('play-pause');
+  const restartBtn = document.getElementById('restart');
+  const speedBtns = document.querySelectorAll('#controls button');
+
+  let playheadPosition = 0;
+  let animationSpeed = 1;
+  let isPlaying = false;
+
+  // Initialize timeline and playhead
+  // ...
+
+  // Animate SVG paths, shapes, gradients, etc. based on playheadPosition
+  // ...
+
+  // Update playhead position and timeline display
+  // ...
+
+  // Play/pause animation
+  playPauseBtn.addEventListener('click', () => {
+    isPlaying = !isPlaying;
+    playPauseBtn.textContent = isPlaying ? 'Pause' : 'Play';
+  });
+
+  // Restart animation
+  restartBtn.addEventListener('click', () => {
+    playheadPosition = 0;
+    isPlaying = true;
+    playPauseBtn.textContent = 'Pause';
+  });
+
+  // Change animation speed
+  speedBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      animationSpeed = parseFloat(btn.textContent.replace('x', ''));
+      speedBtns.forEach(btn => btn.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // Keyboard controls
+  document.addEventListener('keydown', event => {
+    switch (event.key) {
+      case ' ':
+        playPauseBtn.click();
+        break;
+      case 'ArrowLeft':
+        playheadPosition -= 10000 * animationSpeed;
+        break;
+      case 'ArrowRight':
+        playheadPosition += 10000 * animationSpeed;
+        break;
+    }
+  });
+
+  // Start animation automatically
+  playPauseBtn.click();
+
+  // Animate timeline and update playhead position
+  function animateTimeline() {
+    if (isPlaying) {
+      playheadPosition += 10000 * animationSpeed;
+      updatePlayheadPosition();
+      requestAnimationFrame(animateTimeline);
+    }
+  }
+  animateTimeline();
+</script>
+
+</body>
+</html>
