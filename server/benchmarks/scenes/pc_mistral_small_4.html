@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus 9 - Interactive 3D Gaming PC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3a 100%);
+            color: #e0e0e0;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(100, 100, 200, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+        }
+
+        #hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(100, 100, 200, 0.2);
+        }
+
+        #hud-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4fc3f7;
+        }
+
+        #power-status {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(255, 50, 50, 0.2);
+            color: #ff6b6b;
+        }
+
+        .hud-section {
+            margin-bottom: 15px;
+        }
+
+        .hud-section h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #81d4fa;
+            display: flex;
+            align-items: center;
+        }
+
+        .hud-section h3 i {
+            margin-right: 6px;
+            font-size: 16px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+            text-transform: uppercase;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #6bc1ff 0%, #42a5f5 100%);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-preview {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid #333;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+        }
+
+        .value-display {
+            font-size: 11px;
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .stats-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(100, 100, 200, 0.1);
+        }
+
+        .stat-label {
+            color: #a5d6ff;
+            font-size: 11px;
+        }
+
+        .stat-value {
+            color: #ffffff;
+            font-size: 11px;
+        }
+
+        #power-button {
+            width: 100%;
+            height: 40px;
+            font-size: 14px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #ff5252 0%, #f44336 100%);
+            margin-bottom: 10px;
+        }
+
+        #power-button:disabled {
+            background: linear-gradient(135deg, #555 0%, #333 100%);
+        }
+
+        #power-button.powered-on {
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+        }
+
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 40, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(100, 100, 200, 0.3);
+            backdrop-filter: blur(10px);
+            text-align: center;
+            z-index: 200;
+        }
+
+        .loading-indicator h3 {
+            color: #4fc3f7;
+            margin-bottom: 10px;
+        }
+
+        .loading-bar {
+            width: 200px;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .loading-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4fc3f7 0%, #81d4fa 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(100, 100, 200, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 12px;
+            z-index: 100;
+            max-width: 250px;
+        }
+
+        #info-panel h3 {
+            color: #4fc3f7;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        #info-panel p {
+            margin-bottom: 5px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(30, 30, 50, 0.95);
+            border: 1px solid #4fc3f7;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 150;
+            max-width: 200px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        @media (max-width: 768px) {
+            #hud {
+                width: 90%;
+                bottom: 10px;
+                right: 5%;
+                left: 5%;
+            }
+
+            #info-panel {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="hud">
+        <div id="hud-header">
+            <div id="hud-title">NEXUS 9 CONTROL</div>
+            <div id="power-status">OFFLINE</div>
+        </div>
+
+        <button id="power-button" class="power-button">
+            <i class="fas fa-power-off"></i> POWER ON
+        </button>
+
+        <div class="hud-section">
+            <h3><i class="fas fa-lightbulb"></i> RGB LIGHTING</h3>
+            <div class="control-group">
+                <div class="control-row">
+                    <button id="rgb-preset-1">CYAN</button>
+                    <button id="rgb-preset-2">PURPLE</button>
+                    <button id="rgb-preset-3">ORANGE</button>
+                </div>
+                <div class="control-row">
+                    <div class="color-picker-container">
+                        <div class="color-preview" id="color-preview"></div>
+                        <input type="color" id="rgb-color-picker" value="#4fc3f7">
+                    </div>
+                    <button id="rgb-apply">APPLY</button>
+                </div>
+                <div class="control-row">
+                    <div class="slider-container">
+                        <span>Speed</span>
+                        <input type="range" id="rgb-speed" min="0.5" max="3" step="0.1" value="1">
+                        <span class="value-display" id="rgb-speed-value">1.0x</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-section">
+            <h3><i class="fas fa-tachometer-alt"></i> PERFORMANCE</h3>
+            <div class="control-group">
+                <div class="control-row">
+                    <button id="performance-low">LOW</button>
+                    <button id="performance-medium">MEDIUM</button>
+                    <button id="performance-high">HIGH</button>
+                </div>
+                <div class="stats-display">
+                    <div class="stat-item">
+                        <span class="stat-label">CPU</span>
+                        <span class="stat-value" id="cpu-usage">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">GPU</span>
+                        <span class="stat-value" id="gpu-usage">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">TEMP</span>
+                        <span class="stat-value" id="cpu-temp">25°C</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">FPS</span>
+                        <span class="stat-value" id="fps-display">60</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-section">
+            <h3><i class="fas fa-fan"></i> COOLING</h3>
+            <div class="control-group">
+                <div class="control-row">
+                    <button id="fan-auto">AUTO</button>
+                    <button id="fan-boost">BOOST</button>
+                </div>
+                <div class="control-row">
+                    <div class="slider-container">
+                        <span>Fan Speed</span>
+                        <input type="range" id="fan-speed" min="0" max="100" value="30">
+                        <span class="value-display" id="fan-speed-value">30%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-panel">
+        <h3><i class="fas fa-info-circle"></i> NEXUS 9</h3>
+        <p><strong>Case:</strong> Quantum Flow X9</p>
+        <p><strong>CPU:</strong> Ryzen 9 7950X3D</p>
+        <p><strong>GPU:</strong> GeForce RTX 4090 Ti</p>
+        <p><strong>RAM:</strong> 64GB DDR5-6000</p>
+        <p><strong>Storage:</strong> 4TB NVMe Gen5</p>
+        <p><strong>Cooling:</strong> Quantum Liquid Pro</p>
+        <p><strong>PSU:</strong> 1200W Quantum Core</p>
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/libs/dat.gui.min.js"></script>
+    <script>
+        // Main application
+        class Nexus9PC {
+            constructor() {
+                this.initThreeJS();
+                this.initScene();
+                this.initPCComponents();
+                this.initControls();
+                this.initEventListeners();
+                this.initTooltips();
+                this.animate();
+                this.updateStats();
+            }
+
+            initThreeJS() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0a1a);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 2, 4);
+                this.camera.lookAt(0, 1, 0);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                // Controls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.screenSpacePanning = false;
+                this.controls.minDistance = 2;
+                this.controls.maxDistance = 8;
+                this.controls.maxPolarAngle = Math.PI / 2 + 0.2;
+                this.controls.minPolarAngle = Math.PI / 4;
+
+                // Lighting
+                this.initLighting();
+
+                // Resize handler
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            initLighting() {
+                // Ambient light
+                this.ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+                this.scene.add(this.ambientLight);
+
+                // Directional light (sun)
+                this.sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+                this.sunLight.position.set(5, 10, 7);
+                this.sunLight.castShadow = true;
+                this.sunLight.shadow.mapSize.width = 2048;
+                this.sunLight.shadow.mapSize.height = 2048;
+                this.sunLight.shadow.camera.near = 0.5;
+                this.sunLight.shadow.camera.far = 50;
+                this.scene.add(this.sunLight);
+
+                // Fill light
+                this.fillLight = new THREE.PointLight(0x81d4fa, 0.8, 10);
+                this.fillLight.position.set(-3, 2, 2);
+                this.scene.add(this.fillLight);
+
+                // Back light
+                this.backLight = new THREE.PointLight(0x4fc3f7, 0.6, 15);
+                this.backLight.position.set(0, 3, -3);
+                this.scene.add(this.backLight);
+
+                // Hemisphere light for ambient color
+                this.hemisphereLight = new THREE.HemisphereLight(0x4fc3f7, 0x81d4fa, 0.4);
+                this.scene.add(this.hemisphereLight);
+            }
+
+            initScene() {
+                // Floor
+                const floorGeometry = new THREE.PlaneGeometry(20, 20);
+                const floorMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a3a,
+                    roughness: 0.8,
+                    metalness: 0.2
+                });
+                this.floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                this.floor.rotation.x = -Math.PI / 2;
+                this.floor.receiveShadow = true;
+                this.scene.add(this.floor);
+
+                // Background elements
+                this.initBackground();
+            }
+
+            initBackground() {
+                // Add some subtle background elements for depth
+                const bgGeometry = new THREE.SphereGeometry(15, 32, 32);
+                const bgMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x0a0a2a,
+                    side: THREE.BackSide,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const background = new THREE.Mesh(bgGeometry, bgMaterial);
+                this.scene.add(background);
+            }
+
+            initPCComponents() {
+                // Main PC case group
+                this.pcGroup = new THREE.Group();
+                this.pcGroup.position.y = 0.5;
+                this.scene.add(this.pcGroup);
+
+                // Case dimensions
+                this.caseWidth = 3.5;
+                this.caseHeight = 1.8;
+                this.caseDepth = 0.8;
+
+                // Create the main case
+                this.createMainCase();
+
+                // Create internal components
+                this.createMotherboard();
+                this.createGPU();
+                this.createCPU();
+                this.createRAM();
+                this.createPSU();
+                this.createStorage();
+                this.createCoolingSystem();
+                this.createRGBLighting();
+                this.createCables();
+                this.createDecorations();
+
+                // Position the PC
+                this.pcGroup.position.set(0, 0, 0);
+            }
+
+            createMainCase() {
+                // Main case body
+                const caseGeometry = new THREE.BoxGeometry(this.caseWidth, this.caseHeight, this.caseDepth);
+                const caseMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a3a,
+                    roughness: 0.3,
+                    metalness: 0.7,
+                    envMapIntensity: 0.5
+                });
+
+                // Add subtle bevel to edges
+                const caseEdges = new THREE.EdgesGeometry(caseGeometry);
+                const caseLine = new THREE.LineSegments(caseEdges, new THREE.LineBasicMaterial({
+                    color: 0x4fc3f7,
+                    linewidth: 2
+                }));
+                caseLine.position.y = this.caseHeight / 2;
+
+                this.mainCase = new THREE.Mesh(caseGeometry, caseMaterial);
+                this.mainCase.castShadow = true;
+                this.mainCase.receiveShadow = true;
+                this.mainCase.position.y = this.caseHeight / 2;
+
+                this.pcGroup.add(this.mainCase);
+                this.pcGroup.add(caseLine);
+
+                // Front panel with glass window
+                const frontPanelGeometry = new THREE.BoxGeometry(this.caseWidth - 0.05, this.caseHeight - 0.05, 0.03);
+                const frontPanelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0a0a2a,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+                this.frontPanel = new THREE.Mesh(frontPanelGeometry, frontPanelMaterial);
+                this.frontPanel.position.z = this.caseDepth / 2 - 0.015;
+                this.frontPanel.position.y = this.caseHeight / 2 - 0.025;
+                this.pcGroup.add(this.frontPanel);
+
+                // Glass window
+                const glassGeometry = new THREE.BoxGeometry(this.caseWidth - 0.2, this.caseHeight - 0.4, 0.01);
+                const glassMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x2a2a4a,
+                    roughness: 0.1,
+                    metalness: 0.1,
+                    transmission: 0.8,
+                    transparent: true,
+                    opacity: 0.8,
+                    envMapIntensity: 0.8
+                });
+                this.glassWindow = new THREE.Mesh(glassGeometry, glassMaterial);
+                this.glassWindow.position.z = this.caseDepth / 2 - 0.02;
+                this.glassWindow.position.y = this.caseHeight / 2 - 0.2;
+                this.pcGroup.add(this.glassWindow);
+
+                // Side panel (can be opened)
+                const sidePanelGeometry = new THREE.BoxGeometry(0.03, this.caseHeight - 0.05, this.caseDepth - 0.05);
+                const sidePanelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x2a2a4a,
+                    roughness: 0.3,
+                    metalness: 0.6
+                });
+                this.sidePanel = new THREE.Mesh(sidePanelGeometry, sidePanelMaterial);
+                this.sidePanel.position.x = this.caseWidth / 2 - 0.015;
+                this.sidePanel.position.y = this.caseHeight / 2 - 0.025;
+                this.pcGroup.add(this.sidePanel);
+
+                // Top panel with vents
+                const topPanelGeometry = new THREE.BoxGeometry(this.caseWidth - 0.05, 0.03, this.caseDepth - 0.05);
+                const topPanelMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0a0a2a,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+                this.topPanel = new THREE.Mesh(topPanelGeometry, topPanelMaterial);
+                this.topPanel.position.y = this.caseHeight - 0.015;
+                this.topPanel.position.z = 0;
+                this.pcGroup.add(this.topPanel);
+
+                // Vent pattern on top
+                this.createVentPattern(this.topPanel, this.caseWidth - 0.1, this.caseDepth - 0.1, 0.005);
+
+                // Handle on side panel
+                const handleGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.15, 16);
+                const handleMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x81d4fa,
+                    metalness: 0.9,
+                    roughness: 0.1
+                });
+                this.handle = new THREE.Mesh(handleGeometry, handleMaterial);
+                this.handle.position.set(this.caseWidth / 2 + 0.02, this.caseHeight / 2 - 0.1, 0);
+                this.handle.rotation.z = Math.PI / 2;
+                this.pcGroup.add(this.handle);
+            }
+
+            createVentPattern(mesh, width, depth, ventSize) {
+                const ventCountX = Math.floor(width / (ventSize * 2));
+                const ventCountZ = Math.floor(depth / (ventSize * 2));
+
+                for (let x = 0; x < ventCountX; x++) {
+                    for (let z = 0; z < ventCountZ; z++) {
+                        const ventGeometry = new THREE.BoxGeometry(ventSize * 1.8, 0.002, ventSize * 1.8);
+                        const ventMaterial = new THREE.MeshStandardMaterial({
+                            color: 0x3a3a6a,
+                            roughness: 0.8,
+                            metalness: 0.2
+                        });
+                        const vent = new THREE.Mesh(ventGeometry, ventMaterial);
+                        vent.position.x = -width / 2 + ventSize * 2 + x * ventSize * 2;
+                        vent.position.z = -depth / 2 + ventSize * 2 + z * ventSize * 2;
+                        mesh.add(vent);
+                    }
+                }
+            }
+
+            createMotherboard() {
+                // Motherboard shape
+                const mbShape = new THREE.Shape();
+
+                // Main rectangle
+                mbShape.moveTo(-1.2, -0.3);
+                mbShape.lineTo(1.2, -0.3);
+                mbShape.lineTo(1.2, 0.3);
+                mbShape.lineTo(-1.2, 0.3);
+                mbShape.lineTo(-1.2, -0.3);
+
+                // Cutout for PSU area
+                mbShape.moveTo(-0.8, -0.25);
+                mbShape.lineTo(-0.8, 0.25);
+                mbShape.lineTo(-1.1, 0.25);
+                mbShape.lineTo(-1.1, -0.25);
+                mbShape.lineTo(-0.8, -0.25);
+
+                // Extrude
+                const mbGeometry = new THREE.ExtrudeGeometry(mbShape, {
+                    depth: 0.01,
+                    bevelEnabled: false
+                });
+
+                // Position the motherboard
+                mbGeometry.translate(0, 0.1, 0.15);
+
+                // Motherboard material
+                const mbMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x2a2a4a,
+                    roughness: 0.4,
+                    metalness: 0.3
+                });
+
+                this.motherboard = new THREE.Mesh(mbGeometry, mbMaterial);
+                this.motherboard.castShadow = true;
+                this.motherboard.receiveShadow = true;
+                this.pcGroup.add(this.motherboard);
+
+                // Motherboard details
+                this.createMotherboardDetails();
+            }
+
+            createMotherboardDetails() {
+                // CPU socket area
+                const socketGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.02, 32);
+                const socketMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x8d6e63,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+                this.cpuSocket = new THREE.Mesh(socketGeometry, socketMaterial);
+                this.cpuSocket.position.set(0, 0.1, 0.16);
+                this.pcGroup.add(this.cpuSocket);
+
+                // Chipset heatsink
+                const chipsetGeometry = new THREE.BoxGeometry(0.3, 0.05, 0.2);
+                const chipsetMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x78909c,
+                    metalness: 0.7,
+                    roughness: 0.4
+                });
+                this.chipset = new THREE.Mesh(chipsetGeometry, chipsetMaterial);
+                this.chipset.position.set(-0.6, 0.1, 0.16);
+                this.pcGroup.add(this.chipset);
+
+                // RAM slots
+                for (let i = 0; i < 4; i++) {
+                    const ramSlotGeometry = new THREE.BoxGeometry(0.25, 0.02, 0.05);
+                    const ramSlotMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x546e7a,
+                        metalness: 0.6,
+                        roughness: 0.5
+                    });
+                    const ramSlot = new THREE.Mesh(ramSlotGeometry, ramSlotMaterial);
+                    ramSlot.position.set(-0.9 + i * 0.45, 0.1, 0.25);
+                    this.pcGroup.add(ramSlot);
+
+                    // RAM stick (when powered on)
+                    const ramGeometry = new THREE.BoxGeometry(0.23, 0.015, 0.04);
+                    const ramMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x4fc3f7,
+                        metalness: 0.3,
+                        roughness: 0.7
+                    });
+                    this.ramSticks = [];
+                    for (let j = 0; j < 4; j++) {
+                        const ram = new THREE.Mesh(ramGeometry, ramMaterial.clone());
+                        ram.position.set(-0.9 + j * 0.45, 0.1, 0.25);
+                        ram.visible = false;
+                        this.pcGroup.add(ram);
+                        this.ramSticks.push(ram);
+                    }
+                }
+
+                // M.2 slots
+                for (let i = 0; i < 2; i++) {
+                    const m2SlotGeometry = new THREE.BoxGeometry(0.15, 0.01, 0.08);
+                    const m2SlotMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x37474f,
+                        metalness: 0.4,
+                        roughness: 0.6
+                    });
+                    const m2Slot = new THREE.Mesh(m2SlotGeometry, m2SlotMaterial);
+                    m2Slot.position.set(0.7 - i * 0.35, 0.1, 0.25);
+                    this.pcGroup.add(m2Slot);
+
+                    // M.2 SSD (when powered on)
+                    const m2Geometry = new THREE.BoxGeometry(0.13, 0.008, 0.06);
+                    const m2Material = new THREE.MeshStandardMaterial({
+                        color: 0x263238,
+                        metalness: 0.2,
+                        roughness: 0.8
+                    });
+                    const m2SSD = new THREE.Mesh(m2Geometry, m2Material.clone());
+                    m2SSD.position.set(0.7 - i * 0.35, 0.1, 0.25);
+                    m2SSD.visible = false;
+                    this.pcGroup.add(m2SSD);
+                    this.m2SSDs = this.m2SSDs || [];
+                    this.m2SSDs.push(m2SSD);
+                }
+            }
+
+            createGPU() {
+                // GPU shape
+                const gpuShape = new THREE.Shape();
+
+                // Main body
+                gpuShape.moveTo(-0.5, -0.15);
+                gpuShape.lineTo(0.5, -0.15);
+                gpuShape.lineTo(0.5, 0.15);
+                gpuShape.lineTo(-0.5, 0.15);
+                gpuShape.lineTo(-0.5, -0.15);
+
+                // Cutout for cooler
+                gpuShape.moveTo(-0.4, -0.1);
+                gpuShape.lineTo(0.4, -0.1);
+                gpuShape.lineTo(0.4, 0.1);
+                gpuShape.lineTo(-0.4, 0.1);
+                gpuShape.lineTo(-0.4, -0.1);
+
+                // Extrude
+                const gpuGeometry = new THREE.ExtrudeGeometry(gpuShape, {
+                    depth: 0.05,
+                    bevelEnabled: false
+                });
+
+                // GPU material
+                const gpuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.2,
+                    metalness: 0.8
+                });
+
+                this.gpu = new THREE.Mesh(gpuGeometry, gpuMaterial);
+                this.gpu.position.set(0.8, 0.6, 0.2);
+                this.gpu.castShadow = true;
+                this.pcGroup.add(this.gpu);
+
+                // GPU cooler
+                const coolerGeometry = new THREE.CylinderGeometry(0.18, 0.18, 0.4, 32);
+                const coolerMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x546e7a,
+                    metalness: 0.6,
+                    roughness: 0.4
+                });
+                this.gpuCooler = new THREE.Mesh(coolerGeometry, coolerMaterial);
+                this.gpuCooler.position.set(0.8, 0.6, 0.25);
+                this.gpuCooler.castShadow = true;
+                this.pcGroup.add(this.gpuCooler);
+
+                // GPU fans
+                this.gpuFans = [];
+                for (let i = 0; i < 3; i++) {
+                    const fanGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.02, 16);
+                    const fanMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x37474f,
+                        metalness: 0.5,
+                        roughness: 0.6
+                    });
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.set(0.8, 0.6, 0.25 + i * 0.03);
+                    fan.rotation.x = Math.PI / 2;
+                    this.pcGroup.add(fan);
+                    this.gpuFans.push(fan);
+                }
+
+                // GPU backplate
+                const backplateGeometry = new THREE.BoxGeometry(0.45, 0.02, 0.15);
+                const backplateMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x37474f,
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                this.gpuBackplate = new THREE.Mesh(backplateGeometry, backplateMaterial);
+                this.gpuBackplate.position.set(0.8, 0.6, 0.45);
+                this.gpuBackplate.castShadow = true;
+                this.pcGroup.add(this.gpuBackplate);
+
+                // GPU ports
+                const portGeometry = new THREE.BoxGeometry(0.02, 0.05, 0.02);
+                const portMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x8d6e63,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+
+                for (let i = 0; i < 3; i++) {
+                    const port = new THREE.Mesh(portGeometry, portMaterial);
+                    port.position.set(0.8 + 0.15 - i * 0.1, 0.7, 0.45);
+                    this.pcGroup.add(port);
+                }
+            }
+
+            createCPU() {
+                // CPU shape
+                const cpuGeometry = new THREE.BoxGeometry(0.2, 0.01, 0.2);
+                const cpuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x8d6e63,
+                    metalness: 0.8,
+                    roughness: 0.3
+                });
+
+                this.cpu = new THREE.Mesh(cpuGeometry, cpuMaterial);
+                this.cpu.position.set(0, 0.1, 0.16);
+                this.cpu.castShadow = true;
+                this.pcGroup.add(this.cpu);
+
+                // CPU cooler
+                const coolerBaseGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.02, 32);
+                const coolerBaseMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x78909c,
+                    metalness: 0.7,
+                    roughness: 0.4
+                });
+                this.cpuCoolerBase = new THREE.Mesh(coolerBaseGeometry, coolerBaseMaterial);
+                this.cpuCoolerBase.position.set(0, 0.12, 0.16);
+                this.cpuCoolerBase.castShadow = true;
+                this.pcGroup.add(this.cpuCoolerBase);
+
+                // CPU cooler heatsink
+                const coolerFinsGeometry = new THREE.BoxGeometry(0.18, 0.08, 0.18);
+                const coolerFinsMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x546e7a,
+                    metalness: 0.6,
+                    roughness: 0.5
+                });
+                this.cpuCoolerFins = new THREE.Mesh(coolerFinsGeometry, coolerFinsMaterial);
+                this.cpuCoolerFins.position.set(0, 0.18, 0.16);
+                this.cpuCoolerFins.castShadow = true;
+                this.pcGroup.add(this.cpuCoolerFins);
+
+                // CPU cooler fan
+                const cpuFanGeometry = new THREE.CylinderGeometry(0.06, 0.06, 0.015, 16);
+                const cpuFanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x37474f,
+                    metalness: 0.5,
+                    roughness: 0.6
+                });
+                this.cpuFan = new THREE.Mesh(cpuFanGeometry, cpuFanMaterial);
+                this.cpuFan.position.set(0, 0.18, 0.16);
+                this.cpuFan.rotation.x = Math.PI / 2;
+                this.cpuFan.castShadow = true;
+                this.pcGroup.add(this.cpuFan);
+            }
+
+            createRAM() {
+                // RAM sticks will be created in motherboard details
+            }
+
+            createPSU() {
+                // PSU shape
+                const psuGeometry = new THREE.BoxGeometry(0.6, 0.15, 0.3);
+                const psuMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x1a1a1a,
+                    roughness: 0.3,
+                    metalness: 0.7
+                });
+
+                this.psu = new THREE.Mesh(psuGeometry, psuMaterial);
+                this.psu.position.set(-0.95, 0.1, -0.2);
+                this.psu.castShadow = true;
+                this.pcGroup.add(this.psu);
+
+                // PSU fan
+                const psuFanGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16);
+                const psuFanMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x37474f,
+                    metalness: 0.5,
+                    roughness: 0.6
+                });
+                this.psuFan = new THREE.Mesh(psuFanGeometry, psuFanMaterial);
+                this.psuFan.position.set(-0.95, 0.1, -0.2);
+                this.psuFan.rotation.x = Math.PI / 2;
+                this.psuFan.castShadow = true;
+                this.pcGroup.add(this.psuFan);
+
+                // PSU label
+                const labelGeometry = new THREE.PlaneGeometry(0.5, 0.08);
+                const labelMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                label.position.set(-0.95, 0.17, -0.2);
+                label.rotation.x = -Math.PI / 2;
+                this.pcGroup.add(label);
+            }
+
+            createStorage() {
+                // Storage drives (M.2 SSDs created with motherboard)
+            }
+
+            createCoolingSystem() {
+                // Case fans
+                this.caseFans = [];
+                const fanPositions = [
+                    { x: 1.5, y: 0.2, z: 0.35, rotation: Math.PI / 2 },
+                    { x: -1.5, y: 0.2, z: 0.35, rotation: Math.PI / 2 },
+                    { x: 0, y: 1.6, z: 0.35, rotation: 0 }
+                ];
+
+                for (let i = 0; i < fanPositions.length; i++) {
+                    const fanGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.02, 16);
+                    const fanMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x37474f,
+                        metalness: 0.5,
+                        roughness: 0.6
+                    });
+                    const fan = new THREE.Mesh(fanGeometry, fanMaterial);
+                    fan.position.set(fanPositions[i].x, fanPositions[i].y, fanPositions[i].z);
+                    fan.rotation.x = fanPositions[i].rotation;
+                    fan.castShadow = true;
+                    this.pcGroup.add(fan);
+                    this.caseFans.push(fan);
+                }
+
+                // Liquid cooling reservoir
+                const reservoirGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.15, 32);
+                const reservoirMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x263238,
+                    metalness: 0.3,
+                    roughness: 0.8,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                this.reservoir = new THREE.Mesh(reservoirGeometry, reservoirMaterial);
+                this.reservoir.position.set(-0.7, 0.3, 0.1);
+                this.reservoir.castShadow = true;
+                this.pcGroup.add(this.reservoir);
+
+                // Cooling tubes
+                this.coolingTubes = [];
+                for (let i = 0; i < 4; i++) {
+                    const tubeGeometry = new THREE.TorusGeometry(0.05, 0.015, 8, 16);
+                    const tubeMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x4fc3f7,
+                        metalness: 0.2,
+                        roughness: 0.9,
+                        transparent: true,
+                        opacity: 0.6
+                    });
+                    const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+                    tube.position.set(-0.7 + (i % 2) * 0.3, 0.3 + Math.floor(i / 2) * 0.1, 0.1);
+                    tube.rotation.y = Math.PI / 2;
+                    this.pcGroup.add(tube);
+                    this.coolingTubes.push(tube);
+                }
+            }
+
+            createRGBLighting() {
+                // RGB lighting elements
+                this.rgbElements = [];
+
+                // Case RGB strip
+                const rgbStripGeometry = new THREE.BoxGeometry(this.caseWidth - 0.1, 0.01, 0.02);
+                const rgbStripMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x4fc3f7,
+                    emissive: 0x4fc3f7,
+                    emissiveIntensity: 0,
+                    metalness: 0.1,
+                    roughness: 0.9
+                });
+                this.rgbStrip = new THREE.Mesh(rgbStripGeometry, rgbStripMaterial);
+                this.rgbStrip.position.set(0, this.caseHeight - 0.05, 0);
+                this.pcGroup.add(this.rgbStrip);
+                this.rgbElements.push(this.rgbStrip);
+
+                // GPU RGB
+                const gpuRgbGeometry = new THREE.BoxGeometry(0.45, 0.01, 0.05);
+                const gpuRgbMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x4fc3f7,
+                    emissive: 0x4fc3f7,
+                    emissiveIntensity: 0,
+                    metalness: 0.1,
+                    roughness: 0.9
+                });
+                this.gpuRgb = new THREE.Mesh(gpuRgbGeometry, gpuRgbMaterial);
+                this.gpuRgb.position.set(0.8, 0.6, 0.4);
+                this.pcGroup.add(this.gpuRgb);
+                this.rgbElements.push(this.gpuRgb);
+
+                // CPU cooler RGB
+                const cpuRgbGeometry = new THREE.BoxGeometry(0.15, 0.01, 0.15);
+                const cpuRgbMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x4fc3f7,
+                    emissive: 0x4fc3f7,
+                    emissiveIntensity: 0,
+                    metalness: 0.1,
+                    roughness: 0.9
+                });
+                this.cpuRgb = new THREE.Mesh(cpuRgbGeometry, cpuRgbMaterial);
+                this.cpuRgb.position.set(0, 0.18, 0.16);
+                this.pcGroup.add(this.cpuRgb);
+                this.rgbElements.push(this.cpuRgb);
+
+                // PSU RGB
+                const psuRgbGeometry = new THREE.BoxGeometry(0.5, 0.01, 0.25);
+                const psuRgbMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x4fc3f7,
+                    emissive: 0x4fc3f7,
+                    emissiveIntensity: 0,
+                    metalness: 0.1,
+                    roughness: 0.9
+                });
+                this.psuRgb = new THREE.Mesh(psuRgbGeometry, psuRgbMaterial);
+                this.psuRgb.position.set(-0.95, 0.17, -0.2);
+                this.pcGroup.add(this.psuRgb);
+                this.rgbElements.push(this.psuRgb);
+
+                // RAM RGB
+                this.ramRgb = [];
+                for (let i = 0; i < 4; i++) {
+                    const ramRgbGeometry = new THREE.BoxGeometry(0.23, 0.005, 0.03);
+                    const ramRgbMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x4fc3f7,
+                        emissive: 0x4fc3f7,
+                        emissiveIntensity: 0,
+                        metalness: 0.1,
+                        roughness: 0.9
+                    });
+                    const ramRgb = new THREE.Mesh(ramRgbGeometry, ramRgbMaterial);
+                    ramRgb.position.set(-0.9 + i * 0.45, 0.1, 0.25);
+                    this.pcGroup.add(ramRgb);
+                    this.ramRgb.push(ramRgb);
+                }
+
+                // M.2 RGB
+                this.m2Rgb = [];
+                for (let i = 0; i < 2; i++) {
+                    const m2RgbGeometry = new THREE.BoxGeometry(0.13, 0.005, 0.05);
+                    const m2RgbMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x4fc3f7,
+                        emissive: 0x4fc3f7,
+                        emissiveIntensity: 0,
+                        metalness: 0.1,
+                        roughness: 0.9
+                    });
+                    const m2Rgb = new THREE.Mesh(m2RgbGeometry, m2RgbMaterial);
+                    m2Rgb.position.set(0.7 - i * 0.35, 0.1, 0.25);
+                    this.pcGroup.add(m2Rgb);
+                    this.m2Rgb.push(m2Rgb);
+                }
+
+                // Set initial RGB color
+                this.currentRgbColor = new THREE.Color(0x4fc3f7);
+                this.rgbIntensity = 0;
+                this.rgbSpeed = 1;
+                this.rgbAnimationTime = 0;
+            }
+
+            createCables() {
+                // Power cables
+                const powerCableGeometry = new THREE.TubeGeometry(
+                    new THREE.CatmullRomCurve3([
+                        new THREE.Vector3(-0.95, 0.1, -0.2),
+                        new THREE.Vector3(-0.95, 0.1, 0.1),
+                        new THREE.Vector3(0, 0.1, 0.1)
+                    ]),
+                    20, 0.005, 8, false
+                );
+                const powerCableMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x37474f,
+                    metalness: 0.3,
+                    roughness: 0.8
+                });
+                this.powerCable = new THREE.Mesh(powerCableGeometry, powerCableMaterial);
+                this.pcGroup.add(this.powerCable);
+
+                // SATA cables
+                const sataCableGeometry = new THREE.TubeGeometry(
+                    new THREE.CatmullRomCurve3([
+                        new THREE.Vector3(-0.95, 0.1, -0.2),
+                        new THREE.Vector3(-0.95, 0.1, 0.3),
+                        new THREE.Vector3(0.8, 0.6, 0.3)
+                    ]),
+                    20, 0.003, 6, false
+                );
+                const sataCableMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x546e7a,
+                    metalness: 0.2,
+                    roughness: 0.9
+                });
+                this.sataCable = new THREE.Mesh(sataCableGeometry, sataCableMaterial);
+                this.pcGroup.add(this.sataCable);
+
+                // RGB cables
+                const rgbCableGeometry = new THREE.TubeGeometry(
+                    new THREE.CatmullRomCurve3([
+                        new THREE.Vector3(0, this.caseHeight - 0.05, 0),
+                        new THREE.Vector3(0, 0.5, 0.5),
+                        new THREE.Vector3(0.8, 0.6, 0.5)
+                    ]),
+                    20, 0.002, 5, false
+                );
+                const rgbCableMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x4fc3f7,
+                    metalness: 0.1,
+                    roughness: 0.9
+                });
+                this.rgbCable = new THREE.Mesh(rgbCableGeometry, rgbCableMaterial);
+                this.pcGroup.add(this.rgbCable);
+            }
+
+            createDecorations() {
+                // Case feet
+                const footGeometry = new THREE.CylinderGeometry(0.05, 0.03, 0.04, 16);
+                const footMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x263238,
+                    metalness: 0.4,
+                    roughness: 0.7
+                });
+
+                for (let x = -1; x <= 1; x += 2) {
+                    for (let z = -1; z <= 1; z += 2) {
+                        const foot = new THREE.Mesh(footGeometry, footMaterial);
+                        foot.position.set(x * (this.caseWidth / 2 - 0.1), 0, z * (this.caseDepth / 2 - 0.1));
+                        foot.rotation.x = Math.PI / 2;
+                        this.pcGroup.add(foot);
+                    }
+                }
+
+                // Case logo
+                const logoGeometry = new THREE.PlaneGeometry(0.3, 0.1);
+                const logoMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const logo = new THREE.Mesh(logoGeometry, logoMaterial);
+                logo.position.set(0, this.caseHeight - 0.05, this.caseDepth / 2 + 0.01);
+                logo.rotation.x = -Math.PI / 2;
+                this.pcGroup.add(logo);
+
+                // Add "NEXUS 9" text to logo
+                const canvas = document.createElement('canvas');
+                canvas.width = 300;
+                canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = 'white';
+                ctx.font = 'Bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('NEXUS 9', 150, 60);
+                const texture = new THREE.CanvasTexture(canvas);
+                logoMaterial.map = texture;
+                logoMaterial.needsUpdate = true;
+            }
+
+            initControls() {
+                // Power button
+                this.powerButton = document.getElementById('power-button');
+                this.powerStatus = document.getElementById('power-status');
+                this.powerOn = false;
+
+                // RGB controls
+                this.rgbColorPicker = document.getElementById('rgb-color-picker');
+                this.colorPreview = document.getElementById('color-preview');
+                this.rgbApply = document.getElementById('rgb-apply');
+                this.rgbPreset1 = document.getElementById('rgb-preset-1');
+                this.rgbPreset2 = document.getElementById('rgb-preset-2');
+                this.rgbPreset3 = document.getElementById('rgb-preset-3');
+                this.rgbSpeedSlider = document.getElementById('rgb-speed');
+                this.rgbSpeedValue = document.getElementById('rgb-speed-value');
+
+                // Performance controls
+                this.performanceLow = document.getElementById('performance-low');
+                this.performanceMedium = document.getElementById('performance-medium');
+                this.performanceHigh = document.getElementById('performance-high');
+
+                // Cooling controls
+                this.fanAuto = document.getElementById('fan-auto');
+                this.fanBoost = document.getElementById('fan-boost');
+                this.fanSpeedSlider = document.getElementById('fan-speed');
+                this.fanSpeedValue = document.getElementById('fan-speed-value');
+
+                // Stats
+                this.cpuUsageDisplay = document.getElementById('cpu-usage');
+                this.gpuUsageDisplay = document.getElementById('gpu-usage');
+                this.cpuTempDisplay = document.getElementById('cpu-temp');
+                this.fpsDisplay = document.getElementById('fps-display');
+
+                // Initialize values
+                this.colorPreview.style.backgroundColor = this.rgbColorPicker.value;
+                this.rgbSpeedValue.textContent = this.rgbSpeedSlider.value + 'x';
+                this.fanSpeedValue.textContent = this.fanSpeedSlider.value + '%';
+
+                // Set initial RGB color
+                this.updateRGBColor();
+            }
+
+            initEventListeners() {
+                // Power button
+                this.powerButton.addEventListener('click', () => this.togglePower());
+
+                // RGB controls
+                this.rgbColorPicker.addEventListener('input', () => this.updateRGBColor());
+                this.rgbApply.addEventListener('click', () => this.applyRGBColor());
+                this.rgbPreset1.addEventListener('click', () => this.setRGBPreset('#4fc3f7'));
+                this.rgbPreset2.addEventListener('click', () => this.setRGBPreset('#81d4fa'));
+                this.rgbPreset3.addEventListener('click', () => this.setRGBPreset('#ff9800'));
+                this.rgbSpeedSlider.addEventListener('input', () => {
+                    this.rgbSpeed = parseFloat(this.rgbSpeedSlider.value);
+                    this.rgbSpeedValue.textContent = this.rgbSpeed.toFixed(1) + 'x';
+                });
+
+                // Performance controls
+                this.performanceLow.addEventListener('click', () => this.setPerformance('low'));
+                this.performanceMedium.addEventListener('click', () => this.setPerformance('medium'));
+                this.performanceHigh.addEventListener('click', () => this.setPerformance('high'));
+
+                // Cooling controls
+                this.fanAuto.addEventListener('click', () => this.setFanMode('auto'));
+                this.fanBoost.addEventListener('click', () => this.setFanMode('boost'));
+                this.fanSpeedSlider.addEventListener('input', () => {
+                    this.fanSpeedValue.textContent = this.fanSpeedSlider.value + '%';
+                });
+
+                // Window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+
+            initTooltips() {
+                const tooltip = document.getElementById('tooltip');
+
+                // Power button tooltip
+                this.powerButton.addEventListener('mouseenter', (e) => {
+                    tooltip.textContent = 'Power On/Off the system';
+                    tooltip.style.opacity = '1';
+                    this.positionTooltip(e, tooltip);
+                });
+                this.powerButton.addEventListener('mousemove', (e) => this.positionTooltip(e, tooltip));
+                this.powerButton.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+
+                // RGB controls tooltip
+                this.rgbApply.addEventListener('mouseenter', (e) => {
+                    tooltip.textContent = 'Apply selected RGB color';
+                    tooltip.style.opacity = '1';
+                    this.positionTooltip(e, tooltip);
+                });
+                this.rgbApply.addEventListener('mousemove', (e) => this.positionTooltip(e, tooltip));
+                this.rgbApply.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+
+                // Performance controls tooltip
+                this.performanceHigh.addEventListener('mouseenter', (e) => {
+                    tooltip.textContent = 'Maximize performance (higher temps & noise)';
+                    tooltip.style.opacity = '1';
+                    this.positionTooltip(e, tooltip);
+                });
+                this.performanceHigh.addEventListener('mousemove', (e) => this.positionTooltip(e, tooltip));
+                this.performanceHigh.addEventListener('mouseleave', () => {
+                    tooltip.style.opacity = '0';
+                });
+            }
+
+            positionTooltip(e, tooltip) {
+                tooltip.style.left = (e.clientX + 15) + 'px';
+                tooltip.style.top = (e.clientY + 15) + 'px';
+            }
+
+            togglePower() {
+                this.powerOn = !this.powerOn;
+
+                if (this.powerOn) {
+                    this.powerButton.innerHTML = '<i class="fas fa-power-off"></i> POWER OFF';
+                    this.powerButton.classList.add('powered-on');
+                    this.powerStatus.textContent = 'BOOTING...';
+                    this.powerStatus.style.background = 'rgba(76, 175, 80, 0.2)';
+                    this.powerStatus.style.color = '#81c784';
+
+                    // Start boot sequence
+                    this.startBootSequence();
+                } else {
+                    this.powerButton.innerHTML = '<i class="fas fa-power-off"></i> POWER ON';
+                    this.powerButton.classList.remove('powered-on');
+                    this.powerStatus.textContent = 'SHUTTING DOWN...';
+                    this.powerStatus.style.background = 'rgba(255, 82, 82, 0.2)';
+                    this.powerStatus.style.color = '#ff8a80';
+
+                    // Start shutdown sequence
+                    this.startShutdownSequence();
+                }
+            }
+
+            startBootSequence() {
+                // Animate case opening
+                gsap.to(this.sidePanel.position, {
+                    x: this.caseWidth / 2 - 0.015 + 0.05,
+                    duration: 1.5,
+                    ease: "power2.out",
+                    onComplete: () => {
+                        // Show internal components
+                        gsap.to(this.ramSticks, {
+                            y: 0.15,
+                            duration: 0.8,
+                            stagger: 0.1,
+                            ease: "back.out(1.7)",
+                            onStart: () => {
+                                this.ramSticks.forEach(stick => stick.visible = true);
+                            }
+                        });
+
+                        gsap.to(this.m2SSDs, {
+                            y: 0.15,
+                            duration: 0.8,
+                            stagger: 0.1,
+                            ease: "back.out(1.7)",
+                            onStart: () => {
+                                this.m2SSDs.forEach(ssd => ssd.visible = true);
+                            }
+                        });
+
+                        // Start fans spinning
+                        this.startFans();
+
+                        // Start RGB lighting
+                        this.startRGB();
+
+                        // Update power status after boot
+                        setTimeout(() => {
+                            this.powerStatus.textContent = 'ONLINE';
+                            this.powerStatus.style.background = 'rgba(76, 175, 80, 0.2)';
+                            this.powerStatus.style.color = '#81c784';
+                        }, 2000);
+                    }
+                });
+            }
+
+            startShutdownSequence() {
+                // Hide internal components
+                gsap.to(this.ramSticks, {
+                    y: 0.1,
+                    duration: 0.5,
+                    stagger: 0.05,
+                    ease: "power1.in",
+                    onComplete: () => {
+                        this.ramSticks.forEach(stick => stick.visible = false);
+                    }
+                });
+
+                gsap.to(this.m2SSDs, {
+                    y: 0.1,
+                    duration: 0.5,
+                    stagger: 0.05,
+                    ease: "power1.in",
+                    onComplete: () => {
+                        this.m2SSDs.forEach(ssd => ssd.visible = false);
+                    }
+                });
+
+                // Stop fans
+                this.stopFans();
+
+                // Fade out RGB
+                this.stopRGB();
+
+                // Close case
+                gsap.to(this.sidePanel.position, {
+                    x: this.caseWidth / 2 - 0.015,
+                    duration: 1,
+                    ease: "power2.in",
+                    onComplete: () => {
+                        this.powerStatus.textContent = 'OFFLINE';
+                        this.powerStatus.style.background = 'rgba(255, 50, 50, 0.2)';
+                        this.powerStatus.style.color = '#ff6b6b';
+                    }
+                });
+            }
+
+            startFans() {
+                // GPU fans
+                gsap.to(this.gpuFans, {
+                    rotationZ: '+=10',
+                    duration: 0.5,
+                    repeat: -1,
+                    ease: "none"
+                });
+
+                // CPU fan
+                gsap.to(this.cpuFan.rotation, {
+                    z: '+=10',
+                    duration: 0.5,
+                    repeat: -1,
+                    ease: "none"
+                });
+
+                // PSU fan
+                gsap.to(this.psuFan.rotation, {
+                    z: '+=8',
+                    duration: 0.6,
+                    repeat: -1,
+                    ease: "none"
+                });
+
+                // Case fans
+                this.caseFans.forEach((fan, index) => {
+                    gsap.to(fan.rotation, {
+                        z: '+=6 + index * 2',
+                        duration: 0.7,
+                        repeat: -1,
+                        ease: "none"
+                    });
+                });
+            }
+
+            stopFans() {
+                // Kill all fan animations
+                gsap.killTweensOf(this.gpuFans);
+                gsap.killTweensOf(this.cpuFan.rotation);
+                gsap.killTweensOf(this.psuFan.rotation);
+                gsap.killTweensOf(this.caseFans);
+
+                // Reset rotations
+                this.gpuFans.forEach(fan => fan.rotation.z = 0);
+                this.cpuFan.rotation.z = 0;
+                this.psuFan.rotation.z = 0;
+                this.caseFans.forEach(fan => fan.rotation.z = 0);
+            }
+
+            startRGB() {
+                this.rgbIntensity = 1;
+                this.updateRGBElements();
+            }
+
+            stopRGB() {
+                this.rgbIntensity = 0;
+                this.updateRGBElements();
+            }
+
+            updateRGBColor() {
+                this.currentRgbColor.setStyle(this.rgbColorPicker.value);
+                this.colorPreview.style.backgroundColor = this.rgbColorPicker.value;
+            }
+
+            applyRGBColor() {
+                this.updateRGBColor();
+            }
+
+            setRGBPreset(color) {
+                this.rgbColorPicker.value = color;
+                this.updateRGBColor();
+            }
+
+            updateRGBElements() {
+                const emissiveIntensity = this.powerOn ? this.rgbIntensity : 0;
+
+                this.rgbElements.forEach(element => {
+                    element.material.emissive.set(this.currentRgbColor);
+                    element.material.emissiveIntensity = emissiveIntensity;
+                });
+
+                // Animate RGB with time
+                if (this.powerOn) {
+                    this.rgbAnimationTime += 0.01 * this.rgbSpeed;
+
+                    // Pulse effect
+                    const pulse = Math.sin(this.rgbAnimationTime) * 0.2 + 0.8;
+
+                    this.rgbElements.forEach(element => {
+                        element.material.emissiveIntensity = emissiveIntensity * pulse;
+                    });
+                }
+            }
+
+            setPerformance(mode) {
+                // Update button states
+                this.performanceLow.style.background = mode === 'low' ? 'linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%)' : '';
+                this.performanceMedium.style.background = mode === 'medium' ? 'linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%)' : '';
+                this.performanceHigh.style.background = mode === 'high' ? 'linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%)' : '';
+
+                // Update fan speed based on performance mode
+                switch(mode) {
+                    case 'low':
+                        this.fanSpeedSlider.value = 20;
+                        this.fanSpeedValue.textContent = '20%';
+                        break;
+                    case 'medium':
+                        this.fanSpeedSlider.value = 50;
+                        this.fanSpeedValue.textContent = '50%';
+                        break;
+                    case 'high':
+                        this.fanSpeedSlider.value = 80;
+                        this.fanSpeedValue.textContent = '80%';
+                        break;
+                }
+            }
+
+            setFanMode(mode) {
+                // Update button states
+                this.fanAuto.style.background = mode === 'auto' ? 'linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%)' : '';
+                this.fanBoost.style.background = mode === 'boost' ? 'linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%)' : '';
+
+                // Update fan speed based on mode
+                if (mode === 'auto') {
+                    // Auto mode would adjust based on temperature
+                    this.fanSpeedSlider.value = 30;
+                    this.fanSpeedValue.textContent = '30%';
+                } else if (mode === 'boost') {
+                    this.fanSpeedSlider.value = 100;
+                    this.fanSpeedValue.textContent = '100%';
+                }
+            }
+
+            updateStats() {
+                // Simulate changing stats when powered on
+                if (this.powerOn) {
+                    // CPU usage
+                    const cpuUsage = Math.floor(Math.random() * 20) + 10;
+                    this.cpuUsageDisplay.textContent = cpuUsage + '%';
+
+                    // GPU usage
+                    const gpuUsage = Math.floor(Math.random() * 25) + 20;
+                    this.gpuUsageDisplay.textContent = gpuUsage + '%';
+
+                    // CPU temperature
+                    const cpuTemp = Math.floor(Math.random() * 15) + 50;
+                    this.cpuTempDisplay.textContent = cpuTemp + '°C';
+
+                    // FPS
+                    const fps = Math.floor(Math.random() * 20) + 50;
+                    this.fpsDisplay.textContent = fps;
+                } else {
+                    // Reset stats when powered off
+                    this.cpuUsageDisplay.textContent = '0%';
+                    this.gpuUsageDisplay.textContent = '0%';
+                    this.cpuTempDisplay.textContent = '25°C';
+                    this.fpsDisplay.textContent = '0';
+                }
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                // Update RGB elements
+                this.updateRGBElements();
+
+                // Update stats periodically
+                if (Math.random() < 0.02) {
+                    this.updateStats();
+                }
+
+                // Update controls based on fan speed
+                const fanSpeed = parseInt(this.fanSpeedSlider.value);
+                const normalizedFanSpeed = fanSpeed / 100;
+
+                // Update fan rotations based on speed
+                if (this.powerOn) {
+                    this.gpuFans.forEach((fan, index) => {
+                        fan.rotation.z += 0.05 * normalizedFanSpeed * (1 + index * 0.2);
+                    });
+
+                    this.cpuFan.rotation.z += 0.04 * normalizedFanSpeed;
+                    this.psuFan.rotation.z += 0.03 * normalizedFanSpeed;
+
+                    this.caseFans.forEach((fan, index) => {
+                        fan.rotation.z += 0.02 * normalizedFanSpeed * (1 + index * 0.1);
+                    });
+                }
+
+                // Update cooling tubes animation
+                if (this.powerOn) {
+                    this.coolingTubes.forEach((tube, index) => {
+                        tube.rotation.y += 0.01 * normalizedFanSpeed;
+                    });
+                }
+
+                // Update controls
+                this.controls.update();
+
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Load GSAP for animations
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js';
+        script.onload = () => {
+            // Initialize the application after GSAP is loaded
+            const nexus9 = new Nexus9PC();
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>
