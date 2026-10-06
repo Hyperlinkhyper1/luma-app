@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ember & Bean — Coffee for Slow Mornings</title>
+  <style>
+    :root {
+      --bg: #f9f5f0;
+      --txt: #4a3f35;
+      --accent: #6b4226;
+      --accent-light: #a67c52;
+      --card-bg: #ffffff;
+      --light: #f7f1e7;
+      --soft-accent: #e6d7c8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--txt);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    .container {
+      width: min(90%, 1200px);
+      margin-inline: auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: var(--accent);
+    }
+
+    nav.desktop-nav {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    nav.desktop-nav a {
+      font-size: .9rem;
+      color: var(--txt);
+      transition: color .2s;
+    }
+
+    nav.desktop-nav a:hover {
+      color: var(--accent);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: .6rem 1.2rem;
+      border-radius: 6px;
+      font-size: .9rem;
+      cursor: pointer;
+      transition: background .2s;
+    }
+
+    .btn.outline {
+      background: transparent;
+      border: 1.5px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .btn:hover {
+      background: var(--accent-light);
+    }
+
+    .menu-toggle {
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: .5rem;
+    }
+
+    @media (max-width: 768px) {
+      .desktop-nav {
+        display: none;
+      }
+      .mobile-nav {
+        display: flex;
+      }
+      .menu-toggle {
+        display: flex;
+      }
+    }
+
+    .mobile-nav {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+      background: var(--card-bg);
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      box-shadow: 0 4px 8px rgba(0,0,0,.1);
+    }
+
+    .hero {
+      padding: 3rem 0 4rem;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3rem);
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      max-width: 640px;
+      margin-inline: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero .actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+
+    .note {
+      font-size: .9rem;
+      color: var(--accent-light);
+    }
+
+    .coffee-illustration {
+      margin: 2rem auto;
+      max-width: 420px;
+    }
+
+    .roast-selector {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .roast-selector label {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .95rem;
+      cursor: pointer;
+    }
+
+    .roast-info {
+      text-align: center;
+      margin-top: 1rem;
+      font-size: .95rem;
+    }
+
+    section {
+      padding: 4rem 0;
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .benefits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .benefit {
+      flex: 1 1 280px;
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 2rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,.06);
+      text-align: center;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .steps {
+        flex-direction: row;
+      }
+    }
+
+    .step {
+      flex: 1;
+      background: var(--card-bg);
+      border-radius: 10px;
+      padding: 2rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,.06);
+      text-align: center;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+    }
+
+    .stories {
+      background: var(--light);
+      padding: 4rem 0;
+    }
+
+    .stories blockquote {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 1.1rem;
+      font-style: italic;
+      margin-bottom: .5rem;
+    }
+
+    .stories .cite {
+      font-size: .9rem;
+      color: var(--accent-light);
+    }
+
+    .subscriptions .note {
+      font-size: .9rem;
+      color: var(--accent-light);
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .plans {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .plan {
+      border: 2px solid var(--soft-accent);
+      border-radius: 10px;
+      padding: 1.5rem;
+      background: var(--card-bg);
+      flex: 1 1 280px;
+      text-align: center;
+      transition: border-color .2s;
+    }
+
+    .plan.popular {
+      border-color: var(--accent);
+    }
+
+    .plan.popular .tag {
+      display: inline-block;
+      font-size: .8rem;
+      background: var(--accent);
+      color: #fff;
+      padding: .2rem .6rem;
+      border-radius: 4px;
+    }
+
+    .plan.price {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin: 1rem 0;
+    }
+
+    .plan.frequency-toggle {
+      display: flex;
+      justify-content: center;
+      gap: .5rem;
+      margin: 1rem 0;
+    }
+
+    .frequency-toggle label {
+      cursor: pointer;
+      padding: .4rem .8rem;
+      border-radius: 6px;
+      background: transparent;
+      border: 1px solid var(--soft-accent);
+    }
+
+    .frequency-toggle input[type="radio"] {
+      display: none;
+    }
+
+    .frequency-toggle input:checked + label {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    footer {
+      background: #3a2e22;
+      color: #d7c8b0;
+      padding: 3rem 0 2rem;
+      text-align: center;
+    }
+
+    footer h3 {
+      color: #fff;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin: 1.5rem 0;
+    }
+
+    .skip-link {
+      position: absolute;
+      top: -40px;
+      left: 0;
+      background: var(--accent);
+      color: #fff;
+      padding: .6rem 1rem;
+      z-index: 1000;
+    }
+
+    .skip-link:focus {
+      top: 0;
+    }
+
+    dialog {
+      padding: 0;
+      border: none;
+      border-radius: 10px;
+      max-width: 520px;
+      width: 90%;
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    }
+
+    dialog::backdrop {
+      background: rgba(0,0,0,.5);
+    }
+
+    .dialog-content {
+      padding: 2rem;
+    }
+
+    .dialog-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      position: absolute;
+      top: .5rem;
+      right: .5rem;
+      cursor: pointer;
+    }
+
+    .summary {
+      background: var(--light);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 390px) {
+      .hero .actions {
+        flex-direction: column;
+        align-items: center;
+      }
+      .plans {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="container header-inner">
+    <a href="#" class="logo">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="12" fill="var(--accent)"/>
+        <path d="M16 6 C20 10 22 14 22 18 C22 22 18 26 14 26 C10 26 6 22 6 18 C6 14 8 10 12 6 Z" fill="#fff"/>
+      </svg>
+      Ember & Bean
+    </a>
+    <nav class="desktop-nav" aria-label="Main">
+      <a href="#coffee">Our coffee</a>
+      <a href="#how">How it works</a>
+      <a href="#subs">Subscriptions</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <button id="menuToggle" class="menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span style="width:24px;height:2px;background:var(--txt);display:block;"></span>
+        <span style="width:24px;height:2px;background:var(--txt);display:block;"></span>
+        <span style="width:24px;height:2px;background:var(--txt);display:block;"></span>
+      </button>
+      <button id="openDialogBtn" class="btn">Choose your coffee</button>
+    </div>
+  </div>
+  <nav id="mobileNav" class="mobile-nav" aria-label="Mobile">
+    <div class="container">
+      <a href="#coffee" onclick="toggleMobileNav(false)">Our coffee</a>
+      <a href="#how" onclick="toggleMobileNav(false)">How it works</a>
+      <a href="#subs" onclick="toggleMobileNav(false)">Subscriptions</a>
+      <a href="#faq" onclick="toggleMobileNav(false)">FAQ</a>
+    </div>
+  </nav>
+</header>
+
+<a href="#mainContent" class="skip-link">Skip to content</a>
+
+<main id="mainContent">
+
+  <section class="hero">
+    <div class="container">
+      <h1>Good mornings start with great coffee.</h1>
+      <p>Freshly roasted coffee, delivered for your favorite brewing ritual.</p>
+      <div class="actions">
+        <button id="heroChooseBtn" class="btn">Choose your coffee</button>
+        <a href="#coffee" class="btn outline">Meet the roasts</a>
+      </div>
+      <p class="note">Freshly roasted · Brew your way</p>
+
+      <div class="coffee-illustration" aria-hidden="true">
+        <svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+          <!-- Cup -->
+          <ellipse cx="120" cy="230" rx="40" ry="8" fill="rgba(0,0,0,0.1)"/>
+          <rect x="95" y="150" width="50" height="80" rx="10" fill="#d7c8b0"/>
+          <path d="M95 155 Q120 145 145 155 Z" fill="#b8a88a"/>
+          <!-- Bag -->
+          <path d="M250 150 L330 150 L320 240 L260 240 Z" fill="#fff" stroke="#ddd" stroke-width="1"/>
+          <text x="300" y="195" text-anchor="middle" font-size="14" fill="#444" id="bagLabel">Morning Light</text>
+          <!-- Beans scattered -->
+          <circle cx="170" cy="210" r="8" fill="#4a3f35"/>
+          <circle cx="180" cy="220" r="7" fill="#4a3f35"/>
+          <circle cx="190" cy="200" r="6" fill="#4a3f35"/>
+        </svg>
+      </div>
+
+      <div class="roast-selector">
+        <label><input type="radio" name="roast" value="morning" checked onchange="updateRoast('morning')"> Morning Light</label>
+        <label><input type="radio" name="roast" value="daybreak" onchange="updateRoast('daybreak')"> Daybreak</label>
+        <label><input type="radio" name="roast" value="nightcap" onchange="updateRoast('nightcap')"> Nightcap Decaf</label>
+      </div>
+
+      <div class="roast-info">
+        <p id="roastName"><strong>Morning Light</strong> — Medium roast</p>
+        <p id="roastDetails">250g · Tasting notes: Chocolate, Caramel</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="coffee">
+    <div class="container">
+      <h2 class="section-title">Our coffee</h2>
+      <div class="benefits">
+        <div class="benefit">
+          <h3>Morning Light</h3>
+          <p>A balanced medium roast with rich chocolate and caramel sweetness — perfect for drip or pour-over.</p>
+          <button class="btn" onclick="openDialogWithRoast('morning')">Choose this roast</button>
+        </div>
+        <div class="benefit">
+          <h3>Daybreak</h3>
+          <p>Bright and zesty, this light roast awakens with citrus and honey notes ideal for clean brewing methods.</p>
+          <button class="btn" onclick="openDialogWithRoast('daybreak')">Choose this roast</button>
+        </div>
+        <div class="benefit">
+          <h3>Nightcap Decaf</h3>
+          <p>A smooth medium roast decaf with cocoa and hazelnut undertones — enjoy any hour without the buzz.</p>
+          <button class="btn" onclick="openDialogWithRoast('nightcap')">Choose this roast</button>
+        </div>
+      </div>
+
+      <div class="benefits" style="margin-top: 3rem;">
+        <div class="benefit">
+          <h3>Roasted with care</h3>
+          <p>We roast each batch in small quantities to highlight origin characteristics and peak flavor.</p>
+        </div>
+        <div class="benefit">
+          <h3>Made for your brew</h3>
+          <p>Select whole bean, filter grind, or espresso grind to match your preferred brewing method.</p>
+        </div>
+        <div class="benefit">
+          <h3>Fresh coffee, on your schedule</h3>
+          <p>Our subscription delivers freshly roasted coffee right when you need it most.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="container">
+      <h2 class="section-title">How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Pick your roast</h3>
+          <p>Choose from our three signature blends designed for every moment of your day.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Choose your grind</h3>
+          <p>Select the grind size that suits your brewing method — espresso, filter, or whole bean.</p>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Set your rhythm</h3>
+          <p>Decide your delivery frequency and get fresh coffee delivered to your door.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="stories" id="stories">
+    <div class="container">
+      <p class="note">Illustrative stories from fictional coffee drinkers</p>
+      <blockquote>
+        "Morning Light turned my first cup into my favorite ritual."
+        <div class="cite">— Mira Chen, Home brewer</div>
+      </blockquote>
+      <blockquote style="margin-top: 2rem;">
+        "A fresh bag, the right grind, and a better espresso every morning."
+        <div class="cite">— Alex Rivera, Espresso enthusiast</div>
+      </blockquote>
+    </div>
+  </section>
+
+  <section id="subs">
+    <div class="container">
+      <h2 class="section-title">Subscriptions</h2>
+      <p class="note">Shipping included in this demo pricing. Billing follows the selected delivery schedule.</p>
+      <div class="plans">
+        <div class="plan">
+          <h3>Solo ritual</h3>
+          <p>One 250g bag</p>
+          <div class="price">$14</div>
+          <div class="frequency-toggle">
+            <label><input type="radio" name="freq-solo" value="2weeks" checked> Every 2 weeks</label>
+            <label><input type="radio" name="freq-solo" value="monthly"> Monthly</label>
+          </div>
+          <button class="btn" onclick="openDialogFromPlan('solo')">Choose</button>
+        </div>
+        <div class="plan popular">
+          <div class="tag">Most popular</div>
+          <h3>Daily duo</h3>
+          <p>Two 250g bags (500g total)</p>
+          <div class="price">$26</div>
+          <div class="frequency-toggle">
+            <label><input type="radio" name="freq-daily" value="2weeks" checked> Every 2 weeks</label>
+            <label><input type="radio" name="freq-daily" value="monthly"> Monthly</label>
+          </div>
+          <button class="btn" onclick="openDialogFromPlan('daily')">Choose</button>
+        </div>
+        <div class="plan">
+          <h3>Coffee household</h3>
+          <p>Four 250g bags (1kg total)</p>
+          <div class="price">$48</div>
+          <div class="frequency-toggle">
+            <label><input type="radio" name="freq-household" value="2weeks" checked> Every 2 weeks</label>
+            <label><input type="radio" name="freq-household" value="monthly"> Monthly</label>
+          </div>
+          <button class="btn" onclick="openDialogFromPlan('household')">Choose</button>
+        </div>
+      </div>
+      <p class="note">You can pause or change your next delivery anytime in your account settings.</p>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="container">
+      <h2 class="section-title">FAQ</h2>
+      <div id="faqAccordion"></div>
+    </div>
+  </section>
+
+  <section style="text-align:center;">
+    <div class="container">
+      <h2>Find your perfect cup</h2>
+      <p style="margin-bottom: 1.5rem;">Start your journey with Ember & Bean today.</p>
+      <button id="finalChooseBtn" class="btn">Choose your coffee</button>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <h3>Ember & Bean</h3>
+    <p>&copy; 2025 Ember & Bean. All rights reserved.</p>
+    <div class="footer-links">
+      <a href="#coffee">Our coffee</a>
+      <a href="#how">How it works</a>
+      <a href="#subs">Subscriptions</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</footer>
+
+<dialog id="coffeeDialog" aria-labelledby="dialogTitle">
+  <form method="dialog" id="coffeeForm">
+    <button type="button" id="dialogClose" class="dialog-close" aria-label="Close dialog">&times;</button>
+    <div class="dialog-content">
+      <h3 id="dialogTitle">Choose your coffee</h3>
+
+      <label for="nameField">Name</label>
+      <input type="text" id="nameField" required style="width:100%;padding:.6rem;margin:.4rem 0 0 0;">
+
+      <label for="emailField">Email</label>
+      <input type="email" id="emailField" required style="width:100%;padding:.6rem;margin:.4rem 0 .8rem 0;">
+
+      <label for="roastSelect">Roast</label>
+      <select id="roastSelect" style="width:100%;padding:.6rem;margin-bottom:1rem;">
+        <option value="morning">Morning Light – Medium</option>
+        <option value="daybreak">Daybreak – Light</option>
+        <option value="nightcap">Nightcap Decaf – Medium Decaf</option>
+      </select>
+
+      <label for="grindSelect">Grind</label>
+      <select id="grindSelect" style="width:100%;padding:.6rem;margin-bottom:1rem;">
+        <option value="whole">Whole bean</option>
+        <option value="filter">Filter grind</option>
+        <option value="espresso">Espresso grind</option>
+      </select>
+
+      <label for="deliverySelect">Delivery option</label>
+      <select id="deliverySelect" style="width:100%;padding:.6rem;margin-bottom:1rem;">
+        <option value="solo">Solo ritual – $14</option>
+        <option value="daily">Daily duo – $26</option>
+        <option value="household">Coffee household – $48</option>
+      </select>
+
+      <label for="frequencySelect">Frequency</label>
+      <select id="frequencySelect" style="width:100%;padding:.6rem;margin-bottom:1rem;">
+        <option value="2weeks">Every 2 weeks</option>
+        <option value="monthly">Monthly</option>
+      </select>
+
+      <div class="summary" id="orderSummary"></div>
+
+      <button type="submit" class="btn" style="width:100%;margin-top:1rem;">Confirm demo subscription</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="confirmationOverlay" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,.7);align-items:center;justify-content:center;z-index:200;">
+  <div style="background:#fff;padding:2rem;border-radius:10px;text-align:center;max-width:90%;">
+    <h3>Demo confirmation</h3>
+    <p id="confirmDetails"></p>
+    <p><strong>Demo only: no order was placed, no payment was taken, and no information was sent.</strong></p>
+    <button id="closeConfirmation" class="btn">Close</button>
+  </div>
+</div>
+
+<script>
+  const roasts = {
+    morning: { name: 'Morning Light', level: 'Medium roast', notes: 'Chocolate, Caramel' },
+    daybreak: { name: 'Daybreak', level: 'Light roast', notes: 'Citrus, Honey' },
+    nightcap: { name: 'Nightcap Decaf', level: 'Medium roast (decaf)', notes: 'Cocoa, Hazelnut' }
+  };
+
+  function updateRoast(key) {
+    const r = roasts[key];
+    document.getElementById('bagLabel').textContent = r.name;
+    document.getElementById('roastName').innerHTML = `<strong>${r.name}</strong> — ${r.level}`;
+    document.getElementById('roastDetails').textContent = `250g · Tasting notes: ${r.notes}`;
+    document.getElementById('roastSelect').value = key;
+    updateSummary();
+  }
+
+  function toggleMobileNav(open) {
+    const nav = document.getElementById('mobileNav');
+    const toggle = document.getElementById('menuToggle');
+    nav.style.display = open ? 'flex' : 'none';
+    toggle.setAttribute('aria-expanded', open);
+  }
+
+  function openDialogWithRoast(key) {
+    document.getElementById('roastSelect').value = key;
+    updateSummary();
+    openDialog();
+  }
+
+  function openDialogFromPlan(planKey) {
+    document.getElementById('deliverySelect').value = planKey;
+    updateSummary();
+    openDialog();
+  }
+
+  function openDialog() {
+    const dialog = document.getElementById('coffeeDialog');
+    updateSummary();
+    dialog.showModal();
+    dialog.focus();
+  }
+
+  function closeDialog() {
+    const dialog = document.getElementById('coffeeDialog');
+    dialog.close();
+  }
+
+  document.getElementById('menuToggle').addEventListener('click', () => {
+    const expanded = document.getElementById('menuToggle').getAttribute('aria-expanded') === 'true';
+    toggleMobileNav(!expanded);
+  });
+
+  document.getElementById('openDialogBtn').addEventListener('click', openDialog);
+  document.getElementById('heroChooseBtn').addEventListener('click', openDialog);
+  document.getElementById('finalChooseBtn').addEventListener('click', openDialog);
+  document.getElementById('dialogClose').addEventListener('click', closeDialog);
+
+  const dialogEl = document.getElementById('coffeeDialog');
+  dialogEl.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeDialog();
+  });
+
+  dialogEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeDialog();
+    }
+    if (e.key === 'Tab') {
+      const focusableEls = dialogEl.querySelectorAll('input, select, button');
+      const firstEl = focusableEls[0];
+      const lastEl = focusableEls[focusableEls.length - 1];
+      if (e.shiftKey && document.activeElement === firstEl) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && document.activeElement === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    }
+  });
+
+  const deliveryPlans = {
+    solo: { name: 'Solo ritual', bags: 1, price: 14 },
+    daily: { name: 'Daily duo', bags: 2, price: 26 },
+    household: { name: 'Coffee household', bags: 4, price: 48 }
+  };
+
+  const selectedRoastKey = 'morning';
+  const selectedGrindMap = {
+    whole: 'Whole bean',
+    filter: 'Filter grind',
+    espresso: 'Espresso grind'
+  };
+
+  const grinds = ['whole', 'filter', 'espresso'];
+  const grindNames = { whole: 'Whole bean', filter: 'Filter grind', espresso: 'Espresso grind' };
+
+  function getSelectedRoastKey() {
+    return document.getElementById('roastSelect').value;
+  }
+
+  function getSelectedGrindKey() {
+    return document.getElementById('grindSelect').value;
+  }
+
+  function getSelectedPlanKey() {
+    return document.getElementById('deliverySelect').value;
+  }
+
+  function getSelectedFrequency() {
+    return document.getElementById('frequencySelect').value;
+  }
+
+  function updateSummary() {
+    const roastKey = getSelectedRoastKey();
+    const grindKey = getSelectedGrindKey();
+    const planKey = getSelectedPlanKey();
+    const freq = getSelectedFrequency();
+
+    const roast = roasts[roastKey];
+    const plan = deliveryPlans[planKey];
+    const totalWeight = plan.bags * 250;
+    const freqText = freq === '2weeks' ? 'Every 2 weeks' : 'Monthly';
+
+    const summary = `
+      <p><strong>Coffee:</strong> ${roast.name} (${roast.level})</p>
+      <p><strong>Grind:</strong> ${grindNames[grindKey]}</p>
+      <p><strong>Bags:</strong> ${plan.bags} (${totalWeight}g total)</p>
+      <p><strong>Price:</strong> $${plan.price} per delivery</p>
+      <p><strong>Frequency:</strong> ${freqText}</p>
+    `;
+    document.getElementById('orderSummary').innerHTML = summary;
+  }
+
+  ['change', 'input'].forEach(evt => {
+    document.getElementById('roastSelect').addEventListener(evt, updateSummary);
+    document.getElementById('grindSelect').addEventListener(evt, updateSummary);
+    document.getElementById('deliverySelect').addEventListener(evt, updateSummary);
+    document.getElementById('frequencySelect').addEventListener(evt, updateSummary);
+  });
+
+  document.getElementById('coffeeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('nameField').value.trim();
+    const email = document.getElementById('emailField').value.trim();
+
+    let valid = true;
+
+    if (!name) {
+      alert('Please enter your name.');
+      valid = false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      alert('Please enter a valid email address.');
+      valid = false;
+    }
+
+    if (!valid) return;
+
+    const roastKey = getSelectedRoastKey();
+    const grndKey = getSelectedGrindKey();
+    const planKey = getSelectedPlanKey();
+    const freq = getSelectedFrequency();
+
+    const roast = roasts[roastKey];
+    const plan = deliveryPlans[planKey];
+    const freqText = freq === '2weeks' ? 'Every 2 weeks' : 'Monthly';
+
+    const detailText = `${roast.name} • ${grindNames[grndKey]} • ${plan.bags} bag(s) (${plan.bags * 250}g) • $${plan.price}/delivery • ${freqText}`;
+    document.getElementById('confirmDetails').textContent = detailText;
+
+    closeDialog();
+    document.getElementById('confirmationOverlay').style.display = 'flex';
+  });
+
+  document.getElementById('closeConfirmation').addEventListener('click', () => {
+    document.getElementById('confirmationOverlay').style.display = 'none';
+    document.getElementById('nameField').value = '';
+    document.getElementById('emailField').value = '';
+    document.getElementById('coffeeForm').reset();
+  });
+
+  document.getElementById('confirmationOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      document.getElementById('confirmationOverlay').style.display = 'none';
+    }
+  });
+
+  const faqData = [
+    {
+      q: 'How do I choose a roast?',
+      a: 'Each roast is crafted for different moments. Morning Light and Nightcap Decaf are medium roasts, while Daybreak is a bright light roast. Pick what matches your mood or brewing style.'
+    },
+    {
+      q: 'What grind options are available?',
+      a: 'We offer whole bean, filter grind, and espresso grind. Select the grind that matches your brewing equipment at checkout.'
+    },
+    {
+      q: 'Can I pause my deliveries?',
+      a: 'Yes. In your account settings you can pause or reschedule your next delivery. This demo does not connect to a real store, but real Ember & Bean subscriptions would allow flexible scheduling.'
+    },
+    {
+      q: 'How does this demo work?',
+      a: 'This is an offline demo built for benchmarking frontend design and interactions. No real orders, payments, or data are collected. Everything runs locally in your browser with no network calls.'
+    }
+  ];
+
+  const faqContainer = document.getElementById('faqAccordion');
+  faqData.forEach((item, i) => {
+    const details = document.createElement('details');
+    details.style.marginBottom = '1rem';
+    details.innerHTML = `
+      <summary style="font-weight:600;cursor:pointer;">${item.q}</summary>
+      <p style="margin-top:1rem;">${item.a}</p>
+    `;
+    faqContainer.appendChild(details);
+  });
+
+  window.updateRoast = updateRoast;
+  window.openDialogWithRoast = openDialogWithRoast;
+  window.openDialogFromPlan = openDialogFromPlan;
+  window.toggleMobileNav = toggleMobileNav;
+  window.openDialog = openDialog;
+  window.closeDialog = closeDialog;
+</script>
+</body>
+</html>
