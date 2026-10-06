@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ember & Bean | Specialty Coffee Roastery</title>
+    <style>
+        :root {
+            --color-bg: #fdfaf7;
+            --color-text: #2c1e1a;
+            --color-text-muted: #5d4a44;
+            --color-accent: #bc6c25;
+            --color-accent-light: #dda15e;
+            --color-card: #ffffff;
+            --color-border: #e0d7d0;
+            --color-roast-morning: #d4a373;
+            --color-roast-daybreak: #faedcd;
+            --color-roast-nightcap: #603808;
+            
+            --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-serif: Georgia, "Times New Roman", Times, serif;
+            
+            --transition: all 0.3s ease;
+            --container-max: 1200px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: var(--font-serif);
+            line-height: 1.2;
+        }
+
+        .skip-link {
+            position: absolute;
+            left: -10000px;
+            top: auto;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+
+        .skip-link:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            padding: 1rem;
+            background: var(--color-accent);
+            color: white;
+        }
+
+        /* Layout */
+        .container {
+            max-width: var(--container-max);
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        section {
+            padding: 5rem 0;
+        }
+
+        @media (max-width: 768px) {
+            section { padding: 3.5rem 0; }
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            background: rgba(253, 250, 247, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--color-border);
+            z-index: 100;
+        }
+
+        nav {
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--color-text);
+            font-family: var(--font-serif);
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--color-text);
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .nav-links a:hover {
+            color: var(--color-accent);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+            border: none;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--color-accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--color-text);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid var(--color-text);
+            color: var(--color-text);
+        }
+
+        .btn-secondary:hover {
+            background: var(--color-text);
+            color: white;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+
+        /* Mobile Menu */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle { display: block; }
+            .nav-links {
+                position: fixed;
+                top: 70px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: var(--color-bg);
+                flex-direction: column;
+                padding: 2rem;
+                gap: 1.5rem;
+                transform: translateX(100%);
+                transition: transform 0.3s ease-in-out;
+                z-index: 99;
+            }
+            .nav-links.active {
+                transform: translateX(0);
+            }
+        }
+
+        /* Hero Section */
+        .hero {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            min-height: calc(100vh - 70px);
+        }
+
+        @media (max-width: 1024px) {
+            .hero { grid-template-columns: 1fr; text-align: center; gap: 2rem; }
+            .hero-content { order: 2; }
+            .hero-visual { order: 1; }
+        }
+
+        .hero-headline {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-subtext {
+            font-size: 1.25rem;
+            color: var(--color-text-muted);
+            margin-bottom: 2rem;
+            max-width: 500px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-subtext { margin: 0 auto 2rem auto; }
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 480px) {
+            .hero-actions { flex-direction: column; }
+        }
+
+        .freshness-note {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+            font-style: italic;
+        }
+
+        /* Coffee Illustration */
+        .hero-visual {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .illustration-container {
+            width: 100%;
+            max-width: 450px;
+            position: relative;
+        }
+
+        /* Roast Selector UI */
+        .roast-selector {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .roast-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: var(--transition);
+        }
+
+        .roast-dot.active {
+            border-color: var(--color-text);
+            transform: scale(1.1);
+        }
+
+        .roast-info-display {
+            margin-top: 1.5rem;
+            min-height: 60px;
+        }
+
+        .roast-info-display .label {
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: block;
+        }
+
+        .roast-info-display .notes {
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Our Coffee Section */
+        .section-title {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-title h2 { font-size: 2.5rem; }
+
+        .coffee-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5rem;
+        }
+
+        @media (max-width: 1024px) { .coffee-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) { .coffee-grid { grid-template-columns: 1fr; } }
+
+        .coffee-card {
+            background: var(--color-card);
+            padding: 2.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            text-align: center;
+            transition: var(--transition);
+        }
+
+        .coffee-card:hover {
+            box-shadow: 0 10px 30px rgba(44, 30, 26, 0.05);
+            transform: translateY(-5px);
+        }
+
+        .coffee-card h3 { margin: 1.5rem 0 0.5rem; font-size: 1.75rem; }
+
+        .coffee-card p { color: var(--color-text-muted); margin-bottom: 2rem; }
+
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3rem;
+            margin-top: 6rem;
+        }
+
+        @media (max-width: 768px) { .benefits-grid { grid-template-columns: 1fr; gap: 2.5rem; } }
+
+        .benefit-item { text-align: center; }
+        .benefit-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f4ece6;
+            border-radius: 50%;
+        }
+
+        /* How It Works */
+        .how-it-works { background: #f4ece6; }
+        .steps-container {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .steps-container::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            left: 10%;
+            right: 10%;
+            height: 2px;
+            background: var(--color-border);
+            z-index: 1;
+        }
+
+        @media (max-width: 768px) {
+            .steps-container { flex-direction: column; gap: 3rem; }
+            .steps-container::before { display: none; }
+        }
+
+        .step {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            text-align: center;
+            padding: 0 1rem;
+        }
+
+        .step-num {
+            width: 60px;
+            height: 60px;
+            background: var(--color-text);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-weight: bold;
+            font-size: 1.25rem;
+        }
+
+        /* Stories */
+        .stories-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .story-item {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            border-left: 4px solid var(--color-accent-light);
+            background: #fff;
+        }
+
+        .story-quote {
+            font-family: var(--font-serif);
+            font-size: 1.5rem;
+            font-style: italic;
+            margin-bottom: 1rem;
+        }
+
+        .story-author {
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--color-text-muted);
+        }
+
+        .disclaimer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            margin-top: 2rem;
+        }
+
+        /* Subscriptions */
+        .subscription-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        @media (max-width: 1024px) { .subscription-grid { grid-template-columns: 1fr; } }
+
+        .sub-card {
+            background: white;
+            padding: 3rem 2rem;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sub-card.popular {
+            border: 2px solid var(--color-accent);
+            position: relative;
+        }
+
+        .popular-tag {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--color-accent);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .sub-price {
+            font-size: 2.5rem;
+            font-family: var(--font-serif);
+            margin: 1.5rem 0;
+        }
+
+        .sub-desc {
+            color: var(--color-text-muted);
+            margin-bottom: 2rem;
+            flex-grow: 1;
+        }
+
+        .frequency-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            background: #eee;
+            padding: 0.5rem;
+            border-radius: 30px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1.5rem;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .toggle-btn.active {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .billing-note {
+            text-align: center;
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+            margin-top: -2rem;
+            margin-bottom: 3rem;
+        }
+
+        /* FAQ */
+        .faq-container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        details {
+            background: white;
+            border: 1px solid var(--color-border);
+            margin-bottom: 1rem;
+            border-radius: 4px;
+        }
+
+        summary {
+            padding: 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        summary::after {
+            content: '+';
+            font-size: 1.5rem;
+        }
+
+        details[open] summary::after {
+            content: '−';
+        }
+
+        .faq-answer {
+            padding: 0 1.5rem 1.5rem;
+            color: var(--color-text-muted);
+        }
+
+        /* Dialog */
+        .dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(44, 30, 26, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .dialog-overlay.active { display: flex; }
+
+        .dialog-content {
+            background: white;
+            width: 100%;
+            max-width: 550px;
+            max-height: 90vh;
+            border-radius: 12px;
+            padding: 2.5rem;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .dialog-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .error-msg {
+            color: #b91c1c;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .order-summary {
+            background: #f9f5f2;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .summary-total {
+            border-top: 1px solid var(--color-border);
+            padding-top: 0.5rem;
+            margin-top: 0.5rem;
+            font-weight: bold;
+        }
+
+        /* Confirmation View */
+        .confirmation-view {
+            text-align: center;
+        }
+
+        .confirmation-view h3 {
+            color: #059669;
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .demo-disclaimer {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f3f4f6;
+            border-radius: 4px;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--color-text);
+            color: #e0d7d0;
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand h2 { color: white; margin-bottom: 1rem; }
+        .footer-links h4 { color: white; margin-bottom: 1.5rem; }
+        .footer-links ul { list-style: none; }
+        .footer-links li { margin-bottom: 0.75rem; }
+        .footer-links a { color: #a0948e; text-decoration: none; font-size: 0.9rem; }
+        .footer-links a:hover { color: white; }
+
+        .copyright {
+            text-align: center;
+            padding-top: 2rem;
+            border-top: 1px solid #44332e;
+            font-size: 0.8rem;
+            color: #7c6f67;
+        }
+
+        /* SVG Art Utility */
+        .art-bag { transition: fill 0.5s ease; }
+        .art-label { transition: all 0.5s ease; }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
+    <header>
+        <div class="container">
+            <nav>
+                <a href="#" class="logo" aria-label="Ember & Bean Home">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 4C12 4 9 7 9 11C9 15 12 16 12 18C12 21 14 23 16 23C18 23 20 21 20 18C20 16 23 15 23 11C23 7 20 4 16 4Z" fill="currentColor"/>
+                        <circle cx="16" cy="11" r="3" fill="white" fill-opacity="0.3"/>
+                        <path d="M8 26C8 28 10 30 16 30C22 30 24 28 24 26" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Ember & Bean
+                </a>
+                
+                <button class="menu-toggle" aria-expanded="false" aria-controls="mobile-nav" aria-label="Toggle menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+
+                <div class="nav-links" id="mobile-nav">
+                    <a href="#coffee">Our coffee</a>
+                    <a href="#how-it-works">How it works</a>
+                    <a href="#subscriptions">Subscriptions</a>
+                    <a href="#faq">FAQ</a>
+                    <button class="btn btn-primary" onclick="openSubscriptionDialog()">Choose your coffee</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <!-- Hero Section -->
+        <section class="container hero">
+            <div class="hero-content">
+                <h1 class="hero-headline">Good mornings start with great coffee.</h1>
+                <p class="hero-subtext">Freshly roasted coffee is delivered directly to your door, perfectly prepared for your favorite brewing ritual.</p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary" onclick="openSubscriptionDialog()">Choose your coffee</button>
+                    <a href="#coffee" class="btn btn-secondary">Meet the roasts</a>
+                </div>
+                <span class="freshness-note">Freshly roasted · Brew your way</span>
+
+                <div class="roast-selector" role="radiogroup" aria-label="Select a roast to preview">
+                    <button class="roast-dot active" style="background: var(--color-roast-morning);" onclick="setRoast('morning')" aria-label="Morning Light" aria-checked="true"></button>
+                    <button class="roast-dot" style="background: var(--color-roast-daybreak);" onclick="setRoast('daybreak')" aria-label="Daybreak" aria-checked="false"></button>
+                    <button class="roast-dot" style="background: var(--color-roast-nightcap);" onclick="setRoast('nightcap')" aria-label="Nightcap Decaf" aria-checked="false"></button>
+                </div>
+                <div class="roast-info-display" id="hero-roast-info">
+                    <span class="label" id="display-roast-name">Morning Light</span>
+                    <span class="notes" id="display-roast-notes">Chocolate and caramel notes</span>
+                </div>
+            </div>
+
+            <div class="hero-visual" aria-hidden="true">
+                <div class="illustration-container" id="hero-illustration">
+                    <!-- SVG Coffee Bag & Cup Illustration -->
+                    <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Steam -->
+                        <path d="M240 140 Q250 120 240 100" stroke="#d1d5db" stroke-width="3" fill="none" opacity="0.6">
+                            <animate attributeName="stroke-dasharray" from="0,50" to="50,0" dur="2s" repeatCount="indefinite" />
+                        </path>
+                        <path d="M260 140 Q270 120 260 100" stroke="#d1d5db" stroke-width="3" fill="none" opacity="0.4">
+                            <animate attributeName="stroke-dasharray" from="0,50" to="50,0" dur="2.5s" repeatCount="indefinite" />
+                        </path>
+                        
+                        <!-- Coffee Cup -->
+                        <path d="M240 160 Q280 160 290 200 L240 230 Z" fill="#ffffff" stroke="#e5e7eb" stroke-width="1"/>
+                        <path d="M240 160 Q280 160 290 200 L240 230 Z" fill="#3d2b1f"/>
+                        <ellipse cx="265" cy="165" rx="25" ry="8" fill="#2c1e1a"/>
+                        <path d="M290 180 Q310 180 310 200 Q310 220 290 220" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+
+                        <!-- Coffee Bag -->
+                        <g id="bag-group">
+                            <rect x="80" y="100" width="140" height="220" rx="10" class="art-bag" fill="var(--color-roast-morning)"/>
+                            <path d="M80 130 Q150 115 220 130" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="2"/>
+                            <!-- Label -->
+                            <rect x="100" y="160" width="100" height="110" rx="4" fill="white" class="art-label"/>
+                            <text x="150" y="200" text-anchor="middle" font-family="serif" font-size="14" fill="#2c1e1a" id="bag-label-text">Morning Light</text>
+                            <text x="150" y="225" text-anchor="middle" font-family="sans-serif" font-size="8" fill="#5d4a44" id="bag-notes-text">CHOC & CARAMEL</text>
+                            <rect x="135" y="245" width="30" height="2" fill="var(--color-accent)"/>
+                        </g>
+
+                        <!-- Loose Beans -->
+                        <ellipse cx="320" cy="320" rx="12" ry="8" fill="#3d2b1f" transform="rotate(30 320 320)"/>
+                        <ellipse cx="340" cy="340" rx="10" ry="6" fill="#2c1e1a" transform="rotate(-15 340 340)"/>
+                        <ellipse cx="300" cy="350" rx="12" ry="8" fill="#3d2b1f" transform="rotate(45 300 350)"/>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- Our Coffee Section -->
+        <section id="coffee" class="container">
+            <div class="section-title">
+                <h2>Our coffee</h2>
+                <p>Small batches, roasted with intention.</p>
+            </div>
+            <div class="coffee-grid">
+                <div class="coffee-card">
+                    <h3>Morning Light</h3>
+                    <p>A balanced, medium roast designed for your first ritual. Expect smooth, comforting layers.</p>
+                    <div style="font-weight: bold; margin-bottom: 1rem;">Chocolate & Caramel</div>
+                    <button class="btn btn-outline" onclick="openSubscriptionDialog('morning')">Choose this roast</button>
+                </div>
+                <div class="coffee-card">
+                    <h3>Daybreak</h3>
+                    <p>A bright, light roast that wakes up your palate with vibrant, crisp acidity.</p>
+                    <div style="font-weight: bold; margin-bottom: 1rem;">Citrus & Honey</div>
+                    <button class="btn btn-outline" onclick="openSubscriptionDialog('daybreak')">Choose this roast</button>
+                </div>
+                <div class="coffee-card">
+                    <h3>Nightcap Decaf</h3>
+                    <p>All the flavor, none of the buzz. A rich, medium decaf for quiet evenings.</p>
+                    <div style="font-weight: bold; margin-bottom: 1rem;">Cocoa & Hazelnut</div>
+                    <button class="btn btn-outline" onclick="openSubscriptionDialog('nightcap')">Choose this roast</button>
+                </div>
+            </div>
+
+            <div class="benefits-grid">
+                <div class="benefit-item">
+                    <div class="benefit-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z"/>
+                        </svg>
+                    </div>
+                    <h3>Roasted with care</h3>
+                    <p>We roast in small batches to ensure every bean reaches its peak flavor profile.</p>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 7h-9m3 3H5m14 6h-6m-3-3H5"/>
+                        </svg>
+                    </div>
+                    <h3>Made for your brew</h3>
+                    <p>Choose your grind—from espresso to filter—so it's ready for your machine.</p>
+                </div>
+                <div class="benefit-item">
+                    <div class="benefit-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                    </div>
+                    <h3>Fresh coffee, on your schedule</h3>
+                    <p>Recurring deliveries that match your rhythm. Pause or change anytime.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section id="how-it-works" class="how-it-works">
+            <div class="container">
+                <div class="section-title">
+                    <h2>How it works</h2>
+                </div>
+                <div class="steps-container">
+                    <div class="step">
+                        <div class="step-num">1</div>
+                        <h3>Pick your roast</h3>
+                        <p>Explore our curated selection of light, medium, and decaf roasts.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">2</div>
+                        <h3>Choose your grind</h3>
+                        <p>Select whole bean or a grind tailored to your specific brewer.</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-num">3</div>
+                        <h3>Set your rhythm</h3>
+                        <p>Decide how often you want fresh beans delivered to your door.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Customer Stories Section -->
+        <section class="container">
+            <div class="section-title">
+                <h2>Customer stories</h2>
+            </div>
+            <div class="stories-container">
+                <div class="story-item">
+                    <blockquote class="story-quote">"Morning Light turned my first cup into my favorite ritual."</blockquote>
+                    <cite class="story-author">Mira Chen, Home brewer</cite>
+                </div>
+                <div class="story-item">
+                    <blockquote class="story-quote">"A fresh bag, the right grind, and a better espresso every morning."</blockquote>
+                    <cite class="story-author">Alex Rivera, Espresso enthusiast</cite>
+                </div>
+                <p class="disclaimer">Illustrative stories from fictional coffee drinkers</p>
+            </div>
+        </section>
+
+        <!-- Subscriptions Section -->
+        <section id="subscriptions" class="container">
+            <div class="section-title">
+                <h2>Subscriptions</h2>
+                <p>Deliciously consistent, delivered regularly.</p>
+            </div>
+
+            <div class="frequency-toggle" role="group" aria-label="Delivery frequency">
+                <button class="toggle-btn active" onclick="setFrequency(14)" id="freq-14">Every 2 weeks</button>
+                <button class="toggle-btn" onclick="setFrequency(30)" id="freq-30">Monthly</button>
+            </div>
+            <p class="billing-note" id="billing-explanation">Billing follows your selected delivery schedule.</p>
+
+            <div class="subscription-grid">
+                <div class="sub-card">
+                    <h3>Solo ritual</h3>
+                    <div class="sub-price">$14</div>
+                    <p class="sub-desc">One 250g bag per delivery. Perfect for the solo explorer.</p>
+                    <button class="btn btn-outline" onclick="openSubscriptionDialog('morning', 1)">Choose this option</button>
+                </div>
+                <div class="sub-card popular">
+                    <div class="popular-tag">Most popular</div>
+                    <h3>Daily duo</h3>
+                    <div class="sub-price">$26</div>
+                    <p class="sub-desc">Two 250g bags per delivery. Ideal for couples or heavy drinkers.</p>
+                    <button class="btn btn-primary" onclick="openSubscriptionDialog('morning', 2)">Choose this option</button>
+                </div>
+                <div class="sub-card">
+                    <h3>Coffee household</h3>
+                    <div class="sub-price">$48</div>
+                    <p class="sub-desc">Four 250g bags per delivery. The ultimate pantry staple.</p>
+                    <button class="btn btn-outline" onclick="openSubscriptionDialog('morning', 4)">Choose this option</button>
+                </div>
+            </div>
+            <p style="text-align: center; font-size: 0.875rem; color: var(--color-text-muted);">Shipping included in this demo pricing</p>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq" class="container">
+            <div class="section-title">
+                <h2>FAQ</h2>
+            </div>
+            <div class="faq-container">
+                <details>
+                    <summary>What roast can I choose?</summary>
+                    <div class="faq-answer">You can choose from our three signature roasts: Morning Light (Medium), Daybreak (Light), and Nightcap Decaf (Medium Decaf).</div>
+                </details>
+                <details>
+                    <summary>What grind options are available?</summary>
+                    <div class="faq-answer">We offer three options: Whole Bean, Filter Grind (for drip or pour-over), and Espresso Grind (fine).</div>
+                </details>
+                <details>
+                    <summary>Can I pause my deliveries?</summary>
+                    <div class="faq-answer">Absolutely. You can pause, skip, or change your next delivery at any time through your account dashboard.</div>
+                </details>
+                <details>
+                    <summary>How does this demo work?</summary>
+                    <div class="faq-answer">This is an offline frontend benchmark. No orders are actually placed, no payments are taken, and no information is sent to any server.</div>
+                </details>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h2>Ember & Bean</h2>
+                    <p>Bringing the specialty roastery experience to your kitchen ritual.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="#coffee">Our coffee</a></li>
+                        <li><a href="#how-it-works">How it works</a></li>
+                        <li><a href="#subscriptions">Subscriptions</a></li>
+                        <li><a href="#faq">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">Roastery</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; <span id="year"></span> Ember & Bean. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Subscription Dialog -->
+    <div class="dialog-overlay" id="dialog-overlay" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <div class="dialog-content" id="dialog-container">
+            <button class="dialog-close" onclick="closeDialog()" aria-label="Close dialog">&times;</button>
+            
+            <div id="dialog-form-view">
+                <h3 id="dialog-title" style="margin-bottom: 1.5rem;">Complete your subscription</h3>
+                <form id="subscription-form" novalidate>
+                    <div class="form-group">
+                        <label for="user-name">Full Name</label>
+                        <input type="text" id="user-name" required placeholder="e.g. Jane Doe">
+                        <div class="error-msg" id="name-error">Please enter your name.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email">Email Address</label>
+                        <input type="email" id="user-email" required placeholder="jane@example.com">
+                        <div class="error-msg" id="email-error">Please enter a valid email address.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-roast">Select Roast</label>
+                        <select id="form-roast">
+                            <option value="morning">Morning Light</option>
+                            <option value="daybreak">Daybreak</option>
+                            <option value="nightcap">Nightcap Decaf</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-grind">Grind Preference</label>
+                        <select id="form-grind">
+                            <option value="Whole Bean">Whole Bean</option>
+                            <option value="Filter">Filter Grind</option>
+                            <option value="Espresso">Espresso Grind</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-sub-option">Subscription Plan</label>
+                        <select id="form-sub-option">
+                            <option value="1">Solo ritual (1 bag)</option>
+                            <option value="2">Daily duo (2 bags)</option>
+                            <option value="4">Coffee household (4 bags)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-freq">Delivery Frequency</label>
+                        <select id="form-freq">
+                            <option value="14">Every 2 weeks</option>
+                            <option value="30">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div class="order-summary" id="live-summary">
+                        <div class="summary-row"><span>Roast:</span> <span id="sum-roast">-</span></div>
+                        <div class="summary-row"><span>Grind:</span> <span id="sum-grind">-</span></div>
+                        <div class="summary-row"><span>Quantity:</span> <span id="sum-qty">-</span></div>
+                        <div class="summary-row"><span>Weight:</span> <span id="sum-weight">-</span></div>
+                        <div class="summary-row"><span>Frequency:</span> <span id="sum-freq">-</span></div>
+                        <div class="summary-row summary-total"><span>Total:</span> <span id="sum-price">$0</span></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%;">Confirm demo subscription</button>
+                </form>
+            </div>
+
+            <div id="dialog-confirm-view" style="display: none;" class="confirmation-view">
+                <h3>Subscription Confirmed!</h3>
+                <p>We've simulated your order for:</p>
+                <div id="conf-details" style="margin: 1.5rem 0; text-align: left; background: #f9f5f2; padding: 1rem; border-radius: 8px;">
+                    <!-- Injected by JS -->
+                </div>
+                <button class="btn btn-outline" onclick="closeDialog()">Close</button>
+                <p class="demo-disclaimer">Demo only: no order was placed, no payment was taken, and no information was sent.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            roast: 'morning',
+            frequency: 14,
+            subscriptionBags: 1,
+            lastOpenedTrigger: null
+        };
+
+        const roastData = {
+            morning: {
+                name: 'Morning Light',
+                notes: 'Chocolate and caramel notes',
+                color: 'var(--color-roast-morning)',
+                label: 'Morning Light',
+                notesText: 'CHOC & CARAMEL',
+                price: 14
+            },
+            daybreak: {
+                name: 'Daybreak',
+                notes: 'Citrus and honey notes',
+                color: 'var(--color-roast-daybreak)',
+                label: 'Daybreak',
+                notesText: 'CITRUS & HONEY',
+                price: 14
+            },
+            nightcap: {
+                name: 'Nightcap Decaf',
+                notes: 'Cocoa and hazelnut notes',
+                color: 'var(--color-roast-nightcap)',
+                label: 'Nightcap',
+                notesText: 'COCOA & HAZELNUT',
+                price: 14
+            }
+        };
+
+        const subPrices = {
+            '1': 14,
+            '2': 26,
+            '4': 48
+        };
+
+        // --- Initialization ---
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // --- UI Functions ---
+
+        // Mobile Menu
+        const menuToggle = document.querySelector('.menu-toggle');
+        const navLinks = document.querySelector('.nav-links');
+        menuToggle.addEventListener('click', () => {
+            const expanded = menuToggle.getAttribute('aria-expanded') === 'true';
+            menuToggle.setAttribute('aria-expanded', !expanded);
+            navLinks.classList.toggle('active');
+        });
+
+        // Close menu on link click or Escape
+        navLinks.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                menuToggle.setAttribute('aria-expanded', 'false');
+            });
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                navLinks.classList.remove('active');
+                menuToggle.setAttribute('aria-expanded', 'false');
+                closeDialog();
+            }
+        });
+
+        // Hero Roast Selector
+        function setRoast(key) {
+            state.roast = key;
+            
+            // Update Dots
+            document.querySelectorAll('.roast-dot').forEach(dot => {
+                dot.classList.remove('active');
+                dot.setAttribute('aria-checked', 'false');
+            });
+            const activeDot = document.querySelector(`.roast-dot[onclick="setRoast('${key}')"]`);
+            activeDot.classList.add('active');
+            activeDot.setAttribute('aria-checked', 'true');
+
+            // Update Hero Visuals
+            const data = roastData[key];
+            document.getElementById('display-roast-name').textContent = data.name;
+            document.getElementById('display-roast-notes').textContent = data.notes;
+            
+            const bag = document.querySelector('.art-bag');
+            const label = document.getElementById('bag-label-text');
+            const labelNotes = document.getElementById('bag-notes-text');
+            
+            bag.style.fill = data.color;
+            label.textContent = data.label;
+            labelNotes.textContent = data.notesText;
+        }
+
+        // Subscription Toggle
+        function setFrequency(days) {
+            state.frequency = days;
+            document.getElementById('freq-14').classList.toggle('active', days === 14);
+            document.getElementById('freq-30').classList.toggle('active', days === 30);
+            document.getElementById('billing-explanation').textContent = 
+                days === 14 ? "Billing follows your selected delivery schedule." : "Billing follows your selected delivery schedule.";
+            
+            // Refresh summary if dialog is open
+            updateSummary();
+        }
+
+        // Dialog Logic
+        const overlay = document.getElementById('dialog-overlay');
+        const formView = document.getElementById('dialog-form-view');
+        const confirmView = document.getElementById('dialog-confirm-view');
+        const form = document.getElementById('subscription-form');
+        let lastFocusElement;
+
+        function openSubscriptionDialog(roastKey = null, bags = null) {
+            lastFocusElement = document.activeElement;
+            
+            if (roastKey) state.roast = roastKey;
+            if (bags) state.subscriptionBags = parseInt(bags);
+
+            // Reset Views
+            formView.style.display = 'block';
+            confirmView.style.display = 'none';
+            overlay.classList.add('active');
+
+            // Sync Form with State
+            document.getElementById('form-roast').value = state.roast;
+            document.getElementById('form-sub-option').value = state.subscriptionBags.toString();
+            document.getElementById('form-freq').value = state.frequency.toString();
+
+            updateSummary();
+            
+            // Focus management
+            setTimeout(() => {
+                document.getElementById('user-name').focus();
+            }, 100);
+        }
+
+        function closeDialog() {
+            overlay.classList.remove('active');
+            if (lastFocusElement) lastFocusElement.focus();
+        }
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDialog();
+        });
+
+        // Live Summary Update
+        function updateSummary() {
+            const roastKey = document.getElementById('form-roast').value;
+            const grind = document.getElementById('form-grind').value;
+            const bags = parseInt(document.getElementById('form-sub-option').value);
+            const freq = document.getElementById('form-freq').value;
+
+            const roast = roastData[roastKey];
+            const price = subPrices[bags.toString()];
+
+            document.getElementById('sum-roast').textContent = roast.name;
+            document.getElementById('sum-grind').textContent = grind;
+            document.getElementById('sum-qty').textContent = `${bags} bag(s)`;
+            document.getElementById('sum-weight').textContent = `${bags * 250}g`;
+            document.getElementById('sum-freq').textContent = freq === '14' ? 'Every 2 weeks' : 'Monthly';
+            document.getElementById('sum-price').textContent = `$${price}`;
+        }
+
+        // Listen for changes in form
+        ['form-roast', 'form-grind', 'form-sub-option', 'form-freq'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateSummary);
+        });
+
+        // Form Submission
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const nameInput = document.getElementById('user-name');
+            const emailInput = document.getElementById('user-email');
+            const nameError = document.getElementById('name-error');
+            const emailError = document.getElementById('email-error');
+            
+            let valid = true;
+
+            if (!nameInput.value.trim()) {
+                nameError.style.display = 'block';
+                valid = false;
+            } else {
+                nameError.style.display = 'none';
+            }
+
+            if (!emailInput.value.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+                emailError.style.display = 'block';
+                valid = false;
+            } else {
+                emailError.style.display = 'none';
+            }
+
+            if (valid) {
+                showConfirmation();
+            }
+        });
+
+        function showConfirmation() {
+            const roastKey = document.getElementById('form-roast').value;
+            const roast = roastData[roastKey];
+            const grind = document.getElementById('form-grind').value;
+            const bags = document.getElementById('form-sub-option').value;
+            const freq = document.getElementById('form-freq').value;
+            const price = subPrices[bags];
+
+            const details = document.getElementById('conf-details');
+            details.innerHTML = `
+                <div style="margin-bottom: 0.5rem;"><strong>Roast:</strong> ${roast.name}</div>
+                <div style="margin-bottom: 0.5rem;"><strong>Grind:</strong> ${grind}</div>
+                <div style="margin-bottom: 0.5rem;"><strong>Quantity:</strong> ${bags} x 250g</div>
+                <div style="margin-bottom: 0.5rem;"><strong>Frequency:</strong> ${freq === '14' ? 'Every 2 weeks' : 'Monthly'}</div>
+                <div style="font-weight: bold; font-size: 1.1rem; border-top: 1px solid #ddd; padding-top: 0.5rem; margin-top: 0.5rem;">
+                    Total: $${price} per delivery
+                </div>
+            `;
+
+            formView.style.display = 'none';
+            confirmView.style.display = 'block';
+        }
+
+        // Accessibility: Focus Trap for Dialog
+        document.addEventListener('keydown', function(e) {
+            if (!overlay.classList.contains('active')) return;
+            
+            const focusableElements = dialogContainer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            const firstElement = focusableElements[0];
+            const lastElement = focusableElements[focusableElements.length - 1];
+
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    if (document.activeElement === firstElement) {
+                        lastElement.focus();
+                        e.preventDefault();
+                    }
+                } else {
+                    if (document.activeElement === lastElement) {
+                        firstElement.focus();
+                        e.preventDefault();
+                    }
+                }
+            }
+        });
+
+        const dialogContainer = document.getElementById('dialog-container');
+
+    </script>
+</body>
+</html>
