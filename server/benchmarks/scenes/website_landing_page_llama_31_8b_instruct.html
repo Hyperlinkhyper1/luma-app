@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ember & Bean</title>
+    <style>
+        /* System font for readability */
+        body {
+            font: 16px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            color: #2f343e;
+            background: #f0f0f0;
+            font-family: inherit;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+        }
+        
+        /* Global styling for improved readability and accessibility */
+        h1, h2, h3, h4, h5, h6 {
+            margin: 0;
+            padding: 0;
+            font-weight: 600;
+            line-height: 1.25;
+            margin-block-start: 0.75em;
+            margin-block-end: 0.75em;
+            font-family: inherit;
+        }
+        
+        h2 {
+            color: #f2b600;
+        }
+        
+        a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Menu styling for improved readability and accessibility */
+        .nav {
+            position: sticky;
+            top: 0;
+            background-color: #333;
+            padding: 0.5em;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nav > a {
+            margin-right: 1em;
+            color: #fff;
+        }
+        
+        .nav > a:hover {
+            text-decoration: underline;
+        }
+        
+        .nav-button {
+            font-size: 18px;
+            padding: 0.25em;
+            border: none;
+            background-color: #333;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        .nav-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #007bff;
+        }
+        
+        /* Hero section styling */
+        .hero {
+            background-color: #f7f7f7;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2em;
+        }
+        
+        .hero > h1 {
+            margin-bottom: 0.5em;
+            font-size: 2.5rem;
+        }
+        
+        .hero > p {
+            margin-bottom: 1em;
+            font-size: 1.25rem;
+        }
+        
+        .hero-button {
+            padding: 0.5em;
+            border: none;
+            background-color: #f2b600;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        .hero-button:hover {
+            background-color: #ff9900;
+        }
+        
+        /* Roast selector styling */
+        .roast-selector {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1em;
+        }
+        
+        .roast-selector > .bag {
+            background-color: #fff;
+            padding: 0.5em;
+            border: 1px solid #ddd;
+            border-radius: 0.25em;
+            width: 150px;
+        }
+        
+        .roast-selector > .bag:hover {
+            background-color: #f7f7f7;
+        }
+        
+        .roast-selector > .bag > h3 {
+            margin-bottom: 0.25em;
+            font-size: 1.25rem;
+        }
+        
+        .roast-selector > .bag > p {
+            margin-bottom: 0.5em;
+            font-size: 1rem;
+        }
+        
+        /* Subscription section styling */
+        .subscription {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2em;
+        }
+        
+        .subscription > h2 {
+            margin-bottom: 1em;
+            font-size: 2.5rem;
+        }
+        
+        .subscription > .option {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1em;
+        }
+        
+        .subscription > .option > .label {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #f2b600;
+        }
+        
+        .subscription > .option > .price {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #f2b600;
+        }
+        
+        /* Coffee selector dialog styling */
+        .coffee-selector-dialog {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2em;
+        }
+        
+        .coffee-selector-dialog > .form {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #333;
+            border-radius: 0.25em;
+            padding: 2em;
+        }
+        
+        .coffee-selector-dialog > .form > .label {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .coffee-selector-dialog > .form > input[type="text"],
+        .coffee-selector-dialog > .form > select {
+            padding: 0.5em;
+            border: 1px solid #333;
+            border-radius: 0.25em;
+            font-size: 1.5rem;
+        }
+        
+        .coffee-selector-dialog > .form > input[type="submit"] {
+            padding: 0.5em;
+            border: none;
+            background-color: #f2b600;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        .coffee-selector-dialog > .form > input[type="submit"]:hover {
+            background-color: #ff9900;
+        }
+        
+        /* Dialog focus styling */
+        .coffee-selector-dialog:focus-within {
+            outline: none;
+            box-shadow: 0 0 0 2px #007bff;
+        }
+        
+        /* Accessibility styling */
+        .skip-content-link {
+            position: absolute;
+            top: -1.5em;
+            left: 0;
+            font-size: 1rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header section -->
+    <header class="nav">
+        <h1>Ember & Bean</h1>
+        <button class="nav-button" id="nav-button" aria-controls="main-nav" aria-expanded="false">Menu</button>
+        <nav id="main-nav" aria-hidden="true">
+            <ul>
+                <li><a href="#">Our coffee</a></li>
+                <li><a href="#">How it works</a></li>
+                <li><a href="#">Subscriptions</a></li>
+                <li><a href="#">FAQ</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <!-- Hero section -->
+    <section class="hero">
+        <h1>Good mornings start with great coffee.</h1>
+        <p>Get freshly roasted coffee delivered to your door. Choose from our selection of unique blends and enjoy the perfect cup every time.</p>
+        <p><button class="hero-button">Choose your coffee</button></p>
+        <p>Order now and get your first shipment in as little as 2 weeks.</p>
+    </section>
+    
+    <!-- Roast selector section -->
+    <section class="roast-selector">
+        <div class="bag" data-roast="morning-light">
+            <h3>Morning Light</h3>
+            <p>Medium roast with chocolate and caramel notes.</p>
+        </div>
+        <div class="bag" data-roast="daybreak">
+            <h3>Daybreak</h3>
+            <p>Light roast with citrus and honey notes.</p>
+        </div>
+        <div class="bag" data-roast="nightcap-decaf">
+            <h3>Nightcap Decaf</h3>
+            <p>Decaf medium roast with cocoa and hazelnut notes.</p>
+        </div>
+    </section>
+    
+    <!-- Subscription section -->
+    <section class="subscription">
+        <h2>Subscriptions</h2>
+        <div class="option">
+            <p class="label">Solo ritual</p>
+            <p class="price">$14 per delivery</p>
+        </div>
+        <div class="option">
+            <p class="label">Daily duo</p>
+            <p class="price">$26 per delivery</p>
+        </div>
+        <div class="option">
+            <p class="label">Coffee household</p>
+            <p class="price">$48 per delivery</p>
+        </div>
+    </section>
+    
+    <!-- Coffee selector dialog section -->
+    <div class="coffee-selector-dialog" id="coffee-selector-dialog" aria-hidden="true">
+        <form>
+            <label for="name">Name:</label>
+            <input type="text" id="name" required>
+            <label for="email">Email:</label>
+            <input type="email" id="email" required>
+            <label for="roast">Roast:</label>
+            <select id="roast" required>
+                <option value="morning-light">Morning Light</option>
+                <option value="daybreak">Daybreak</option>
+                <option value="nightcap-decaf">Nightcap Decaf</option>
+            </select>
+            <label for="grind">Grind:</label>
+            <select id="grind" required>
+                <option value="whole-bean">Whole bean</option>
+                <option value="filter">Filter grind</option>
+                <option value="espresso">Espresso grind</option>
+            </select>
+            <label for="delivery-option">Delivery option:</label>
+            <select id="delivery-option" required>
+                <option value="solo-ritual">Solo ritual</option>
+                <option value="daily-duo">Daily duo</option>
+                <option value="coffee-household">Coffee household</option>
+            </select>
+            <label for="delivery-frequency">Delivery frequency:</label>
+            <select id="delivery-frequency" required>
+                <option value="every-2-weeks">Every 2 weeks</option>
+                <option value="monthly">Monthly</option>
+            </select>
+            <input type="submit" value="Confirm demo subscription">
+        </form>
+    </div>
+    
+    <!-- Accessibility section -->
+    <a href="#" class="skip-content-link">Skip to content</a>
+    
+    <!-- JavaScript code -->
+    <script>
+        // Menu button toggle logic
+        const navButton = document.getElementById('nav-button');
+        const mainNav = document.getElementById('main-nav');
+        navButton.addEventListener('click', () => {
+            mainNav.classList.toggle('aria-hidden', !mainNav.classList.contains('aria-hidden'));
+        });
+        
+        // Coffee selector dialog toggle logic
+        const coffeeSelectorDialog = document.getElementById('coffee-selector-dialog');
+        const form = coffeeSelectorDialog.querySelector('form');
+        document.querySelector('.hero-button').addEventListener('click', () => {
+            coffeeSelectorDialog.classList.toggle('aria-hidden', !coffeeSelectorDialog.classList.contains('aria-hidden'));
+            if (coffeeSelectorDialog.classList.contains('aria-hidden')) {
+                form.reset();
+            }
+        });
+        
+        // Dialog focus logic
+        coffeeSelectorDialog.focus({
+            preventScroll: true
+        });
+        
+        // Skip content link focus logic
+        const skipContentLink = document.querySelector('.skip-content-link');
+        skipContentLink.addEventListener('click', () => {
+            coffeeSelectorDialog.focus({
+                preventScroll: true
+            });
+        });
+    </script>
+</body>
+</html>
