@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember &amp; Bean — Coffee for slow mornings</title>
+<style>
+:root{
+  --espresso:#221610; --bean:#3a2718; --crema:#f4e7d3; --milk:#fdf7ec;
+  --copper:#c9773a; --copper-deep:#a35a26; --caramel:#e0a75e;
+  --ink:#2a1b10; --ink-soft:#5c4632; --paper:#f7eee0; --kraft:#e8d8bf;
+  --ring:rgba(201,119,58,.55);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:Georgia,'Times New Roman',serif;background:var(--paper);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+img,svg{display:block;max-width:100%}
+a{color:var(--copper-deep)}
+button{font:inherit;cursor:pointer}
+h1,h2,h3{font-family:"Palatino Linotype",Palatino,Georgia,serif;line-height:1.15}
+.skip{position:absolute;left:-9999px;top:0;background:var(--espresso);color:var(--crema);padding:.6rem 1rem;z-index:200;border-radius:0 0 .5rem 0}
+.skip:focus{left:0}
+.wrap{max-width:1120px;margin:0 auto;padding:0 1.25rem}
+/* header */
+header{position:sticky;top:0;z-index:100;background:rgba(34,22,16,.97);border-bottom:3px solid var(--copper)}
+.nav{display:flex;align-items:center;gap:1.5rem;padding:.7rem 1.25rem;max-width:1120px;margin:0 auto}
+.wordmark{display:flex;align-items:center;gap:.6rem;color:var(--crema);text-decoration:none;font-family:Georgia,serif;font-size:1.15rem;letter-spacing:.03em;font-weight:bold}
+nav.mainnav{display:flex;gap:1.4rem;margin-left:auto}
+nav.mainnav a{color:var(--crema);text-decoration:none;font-size:.95rem;padding:.35rem .1rem;border-bottom:2px solid transparent}
+nav.mainnav a:hover,nav.mainnav a:focus-visible{border-bottom-color:var(--caramel)}
+.btn{display:inline-block;border:none;border-radius:999px;padding:.7rem 1.5rem;font-weight:bold;font-size:1rem;text-decoration:none;transition:transform .15s}
+.btn:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.btn-primary{background:var(--copper);color:#fff}
+.btn-primary:hover{background:var(--copper-deep);transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--crema);border:2px solid var(--caramel)}
+.btn-ghost:hover{background:rgba(224,167,94,.15)}
+.btn-dark{background:var(--espresso);color:var(--crema)}
+.btn-dark:hover{background:var(--bean)}
+.menu-btn{display:none;margin-left:auto;background:none;border:2px solid var(--caramel);color:var(--crema);border-radius:.5rem;padding:.45rem .8rem;font-size:1rem}
+@media(max-width:820px){
+  .menu-btn{display:inline-flex;align-items:center;gap:.4rem}
+  nav.mainnav{display:none;position:absolute;top:100%;left:0;right:0;background:var(--espresso);flex-direction:column;padding:1rem 1.5rem 1.4rem;gap:.2rem;border-bottom:3px solid var(--copper)}
+  nav.mainnav.open{display:flex}
+  nav.mainnav a{padding:.7rem .2rem;font-size:1.05rem;border-bottom:1px solid rgba(244,231,211,.15)}
+  nav.mainnav .btn{margin-top:.8rem;text-align:center}
+  .nav-btn{display:none}
+}
+/* hero */
+.hero{background:linear-gradient(160deg,var(--espresso) 0%,var(--bean) 70%,#4a3221 100%);color:var(--crema);position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 80% 20%,rgba(201,119,58,.18),transparent 70%);pointer-events:none}
+.hero-inner{display:grid;grid-template-columns:1.05fr 1fr;gap:2.5rem;padding:4rem 0 4.5rem;align-items:center;position:relative;z-index:1}
+.kicker{display:inline-block;font-size:.8rem;letter-spacing:.22em;text-transform:uppercase;color:var(--caramel);margin-bottom:1rem}
+.hero h1{font-size:clamp(2.1rem,5vw,3.4rem);margin-bottom:1rem;letter-spacing:-.01em}
+.hero p.lede{font-size:1.1rem;color:#dcc9b0;max-width:34ch;margin-bottom:1.6rem}
+.hero-actions{display:flex;flex-wrap:wrap;gap:.9rem;margin-bottom:1.2rem}
+.freshnote{display:inline-flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--caramel);font-style:italic}
+.roastpick{margin-top:2rem;background:rgba(244,231,211,.07);border:1px solid rgba(224,167,94,.35);border-radius:1rem;padding:1.1rem 1.2rem;max-width:26rem}
+.roastpick h2{font-size:.8rem;letter-spacing:.18em;text-transform:uppercase;color:var(--caramel);font-family:inherit;margin-bottom:.7rem}
+.roastopts{display:flex;gap:.5rem;flex-wrap:wrap}
+.roastopts button{background:transparent;border:1.5px solid rgba(224,167,94,.5);color:var(--crema);border-radius:999px;padding:.45rem 1rem;font-size:.9rem}
+.roastopts button[aria-pressed="true"]{background:var(--caramel);color:var(--espresso);border-color:var(--caramel);font-weight:bold}
+.roastopts button:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.roastmeta{margin-top:.9rem;font-size:.92rem;color:#dcc9b0}
+.roastmeta strong{color:var(--crema)}
+.roastnotes{font-style:italic;color:var(--caramel)}
+/* hero art */
+.art{display:flex;justify-content:center}
+.art svg{width:100%;max-width:480px;height:auto}
+/* sections */
+section{padding:4rem 0}
+.sectionhead{max-width:44rem;margin-bottom:2.4rem}
+.sectionhead h2{font-size:clamp(1.7rem,3.5vw,2.4rem);margin-bottom:.5rem}
+.sectionhead p{color:var(--ink-soft)}
+.eyebrow{font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--copper-deep);display:inline-flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.eyebrow::before{content:"";width:2rem;height:2px;background:var(--copper)}
+/* pour divider */
+.pourdiv{height:52px;background:linear-gradient(var(--paper),transparent);position:relative;overflow:hidden}
+.pourdiv svg{position:absolute;left:0;top:0;width:100%;height:52px}
+/* coffee section */
+.coffee-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem}
+.roastcard{background:#fff;border:1px solid var(--kraft);border-radius:1.1rem;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 10px rgba(58,39,24,.06)}
+.roastcard .swatch{height:110px;display:flex;align-items:flex-end;padding:1rem;position:relative}
+.roastcard .swatch .beansvg{position:absolute;right:.8rem;top:.7rem;opacity:.5}
+.roastcard .swatch h3{color:#fff;font-size:1.25rem}
+.roastcard .swatch .lvl{position:absolute;left:1rem;top:.7rem;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.85)}
+.roastcard .body{padding:1.2rem 1.3rem 1.4rem;display:flex;flex-direction:column;flex:1}
+.roastcard .meta{font-size:.82rem;color:var(--ink-soft);margin-bottom:.6rem}
+.roastcard .notes{font-style:italic;color:var(--copper-deep);margin-bottom:.8rem}
+.roastcard p.desc{font-size:.93rem;color:var(--ink-soft);flex:1;margin-bottom:1.1rem}
+.roastcard .btn{align-self:flex-start;padding:.55rem 1.2rem;font-size:.92rem}
+/* benefits */
+.benefits{margin-top:3.5rem;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:1.4rem;align-items:stretch}
+.benefit{padding:1.4rem;border-radius:1rem;background:var(--kraft);border:1px solid #d8c3a2}
+.benefit h3{font-size:1.1rem;margin-bottom:.5rem}
+.benefit p{font-size:.92rem;color:var(--ink-soft)}
+.benefit .icon{margin-bottom:.8rem}
+.benefit.dark{background:var(--espresso);color:var(--crema)}
+.benefit.dark p{color:#d5c2a8}
+@media(max-width:960px){.coffee-grid{grid-template-columns:1fr;max-width:30rem;margin:0 auto}.benefits{grid-template-columns:1fr;max-width:30rem;margin-left:auto;margin-right:auto}}
+/* how it works */
+.how{background:var(--espresso);color:var(--crema);position:relative}
+.how .sectionhead p{color:#d5c2a8}
+.how .eyebrow{color:var(--caramel)}
+.steps{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:1rem;align-items:start;counter-reset:step}
+.step h3{color:var(--caramel);margin:.8rem 0 .4rem;font-size:1.15rem}
+.step p{font-size:.92rem;color:#d5c2a8}
+.stepnum{width:3.4rem;height:3.4rem;border-radius:50%;background:var(--copper);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:bold;font-family:Georgia,serif;box-shadow:0 0 0 5px rgba(201,119,58,.25)}
+.steparrow{color:var(--caramel);padding-top:1rem;font-size:1.6rem}
+@media(max-width:820px){.steps{grid-template-columns:1fr}.steparrow{display:none}.step{display:grid;grid-template-columns:auto 1fr;gap:1rem}.step h3{margin-top:.4rem}}
+/* stories */
+.stories{background:var(--kraft)}
+.storygrid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem}
+.story{position:relative;padding-left:3rem}
+.story .qmark{position:absolute;left:0;top:-.4rem;font-size:4rem;color:var(--copper);font-family:Georgia,serif;line-height:1}
+.story blockquote{font-size:1.35rem;font-style:italic;line-height:1.4;margin-bottom:.9rem}
+.story cite{font-style:normal;font-weight:bold;display:block}
+.story .role{font-size:.85rem;color:var(--ink-soft)}
+.storynote{margin-top:2rem;font-size:.82rem;font-style:italic;color:var(--ink-soft)}
+@media(max-width:760px){.storygrid{grid-template-columns:1fr}}
+/* subscriptions */
+.freq{display:inline-flex;border:2px solid var(--espresso);border-radius:999px;overflow:hidden;margin-bottom:2rem}
+.freq button{background:transparent;border:none;padding:.55rem 1.4rem;font-weight:bold;color:var(--espresso)}
+.freq button[aria-pressed="true"]{background:var(--espresso);color:var(--crema)}
+.freq button:focus-visible{outline:3px solid var(--ring);outline-offset:-3px}
+.freq-explain{margin-bottom:2rem;max-width:40rem;font-size:.95rem;color:var(--ink-soft)}
+.subgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem;align-items:stretch}
+.sub{background:#fff;border:1.5px solid var(--kraft);border-radius:1.1rem;padding:1.6rem;display:flex;flex-direction:column;position:relative}
+.sub.popular{border-color:var(--copper);box-shadow:0 4px 18px rgba(163,90,38,.15)}
+.popbadge{position:absolute;top:-.85rem;left:50%;transform:translateX(-50%);background:var(--copper);color:#fff;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;padding:.3rem .9rem;border-radius:999px;white-space:nowrap}
+.sub h3{font-size:1.25rem;margin-bottom:.2rem}
+.sub .size{font-size:.85rem;color:var(--ink-soft);margin-bottom:1rem}
+.sub .price{font-size:2.2rem;font-family:Georgia,serif}
+.sub .price span{font-size:.85rem;color:var(--ink-soft);font-family:inherit}
+.sub ul{list-style:none;margin:1rem 0 1.4rem;flex:1}
+.sub li{padding:.35rem 0;font-size:.92rem;color:var(--ink-soft);display:flex;gap:.5rem;align-items:flex-start}
+.sub li::before{content:"·";color:var(--copper);font-weight:bold}
+.sub .btn{text-align:center}
+.subnote{margin-top:1.6rem;font-size:.85rem;color:var(--ink-soft)}
+@media(max-width:900px){.subgrid{grid-template-columns:1fr;max-width:26rem;margin:0 auto}}
+/* faq */
+.faq-list{max-width:46rem}
+.faq-item{border-bottom:1.5px solid #d8c3a2}
+.faq-item button{width:100%;background:none;border:none;text-align:left;padding:1.2rem 2.4rem 1.2rem 0;font-size:1.08rem;font-weight:bold;color:var(--ink);position:relative}
+.faq-item button::after{content:"+";position:absolute;right:.4rem;top:50%;transform:translateY(-50%);color:var(--copper-deep);font-size:1.5rem;transition:transform .2s}
+.faq-item button[aria-expanded="true"]::after{content:"–"}
+.faq-item button:focus-visible{outline:3px solid var(--ring);outline-offset:-3px}
+.faq-item .ans{padding:0 2rem 1.3rem 0;font-size:.95rem;color:var(--ink-soft)}
+.faq-item .ans[hidden]{display:none}
+/* final */
+.final{background:linear-gradient(150deg,var(--bean),var(--espresso));color:var(--crema);text-align:center;position:relative;overflow:hidden}
+.final .cupsteam{margin:0 auto 1.5rem}
+.final h2{font-size:clamp(1.8rem,4vw,2.6rem);margin-bottom:.8rem}
+.final p{color:#dcc9b0;max-width:36rem;margin:0 auto 1.8rem}
+/* footer */
+footer{background:var(--espresso);color:#b9a488;padding:2.5rem 0;border-top:1px solid rgba(244,231,211,.12)}
+.foot{display:flex;flex-wrap:wrap;gap:2rem;align-items:flex-start;justify-content:space-between}
+.foot nav{display:flex;gap:1.4rem;flex-wrap:wrap}
+.foot nav a{color:var(--caramel);text-decoration:none;font-size:.9rem}
+.foot nav a:hover{text-decoration:underline}
+.copyright{margin-top:1.6rem;font-size:.8rem;color:#8f7b62}
+/* dialog */
+dialog{border:none;border-radius:1.2rem;padding:0;max-width:44rem;width:calc(100% - 2rem);background:var(--milk);color:var(--ink)}
+dialog::backdrop{background:rgba(20,12,7,.6);backdrop-filter:blur(2px)}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;background:var(--espresso);color:var(--crema);padding:1.1rem 1.4rem;border-radius:1.2rem 1.2rem 0 0}
+.dlg-head h2{font-size:1.3rem}
+.dlg-close{background:none;border:2px solid var(--caramel);color:var(--crema);border-radius:50%;width:2.4rem;height:2.4rem;font-size:1.2rem;line-height:1}
+.dlg-close:hover{background:rgba(224,167,94,.2)}
+.dlg-body{padding:1.4rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem 1.4rem}
+.dlg-body .full{grid-column:1/-1}
+.field label{display:block;font-size:.85rem;font-weight:bold;margin-bottom:.3rem}
+.field input,.field select{width:100%;padding:.6rem .7rem;border:1.5px solid #cbb astray;border:1.5px solid #c8b394;border-radius:.5rem;font:inherit;background:#fff;color:var(--ink)}
+.field input:focus,.field select:focus{outline:3px solid var(--ring);outline-offset:1px;border-color:var(--copper)}
+.field .err{color:#a3301f;font-size:.82rem;margin-top:.25rem;min-height:1em;display:block}
+.freqfield{display:flex;gap:.5rem}
+.freqfield button{flex:1;border:1.5px solid #c8b394;background:#fff;border-radius:.5rem;padding:.55rem;font-size:.9rem}
+.freqfield button[aria-pressed="true"]{background:var(--espresso);color:var(--crema);border-color:var(--espresso)}
+.freqfield button:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.grindopts{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem}
+.grindopts button{border:1.5px solid #c8b394;background:#fff;border-radius:.5rem;padding:.55rem .3rem;font-size:.85rem}
+.grindopts button[aria-pressed="true"]{background:var(--copper);color:#fff;border-color:var(--copper)}
+.grindopts button:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.summary{background:var(--kraft);border:1px solid #d8c3a2;border-radius:.8rem;padding:1rem 1.2rem;font-size:.92rem}
+.summary h3{font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--copper-deep);margin-bottom:.5rem}
+.summary dl{display:grid;grid-template-columns:auto 1fr;gap:.15rem .8rem}
+.summary dt{color:var(--ink-soft)}
+.summary dd{text-align:right;font-weight:bold}
+.summary .totalrow{border-top:1.5px dashed #c8a05f;margin-top:.4rem;padding-top:.4rem}
+.summary .totalrow dd{color:var(--copper-deep)}
+.dlg-pause{grid-column:1/-1;font-size:.82rem;color:var(--ink-soft);font-style:italic}
+.dlg-foot{grid-column:1/-1;display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;padding-top:.4rem}
+.demoline{grid-column:1/-1;font-size:.78rem;color:var(--ink-soft);font-style:italic}
+.confirm{background:var(--milk);padding:1.4rem;border-radius:0 0 1.2rem 1.2rem}
+.confirm h3{color:var(--copper-deep);margin-bottom:.6rem}
+.confirm p{font-size:.93rem}
+.confirm .demomsg{margin-top:.8rem;font-style:italic;font-size:.85rem;color:var(--ink-soft);background:var(--kraft);border-radius:.5rem;padding:.6rem .8rem}
+@media(max-width:640px){.dlg-body{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+[id]{scroll-margin-top:5rem}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header>
+  <div class="nav">
+    <a class="wordmark" href="#top" aria-label="Ember &amp; Bean home">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15.5" fill="none" stroke="#c9773a" stroke-width="2"/><ellipse cx="14" cy="17" rx="4.5" ry="6.5" fill="#e0a75e" transform="rotate(-25 14 17)"/><path d="M14 11.5c3 2.5 3 9.5 0 11" stroke="#221610" stroke-width="1.6" fill="none" transform="rotate(-25 14 17)"/><path d="M24 10c-1.5 2-1.5 4 0 6 1.5 2 1.5 4 0 6" stroke="#c9773a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      Ember &amp; Bean
+    </a>
+    <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="mainnav">☕ <span id="menuBtnLabel">Menu</span></button>
+    <nav class="mainnav" id="mainnav" aria-label="Main navigation">
+      <a href="#coffee">Our coffee</a>
+      <a href="#how">How it works</a>
+      <a href="#subs">Subscriptions</a>
+      <a href="#faq">FAQ</a>
+      <a href="#coffee" class="btn btn-primary nav-btn">Choose your coffee</a>
+    </nav>
+    <a href="#coffee" class="btn btn-primary nav-btn" style="margin-left:.5rem">Choose your coffee</a>
+  </div>
+</header>
+<main id="main">
+<!-- HERO -->
+<section class="hero" id="top" aria-labelledby="hero-h">
+  <div class="wrap hero-inner">
+    <div>
+      <span class="kicker">Small-batch roastery</span>
+      <h1 id="hero-h">Good mornings start with great coffee.</h1>
+      <p class="lede">Freshly roasted beans, delivered on your rhythm — so the first cup of the day is always the best one. Bloom it, pour it, sip it slow.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" data-open-dialog>Choose your coffee</button>
+        <a class="btn btn-ghost" href="#coffee">Meet the roasts</a>
+      </div>
+      <span class="freshnote">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="#e0a75e" stroke-width="1.5"/><path d="M4 8h8M8 4v8" stroke="#e0a75e" stroke-width="1.5" transform="rotate(45 8 8)"/></svg>
+        Freshly roasted · Brew your way
+      </span>
+      <div class="roastpick">
+        <h2 id="roastpick-h">Pick today's roast</h2>
+        <div class="roastopts" role="group" aria-labelledby="roastpick-h">
+          <button type="button" data-roast="0" aria-pressed="true">Morning Light</button>
+          <button type="button" data-roast="1" aria-pressed="false">Daybreak</button>
+          <button type="button" data-roast="2" aria-pressed="false">Nightcap Decaf</button>
+        </div>
+        <p class="roastmeta" id="heroRoastMeta" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="art" id="heroArt">
+      <!-- labeled bag, cup, brewer, beans -->
+      <svg viewBox="0 0 480 420" role="img" aria-label="Illustration of an Ember &amp; Bean coffee bag beside a steaming cup, a pour-over brewer, and scattered coffee beans">
+        <defs>
+          <linearGradient id="bagG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6b4426"/><stop offset="1" stop-color="#4a2e17"/></linearGradient>
+          <linearGradient id="cupG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdf7ec"/><stop offset="1" stop-color="#e8d8bf"/></linearGradient>
+          <linearGradient id="coffeeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a4a1d" id="cTop"/><stop offset="1" stop-color="#4a2210"/></linearGradient>
+        </defs>
+        <ellipse cx="240" cy="392" rx="200" ry="16" fill="rgba(0,0,0,.25)"/>
+        <!-- bag -->
+        <g>
+          <path d="M96 150 q-8 -30 14 -34 l164 -10 q22 0 18 30 l8 210 q2 22 -20 24 l-152 8 q-22 2 -24 -20 Z" fill="url(#bagG)"/>
+          <path d="M96 150 q100 -14 196 -14" stroke="#3a2312" stroke-width="5" fill="none"/>
+          <rect x="112" y="196" width="170" height="128" rx="8" fill="#f4e7d3"/>
+          <text x="197" y="222" text-anchor="middle" font-family="Georgia" font-size="13" fill="#5c4632" letter-spacing="2">EMBER &amp; BEAN</text>
+          <line x1="140" y1="232" x2="254" y2="232" stroke="#c9773a" stroke-width="2"/>
+          <text id="artBagName" x="197" y="256" text-anchor="middle" font-family="Georgia" font-size="17" font-weight="bold" fill="#2a1b10">Morning Light</text>
+          <text id="artBagLvl" x="197" y="274" text-anchor="middle" font-family="Georgia" font-size="11" fill="#a35a26" letter-spacing="1">MEDIUM ROAST · 250g</text>
+          <text id="artBagNotes" x="197" y="298" text-anchor="middle" font-family="Georgia" font-size="11" font-style="italic" fill="#5c4632">chocolate · caramel</text>
+          <circle cx="197" cy="313" r="9" fill="none" stroke="#c9773a" stroke-width="1.5"/>
+          <text x="197" y="317" text-anchor="middle" font-family="Georgia" font-size="9" fill="#a35a26">250g</text>
+          <ellipse cx="180" cy="106" rx="20" ry="9" fill="#3a2312"/>
+          <path d="M172 96 q8 -12 16 0" stroke="#3a2312" stroke-width="5" fill="none"/>
+        </g>
+        <!-- steam -->
+        <g stroke="#f4e7d3" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8">
+          <path d="M356 210 q-8 -14 0 -28 q8 -14 0 -28"><animate attributeName="opacity" values=".8;.35;.8" dur="3.2s" repeatCount="indefinite"/></path>
+          <path d="M372 200 q-8 -14 0 -28 q8 -14 0 -28"><animate attributeName="opacity" values=".35;.8;.35" dur="3.2s" repeatCount="indefinite"/></path>
+        </g>
+        <!-- cup -->
+        <g>
+          <path d="M330 268 h96 l-10 70 q-2 16 -18 16 h-40 q-16 0 -18 -16 Z" fill="url(#cupG)"/>
+          <ellipse cx="378" cy="268" rx="48" ry="12" fill="#e8d8bf"/>
+          <ellipse cx="378" cy="268" rx="40" ry="9" fill="#5a3212"/>
+          <ellipse cx="378" cy="266" rx="34" ry="6.5" fill="#a35a26"/>
+          <path d="M426 278 q26 4 22 26 q-4 20 -26 20" fill="none" stroke="#e8d8bf" stroke-width="9" stroke-linecap="round"/>
+          <ellipse cx="378" cy="264" rx="26" ry="4" fill="#e0a75e" opacity=".85"/>
+        </g>
+        <!-- brewer -->
+        <g>
+          <path d="M404 120 l52 0 l-16 34 l-20 0 Z" fill="#fdf7ec" opacity=".92"/>
+          <path d="M410 154 l40 0 q-4 44 -18 52 q-14 -8 -22 -52 Z" fill="#f4e7d3"/>
+          <path d="M414 168 l32 0 q-2 20 -10 28 q-8 -6 -14 -28 Z" fill="#6b4426"/>
+          <path d="M402 206 q26 14 56 0" stroke="#c9773a" stroke-width="3" fill="none"/>
+          <path d="M416 216 q6 22 4 40 M444 216 q-4 22 0 40" stroke="#a35a26" stroke-width="1.5" fill="none" opacity=".7"/>
+          <path d="M430 260 q-4 10 0 16" stroke="#e0a75e" stroke-width="2" fill="none" opacity=".6"/>
+        </g>
+        <!-- beans -->
+        <g fill="#5a3212">
+          <g transform="translate(70,340) rotate(20)"><ellipse rx="13" ry="8"/><path d="M-11 0 q11 -8 22 0" stroke="#2a1b10" stroke-width="2.5" fill="none"/></g>
+          <g transform="translate(100,368) rotate(-30)"><ellipse rx="13" ry="8"/><path d="M-11 0 q11 -8 22 0" stroke="#2a1b10" stroke-width="2.5" fill="none"/></g>
+          <g transform="translate(292,368) rotate(55)"><ellipse rx="13" ry="8"/><path d="M-11 0 q11 -8 22 0" stroke="#2a1b10" stroke-width="2.5" fill="none"/></g>
+          <g transform="translate(322,382) rotate(-15)"><ellipse rx="13" ry="8"/><path d="M-11 0 q11 -8 22 0" stroke="#2a1b10" stroke-width="2.5" fill="none"/></g>
+          <g transform="translate(452,346) rotate(40)"><ellipse rx="13" ry="8"/><path d="M-11 0 q11 -8 22 0" stroke="#2a1b10" stroke-width="2.5" fill="none"/></g>
+        </g>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- OUR COFFEE -->
+<div class="pourdiv" aria-hidden="true"><svg preserveAspectRatio="none" viewBox="0 0 1200 52"><path d="M0 0 h1200 v8 q-80 0 -100 22 q-20 22 -60 22 q-40 0 -60 -22 q-20 -22 -100 -22 q-80 0 -100 22 q-20 22 -60 22 q-40 0 -60 -22 q-20 -22 -100 -22 q-80 0 -100 22 q-20 22 -60 22 q-40 0 -60 -22 q-20 -22 -100 -22 q-80 0 -100 22 q-20 22 -60 22 q-40 0 -60 -22 q-20 -22 -100 -22 Z" fill="var(--espresso)"/></svg></div>
+<section id="coffee" aria-labelledby="coffee-h">
+  <div class="wrap">
+    <div class="sectionhead">
+      <span class="eyebrow">Our coffee</span>
+      <h2 id="coffee-h">Three roasts, one slow morning</h2>
+      <p>Every 250g bag is roasted in small batches, rested just long enough to degas, and shipped at its aromatic peak. Pick the cup that matches your ritual.</p>
+    </div>
+    <div class="coffee-grid" id="roastCards"></div>
+
+    <div class="benefits">
+      <div class="benefit dark">
+        <svg class="icon" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#e0a75e" stroke-width="2"/><circle cx="22" cy="22" r="9" fill="#c9773a"/><path d="M22 8 a14 14 0 0 1 14 14" fill="none" stroke="#f4e7d3" stroke-width="2" stroke-linecap="round"/><circle cx="22" cy="22" r="3.5" fill="#f4e7d3"/></svg>
+        <h3>Roasted with care</h3>
+        <p>Drum-roasted in 12kg batches, logged by hand, and rested 48 hours before it ever meets a mailbag. No roast leaves the drum tired.</p>
+      </div>
+      <div class="benefit">
+        <svg class="icon" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><path d="M8 14 h28 l-4 22 q-1 4 -5 4 h-10 q-4 0 -5 -4 Z" fill="#e8d8bf" stroke="#a35a26" stroke-width="2"/><path d="M14 20 q8 4 16 0" stroke="#a35a26" stroke-width="2" fill="none"/><path d="M18 6 q3 -4 0 -6 M26 8 q3 -4 0 -6" stroke="#c9773a" stroke-width="2" fill="none" stroke-linecap="round" transform="translate(0,8)"/></svg>
+        <h3>Made for your brew</h3>
+        <p>Whole bean for the grinders, filter grind for the pour-over, espresso grind for the portafilter. Tell us your kettle and we'll match the grind.</p>
+      </div>
+      <div class="benefit">
+        <svg class="icon" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><rect x="6" y="10" width="20" height="26" rx="3" fill="#f4e7d3" stroke="#a35a26" stroke-width="2"/><rect x="10" y="16" width="12" height="9" rx="2" fill="#c9773a"/><rect x="24" y="16" width="14" height="14" rx="3" fill="#e8d8bf" stroke="#a35a26" stroke-width="2"/><circle cx="31" cy="23" r="3" fill="#a35a26"/><path d="M10 40 h24" stroke="#a35a26" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>Fresh coffee, on your schedule</h3>
+        <p>Every two weeks or monthly — your rhythm, your rules. Pause before a holiday week or swap roasts between deliveries, all in the service.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="sectionhead">
+      <span class="eyebrow">How it works</span>
+      <h2 id="how-h">From drum to doorstep</h2>
+      <p>Three small decisions and the ritual takes care of itself.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="stepnum" aria-hidden="true">1</span>
+        <h3>Pick your roast</h3>
+        <p>Morning Light for caramel comfort, Daybreak for citrus sparkle, Nightcap Decaf for an evening pour. Taste, not trend, decides.</p>
+      </div>
+      <div class="steparrow" aria-hidden="true">→</div>
+      <div class="step">
+        <span class="stepnum" aria-hidden="true">2</span>
+        <h3>Choose your grind</h3>
+        <p>Whole bean to keep the aromas locked in, or pre-ground for filter or espresso — calibrated to the brewer on your counter.</p>
+      </div>
+      <div class="steparrow" aria-hidden="true">→</div>
+      <div class="step">
+        <span class="stepnum" aria-hidden="true">3</span>
+        <h3>Set your rhythm</h3>
+        <p>A bag every two weeks keeps the crema lively; monthly suits the patient brewer. Roast day is always a day or two before delivery.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STORIES -->
+<section id="stories" aria-labelledby="stories-h">
+  <div class="wrap">
+    <div class="sectionhead">
+      <span class="eyebrow">Customer stories</span>
+      <h2 id="stories-h" class="sr-only" style="position:absolute;left:-9999px">Customer stories</h2>
+    </div>
+    <div class="storygrid">
+      <article class="story">
+        <span class="qmark" aria-hidden="true">&ldquo;</span>
+        <blockquote>Morning Light turned my first cup into my favorite ritual.</blockquote>
+        <cite>Mira Chen</cite>
+        <span class="role">Home brewer</span>
+      </article>
+      <article class="story">
+        <span class="qmark" aria-hidden="true">&ldquo;</span>
+        <blockquote>A fresh bag, the right grind, and a better espresso every morning.</blockquote>
+        <cite>Alex Rivera</cite>
+        <span class="role">Espresso enthusiast</span>
+      </article>
+    </div>
+    <p class="storynote">Illustrative stories from fictional coffee drinkers.</p>
+  </div>
+</section>
+
+<!-- SUBSCRIPTIONS -->
+<section id="subs" aria-labelledby="subs-h">
+  <div class="wrap">
+    <div class="sectionhead">
+      <span class="eyebrow">Subscriptions</span>
+      <h2 id="subs-h">A delivery that keeps pace with your kettle</h2>
+      <p>Prices are per delivery and identical at either frequency — you simply choose how often fresh roast arrives.</p>
+    </div>
+    <div class="freq" role="group" aria-label="Delivery frequency">
+      <button type="button" id="freqBiweekly" aria-pressed="false">Every 2 weeks</button>
+      <button type="button" id="freqMonthly" aria-pressed="true">Monthly</button>
+    </div>
+    <p class="freq-explain" id="freqExplain" aria-live="polite">Monthly rhythm: one fresh delivery each month, billed monthly at the same price per delivery. Billing follows the selected delivery schedule.</p>
+    <div class="subgrid" id="subGrid"></div>
+    <p class="subnote">Shipping included in this demo pricing. Pause or change your next delivery anytime in the service — skip a week, swap a roast, slow the rhythm down. <span id="freqInlineNote">Billed monthly; billing follows the selected delivery schedule.</span></p>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" aria-labelledby="faq-h">
+  <div class="wrap">
+    <div class="sectionhead">
+      <span class="eyebrow">FAQ</span>
+      <h2 id="faq-h">Before the first cup</h2>
+    </div>
+    <div class="faq-list" id="faqList"></div>
+  </div>
+</section>
+
+<!-- FINAL -->
+<section class="final" aria-labelledby="final-h">
+  <div class="wrap">
+    <svg class="cupsteam" width="90" height="90" viewBox="0 0 90 90" aria-hidden="true"><path d="M45 78 h30 M30 60 h30 l-4 18 h-22 Z M60 62 q12 2 10 12 q-2 10 -12 8" fill="none" stroke="#e0a75e" stroke-width="3.5" stroke-linecap="round"/><path d="M38 48 q-6 -10 0 -20 M50 46 q-6 -10 0 -20" stroke="#e0a75e" stroke-width="3" fill="none" stroke-linecap="round" opacity=".7"/></svg>
+    <h2 id="final-h">Find the roast your mornings deserve</h2>
+    <p>The kettle's warm, the grinder's waiting, and somewhere a drum is turning. Choose a roast, set your rhythm, and let the first cup take care of itself.</p>
+    <button class="btn btn-primary" data-open-dialog>Choose your coffee</button>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <a class="wordmark" href="#top">
+      <svg width="28" height="28" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="15.5" fill="none" stroke="#c9773a" stroke-width="2"/><ellipse cx="14" cy="17" rx="4.5" ry="6.5" fill="#e0a75e" transform="rotate(-25 14 17)"/><path d="M24 10c-1.5 2-1.5 4 0 6 1.5 2 1.5 4 0 6" stroke="#c9773a" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+      Ember &amp; Bean
+    </a>
+    <nav aria-label="Footer">
+      <a href="#coffee">Our coffee</a>
+      <a href="#how">How it works</a>
+      <a href="#subs">Subscriptions</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </div>
+  <div class="wrap"><p class="copyright">© 2025 Ember &amp; Bean Roastery — a fictional roastery for slow mornings. Freshly roasted · Brew your way.</p></div>
+</footer>
+
+<!-- DIALOG -->
+<dialog id="orderDlg" aria-labelledby="dlgTitle">
+  <form id="orderForm" novalidate>
+    <div class="dlg-head">
+      <h2 id="dlgTitle">Choose your coffee</h2>
+      <button type="button" class="dlg-close" id="dlgClose" aria-label="Close dialog">✕</button>
+    </div>
+    <div class="dlg-body" id="dlgFormBody">
+      <div class="field">
+        <label for="fName">Your name</label>
+        <input type="text" id="fName" name="name" autocomplete="name">
+        <span class="err" id="eName" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="fEmail">Email address</label>
+        <input type="email" id="fEmail" name="email" autocomplete="email" placeholder="you@example.com">
+        <span class="err" id="eEmail" role="alert"></span>
+      </div>
+      <div class="field">
+        <label for="fRoast">Roast</label>
+        <select id="fRoast"></select>
+      </div>
+      <div class="field">
+        <label for="fSub">Delivery option</label>
+        <select id="fSub">
+          <option value="0">Solo ritual — 1 bag</option>
+          <option value="1">Daily duo — 2 bags</option>
+          <option value="2">Coffee household — 4 bags</option>
+        </select>
+      </div>
+      <div class="field full">
+        <span class="field" style="display:block"><label id="grindLabel">Grind</label></span>
+        <div class="grindopts" role="group" aria-labelledby="grindLabel">
+          <button type="button" data-grind="Whole bean" aria-pressed="true">Whole bean</button>
+          <button type="button" data-grind="Filter grind" aria-pressed="false">Filter grind</button>
+          <button type="button" data-grind="Espresso grind" aria-pressed="false">Espresso grind</button>
+        </div>
+      </div>
+      <div class="field full">
+        <span class="field" style="display:block"><label id="dlgFreqLabel">Delivery frequency</label></span>
+        <div class="freqfield" role="group" aria-labelledby="dlgFreqLabel">
+          <button type="button" data-dfreq="Every 2 weeks" aria-pressed="false">Every 2 weeks</button>
+          <button type="button" data-dfreq="Monthly" aria-pressed="true">Monthly</button>
+        </div>
+      </div>
+      <div class="summary full">
+        <h3>Your order</h3>
+        <dl>
+          <dt>Coffee</dt><dd id="sumCoffee"></dd>
+          <dt>Grind</dt><dd id="sumGrind"></dd>
+          <dt>Bags</dt><dd id="sumBags"></dd>
+          <dt>Total weight</dt><dd id="sumWeight"></dd>
+          <dt>Price per delivery</dt><dd id="sumPrice"></dd>
+          <dt>Frequency</dt><dd id="sumFreq"></dd>
+          <div class="totalrow" style="display:contents"><dt>Total per delivery</dt><dd id="sumTotal"></dd></div>
+        </dl>
+      </div>
+      <p class="dlg-pause">You can pause or change your next delivery anytime in the fictional Ember &amp; Bean service.</p>
+      <div class="dlg-foot">
+        <button type="submit" class="btn btn-primary">Confirm demo subscription</button>
+      </div>
+      <p class="demoline">Demo only — this dialog is part of an offline sample page. No payment or address details are collected.</p>
+    </div>
+  </form>
+  <div class="confirm" id="confirmPane" hidden>
+    <h3>Your coffee is on its rhythm ☕</h3>
+    <p id="confirmText"></p>
+    <p class="demomsg">Demo only: no order was placed, no payment was taken, and no information was sent.</p>
+    <button type="button" class="btn btn-dark" id="confirmClose" style="margin-top:1rem">Close</button>
+  </div>
+</dialog>
+
+<script>
+(function(){
+"use strict";
+var ROASTS=[
+ {name:"Morning Light",lvl:"Medium roast",notes:"chocolate · caramel",desc:"The comfort pour. Cocoa depth and caramel sweetness that lands soft in a French press and even softer in a flat white. The roast a slow morning reaches for.",bg:"#6b4426",badge:"Medium roast"},
+ {name:"Daybreak",lvl:"Light roast",notes:"citrus · honey",desc:"Bright as the first light through the blinds. Citrus acidity with a honeyed finish — brewed as a pour-over, it tastes like the morning decided to be generous.",bg:"#c9773a",badge:"Light roast"},
+ {name:"Nightcap Decaf",lvl:"Decaf medium roast",notes:"cocoa · hazelnut",desc:"An evening cup without the wide-awake consequences — decaffeinated with care, roasted to a gentle medium for cocoa and hazelnut warmth. (Naturally, decaf is not entirely caffeine-free.)",bg:"#3a2718",badge:"Decaf medium roast"}
+];
+var SUBS=[
+ {name:"Solo ritual",bags:1,price:14,size:"1 × 250g bag",perks:["A single fresh 250g bag per delivery","Perfect for one cup a day","Swap the roast between deliveries"]},
+ {name:"Daily duo",bags:2,price:26,size:"2 × 250g bags (500g)",perks:["Two fresh 250g bags per delivery","Keep two roasts on rotation","Most chosen by daily brewers"]},
+ {name:"Coffee household",bags:4,price:48,size:"4 × 250g bags (1kg)",perks:["Four fresh 250g bags per delivery","Whole-household freshness","Room for a decaf in the mix"]}
+];
+var GRINDS=["Whole bean","Filter grind","Espresso grind"];
+var state={roast:0,sub:1,freq:"Monthly",grind:"Whole bean",featured:0};
+
+function el(id){return document.getElementById(id)}
+function $(s,c){return (c||document).querySelector(s)}
+function $$(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))}
+
+/* roast cards */
+var grid=el("roastCards");
+ROASTS.forEach(function(r,i){
+  var c=document.createElement("article");
+  c.className="roastcard";
+  c.innerHTML='<div class="swatch" style="background:linear-gradient(160deg,'+r.bg+','+shade(r.bg)+')">'+
+    '<span class="lvl">'+r.lvl+'</span>'+
+    '<svg class="beansvg" width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><g fill="rgba(255,255,255,.55)" transform="rotate(25 22 22)"><ellipse cx="22" cy="22" rx="11" ry="16"/><path d="M15 18 q9 6 14 10" stroke="rgba(0,0,0,.4)" stroke-width="3" fill="none"/></g></svg>'+
+    '<h3>'+r.name+'</h3></div>'+
+    '<div class="body"><p class="meta">250g bag · '+r.lvl+'</p>'+
+    '<p class="notes">Tasting notes: '+r.notes+'</p>'+
+    '<p class="desc">'+r.desc+'</p>'+
+    '<button class="btn btn-dark" data-choose-roast="'+i+'">Choose this roast</button></div>';
+  grid.appendChild(c);
+});
+function shade(hex){var n=parseInt(hex.slice(1),16),f=.72;var r=Math.round(((n>>16)&255)*f),g=Math.round(((n>>8)&255)*f),b=Math.round((n&255)*f);return "rgb("+r+","+g+","+b+")"}
+
+/* hero roast selector */
+function renderHero(){
+  var r=ROASTS[state.featured];
+  el("heroRoastMeta").innerHTML='<strong>'+r.name+'</strong> — '+r.lvl+' · 250g bag<br><span class="roastnotes">Tasting notes: '+r.notes+'</span>';
+  el("artBagName").textContent=r.name;
+  el("artBagLvl").textContent=r.lvl.toUpperCase()+" · 250G";
+  el("artBagNotes").textContent=r.notes;
+  $$(".roastopts button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.roast==String(state.featured)?"true":"false")});
+}
+$$(".roastopts button").forEach(function(b){b.addEventListener("click",function(){state.featured=+b.dataset.roast;state.roast=state.featured;renderHero()})});
+renderHero();
+
+/* subscriptions */
+function renderSubs(){
+  var g=el("subGrid");g.innerHTML="";
+  SUBS.forEach(function(s,i){
+    var d=document.createElement("article");
+    d.className="sub"+(i===1?" popular":"");
+    d.innerHTML=(i===1?'<span class="popbadge">Most popular</span>':"")+
+      "<h3>"+s.name+"</h3><p class='size'>"+s.size+" · per delivery</p>"+
+      '<p class="price">$'+s.price+' <span>/ delivery</span></p>'+
+      "<ul>"+s.perks.map(function(p){return "<li>"+p+"</li>"}).join("")+"</ul>"+
+      '<button class="btn btn-primary" data-sub="'+i+'">Choose '+s.name+"</button>";
+    g.appendChild(d);
+  });
+  $$("[data-sub]",g).forEach(function(b){b.addEventListener("click",function(){openDialog({sub:+b.dataset.sub,roast:state.featured,freq:state.freq})})});
+}
+renderSubs();
+function setFreq(f){
+  state.freq=f;
+  el("freqBiweekly").setAttribute("aria-pressed",f==="Every 2 weeks"?"true":"false");
+  el("freqMonthly").setAttribute("aria-pressed",f==="Monthly"?"true":"false");
+  el("freqExplain").textContent=f==="Every 2 weeks"
+    ?"Every-2-weeks rhythm: a fresh delivery every fortnight, billed each delivery at the same per-delivery price. Billing follows the selected delivery schedule."
+    :"Monthly rhythm: one fresh delivery each month, billed monthly at the same price per delivery. Billing follows the selected delivery schedule.";
+  el("freqInlineNote").textContent=f==="Every 2 weeks"?"Billed every two weeks; billing follows the selected delivery schedule.":"Billed monthly; billing follows the selected delivery schedule.";
+  syncDialogFreq();
+}
+el("freqBiweekly").addEventListener("click",function(){setFreq("Every 2 weeks")});
+el("freqMonthly").addEventListener("click",function(){setFreq("Monthly")});
+setFreq("Monthly");
+
+/* FAQ */
+var FAQS=[
+ {q:"Which roast should I choose?",a:"Start with how you like your cup. Morning Light suits cocoa-and-caramel comfort, Daybreak shines in a pour-over with citrus and honey, and Nightcap Decaf brings cocoa and hazelnut for later in the day. You can swap roasts between deliveries."},
+ {q:"What grind options are there?",a:"Three: whole bean (grind fresh at home), filter grind (for pour-over, drip and French press), and espresso grind (calibrated for a portafilter). Pick per delivery in the coffee selection."},
+ {q:"Can I pause or change my deliveries?",a:"Yes — in the service you can pause, skip, or change your next delivery anytime, and adjust frequency or roast before the next roast day."},
+ {q:"How does this demo work?",a:"This page is an offline demo of the fictional Ember &amp; Bean shop. It does not connect to a real store, place orders, or send information anywhere — the confirmation is purely local to your browser."}
+];
+var fl=el("faqList");
+FAQS.forEach(function(f,i){
+  var d=document.createElement("div");d.className="faq-item";
+  d.innerHTML='<h3 style="margin:0"><button aria-expanded="false" aria-controls="fa'+i+'" id="fq'+i+'">'+f.q+'</button></h3>'+
+    '<div class="ans" id="fa'+i+'" role="region" aria-labelledby="fq'+i+'" hidden><p>'+f.a+"</p></div>";
+  fl.appendChild(d);
+  var btn=$("button",d),ans=$(".ans",d);
+  btn.addEventListener("click",function(){
+    var open=btn.getAttribute("aria-expanded")==="true";
+    btn.setAttribute("aria-expanded",String(!open));
+    ans.hidden=open;
+  });
+});
+
+/* menu */
+var menuBtn=el("menuBtn"),mainnav=el("mainnav"),menuLabel=el("menuBtnLabel");
+function closeMenu(){mainnav.classList.remove("open");menuBtn.setAttribute("aria-expanded","false");menuLabel.textContent="Menu"}
+menuBtn.addEventListener("click",function(){
+  var open=mainnav.classList.toggle("open");
+  menuBtn.setAttribute("aria-expanded",String(open));
+  menuLabel.textContent=open?"Close":"Menu";
+});
+$$("a",mainnav).forEach(function(a){a.addEventListener("click",closeMenu)});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&mainnav.classList.contains("open")){closeMenu();menuBtn.focus()}
+});
+
+/* dialog */
+var dlg=el("orderDlg"),form=el("orderForm"),confirmPane=el("confirmPane"),formBody=el("dlgFormBody"),lastFocus=null;
+var fRoast=el("fRoast");
+ROASTS.forEach(function(r,i){var o=document.createElement("option");o.value=i;o.textContent=r.name+" — "+r.lvl;fRoast.appendChild(o)});
+function syncDialogFreq(){
+  $$("[data-dfreq]").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.dfreq===state.freq?"true":"false")});
+}
+function setDialogGrind(g){state.grind=g;$$("[data-grind]").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.grind===g?"true":"false")});renderSummary()}
+$$("[data-grind]").forEach(function(b){b.addEventListener("click",function(){setDialogGrind(b.dataset.grind)})});
+$$("[data-dfreq]").forEach(function(b){b.addEventListener("click",function(){state.freq=b.dataset.dfreq;syncDialogFreq();renderSummary()})});
+function setDialogSub(i){
+  state.sub=i;el("fSub").value=String(i);
+  $$("[data-grind]").forEach(function(b){var on=b.getAttribute("aria-pressed")==="true";b.style.display=(i===0&&b.dataset.grind!=="Whole bean"&&false)?"":"";
+  });
+  renderSummary();
+}
+fRoast.addEventListener("change",function(){state.roast=+fRoast.value;state.featured=state.roast;renderHero();renderSummary()});
+el("fSub").addEventListener("change",function(){state.sub=+el("fSub").value;renderSummary()});
+function renderSummary(){
+  var r=ROASTS[state.roast],s=SUBS[state.sub];
+  el("sumCoffee").textContent=r.name;
+  el("sumGrind").textContent=state.grind;
+  el("sumBags").textContent=s.bags+" × 250g";
+  el("sumWeight").textContent=(s.bags*250)+"g";
+  el("sumPrice").textContent="$"+s.price;
+  el("sumFreq").textContent=state.freq;
+  el("sumTotal").textContent="$"+s.price+" / "+(state.freq==="Every 2 weeks"?"2 weeks":"month");
+}
+function openDialog(opts){
+  opts=opts||{};
+  lastFocus=document.activeElement;
+  if(opts.sub!==undefined)state.sub=opts.sub;
+  if(opts.roast!==undefined){state.roast=opts.roast;state.featured=opts.roast;renderHero()}
+  if(opts.freq!==undefined)setFreq(opts.freq);
+  fRoast.value=String(state.roast);
+  el("fSub").value=String(state.sub);
+  syncDialogFreq();
+  renderSummary();
+  form.hidden=false;confirmPane.hidden=true;
+  el("eName").textContent="";el("eEmail").textContent="";
+  dlg.showModal();
+  el("fName").focus();
+}
+$$("[data-open-dialog]").forEach(function(b){b.addEventListener("click",function(){openDialog({sub:state.sub,roast:state.featured,freq:state.freq})})});
+$$("[data-choose-roast]").forEach(function(b){b.addEventListener("click",function(){openDialog({roast:+b.dataset.chooseRoast,sub:state.sub,freq:state.freq})})});
+el("dlgClose").addEventListener("click",function(){dlg.close()});
+el("confirmClose").addEventListener("click",function(){dlg.close()});
+dlg.addEventListener("close",function(){if(lastFocus)lastFocus.focus()});
+dlg.addEventListener("click",function(e){
+  if(e.target===dlg){var r=dlg.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dlg.close()}
+});
+form.addEventListener("submit",function(e){
+  e.preventDefault();
+  var name=el("fName").value.trim(),email=el("fEmail").value.trim(),ok=true;
+  el("eName").textContent="";el("eEmail").textContent="";
+  if(!name){el("eName").textContent="Please add a name so we know whose kettle this is.";ok=false}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){el("eEmail").textContent="Please enter a valid email address (like brew@example.com).";ok=false}
+  if(!ok){ (name?el("fEmail"):el("fName")).focus(); return }
+  var r=ROASTS[state.roast],s=SUBS[state.sub];
+  el("confirmText").innerHTML="Thanks, <strong>"+escapeHtml(name)+"</strong>. Your fictional subscription: <strong>"+r.name+"</strong> ("+r.lvl+", "+state.grind+"), <strong>"+s.bags+" × 250g</strong> = "+(s.bags*250)+"g, <strong>$"+s.price+"</strong> per delivery, arriving <strong>"+state.freq.toLowerCase()+"</strong>.";
+  form.hidden=true;confirmPane.hidden=false;el("confirmClose").focus();
+});
+function escapeHtml(s){return s.replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+renderSummary();
+})();
+</script>
+</body>
+</html>
