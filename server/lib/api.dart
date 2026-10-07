@@ -13536,8 +13536,8 @@ window.lumaAskReason = function (form, message) {
         <label class="bn-field">Model<input id="bnRepairModel" class="bn-input" list="bnRepairModels" required maxlength="200" autocomplete="off"><datalist id="bnRepairModels"></datalist></label>
         <label class="bn-field">Reasoning effort<select id="bnRepairEffort" class="bn-input"><option value="">Default (low)</option><option value="none">Off</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
         <label class="bn-field">Maximum cost per scene, all attempts together (USD)<input id="bnRepairLimit" class="bn-input" type="number" min="0.001" max="10" step="0.001" value="0.25" required></label>
-        <label class="bn-field">Maximum output price (USD per million tokens, empty = no extra limit)<input id="bnRepairOutCap" class="bn-input" type="number" min="0" max="1000" step="any" placeholder="e.g. 0.5"></label>
-        <p class="muted">Saving is refused, and a repair will not start, if the model charges more than this for output tokens. 0 allows only free output.</p>
+        <label class="bn-field">Maximum output tokens per model call<input id="bnRepairOutCap" class="bn-input" type="number" min="512" max="200000" step="1" value="16384" required></label>
+        <p class="muted">The most tokens one call may write, reasoning included. Lower it to stop a model that rambles; the cost limit can still lower it further.</p>
         <p class="muted">Price guard is always on: unknown prices and price increases block a call. Saving accepts the selected model’s current token prices. Output is capped to fit the estimate. Usage is recorded in the AI Usage plugin for aydenjue@outlook.com.</p>
         <div id="bnRepairNote" role="status" class="muted"></div>
       </div>
@@ -13617,7 +13617,7 @@ window.lumaAskReason = function (form, message) {
       if (repairSettings.route) $('bnRepairKey').value = repairSettings.route.upstream;
       $('bnRepairModel').value = repairSettings.route ? repairSettings.route.model : '';
       $('bnRepairLimit').value = repairSettings.maxCostUsd;
-      $('bnRepairOutCap').value = repairSettings.maxOutputPrice == null ? '' : repairSettings.maxOutputPrice;
+      $('bnRepairOutCap').value = repairSettings.maxOutputTokens;
       $('bnRepairEffort').value = (repairSettings.route && repairSettings.route.reasoningEffort) || '';
       repairModels();
       const price = repairSettings.acceptedPrice;
@@ -13667,7 +13667,7 @@ window.lumaAskReason = function (form, message) {
     try {
       const result = await json('/admin/benchmark-banners/repair/settings', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ route: { upstream: $('bnRepairKey').value, model: $('bnRepairModel').value.trim(), reasoningEffort: $('bnRepairEffort').value }, maxCostUsd: Number($('bnRepairLimit').value), maxOutputPrice: $('bnRepairOutCap').value.trim() === '' ? null : Number($('bnRepairOutCap').value) }),
+        body: JSON.stringify({ route: { upstream: $('bnRepairKey').value, model: $('bnRepairModel').value.trim(), reasoningEffort: $('bnRepairEffort').value }, maxCostUsd: Number($('bnRepairLimit').value), maxOutputTokens: Number($('bnRepairOutCap').value) }),
       });
       if (!result.ok) throw new Error(result.body.message || 'Could not save settings.');
       const price = result.body.acceptedPrice;

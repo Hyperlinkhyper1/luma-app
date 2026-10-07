@@ -38,7 +38,7 @@ extension BenchmarkRepairApi on Api {
       'route': benchmarkRepairSettings.route?.toJson(),
       'acceptedPrice': benchmarkRepairSettings.acceptedPrice?.toJson(),
       'maxCostUsd': benchmarkRepairSettings.maxCostUsd,
-      'maxOutputPrice': benchmarkRepairSettings.maxOutputPrice,
+      'maxOutputTokens': benchmarkRepairSettings.maxOutputTokens,
       'owner': benchmarkRepairOwner,
       'keys': [
         for (final key in config.configuredAiUpstreams)
@@ -88,12 +88,15 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(409, 'repair_running',
           'Wait for the current settings update or repair.');
     }
-    final rawCap = body['maxOutputPrice'];
-    final double? cap = rawCap is num ? rawCap.toDouble() : null;
-    if (rawCap != null &&
-        (cap == null || !BenchmarkRepairSettings.validOutputPriceCap(cap))) {
+    final rawTokens = body['maxOutputTokens'];
+    final int? tokens = rawTokens == null
+        ? kRepairMaxOutputTokens
+        : rawTokens is num && rawTokens == rawTokens.toInt()
+            ? rawTokens.toInt()
+            : null;
+    if (tokens == null || !BenchmarkRepairSettings.validOutputTokens(tokens)) {
       return errorResponse(400, 'bad_settings',
-          r'The maximum output price must be between $0 and $1000 per million tokens, or left empty.');
+          'The maximum output tokens must be a whole number from 512 to 200000.');
     }
     benchmarkRepairStarting = true;
     try {
@@ -102,15 +105,8 @@ extension BenchmarkRepairApi on Api {
         return errorResponse(409, 'unknown_price',
             'Both input and output prices must be known. Refresh model data or choose another model.');
       }
-      if (cap != null && price!.output! > cap * 1.000001 + 1e-12) {
-        return errorResponse(
-            409,
-            'output_price_too_high',
-            'This model currently charges \$${price.output} per million '
-                'output tokens, above your maximum of \$$cap. Raise the '
-                'maximum or choose another model.');
-      }
-      await benchmarkRepairSettings.save(route, price!, limit.toDouble(), cap);
+      await benchmarkRepairSettings.save(
+          route, price!, limit.toDouble(), tokens);
       return jsonResponse(
           200, {'saved': true, 'acceptedPrice': price.toJson()});
     } finally {
@@ -330,12 +326,6 @@ extension BenchmarkRepairApi on Api {
         throw StateError(
             'Price guard: the model price increased. Review and save settings to accept the current price.');
       }
-      final outputCap = benchmarkRepairSettings.maxOutputPrice;
-      if (outputCap != null && current.output! > outputCap * 1.000001 + 1e-12) {
-        throw StateError('Price guard: the model now charges '
-            '\$${current.output} per million output tokens, above your maximum '
-            'of \$$outputCap. No model call was made.');
-      }
       final original = utf8.decode(scene.bytes);
 
       // Each attempt edits what the last one left, and is told what is still
@@ -392,8 +382,8 @@ extension BenchmarkRepairApi on Api {
         late final int maxTokens;
         try {
           if (remaining <= 0) throw ArgumentError('Spent.');
-          maxTokens =
-              repairOutputLimit(jsonEncode(messages), accepted, remaining);
+          maxTokens = repairOutputLimit(jsonEncode(messages), accepted,
+              remaining, benchmarkRepairSettings.maxOutputTokens);
         } on ArgumentError {
           if (attempt == 1) rethrow;
           throw StateError('Gave up after ${attempt - 1} '

@@ -22,9 +22,9 @@ class BenchmarkRepairSettings {
       if (limit is num && validLimit(limit.toDouble())) {
         maxCostUsd = limit.toDouble();
       }
-      final cap = raw['maxOutputPrice'];
-      if (cap is num && validOutputPriceCap(cap.toDouble())) {
-        maxOutputPrice = cap.toDouble();
+      final tokens = raw['maxOutputTokens'];
+      if (tokens is int && validOutputTokens(tokens)) {
+        maxOutputTokens = tokens;
       }
     } catch (_) {
       route = null;
@@ -37,23 +37,22 @@ class BenchmarkRepairSettings {
   AiPrice? acceptedPrice;
   double maxCostUsd = 0.25;
 
-  /// The most the model may charge per million output tokens, in USD. Null
-  /// means no cap beyond the price accepted on save.
-  double? maxOutputPrice;
+  /// The most output tokens (reasoning included) one model call may produce.
+  int maxOutputTokens = kRepairMaxOutputTokens;
 
   static bool validLimit(double value) =>
       value.isFinite && value > 0 && value <= 10;
 
-  static bool validOutputPriceCap(double value) =>
-      value.isFinite && value >= 0 && value <= 1000;
+  static bool validOutputTokens(int value) => value >= 512 && value <= 200000;
 
   Future<void> save(AiModeRoute selected, AiPrice price, double limit,
-      [double? outputPriceCap]) async {
+      [int? outputTokens]) async {
+    final tokens = outputTokens ?? kRepairMaxOutputTokens;
     if (!validLimit(limit) || !completeRepairPrice(price)) {
       throw ArgumentError('A valid price and spending limit are required.');
     }
-    if (outputPriceCap != null && !validOutputPriceCap(outputPriceCap)) {
-      throw ArgumentError('The output price cap is not valid.');
+    if (!validOutputTokens(tokens)) {
+      throw ArgumentError('The output token limit is not valid.');
     }
     await atomicWriteString(
         _file.path,
@@ -61,12 +60,12 @@ class BenchmarkRepairSettings {
           'route': selected.toJson(),
           'acceptedPrice': price.toJson(),
           'maxCostUsd': limit,
-          if (outputPriceCap != null) 'maxOutputPrice': outputPriceCap,
+          'maxOutputTokens': tokens,
         }));
     route = selected;
     acceptedPrice = price;
     maxCostUsd = limit;
-    maxOutputPrice = outputPriceCap;
+    maxOutputTokens = tokens;
   }
 }
 
@@ -225,7 +224,8 @@ String? repairStreamProblem(ChatStreamAccumulator acc) {
 
 /// Conservative input bound: one token per UTF-8 byte plus message overhead.
 /// Output includes reasoning and is capped at the provider request boundary.
-int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd) {
+int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd,
+    [int maxTokens = kRepairMaxOutputTokens]) {
   if (!completeRepairPrice(price) ||
       !BenchmarkRepairSettings.validLimit(maxCostUsd)) {
     throw ArgumentError('Unknown pricing or invalid spending limit.');
@@ -235,10 +235,8 @@ int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd) {
   final remaining = maxCostUsd - inputCost;
   if (remaining <= 0) throw ArgumentError('Input exceeds the price guard.');
   final output = price.output == 0
-      ? kRepairMaxOutputTokens
-      : (remaining * 1000000 / price.output!)
-          .floor()
-          .clamp(0, kRepairMaxOutputTokens);
+      ? maxTokens
+      : (remaining * 1000000 / price.output!).floor().clamp(0, maxTokens);
   if (output < 512) {
     throw ArgumentError('The price guard leaves too few output tokens.');
   }
