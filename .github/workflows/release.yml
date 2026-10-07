@@ -192,7 +192,7 @@ jobs:
       - name: Archive Linux bundle
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf "../../../luma-${{ steps.ver.outputs.version }}-linux-x64.tar.gz" .
+          tar -czf "../luma-${{ steps.ver.outputs.version }}-linux-x64.tar.gz" .
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

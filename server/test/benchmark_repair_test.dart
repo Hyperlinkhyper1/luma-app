@@ -99,10 +99,39 @@ void main() {
             original, 'The bug is X.\n```json\n$reply\n```\nThat fixes it.'),
         fixed);
   });
+  test('code pasted into JSON strings unescaped is mended', () {
+    const page = '<script>\nconst re = /broken()/;\n</script>';
+    expect(
+        applyBenchmarkRepair(page,
+            '{"edits":[{"before":"const re = /broken()/;","after":"const re = /\\d+/;\n\tlet x = 1;"}]}'),
+        '<script>\nconst re = /\\d+/;\n\tlet x = 1;\n</script>');
+  });
+  test('line numbers may come as strings, and bad ones say why', () {
+    const page = 'a\nb\nc';
+    expect(
+        applyBenchmarkRepair(
+            page,
+            jsonEncode({
+              'edits': [
+                {'startLine': '2', 'endLine': 2.0, 'after': 'B'}
+              ]
+            })),
+        'a\nB\nc');
+    expect(
+        () => applyBenchmarkRepair(
+            page,
+            jsonEncode({
+              'edits': [
+                {'startLine': 9, 'endLine': 9, 'after': 'x'}
+              ]
+            })),
+        throwsA(isA<FormatException>().having(
+            (e) => e.message, 'message', contains('the source has 3 lines'))));
+  });
   test('a reply that is not JSON says so, not that before was wrong', () {
     expect(
         () => applyBenchmarkRepair(
-            original, r'{"edits":[{"before":"a\q","after":"b"}]}'),
+            original, r'{"edits":[{"before":"a" "after":"b"}]}'),
         throwsA(isA<FormatException>().having((e) => e.message, 'message',
             startsWith('Your reply was not valid JSON'))));
   });

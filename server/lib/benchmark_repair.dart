@@ -320,9 +320,13 @@ files are available.
 Return only a JSON object {"edits":[...]} where each edit is one of:
 {"before":"exact source text that occurs exactly once","after":"replacement"}
 {"startLine":N,"endLine":M,"after":"new text for those lines"}
-The second form takes 1-based inclusive line numbers of the html as given and
-replaces those lines entirely; use it to rewrite a broken block, and an empty
-after to delete lines. Use at most 40 edits that do not overlap.
+The second form takes 1-based inclusive line numbers and replaces those lines
+entirely; use it to rewrite a broken block, and an empty after to delete
+lines. The html itself is not numbered: only use line numbers listed in
+errorLines, and use the first form anywhere else. Use at most 40 edits that do
+not overlap.
+Before you add a function, const, let or class, check the html does not
+already declare that name; if it does, edit the existing one instead.
 If previousAttempts is given, those fixes did not work: the html you now see
 already contains their changes and renderError is what is still wrong with it.
 Do not repeat a fix that failed. If the page cannot be made to render, return
@@ -363,30 +367,81 @@ the fix. Copy each before exactly as it appears in the source.
   return (start: found.first.start, end: found.first.end);
 }
 
-/// Applies a repair reply's edits to [source]. An edit replaces text that
-/// occurs exactly once, or a range of whole lines, so a broken block can be
-/// rewritten; edits cannot overlap, and together they cannot replace the
-/// whole page.
 /// The JSON object in a repair reply, without the code fence or the
 /// "Here is the fix:" some models put around it.
 String repairReplyJson(String reply) {
   final text = reply.trim();
-  final fenced =
-      RegExp(r'```(?:json)?\s*(\{[\s\S]*\})\s*```').firstMatch(text);
+  final fenced = RegExp(r'```(?:json)?\s*(\{[\s\S]*\})\s*```').firstMatch(text);
   if (fenced != null) return fenced.group(1)!;
   final start = text.indexOf('{');
   final end = text.lastIndexOf('}');
   return start >= 0 && end > start ? text.substring(start, end + 1) : text;
 }
 
+/// [json] with the two slips models make when they put code in a JSON
+/// string mended: raw newlines and tabs, and backslashes that start no JSON
+/// escape (a regex's `\d`, a `\'`). Anything else is left for the parser.
+String mendRepairJson(String json) {
+  final out = StringBuffer();
+  var inString = false;
+  for (var i = 0; i < json.length; i++) {
+    final c = json[i];
+    if (!inString) {
+      if (c == '"') inString = true;
+      out.write(c);
+      continue;
+    }
+    if (c == '\\') {
+      final next = i + 1 < json.length ? json[i + 1] : '';
+      if ('"\\/bfnrtu'.contains(next) && next.isNotEmpty) {
+        out
+          ..write(c)
+          ..write(next);
+        i++;
+      } else {
+        out.write(r'\\');
+      }
+    } else if (c == '"') {
+      inString = false;
+      out.write(c);
+    } else if (c == '\n') {
+      out.write(r'\n');
+    } else if (c == '\r') {
+      out.write(r'\r');
+    } else if (c == '\t') {
+      out.write(r'\t');
+    } else {
+      out.write(c);
+    }
+  }
+  return out.toString();
+}
+
+/// A line number from an edit, which some models send as "12" or 12.0.
+int? _lineNumber(Object? value) => switch (value) {
+      int n => n,
+      double n when n == n.roundToDouble() => n.toInt(),
+      String s => int.tryParse(s.trim()),
+      _ => null,
+    };
+
+/// Applies a repair reply's edits to [source]. An edit replaces text that
+/// occurs exactly once, or a range of whole lines, so a broken block can be
+/// rewritten; edits cannot overlap, and together they cannot replace the
+/// whole page.
 String applyBenchmarkRepair(String source, String reply) {
-  final Object? raw;
+  final json = repairReplyJson(reply);
+  Object? raw;
   try {
-    raw = jsonDecode(repairReplyJson(reply));
+    raw = jsonDecode(json);
   } on FormatException catch (e) {
-    throw FormatException('Your reply was not valid JSON (${e.message}). '
-        'Reply with only the JSON object, escaping quotes, backslashes and '
-        'newlines inside strings.');
+    try {
+      raw = jsonDecode(mendRepairJson(json));
+    } on FormatException {
+      throw FormatException('Your reply was not valid JSON (${e.message}). '
+          'Reply with only the JSON object, escaping quotes, backslashes and '
+          'newlines inside strings.');
+    }
   }
   final edits = raw is Map ? raw['edits'] : null;
   if (edits is! List || edits.isEmpty || edits.length > 40) {
@@ -403,17 +458,22 @@ String applyBenchmarkRepair(String source, String reply) {
     if (after is! String || after.length > 60000) {
       throw const FormatException('Repair edits must be exact changes.');
     }
-    final first = edit['startLine'];
-    final last = edit['endLine'];
-    if (first != null || last != null) {
-      if (first is! int ||
-          last is! int ||
+    if (edit['startLine'] != null || edit['endLine'] != null) {
+      final first = _lineNumber(edit['startLine']);
+      final last = _lineNumber(edit['endLine']);
+      if (first == null ||
+          last == null ||
           first < 1 ||
           last < first ||
-          last > lineStarts.length ||
-          last - first > 600) {
+          last > lineStarts.length) {
+        throw FormatException('An edit names lines '
+            '${edit['startLine']}–${edit['endLine']}, but the source has '
+            '${lineStarts.length} lines. Use startLine/endLine only for lines '
+            'listed in errorLines; anywhere else, copy "before" from html.');
+      }
+      if (last - first > 600) {
         throw const FormatException(
-            'An edit names lines that are not in the source.');
+            'An edit replaces more than 600 lines; replace a smaller block.');
       }
       final start = lineStarts[first - 1];
       var end =

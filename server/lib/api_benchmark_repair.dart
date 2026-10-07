@@ -397,6 +397,7 @@ extension BenchmarkRepairApi on Api {
           'max_tokens': maxTokens,
           'stream': true,
           'stream_options': {'include_usage': true},
+          'response_format': {'type': 'json_object'},
           ..._repairReasoning(route),
           if (route.upstream == AiUpstream.openrouter)
             'provider': {
