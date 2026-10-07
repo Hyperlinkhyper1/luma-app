@@ -584,6 +584,23 @@ String mendRepairJson(String json) {
   return out.toString();
 }
 
+/// Whether a repair reply is the model saying there is nothing it can fix:
+/// a well-formed reply whose edit list is empty.
+bool repairReplyIsEmpty(String reply) {
+  final json = repairReplyJson(reply);
+  Object? raw;
+  try {
+    raw = jsonDecode(json);
+  } on FormatException {
+    try {
+      raw = jsonDecode(mendRepairJson(json));
+    } on FormatException {
+      return false;
+    }
+  }
+  return raw is Map && raw['edits'] is List && (raw['edits'] as List).isEmpty;
+}
+
 /// A line number from an edit, which some models send as "12" or 12.0.
 int? _lineNumber(Object? value) => switch (value) {
       int n => n,

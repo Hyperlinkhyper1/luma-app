@@ -825,6 +825,64 @@ void main() {
       expect(await File(backups.single.path).readAsString(), original);
       expect(usage.usageCalls('owner'), hasLength(2));
     });
+    test('nothing to fix and it renders: the stale failure is cleared',
+        () async {
+      await save();
+      replies = [
+        jsonEncode({'edits': []})
+      ];
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'done', reason: job.detail);
+      expect(job.detail, contains('Renders as it is'));
+      expect(calls, 1);
+      expect(renderer.failureFor('pagoda_demo'), isNull);
+      expect(renderer.rendered, ['pagoda_demo']);
+      expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
+          original);
+      expect(
+          await Directory('${dir.path}/benchmark_repairs/pagoda_demo').exists(),
+          isFalse);
+    });
+    test('nothing to fix and it still fails: stops after one call', () async {
+      await save();
+      replies = [
+        jsonEncode({'edits': []})
+      ];
+      renderer.validationError = 'blank frame (solid colour)';
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(job.detail, contains('found nothing it could fix'));
+      expect(job.detail, contains('blank frame'));
+      expect(calls, 1);
+      expect(renderer.failureFor('pagoda_demo'), isNotNull);
+    });
+    test('regenerating checks the test exists, matches and is not busy',
+        () async {
+      await save();
+      Future<Map> regen(String id, String kind) =>
+          request('POST', '/admin/benchmarks/generate', body: {
+            'upstream': 'openrouter',
+            'model': 'mistralai/mistral-nemo',
+            'effort': '',
+            'kind': kind,
+            'replaceId': id,
+          });
+      final missing = await regen('pagoda_nobody', 'pagoda');
+      expect(missing['httpStatus'], 404, reason: '$missing');
+      final wrongKind = await regen('pagoda_demo', 'galaxy');
+      expect(wrongKind['httpStatus'], 400, reason: '$wrongKind');
+      expect(wrongKind['message'], contains('is a pagoda test'));
+      hold = Completer<void>();
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      final busy = await regen('pagoda_demo', 'pagoda');
+      expect(busy['httpStatus'], 409, reason: '$busy');
+      hold!.complete();
+      await finished();
+    });
     test('an edit that unbalances the brackets is dropped, not built on',
         () async {
       await save();

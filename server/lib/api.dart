@@ -13805,7 +13805,13 @@ window.lumaAskReason = function (form, message) {
         + '<div><div class="bg-run-name">' + esc(j.name || j.id)
         + (j.kind ? ' <span class="badge">' + esc(j.kind) + '</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + repairLabel + (repairLabel ? ' → ' : '') + '<code>' + esc(j.id) + '</code></div></div>'
-        + '<div class="bg-run-actions"></div>'
+        + '<div class="bg-run-actions">'
+        + (j.state === 'failed' && j.kind && window.lumaRegenerate
+          ? '<button type="button" class="btn btn-ghost btn-sm" data-regen="1" data-kind="' + esc(j.kind)
+            + '" data-name="' + esc(j.name || j.id) + '" title="Have a model write this test again from its prompt, '
+            + 'under the same name. The current page is backed up first.">Regenerate</button>'
+          : '')
+        + '</div>'
         + (running ? '<div class="bg-bar" role="progressbar" aria-label="' + esc(j.id) + ' is being repaired"></div>' : '')
         + (j.state === 'failed'
           ? '<div class="bg-run-err">' + esc(j.detail) + '</div>'
@@ -13815,6 +13821,12 @@ window.lumaAskReason = function (form, message) {
     repairBox.innerHTML = head + cards;
   }
   repairBox.addEventListener('click', (e) => {
+    const regen = e.target.closest('button[data-regen]');
+    if (regen && window.lumaRegenerate) {
+      window.lumaRegenerate({ id: regen.closest('.bg-run').dataset.id,
+        kind: regen.dataset.kind, name: regen.dataset.name });
+      return;
+    }
     const b = e.target.closest('button[data-repair-act]');
     if (!b) return;
     b.disabled = true;

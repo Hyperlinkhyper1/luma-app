@@ -15,6 +15,7 @@ class BenchmarkGenJob {
     required this.maxTokens,
     required this.startedAtMs,
     this.batchId,
+    this.replaces = false,
   });
 
   /// Rebuilds a batch run saved by [toState] after a restart.
@@ -35,6 +36,7 @@ class BenchmarkGenJob {
       maxTokens: (j['maxTokens'] as num?)?.toInt() ?? 0,
       startedAtMs: (j['startedAtMs'] as num).toInt(),
       batchId: batchId,
+      replaces: j['replaces'] == true,
     )
       ..status = j['status'] == 'failed' || j['status'] == 'stopped'
           ? j['status'] as String
@@ -64,6 +66,10 @@ class BenchmarkGenJob {
   final String prompt;
   final int maxTokens;
   final int startedAtMs;
+
+  /// True when this run writes a new page for an existing entry (same id,
+  /// name and company) instead of adding one. The old page is backed up.
+  final bool replaces;
 
   /// Runs through OpenRouter's Batch API: half price, no stream, done
   /// within 24 hours.
@@ -134,6 +140,7 @@ class BenchmarkGenJob {
         'batch': batch,
         'batchStatus': batchStatus,
         'batchId': batchId,
+        'replaces': replaces,
         ...publish,
       };
 
@@ -164,6 +171,7 @@ class BenchmarkGenJob {
         'hasOutput': hasOutput,
         'error': error,
         'finishedAtMs': finishedAtMs,
+        'replaces': replaces,
       };
 }
 
@@ -270,7 +278,8 @@ extension BenchmarkGenerateApi on Api {
   }
 
   /// Starts a run. The scene id is picked here, never by the client, so a
-  /// run can only ever add a new contestant.
+  /// run only ever adds a new contestant, unless the request names an
+  /// existing test to regenerate (`replaceId`).
   Future<Response> _adminBenchmarkGenStart(Request request) async {
     if (!_sameOrigin(request)) {
       return errorResponse(403, 'bad_origin', 'Cross-origin request rejected.');
@@ -312,12 +321,38 @@ extension BenchmarkGenerateApi on Api {
           'The ${kBenchmarkPrompts[kind]!.label} test is a binary model a '
               'text reply cannot carry. Upload it by hand.');
     }
-    final name = str('name');
+    // Regenerating keeps the entry's id, name and company: it is the same
+    // contestant's test, written again.
+    final replaceId = str('replaceId');
+    Map<String, dynamic>? replacing;
+    if (replaceId.isNotEmpty) {
+      if (!AiBenchmarkStore.idPattern.hasMatch(replaceId)) {
+        return errorResponse(400, 'bad_request', 'Invalid scene id.');
+      }
+      replacing = (await aiBenchmarks.editableEntries())
+          .where((e) => e['id'] == replaceId)
+          .firstOrNull;
+      if (replacing == null) {
+        return errorResponse(
+            404, 'not_found', 'There is no test $replaceId to regenerate.');
+      }
+      if (replacing['kind'] != kind) {
+        return errorResponse(400, 'bad_request',
+            '$replaceId is a ${replacing['kind']} test, not $kind.');
+      }
+      if (_benchmarkGenJobs
+              .any((j) => j.status == 'running' && j.sceneId == replaceId) ||
+          benchmarkRepairJobs[replaceId]?.state == 'running') {
+        return errorResponse(
+            409, 'busy', '$replaceId is already being repaired or rewritten.');
+      }
+    }
+    final name = replacing?['model'] as String? ?? str('name');
     if (name.isEmpty || name.length > 80) {
       return errorResponse(
           400, 'bad_request', 'Give the entry a name (up to 80 characters).');
     }
-    final vendor = str('vendor');
+    final vendor = replacing?['vendor'] as String? ?? str('vendor');
     if (!AiBenchmarkStore.vendorPattern.hasMatch(vendor)) {
       return errorResponse(400, 'bad_request', 'Unknown company "$vendor".');
     }
@@ -369,7 +404,10 @@ extension BenchmarkGenerateApi on Api {
     final job = BenchmarkGenJob(
       id: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
       kind: kind,
-      sceneId: benchmarkSceneId(kind, name, effort, taken),
+      sceneId: replacing != null
+          ? replaceId
+          : benchmarkSceneId(kind, name, effort, taken),
+      replaces: replacing != null,
       name: name,
       vendor: vendor,
       route: AiModeRoute(upstream, model,
@@ -883,7 +921,18 @@ extension BenchmarkGenerateApi on Api {
     final effort = job.route.reasoningEffort;
     var model = job.route.model;
     if (model.length > 120) model = '${model.substring(0, 120)}…';
-    final description = 'Generated from the admin dashboard: '
+    if (job.replaces) {
+      // The page being replaced is kept, next to the ones repairs back up.
+      final old = await aiBenchmarks.readScene(job.sceneId);
+      if (old != null) {
+        final backup = File('${config.dataDir}/benchmark_repairs/'
+            '${job.sceneId}/${DateTime.now().microsecondsSinceEpoch}.html');
+        await backup.parent.create(recursive: true);
+        await backup.writeAsBytes(old.bytes, flush: true);
+      }
+    }
+    final description = '${job.replaces ? 'Regenerated' : 'Generated'} '
+        'from the admin dashboard: '
         '${job.route.upstream.label} · $model'
         '${effort == null ? '' : ' · $effort reasoning'}'
         '${job.batch ? ' · batch' : ''}.';
@@ -1021,8 +1070,8 @@ String _bgDialogHtml() => '<dialog id="bgDialog" class="bn-dialog bg-dialog" '
     '<input id="bgMaxTokens" class="bn-input" type="number" min="1000" '
     'max="256000" step="1000" inputmode="numeric"></label>'
     '</div>'
-    '<div class="bg-preview" aria-live="polite"><span class="muted">New entry'
-    '</span> <strong id="bgPreviewName">—</strong> <span id="bgPreviewVendor" '
+    '<div class="bg-preview" aria-live="polite"><span id="bgPreviewLabel" '
+    'class="muted">New entry</span> <strong id="bgPreviewName">—</strong> <span id="bgPreviewVendor" '
     'class="muted"></span><code id="bgPreviewId"></code></div>'
     '</section>'
     '</div>'
@@ -1116,6 +1165,8 @@ const _bgScript = r'''
   const ENTRY_EFFORT = { minimal: 'Minimal', low: 'Low', medium: 'Medium', high: 'High', xhigh: 'Xhigh' };
   let state = null, key = '', model = null, kind = '';
   let nameEdited = false, vendorEdited = false, maxEdited = false;
+  // Set while regenerating an existing test: { id, kind, name }.
+  let replace = null;
   let timer = null;
 
   function esc(v) {
@@ -1175,7 +1226,8 @@ const _bgScript = r'''
   function syncStart() {
     const batch = isBatch(modelId.value.trim());
     $('bgBatchIdField').hidden = !batch;
-    start.textContent = !batch ? 'Start run' : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
+    start.textContent = !batch ? (replace ? 'Regenerate' : 'Start run')
+      : $('bgBatchId').value.trim() ? 'Attach batch' : 'Submit batch';
     start.disabled = manualNote || !!(state && !state.keys.some((k) => k.configured));
   }
   function labelOf(u) { const k = state && state.keys.find((x) => x.upstream === u); return k ? k.label : u; }
@@ -1188,7 +1240,8 @@ const _bgScript = r'''
     radio(keysBox, key);
   }
   function renderTests() {
-    testsBox.innerHTML = state.tests.map((t) => '<button type="button" role="radio" class="bg-opt" data-value="' + esc(t.kind) + '" aria-checked="false">'
+    testsBox.innerHTML = state.tests.map((t) => '<button type="button" role="radio" class="bg-opt" data-value="' + esc(t.kind) + '" aria-checked="false"'
+      + (replace && replace.kind !== t.kind ? ' disabled' : '') + '>'
       + '<span class="bg-opt-title">' + esc(t.label) + '</span>'
       + '<span class="bg-opt-sub">' + kfmt(t.prompt.length) + ' character prompt</span></button>').join('');
     radio(testsBox, kind);
@@ -1269,8 +1322,9 @@ const _bgScript = r'''
     return [...vendor.options].some((o) => o.value === v) ? v : '';
   }
   function autofill() {
-    if (!nameEdited) nameBox.value = entryName();
-    if (!vendorEdited) vendor.value = entryVendor();
+    if (replace) nameBox.value = replace.name;
+    else if (!nameEdited) nameBox.value = entryName();
+    if (!vendorEdited && !replace) vendor.value = entryVendor();
     if (!maxEdited) {
       const def = state ? state.defaultMaxTokens : 64000;
       maxTokens.value = model && model.maxOutput ? Math.min(model.maxOutput, def) : def;
@@ -1281,10 +1335,12 @@ const _bgScript = r'''
     syncStart();
     const n = nameBox.value.trim();
     $('bgPreviewName').textContent = n || '—';
-    $('bgPreviewVendor').textContent = vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
+    $('bgPreviewVendor').textContent = !replace && vendor.value ? 'by ' + vendor.options[vendor.selectedIndex].text : '';
     const e = ENTRY_EFFORT[effort.value] ? effort.value : '';
     const s = slug(n);
-    $('bgPreviewId').textContent = kind && s ? [kind, s, e].filter(Boolean).join('_') : '';
+    $('bgPreviewLabel').textContent = replace ? 'Rewrites the test of' : 'New entry';
+    $('bgPreviewId').textContent = replace ? replace.id
+      : kind && s ? [kind, s, e].filter(Boolean).join('_') : '';
     $('bgStep1').closest('.bg-step').classList.toggle('is-done', !!key);
     $('bgStep2').closest('.bg-step').classList.toggle('is-done', !!modelId.value.trim());
     $('bgStep3').closest('.bg-step').classList.toggle('is-done', !!kind);
@@ -1315,7 +1371,19 @@ const _bgScript = r'''
     if (e.target.closest('[data-close]') || e.target === dlg) dlg.close();
   });
 
-  openBtn.addEventListener('click', () => {
+  // Regenerating keeps the entry's name and company, so those fields are
+  // locked; the model list is pre-searched for the entry's name and the
+  // effort read from its "(High)"-style suffix, as a starting guess.
+  function openDialog(rep) {
+    replace = rep || null;
+    nameBox.readOnly = !!replace;
+    vendor.disabled = !!replace;
+    if (replace) {
+      const m = /\(([A-Za-z]+)\)\s*$/.exec(replace.name);
+      const guess = m && m[1].toLowerCase();
+      if (guess && [...effort.options].some((o) => o.value === guess)) effort.value = guess;
+      search.value = replace.name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+    }
     status.textContent = '';
     start.disabled = false;
     dlg.showModal();
@@ -1339,10 +1407,21 @@ const _bgScript = r'''
       } else if (!s.github) {
         status.textContent = 'GitHub is not set up, so the scene only goes live on this server.';
       }
-      if (!kind || !s.tests.some((t) => t.kind === kind)) pickTest(s.tests[0].kind);
+      if (replace) {
+        if (!s.tests.some((t) => t.kind === replace.kind)) {
+          status.textContent = replace.id + ' is not a test a model can write as a page.';
+          start.disabled = true;
+          return;
+        }
+        pickTest(replace.kind);
+        renderModels();
+        if (!status.textContent) status.textContent = 'Pick the model that should write ' + replace.name + '’s test again. The current page is backed up first.';
+      } else if (!kind || !s.tests.some((t) => t.kind === kind)) pickTest(s.tests[0].kind);
       search.focus();
     }).catch((e) => { status.textContent = e.message || 'Could not load the keys and tests.'; });
-  });
+  }
+  openBtn.addEventListener('click', () => openDialog(null));
+  window.lumaRegenerate = (rep) => openDialog(rep);
 
   $('bgForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1361,10 +1440,12 @@ const _bgScript = r'''
       maxTokens: Number(maxTokens.value) || undefined,
       batchId: isBatch(id) ? $('bgBatchId').value.trim() : '',
       prompt: t && prompt.value === t.prompt ? '' : prompt.value,
+      replaceId: replace ? replace.id : '',
     }).then((j) => {
       start.disabled = false;
       if (!j.id) { status.textContent = j.message || 'Could not start the run.'; return; }
       nameEdited = vendorEdited = maxEdited = false;
+      replace = null;
       $('bgBatchId').value = '';
       dlg.close();
       poll();
@@ -1408,7 +1489,8 @@ const _bgScript = r'''
       if (!running) actions.push('<button type="button" class="btn btn-ghost btn-sm" data-act="dismiss" aria-label="Dismiss this run">Dismiss</button>');
       return '<div class="bg-run is-' + esc(j.resultStatus === 'TRUNCATED' ? 'truncated' : j.status) + '" data-id="' + esc(j.id) + '">'
         + '<div><div class="bg-run-name">' + esc(j.name) + ' <span class="badge">' + esc(j.kindLabel) + '</span>'
-        + (j.batch ? '<span class="badge">Batch</span>' : '') + badge + '</div>'
+        + (j.batch ? '<span class="badge">Batch</span>' : '')
+        + (j.replaces ? '<span class="badge">Regenerate</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + esc(j.upstreamLabel) + ' · <code>' + esc(j.model) + '</code>'
         + (j.effort ? ' · ' + esc(EFFORT_LABEL[j.effort] || j.effort) + ' reasoning' : '')
         + ' → <code>' + esc(j.sceneId) + '</code></div></div>'

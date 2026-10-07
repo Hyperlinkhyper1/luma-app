@@ -464,6 +464,37 @@ extension BenchmarkRepairApi on Api {
           throw StateError(_incompleteReason(acc, maxTokens));
         }
 
+        if (repairReplyIsEmpty(acc.content)) {
+          // The model sees nothing to fix. Either the recorded failure was a
+          // one-off (a slow GPU, a CDN hiccup) and the page renders as it is,
+          // or it is broken past what an edit can mend; more attempts won't
+          // change either.
+          job.detail = 'The model found nothing to fix; rendering the test '
+              'as it is…';
+          final current = utf8.encode(base);
+          final renderError =
+              await previewRenders.findSyntaxError(current) != null
+                  ? 'it has a syntax error'
+                  : await previewRenders.validateRepair(job.id, current);
+          if (renderError != null) {
+            throw StateError('The model found nothing it could fix, and the '
+                'test still does not render: $renderError. The page is '
+                'broken past what a small edit can mend. The live test was '
+                'kept.');
+          }
+          if (base != original) {
+            fixed = current;
+            break;
+          }
+          previewRenders.recordFailure(job.id, null);
+          final render = await previewRenders.enqueue([job.id]);
+          job.finish(
+              'done',
+              'Renders as it is: the recorded failure did not happen again, '
+                  'so nothing was changed. Banner: '
+                  '${render == null ? 'started' : render == 'queued' ? 'queued' : render}.');
+          return;
+        }
         String? problem;
         String? candidate;
         try {
