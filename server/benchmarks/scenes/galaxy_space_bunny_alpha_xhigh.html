@@ -884,7 +884,7 @@ renderer.domElement.addEventListener('pointerup', e => {
   raycaster.setFromCamera(pointer, camera);
   const hit = new THREE.Vector3();
   if (raycaster.ray.intersectPlane(mapPlane, hit)) plotDestination(hit.x, hit.z);
-});
+}, { once: true });
 function plotDestination(x, z) {
   const r = Math.hypot(x,z);
   if (r > 46) { x *= 46/r; z *= 46/r; }
