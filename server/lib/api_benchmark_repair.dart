@@ -468,8 +468,10 @@ extension BenchmarkRepairApi on Api {
         try {
           candidate = applyBenchmarkRepair(base, acc.content);
         } on FormatException catch (e) {
-          problem = 'Your reply could not be applied: ${e.message} Copy '
-              'before exactly from html, or use a startLine/endLine edit.';
+          problem = e.message.startsWith('Your reply was not valid JSON')
+              ? e.message
+              : 'Your reply could not be applied: ${e.message} Copy '
+                  'before exactly from html, or use a startLine/endLine edit.';
           focus = nearestLineOf(base, acc.content) ?? focus;
         }
         if (candidate != null) {
@@ -662,23 +664,34 @@ extension BenchmarkRepairApi on Api {
     return null;
   }
 
-  /// Whether a failed call can simply be sent again: the provider was busy
-  /// or dropped the line, and either nothing came back (so nothing was
-  /// billed) or the model is free.
+  /// Whether a failed call can simply be sent again. Only when the provider
+  /// was busy or dropped the line before anything came back: nothing was
+  /// billed, and little time was lost. A free model is also re-sent after an
+  /// explicit "overloaded", but not after it reasoned for minutes and then
+  /// failed, since that would only repeat the wait.
   bool _providerWasBusy(
       ChatStreamAccumulator acc, Object? thrown, AiPrice accepted) {
     final nothingBack = acc.contentChars == 0 &&
         acc.reasoningChars == 0 &&
         (acc.usage.costUsd ?? 0) == 0;
     final free = accepted.input == 0 && accepted.output == 0;
-    if (!nothingBack && !free) return false;
+    if (!nothingBack) {
+      return free &&
+          switch (thrown) {
+            RepairHttpStatus(:final busy) => busy,
+            null => acc.error != null &&
+                busyProviderError(acc.error, acc.errorCode) &&
+                acc.reasoningChars < 2000,
+            _ => false,
+          };
+    }
     return switch (thrown) {
       RepairHttpStatus(:final busy) => busy,
       RepairTimeout(:final idle) => idle,
       IOException() => true,
       null => acc.error != null
           ? busyProviderError(acc.error, acc.errorCode)
-          : acc.contentChars == 0 && (acc.finishReason == 'error' || !acc.done),
+          : acc.finishReason == 'error' || !acc.done,
       _ => false,
     };
   }

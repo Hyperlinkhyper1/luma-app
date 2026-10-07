@@ -187,7 +187,7 @@ const kRepairBusyRetries = 3;
 
 /// The wait before each busy retry.
 Duration repairBusyBackoff(int retry) =>
-    Duration(seconds: const [10, 30, 60][retry.clamp(0, 2)]);
+    Duration(seconds: const [20, 60, 120][retry.clamp(0, 2)]);
 
 /// The longest one repair call may run. Free reasoning models at a high
 /// effort routinely need more than five minutes.
@@ -367,14 +367,27 @@ the fix. Copy each before exactly as it appears in the source.
 /// occurs exactly once, or a range of whole lines, so a broken block can be
 /// rewritten; edits cannot overlap, and together they cannot replace the
 /// whole page.
+/// The JSON object in a repair reply, without the code fence or the
+/// "Here is the fix:" some models put around it.
+String repairReplyJson(String reply) {
+  final text = reply.trim();
+  final fenced =
+      RegExp(r'```(?:json)?\s*(\{[\s\S]*\})\s*```').firstMatch(text);
+  if (fenced != null) return fenced.group(1)!;
+  final start = text.indexOf('{');
+  final end = text.lastIndexOf('}');
+  return start >= 0 && end > start ? text.substring(start, end + 1) : text;
+}
+
 String applyBenchmarkRepair(String source, String reply) {
-  var text = reply.trim();
-  if (text.startsWith('```')) {
-    text = text
-        .replaceFirst(RegExp(r'^```(?:json)?\s*'), '')
-        .replaceFirst(RegExp(r'\s*```$'), '');
+  final Object? raw;
+  try {
+    raw = jsonDecode(repairReplyJson(reply));
+  } on FormatException catch (e) {
+    throw FormatException('Your reply was not valid JSON (${e.message}). '
+        'Reply with only the JSON object, escaping quotes, backslashes and '
+        'newlines inside strings.');
   }
-  final raw = jsonDecode(text);
   final edits = raw is Map ? raw['edits'] : null;
   if (edits is! List || edits.isEmpty || edits.length > 40) {
     throw const FormatException('No valid repair was returned.');

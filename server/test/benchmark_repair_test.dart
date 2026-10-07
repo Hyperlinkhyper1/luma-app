@@ -90,6 +90,22 @@ void main() {
             })),
         throwsFormatException);
   });
+  test('a reply wrapped in prose or a fence still applies', () {
+    final fixed = original.replaceFirst('broken()', 'fixed()');
+    expect(applyBenchmarkRepair(original, 'Here is the fix:\n$reply\nDone.'),
+        fixed);
+    expect(
+        applyBenchmarkRepair(
+            original, 'The bug is X.\n```json\n$reply\n```\nThat fixes it.'),
+        fixed);
+  });
+  test('a reply that is not JSON says so, not that before was wrong', () {
+    expect(
+        () => applyBenchmarkRepair(
+            original, r'{"edits":[{"before":"a\q","after":"b"}]}'),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message',
+            startsWith('Your reply was not valid JSON'))));
+  });
   test('errors about a declaration are told where the name is declared', () {
     const page = 'const A = 1;\n'
         'function run() {\n'
