@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0, user-scalable=no">
     <title>3D Train World Benchmark</title>
+    <script type="importmap">
+        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+    </script>
     <style>
         body {
             margin: 0;
@@ -56,14 +59,11 @@
     </style>
 </head>
 <body>
-    <importmap>
-        {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}} </importmap>
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { EffectComposer, UnrealBloomPass } from 'three/addons/effects/EffectComposer.js';
-        import { CanvasRenderTarget } from 'three/addons/renderers/CanvasRenderer.js';
-        import { Sky } from 'three/addons/scenes/Sky.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
         let canvas = document.createElement('canvas');
         canvas.style.position = 'absolute';
@@ -276,9 +276,7 @@
             bloomPass.strength = (Math.sin(dayNight * Math.PI)) * 0.5 + 0.75;
             bloomPass.threshold = (Math.cos(dayNight * Math.PI)) * 0.5 + 0.55;
 
-            world.train1.update(dt);
-            world.train2.update(dt);
-            world.train3.update(dt);
+
 
             for (let i = 0; i < world.signals.length; i++) {
                 world.signals[i].position.x = world.blocks[i].x + (Math.sin((i * Math.PI * 2 / world.signals.length) + time) * 10);
@@ -426,10 +424,10 @@
         for (let i = 0; i < world.blocks.length; i++) {
             let blockElement = document.createElement("div");
             blockElement.className = "block";
-            let signalIcon = document.createElement("div");
-            signalIcon.className = "signal-icon";
-            signalIcon.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
-            blockElement.appendChild(signalIcon);
+            let signalIcon1 = document.createElement("div");
+            signalIcon1.className = "signal-icon";
+            signalIcon1.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
+            blockElement.appendChild(signalIcon1);
             let text = document.createElement("div");
             text.textContent = "Block" + i;
             blockElement.appendChild(text);
@@ -457,10 +455,10 @@
             schematic.appendChild(switchElement);
         }
 
-        let signalIcon = document.createElement("div");
-        signalIcon.className = "signal-icon";
-        signalIcon.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
-        signalElement.appendChild(signalIcon);
+        let signalIcon2 = document.createElement("div");
+        signalIcon2.className = "signal-icon";
+        signalIcon2.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
+        signalElement.appendChild(signalIcon2);
         signalElement.id = "signal-0";
 
         let text = document.createElement("div");
@@ -533,20 +531,19 @@
             blockElements.innerHTML = "";
             for (let i = 0; i < world.blocks.length; i++) {
                 let blockElement = document.createElement("div");
-                blockElement.className = "block";
-                let signalIcon = document.createElement("div");
-                signalIcon.className = "signal-icon";
-                if (world.signals[i].signal > 0) {
-                    let random = Math.random();
-                    if (random < 0.33) {
-                        signalIcon.classList.add("fa-circle-slash");
-                    } else if (random < 2/3) {
-                        signalIcon.classList.add("fa-spinner");
-                    } else {
-                        signalIcon.classList.add("fa-spinner-gear");
-                    }
-                }
-                blockElement.appendChild(signalIcon);
+                blockElement.className = "block";        let signalIcon3 = document.createElement("div");
+        signalIcon3.className = "signal-icon";
+        if (world.signals[i].signal > 0) {
+            let random = Math.random();
+            if (random < 0.33) {
+                signalIcon3.classList.add("fa-circle-slash");
+            } else if (random < 2/3) {
+                signalIcon3.classList.add("fa-spinner");
+            } else {
+                signalIcon3.classList.add("fa-spinner-gear");
+            }
+        }
+                blockElement.appendChild(signalIcon3);
                 let text = document.createElement("div");
                 text.textContent = "Block" + i;
                 blockElement.appendChild(text);
@@ -554,11 +551,11 @@
             }
         };
 
-        setInterval(uploadUI, 16);
-
         let uploadUI = () => {
             updateSchematic();
         };
+
+        setInterval(uploadUI, 16);
 
         let debugUI = document.createElement("div");
         debugUI.id = "debug-ui";
@@ -582,14 +579,7 @@
             debugSchematic.appendChild(switchElement);
         }
 
-        let signalIcon = document.createElement("div");
-        signalIcon.className = "signal-icon";
-        signalIcon.innerHTML = "<i class='fa&#x20; fa-circle'></i>";
-        signalElement.appendChild(signalIcon);
-        signalElement.id = "signal-0";
 
-        world.blocks = signalElement.position = new THREE.Vector3(Math.sin((i * Math.PI * 2 / world.signals.length)) * 10, 0, Math.cos((i * Math.PI * 2 / world.signals.length)) * 10);
-        world.blocks.push(switchElement.position = new THREE.Vector3(Math.sin((i * Math.PI * 2 / world.switches.length)) * 10, 0, Math.cos((i * Math.PI * 2 / world.switches.length)) * 10));
 
         let debugBlockElements = document.createElement("div");
         debugBlockElements.id = "debug-block-elements";
@@ -597,20 +587,19 @@
 
         for (let i = 0; i < world.blocks.length; i++) {
             let blockElement = document.createElement("div");
-            blockElement.className = "block";
-            let signalIcon = document.createElement("div");
-            signalIcon.className = "signal-icon";
-            if (world.signals[i].signal > 0) {
-                let random = Math.random();
-                if (random < 0.33) {
-                    signalIcon.classList.add("fa-circle-slash");
-                } else if (random < 2/3) {
-                    signalIcon.classList.add("fa-spinner");
-                } else {
-                    signalIcon.classList.add("fa-spinner-gear");
-                }
+            blockElement.className = "block";        let signalIcon4 = document.createElement("div");
+        signalIcon4.className = "signal-icon";
+        if (world.signals[i].signal > 0) {
+            let random = Math.random();
+            if (random < 0.33) {
+                signalIcon4.classList.add("fa-circle-slash");
+            } else if (random < 2/3) {
+                signalIcon4.classList.add("fa-spinner");
+            } else {
+                signalIcon4.classList.add("fa-spinner-gear");
             }
-            blockElement.appendChild(signalIcon);
+        }
+            blockElement.appendChild(signalIcon4);
             let text = document.createElement("div");
             text.textContent = "Block" + i;
             blockElement.appendChild(text);
