@@ -82,11 +82,326 @@
     <button id="return-rack">RETURN TO RACK</button>
   </div>
   <ul id="server-list"></ul>
-  <script type="module">
+  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.138.3/build/three.module.js","three/addons/":"https://unpkg.com/three@0.138.3/examples/jsm/"}}</script>
+<script type="module">
     import * as THREE from 'https://unpkg.com/three@0.138.3/build/three.module.js';
     import { OrbitControls } from 'https://unpkg.com/three@0.138.3/examples/jsm/controls/OrbitControls.js';
 
-    // ... (continue with the rest of the code)
+    // ================= Scene =================
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+
+    const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 2000);
+    camera.position.set(0, 8, 22);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(devicePixelRatio);
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 2, 0);
+    controls.enableDamping = true;
+
+    scene.add(new THREE.AmbientLight(0x404040, 0.7));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+    sun.position.set(10, 20, 12);
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(200, 200),
+      new THREE.MeshStandardMaterial({ color: 0x15151a, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+    scene.add(new THREE.GridHelper(60, 60, 0x334455, 0x1a2230));
+
+    // ================= Model =================
+    const serverMeshes = [];
+    const sidePanels = [];
+    const racks = [];
+    const packets = [];
+
+    function createServer(rackIndex, slotIndex) {
+      const g = new THREE.Group();
+      g.userData = { rackIndex, slotIndex, id: 'srv-' + rackIndex + '-' + slotIndex, failed: false, temp: 40 };
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.38, 0.9),
+        new THREE.MeshStandardMaterial({ color: 0x2a3b5c, metalness: 0.4, roughness: 0.4 }));
+      g.add(body);
+
+      const bezel = new THREE.Mesh(new THREE.BoxGeometry(1.82, 0.36, 0.05),
+        new THREE.MeshStandardMaterial({ color: 0x11182a, metalness: 0.3, roughness: 0.5 }));
+      bezel.position.z = 0.445;
+      g.add(bezel);
+
+      const back = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.38, 0.05),
+        new THREE.MeshStandardMaterial({ color: 0x11182a, metalness: 0.3, roughness: 0.5 }));
+      back.position.z = -0.445;
+      g.add(back);
+
+      for (let i = 0; i < 4; i++) {
+        const led = new THREE.Mesh(
+          new THREE.CircleGeometry(0.045, 8),
+          new THREE.MeshBasicMaterial({ color: 0x00ff66, transparent: true, side: THREE.DoubleSide })
+        );
+        led.position.set(-0.55 + i * 0.36, 0.12, 0.47);
+        g.add(led);
+      }
+      serverMeshes.push(g);
+      return g;
+    }
+
+    function createRack(xIndex) {
+      const rack = new THREE.Group();
+      rack.userData = { xIndex };
+
+      const uprightMat = new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7, roughness: 0.4 });
+      for (const sx of [-1, 1]) {
+        const u = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4.2, 8), uprightMat);
+        u.position.set(sx * 0.95, 2, 0);
+        rack.add(u);
+      }
+      for (const sy of [-1, 1]) {
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(2, 0.12, 1), uprightMat);
+        plate.position.set(0, sy * 2.06, 0);
+        rack.add(plate);
+      }
+
+      const panelMat = new THREE.MeshStandardMaterial({ color: 0x1a2230, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
+      for (const sx of [-1, 1]) {
+        const panel = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 1), panelMat);
+        panel.position.set(sx * 0.99, 2, 0);
+        panel.rotation.y = sx > 0 ? 0 : Math.PI;
+        rack.add(panel);
+        sidePanels.push(panel);
+      }
+
+      for (let s = 0; s < 10; s++) {
+        const srv = createServer(xIndex, s);
+        srv.position.y = 1.7 - s * 0.4;
+        rack.add(srv);
+      }
+
+      rack.position.x = (xIndex - 1.5) * 4;
+      racks.push(rack);
+      return rack;
+    }
+
+    for (let r = 0; r < 4; r++) scene.add(createRack(r));
+
+    // ================= State =================
+    let currentView = 'rack';
+    let coverOpen = false;
+    let explodeOn = false;
+    let airflowOn = false;
+    let powerOn = true;
+    let dataOn = false;
+    let failureOn = false;
+    let selectedServer = serverMeshes[0];
+    let sliceY = 2.0;
+
+    // ================= Slicing plane =================
+    const slicePlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(60, 60),
+      new THREE.MeshBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false })
+    );
+    slicePlane.rotation.x = -Math.PI / 2;
+    slicePlane.visible = false;
+    scene.add(slicePlane);
+
+    const sliceLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-30, 2.01, 0), new THREE.Vector3(30, 2.01, 0)]),
+      new THREE.LineBasicMaterial({ color: 0x00ffcc })
+    );
+    sliceLine.visible = false;
+    scene.add(sliceLine);
+
+    // ================= Views =================
+    function setView(name) {
+      currentView = name;
+      switch (name) {
+        case 'rack':
+          camera.position.set(0, 8, 22);
+          controls.target.set(0, 2, 0);
+          break;
+        case 'slice':
+          camera.position.set(0, 16, 14);
+          controls.target.set(0, sliceY, 0);
+          break;
+        case 'cutaway':
+          camera.position.set(0, 6, 12);
+          controls.target.set(0, 2, 0);
+          break;
+        case 'explode':
+          camera.position.set(0, 10, 20);
+          controls.target.set(0, 2, 0);
+          break;
+        default:
+          camera.position.set(0, 8, 22);
+          controls.target.set(0, 2, 0);
+      }
+    }
+
+    function applySettings() {
+      sidePanels.forEach(p => { p.visible = !coverOpen; });
+
+      serverMeshes.forEach(srv => {
+        const baseX = (srv.userData.rackIndex - 1.5) * 4;
+        srv.position.x = baseX + (explodeOn ? (srv.userData.rackIndex - 1.5) * 2.2 : 0);
+        srv.position.z = explodeOn ? (srv.userData.slotIndex - 5) * 0.25 : 0;
+      });
+
+      serverMeshes.forEach(srv => {
+        const t = 35 + (Math.sin(srv.userData.slotIndex * 0.8 + srv.userData.rackIndex) * 0.5 + 0.5) * 55;
+        srv.userData.temp = t;
+        srv.children.forEach(ch => {
+          if (ch.material && ch.material.isMeshStandardMaterial && ch.geometry.type === 'BoxGeometry') {
+            if (airflowOn) {
+              const hue = THREE.MathUtils.clampMap(t, 35, 90, 0.62, 0);
+              ch.material.color.copy(new THREE.Color().setHSL(hue, 0.9, 0.5));
+            } else {
+              ch.material.color.set(0x2a3b5c);
+            }
+          }
+        });
+      });
+
+      serverMeshes.forEach(srv => {
+        srv.children.forEach(ch => {
+          if (ch.material && ch.material.isMeshBasicMaterial) {
+            ch.material.color.set(powerOn ? (srv.userData.failed ? 0xff3333 : 0x00ff66) : 0x333333);
+          }
+        });
+      });
+
+      if (failureOn) {
+        serverMeshes.forEach(srv => {
+          srv.userData.failed = Math.random() < 0.15;
+        });
+      }
+
+      slicePlane.position.y = sliceY;
+      sliceLine.position.y = sliceY;
+      slicePlane.visible = (currentView === 'slice');
+      sliceLine.visible = (currentView === 'slice');
+    }
+
+    // ================= Data packets =================
+    function spawnPacket() {
+      if (!dataOn) return;
+      const src = serverMeshes[Math.floor(Math.random() * serverMeshes.length)];
+      const dst = serverMeshes[Math.floor(Math.random() * serverMeshes.length)];
+      const m = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffcc00 })
+      );
+      m.userData = { from: src, to: dst, t: 0 };
+      scene.add(m);
+      packets.push(m);
+    }
+
+    // ================= UI =================
+    const info = document.getElementById('info');
+    const stats = document.getElementById('stats');
+    const serverList = document.getElementById('server-list');
+
+    function updateInfo() {
+      if (!selectedServer) return;
+      info.textContent = selectedServer.userData.id + ' | rack ' + selectedServer.userData.rackIndex +
+        ' slot ' + selectedServer.userData.slotIndex + ' | temp ' + selectedServer.userData.temp.toFixed(0) +
+        'C ' + (selectedServer.userData.failed ? 'FAILED' : '');
+      stats.textContent = 'servers: ' + serverMeshes.length + ' | view: ' + currentView;
+    }
+
+    function focusSelected() {
+      if (!selectedServer) return;
+      const pos = new THREE.Vector3();
+      selectedServer.getWorldPosition(pos);
+      controls.target.copy(pos);
+      camera.position.copy(pos).add(new THREE.Vector3(3, 2, 4));
+    }
+
+    function populateList() {
+      serverList.innerHTML = '';
+      serverMeshes.forEach(srv => {
+        const li = document.createElement('li');
+        li.textContent = srv.userData.id + ' (rack ' + srv.userData.rackIndex + ')';
+        li.addEventListener('click', () => { selectedServer = srv; focusSelected(); updateInfo(); });
+        serverList.appendChild(li);
+      });
+    }
+
+    // ================= Buttons =================
+    document.getElementById('rack-view').onclick = () => { setView('rack'); applySettings(); };
+    document.getElementById('slice-view').onclick = () => { setView('slice'); applySettings(); };
+    document.getElementById('open-cover').onclick = () => { coverOpen = !coverOpen; applySettings(); };
+    document.getElementById('cutaway').onclick = () => { coverOpen = !coverOpen; setView('cutaway'); applySettings(); };
+    document.getElementById('explode').onclick = () => { explodeOn = !explodeOn; setView('explode'); applySettings(); };
+    document.getElementById('airflow').onclick = () => { airflowOn = !airflowOn; applySettings(); };
+    document.getElementById('power').onclick = () => { powerOn = !powerOn; applySettings(); };
+    document.getElementById('data').onclick = () => { dataOn = !dataOn; applySettings(); };
+    document.getElementById('failure').onclick = () => { failureOn = !failureOn; applySettings(); };
+    document.getElementById('reset').onclick = () => {
+      coverOpen = false; explodeOn = false; airflowOn = false; powerOn = true; dataOn = false; failureOn = false;
+      setView('rack'); applySettings(); updateInfo();
+    };
+    document.getElementById('prev-server').onclick = () => {
+      const i = serverMeshes.indexOf(selectedServer);
+      selectedServer = serverMeshes[(i - 1 + serverMeshes.length) % serverMeshes.length];
+      focusSelected(); updateInfo();
+    };
+    document.getElementById('next-server').onclick = () => {
+      const i = serverMeshes.indexOf(selectedServer);
+      selectedServer = serverMeshes[(i + 1) % serverMeshes.length];
+      focusSelected(); updateInfo();
+    };
+    document.getElementById('return-rack').onclick = () => { setView('rack'); applySettings(); };
+
+    // ================= Animate =================
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+
+      for (let i = packets.length - 1; i >= 0; i--) {
+        const m = packets[i];
+        m.userData.t += 0.02;
+        const fromPos = new THREE.Vector3();
+        const toPos = new THREE.Vector3();
+        m.userData.from.getWorldPosition(fromPos);
+        m.userData.to.getWorldPosition(toPos);
+        m.position.copy(fromPos).lerpVectors(fromPos, toPos, m.userData.t);
+        if (m.userData.t >= 1) {
+          scene.remove(m);
+          packets.splice(i, 1);
+        }
+      }
+
+      if (dataOn && Math.random() < 0.3) spawnPacket();
+
+      serverMeshes.forEach(srv => {
+        if (srv.userData.failed && powerOn) {
+          srv.children.forEach(ch => {
+            if (ch.material && ch.material.isMeshBasicMaterial) {
+              ch.material.opacity = 0.3 + Math.random() * 0.7;
+            }
+          });
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    populateList();
+    applySettings();
+    updateInfo();
+    animate();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
   </script>
 </body>
 </html>
