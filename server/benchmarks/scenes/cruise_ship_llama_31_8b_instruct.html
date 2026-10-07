@@ -24,12 +24,12 @@
 <script src="https://unpkg.com/three@0.144.0/examples/js/loaders/MTLLoader.js"></script>
 <script src="https://unpkg.com/three@0.144.0/examples/js/loaders/OBJLoader.js"></script>
 <script src="https://unpkg.com/three@0.144.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://unpkg.com/three@0.144.0/examples/js/renderers/CanvasRenderer.js"></script>
-<script src="https://unpkg.com/three@0.144.0/examples/js/renderers/ShaderMaterial.js"></script>
+
 <script>
     const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x456778, 100, 1000);
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.CanvasRenderer();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
