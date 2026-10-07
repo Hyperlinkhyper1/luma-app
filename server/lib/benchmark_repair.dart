@@ -211,10 +211,14 @@ List<Map<String, Object>> errorLinesOf(String source, int line,
 }
 
 /// Why a repair's stream should be cut off now, or null to keep reading.
-String? repairStreamProblem(ChatStreamAccumulator acc) {
+String? repairStreamProblem(ChatStreamAccumulator acc,
+    {int reasoningBudget = kRepairReasoningCharBudget}) {
   if (acc.contentChars > 100000) return 'Repair reply too large.';
   if (acc.contentChars == 0 &&
-      acc.reasoningChars > kRepairReasoningCharBudget) {
+      acc.reasoningChars >
+          (reasoningBudget > kRepairReasoningCharBudget
+              ? reasoningBudget
+              : kRepairReasoningCharBudget)) {
     return 'The model spent ${acc.reasoningChars} characters reasoning '
         'without answering, so it was stopped early. Lower its reasoning '
         'effort in the cog, or pick another model. The live test was kept.';

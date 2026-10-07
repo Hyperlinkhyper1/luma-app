@@ -578,7 +578,8 @@ extension BenchmarkRepairApi on Api {
       await for (final line
           in res.transform(utf8.decoder).transform(const LineSplitter())) {
         acc.addLine(line);
-        final problem = repairStreamProblem(acc);
+        final problem = repairStreamProblem(acc,
+            reasoningBudget: (body['max_tokens'] as int) * 3);
         if (problem != null) throw StateError(problem);
         if (acc.done) break;
       }
