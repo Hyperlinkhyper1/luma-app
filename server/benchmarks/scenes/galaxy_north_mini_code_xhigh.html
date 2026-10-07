@@ -1069,3 +1069,585 @@
   </script>
 </body>
 </html>
+      // Star
+      const starGeo = new THREE.SphereGeometry(200, 32, 32);
+      const starMat = new THREE.MeshBasicMaterial({
+        color: 0xffddaa,
+        emissive: 0xff6600,
+        emissiveIntensity: 2,
+      });
+      const star = new THREE.Mesh(starGeo, starMat);
+      star.position.set(0, 0, 2500);
+      app.scene.add(star);
+      app.star = star;
+
+      // Corona
+      const coronaGeo = new THREE.PlaneGeometry(800, 800);
+      const coronaMat = new THREE.SpriteMaterial({
+        map: createCoronaTexture(),
+        transparent: true,
+        opacity: 0.4,
+        blending: THREE.AdditiveBlending,
+      });
+      const corona = new THREE.Sprite(coronaMat);
+      corona.position.copy(star.position);
+      app.scene.add(corona);
+      app.corona = corona;
+
+      // Planet
+      const planetGeo = new THREE.SphereGeometry(80, 32, 32);
+      const planetMat = new THREE.MeshStandardMaterial({
+        color: 0x2255ff,
+        roughness: 0.9,
+        metalness: 0.1,
+      });
+      const planet = new THREE.Mesh(planetGeo, planetMat);
+      planet.position.set(300, 0, 2500);
+      app.scene.add(planet);
+      app.planet = planet;
+
+      // Atmosphere
+      const atmGeo = new THREE.PlaneGeometry(200, 200);
+      const atmMat = new THREE.SpriteMaterial({
+        map: createAtmosphereTexture(),
+        transparent: true,
+        opacity: 0.2,
+        blending: THREE.AdditiveBlending,
+        color: 0x77bbff,
+      });
+      const atmosphere = new THREE.Sprite(atmMat);
+      atmosphere.position.copy(planet.position);
+      app.scene.add(atmosphere);
+      app.atmosphere = atmosphere;
+
+      // Moon
+      const moonGeo = new THREE.SphereGeometry(30, 16, 16);
+      const moonMat = new THREE.MeshStandardMaterial({
+        color: 0xccaa88,
+        roughness: 0.8,
+      });
+      const moon = new THREE.Mesh(moonGeo, moonMat);
+      moon.position.set(150, 0, 2500);
+      app.scene.add(moon);
+      app.moon = moon;
+
+      // Simple orbit animation
+      app.planetOrbitAngle = 0;
+      app.moonOrbitAngle = 0;
+    }
+
+    function createCoronaTexture() {
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+      grad.addColorStop(0, 'rgba(255,150,50,0.8)');
+      grad.addColorStop(1, 'rgba(255,150,50,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,size,size);
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    function createAtmosphereTexture() {
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+      grad.addColorStop(0, 'rgba(130,200,255,0.5)');
+      grad.addColorStop(1, 'rgba(130,200,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,size,size);
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // ---- Spaceship ----
+    function createShip() {
+      const ship = new THREE.Group();
+      // Hull
+      const hullGeo = new THREE.BoxGeometry(20, 5, 5);
+      const hullMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+      const hull = new THREE.Mesh(hullGeo, hullMat);
+      hull.position.set(0, 0, 0);
+      ship.add(hull);
+
+      // Wings
+      const wingGeo = new THREE.BoxGeometry(0.5, 30, 3);
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0x444444 });
+      const leftWing = new THREE.Mesh(wingGeo, wingMat);
+      leftWing.position.set(-5, 2, 0);
+      leftWing.rotation.z = Math.PI / 6;
+      ship.add(leftWing);
+      const rightWing = new THREE.Mesh(wingGeo, wingMat);
+      rightWing.position.set(5, 2, 0);
+      rightWing.rotation.z = -Math.PI / 6;
+      ship.add(rightWing);
+
+      // Engine nacelles
+      const nacelleGeo = new THREE.CylinderGeometry(4, 4, 10, 16);
+      const nacelleMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+      const leftNac = new THREE.Mesh(nacelleGeo, nacelleMat);
+      leftNac.position.set(-8, -2, 12);
+      ship.add(leftNac);
+      const rightNac = new THREE.Mesh(nacelleGeo, nacelleMat);
+      rightNac.position.set(8, -2, 12);
+      ship.add(rightNac);
+
+      // Thrusters (cones)
+      const thrusterGeo = new THREE.ConeGeometry(6, 20, 16);
+      const thrusterMat = new THREE.MeshBasicMaterial({
+        color: 0xff6600,
+        emissive: 0xff3300,
+        emissiveIntensity: 1,
+      });
+      const leftThruster = new THREE.Mesh(thrusterGeo, thrusterMat);
+      leftThruster.position.set(-8, -2, 24);
+      leftThruster.rotation.x = Math.PI;
+      ship.add(leftThruster);
+      const rightThruster = new THREE.Mesh(thrusterGeo, thrusterMat);
+      rightThruster.position.set(8, -2, 24);
+      rightThruster.rotation.x = Math.PI;
+      ship.add(rightThruster);
+
+      // Cockpit dome
+      const domeGeo = new THREE.SphereGeometry(4, 16, 16);
+      const domeMat = new THREE.MeshPhysicalMaterial({
+        color: 0x88ccff,
+        transparent: true,
+        opacity: 0.5,
+        roughness: 0.1,
+        metalness: 0.9,
+      });
+      const dome = new THREE.Mesh(domeGeo, domeMat);
+      dome.position.set(0, 1, 5);
+      ship.add(dome);
+
+      // Navigation lights
+      const lightGeo = new THREE.SphereGeometry(0.5, 8, 8);
+      const lightMatPort = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        emissiveIntensity: 0.5,
+      });
+      const lightPort = new THREE.Mesh(lightGeo, lightMatPort);
+      lightPort.position.set(-7, 0, 5);
+      ship.add(lightPort);
+      const lightMatStar = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        emissive: 0x00ff00,
+        emissiveIntensity: 0.5,
+      });
+      const lightStar = new THREE.Mesh(lightGeo, lightMatStar);
+      lightStar.position.set(7, 0, 5);
+      ship.add(lightStar);
+      const lightMatWhite = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.3,
+      });
+      const lightWhite1 = new THREE.Mesh(lightGeo, lightMatWhite);
+      lightWhite1.position.set(-6, -2, 4);
+      ship.add(lightWhite1);
+      const lightWhite2 = new THREE.Mesh(lightGeo, lightMatWhite);
+      lightWhite2.position.set(6, -2, 4);
+      ship.add(lightWhite2);
+
+      // Antenna
+      const antennaGeo = new THREE.CylinderGeometry(0.2, 0.2, 2, 8);
+      const antennaMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+      const antenna = new THREE.Mesh(antennaGeo, antennaMat);
+      antenna.position.set(0, 2, 7);
+      antenna.rotation.x = -Math.PI / 2;
+      ship.add(antenna);
+      const antennaTip = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 8, 8),
+        antennaMat
+      );
+      antennaTip.position.set(0, -1, 0);
+      antenna.add(antennaTip);
+
+      app.ship = ship;
+      app.shipGroup = ship;
+      ship.position.set(300, 80, 2500);
+      ship.velocity = new THREE.Vector3();
+      app.scene.add(ship);
+      app.thrusters = [leftThruster, rightThruster];
+      app.navLights = [lightPort, lightStar, lightWhite1, lightWhite2];
+    }
+
+    // ---- Audio ----
+    function initAudio() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      app.audioContext = new AudioContext();
+      const osc = app.audioContext.createOscillator();
+      const gain = app.audioContext.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(80, app.audioContext.currentTime);
+      osc.start();
+      gain.gain.setValueAtTime(0.1, app.audioContext.currentTime);
+      osc.connect(gain);
+      gain.connect(app.audioContext.destination);
+      app.audio = { oscillator: osc, gainNode: gain, context: app.audioContext, muted: false };
+
+      // Resume on first interaction
+      document.body.addEventListener('click', () => {
+        if (app.audioContext && app.audioContext.state === 'suspended') {
+          app.audioContext.resume();
+        }
+      });
+    }
+
+    // ---- Voyage timeline ----
+    class VoyageTimeline {
+      constructor(app) {
+        this.app = app;
+        this.phase = 'departure';
+        this.phases = [
+          { name: 'departure', duration: 12000, actions: () => this.departure() },
+          { name: 'cruise', duration: 20000, actions: () => this.cruise() },
+          { name: 'hyperdrive', duration: 8000, actions: () => this.hyperdrive() },
+          { name: 'core', duration: 15000, actions: () => this.core() },
+          { name: 'nebula', duration: 20000, actions: () => this.nebula() },
+          { name: 'arrival', duration: 30000, actions: () => this.arrival() },
+        ];
+        this.phaseIndex = 0;
+        this.paused = false;
+        this.speedMultiplier = 1;
+        this.destination = new THREE.Vector3(5000, 0, 2000);
+        this.startTime = Date.now();
+        this.nextPhaseTime = this.startTime + this.phases[0].duration;
+        this.routePoints = [];
+      }
+
+      start() {}
+      togglePause() {
+        this.paused = !this.paused;
+      }
+
+      update() {
+        if (this.paused) return;
+        const now = Date.now();
+        if (now >= this.nextPhaseTime && this.phaseIndex < this.phases.length) {
+          this.phaseIndex++;
+          const phase = this.phases[this.phaseIndex];
+          this.phase = phase.name;
+          this.nextPhaseTime = now + phase.duration;
+          phase.actions();
+        }
+        this.updateShipMovement(now);
+        this.updateHud();
+        this.updateMinimap();
+      }
+
+      departure() {
+        this.app.ship.velocity.set(0, 0, -1);
+        this.app.ship.angularVelocity = new THREE.Vector3(0, 0.2, 0);
+        this.app.cameraMode = 'chase';
+        this.app.setCameraMode('chase');
+        this.app.corona.visible = true;
+        this.app.hud.region.textContent = 'Sol System';
+      }
+
+      cruise() {
+        this.app.ship.velocity.set(0, 0, -0.8);
+        this.app.cameraMode = 'cinematic';
+        this.app.setCameraMode('cinematic');
+        this.app.stars.visible = true;
+        this.app.hud.region.textContent = 'Interstellar Space';
+      }
+
+      hyperdrive() {
+        this.app.ship.velocity.set(0, 0, -2);
+        this.app.cameraMode = 'cinematic';
+        this.app.setCameraMode('cinematic');
+        this.app.warpPass.enabled = true;
+        this.app.warpPass.uniforms.warpFactor.value = 0.0;
+        this.app.audio.oscillator.frequency.setValueAtTime(200, this.app.audio.context.currentTime);
+        this.app.audio.gainNode.gain.setValueAtTime(0.5, this.app.audio.context.currentTime);
+        this.app.hud.region.textContent = 'Warp Tunnel';
+      }
+
+      core() {
+        this.app.ship.velocity.set(0, 0, -0.5);
+        this.app.cameraMode = 'chase';
+        this.app.setCameraMode('chase');
+        this.app.warpPass.uniforms.warpFactor.value = 2.0;
+        this.app.blackHole.rotation.y += 0.01;
+        this.app.hud.region.textContent = 'Galactic Core';
+      }
+
+      nebula() {
+        this.app.ship.velocity.set(0, 0, -0.3);
+        this.app.cameraMode = 'cinematic';
+        this.app.setCameraMode('cinematic');
+        this.app.warpPass.uniforms.warpFactor.value = 0.0;
+        this.app.warpPass.enabled = false;
+        if (this.app.nebulaSprites) {
+          this.app.nebulaSprites.forEach(s => s.material.opacity = 0.15);
+        }
+        this.app.thrusters.forEach(t => t.material.emissive.setHex(0x880088));
+        this.app.hud.region.textContent = 'Nebula Region';
+      }
+
+      arrival() {
+        this.app.ship.velocity.set(0,0,0);
+        this.app.cameraMode = 'cockpit';
+        this.app.setCameraMode('cockpit');
+        this.createArrivalSystem();
+        this.app.warpPass.uniforms.warpFactor.value = 0.0;
+        this.app.audio.oscillator.frequency.setValueAtTime(80, this.app.audio.context.currentTime);
+        this.app.audio.gainNode.gain.setValueAtTime(0.1, this.app.audio.context.currentTime);
+        this.app.hud.region.textContent = 'Andromeda I';
+      }
+
+      createArrivalSystem() {
+        // Ringed gas giant
+        const ringGeo = new THREE.TorusGeometry(120, 8, 16, 100);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xaaaaaa,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.5,
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.set(0, 100, 0);
+        this.app.scene.add(ring);
+        this.app.arrivalRing = ring;
+
+        const planetGeo = new THREE.SphereGeometry(100, 32, 32);
+        const planetMat = new THREE.MeshStandardMaterial({ color: 0x3366ff, roughness: 0.8 });
+        const planet = new THREE.Mesh(planetGeo, planetMat);
+        planet.position.copy(ring.position);
+        planet.position.y -= 120;
+        this.app.scene.add(planet);
+        this.app.arrivalPlanet = planet;
+
+        const atmGeo = new THREE.PlaneGeometry(300, 300);
+        const atmMat = new THREE.SpriteMaterial({
+          map: this.createAtmosphereTexture(),
+          transparent: true,
+          opacity: 0.2,
+          blending: THREE.AdditiveBlending,
+          color: 0x77bbff,
+        });
+        const atmosphere = new THREE.Sprite(atmMat);
+        atmosphere.position.copy(planet.position);
+        this.app.scene.add(atmosphere);
+        this.app.arrivalAtmosphere = atmosphere;
+      }
+
+      updateShipMovement(now) {
+        const ship = this.app.ship;
+        const vel = ship.velocity;
+        if (!vel) return;
+        const delta = this.app.clock.getDelta() * 1000 * this.speedMultiplier;
+        ship.position.add(vel.clone().multiplyScalar(delta * 0.01));
+        ship.rotation.y += 0.01;
+
+        this.updateHud();
+      }
+
+      updateHud() {
+        const ship = this.app.ship;
+        const regionNames = {
+          departure: 'Sol System',
+          cruise: 'Interstellar Space',
+          hyperdrive: 'Warp Tunnel',
+          core: 'Galactic Core',
+          nebula: 'Nebula Region',
+          arrival: 'Andromeda I'
+        };
+        this.app.hud.region.textContent = regionNames[this.phase] || this.phase;
+
+        const dist = Math.sqrt(ship.position.x * ship.position.x + ship.position.z * ship.position.z);
+        const distLy = (dist / 10).toFixed(1);
+        this.app.hud.distance.textContent = distLy + ' ly';
+
+        const speed = Math.sqrt(ship.velocity.x * ship.velocity.x + ship.velocity.y * ship.velocity.y + ship.velocity.z * ship.velocity.z) * 1000;
+        this.app.hud.speed.textContent = speed.toFixed(2) + ' km/s';
+
+        const remaining = this.destination.distanceTo(ship.position);
+        const timeSec = remaining / (Math.sqrt(ship.velocity.x * ship.velocity.x + ship.velocity.y * ship.velocity.y + ship.velocity.z * ship.velocity.z) * 1000 || 0.001);
+        const eta = new Date(Date.now() + timeSec * 1000);
+        const h = eta.getHours();
+        const m = eta.getMinutes();
+        const s = eta.getSeconds();
+        this.app.hud.eta.textContent = `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+      }
+
+      updateMinimap() {
+        const ctx = this.app.minimapCtx;
+        const w = this.app.minimapCanvas.width;
+        const h = this.app.minimapCanvas.height;
+        ctx.clearRect(0,0,w,h);
+        // draw disc
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(w/2, h/2, w*0.45, h*0.45, 0, 0, 2*Math.PI);
+        ctx.stroke();
+        // route line
+        this.routePoints.push(new THREE.Vector2(this.app.ship.position.x, this.app.ship.position.z));
+        if (this.routePoints.length > 10) this.routePoints.shift();
+        if (this.routePoints.length > 1) {
+          ctx.beginPath();
+          ctx.strokeStyle = '#0f0';
+          ctx.lineWidth = 2;
+          ctx.moveTo(this.mapToScreen(this.routePoints[0].x, this.routePoints[0].z).x,
+                     this.mapToScreen(this.routePoints[0].x, this.routePoints[0].z).y);
+          for (let i=1; i<this.routePoints.length; i++) {
+            const pt = this.mapToScreen(this.routePoints[i].x, this.routePoints[i].z);
+            ctx.lineTo(pt.x, pt.y);
+          }
+          ctx.stroke();
+        }
+        // ship dot
+        const sp = this.mapToScreen(this.app.ship.position.x, this.app.ship.position.z);
+        ctx.fillStyle = '#f00';
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 3, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      mapToScreen(x, z) {
+        const w = this.app.minimapCanvas.width;
+        const h = this.app.minimapCanvas.height;
+        const scale = w*0.9 / 6000;
+        return {
+          x: w/2 + x * scale,
+          y: h/2 - z * scale
+        };
+      }
+
+      setDestination(pos) {
+        this.destination.copy(pos);
+      }
+    }
+
+    // ---- Camera mode handling ----
+    let cameraMode = 'cinematic';
+    app.cameraMode = cameraMode;
+
+    function setCameraMode(mode) {
+      cameraMode = mode;
+      app.cameraMode = mode;
+      if (mode === 'cockpit') {
+        app.pointerControls.lock();
+      } else {
+        app.pointerControls.unlock();
+      }
+    }
+
+    function updateCamera(delta) {
+      const ship = app.ship;
+      const offset = new THREE.Vector3();
+      const target = new THREE.Vector3();
+      switch (cameraMode) {
+        case 'cinematic':
+          offset.set(0, 30, 200);
+          offset.applyQuaternion(ship.quaternion);
+          target.copy(ship.position).add(offset);
+          app.camera.position.lerp(target, 0.05);
+          app.camera.lookAt(ship.position);
+          break;
+        case 'chase':
+          offset.set(0, 10, 100);
+          offset.applyQuaternion(ship.quaternion);
+          target.copy(ship.position).add(offset);
+          app.camera.position.lerp(target, 0.07);
+          app.camera.lookAt(ship.position);
+          break;
+        case 'cockpit':
+          app.camera.position.copy(ship.position).add(new THREE.Vector3(0, 2, 5));
+          app.camera.quaternion.copy(ship.quaternion);
+          break;
+        case 'map':
+          if (!app.mapCamera) {
+            app.mapCamera = new THREE.OrthographicCamera(-3000, 3000, -3000, 3000, 0.1, 10000);
+            app.mapCamera.position.set(0, 3000, 0);
+            app.mapCamera.lookAt(0,0,0);
+          }
+          app.camera = app.mapCamera;
+          break;
+      }
+    }
+
+    // ---- Animation loop ----
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = app.clock.getDelta();
+
+      if (app.stars && app.stars.material.uniforms.uTime) {
+        app.stars.material.uniforms.uTime.value += delta;
+      }
+
+      // Warp factor based on proximity to black hole
+      if (app.warpPass && app.warpPass.enabled) {
+        const shipPos = app.ship.position;
+        const bhPos = app.blackHole.position;
+        const dist = shipPos.distanceTo(bhPos);
+        const factor = Math.max(0, 1 - dist / 500);
+        app.warpPass.uniforms.warpFactor.value = factor * 2;
+      }
+
+      updateCamera(delta);
+
+      // Thruster flicker
+      const t = Date.now() / 1000;
+      app.thrusters.forEach((thruster, i) => {
+        const intensity = 0.5 + 0.5 * Math.sin(t * 5 + i);
+        thruster.material.emissiveIntensity = intensity;
+      });
+
+      // Navigation lights blink
+      const blink = Math.sin(t * 2) > 0;
+      app.navLights.forEach((light, i) => {
+        if (i < 2) {
+          light.material.emissiveIntensity = blink ? 0.5 : 0;
+        } else {
+          light.material.emissiveIntensity = blink ? 0.2 : 0;
+        }
+      });
+
+      // Nebula rotation
+      if (app.nebulaSprites) {
+        app.nebulaSprites.forEach(s => {
+          s.rotation.y += 0.0005;
+        });
+      }
+
+      // Voyage timeline
+      if (app.voyage) {
+        app.voyage.update();
+      }
+
+      // Render
+      app.composer.render(delta);
+
+      if (cameraMode !== 'cockpit') {
+        app.orbitControls.update();
+      }
+    }
+
+    // ---- Resize ----
+    function onWindowResize() {
+      app.camera.aspect = window.innerWidth / window.innerHeight;
+      app.camera.updateProjectionMatrix();
+      app.renderer.setSize(window.innerWidth, window.innerHeight);
+      app.composer.setSize(window.innerWidth, window.innerHeight);
+      if (app.minimapCanvas) {
+        app.minimapCanvas.width = 200;
+        app.minimapCanvas.height = 200;
+      }
+    }
+
+    // Initialize
+    init();
+    animate();
+  </script>
+</body>
+</html>
