@@ -67,6 +67,7 @@
     const fps = () => Math.round(1000 / performance.now() - performance.now());
     let pagodaFloors = 0;
     let timeOfDay = 0;
+    let animateId;
 
     const generateVoxel = (geometry, material, count) => {
       const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
@@ -86,8 +87,9 @@
 
       const floors = 5;
       let y = 0;
+      let count = 0;
       for (let i = 0; i < floors; i++) {
-        const count = Math.floor(Math.pow(2, i)) * 100;
+        count = Math.floor(Math.pow(2, i)) * 100;
         const instancedMesh = generateVoxel(geometry, materials[i], count);
         instancedMesh.position.y = y;
         y += count * geometry.parameters.height;
@@ -343,6 +345,9 @@
 
     animate();
 
+    const sceneraycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
     window.addEventListener('click', event => {
       const intersects = sceneraycaster.intersectObjects(doors, true);
       if (intersects.length > 0) {
@@ -354,9 +359,6 @@
         lantern.userData.lit = !lantern.userData.lit;
       }
     });
-
-    const sceneraycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
 
     document.addEventListener('mousemove', event => {
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
