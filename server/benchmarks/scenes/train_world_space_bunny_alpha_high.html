@@ -457,6 +457,7 @@ function updateTrainVisuals(dt){
 
 const carCards={};
 for(const t of trains){
+ if (!t) continue;
  const el=document.createElement('div');el.className='train-card glass';el.innerHTML=`<div class="train-head"><span class="swatch" style="background:#${trainColors[t.type].toString(16)};color:#${trainColors[t.type].toString(16)}"></span>${t.name}</div><div class="train-grid"><span>Speed</span><span data-k="speed"></span><span>Current block</span><span data-k="block"></span><span>Next signal</span><span data-k="signal"></span><span>State</span><span data-k="state"></span></div>`;$('trains').appendChild(el);carCards[t.id]=el;el.addEventListener('click',()=>{followId=t.id;toast(`Camera following ${t.name}`)});
 }
 function updateUI(){
