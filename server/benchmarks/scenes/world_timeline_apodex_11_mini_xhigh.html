@@ -547,9 +547,9 @@ function render(now) {
   if (P.activeIdx === 6) {
      dom.impact.setAttribute('opacity', 1);
      // Expand shockwave
-     const s = dom.impact;
+     const impactEl = dom.impact;
      const sz = 50 + t*2000;
-     s.querySelector('circle').setAttribute('r', sz);
+     impactEl.querySelector('circle').setAttribute('r', sz);
   } else {
      dom.impact.setAttribute('opacity', 0);
   }
