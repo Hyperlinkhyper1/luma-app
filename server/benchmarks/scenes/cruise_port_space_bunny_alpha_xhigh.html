@@ -239,10 +239,10 @@ const materials = {
 const dummy = new THREE.Object3D();
 const vA = new THREE.Vector3();
 const vB = new THREE.Vector3();
-let rngSeed = 1987;
+const rng = { seed: 1987 };
 function rnd() {
-  rngSeed = (rngSeed * 1664525 + 1013904223) >>> 0;
-  return rngSeed / 4294967296;
+  rng.seed = (rng.seed * 1664525 + 1013904223) >>> 0;
+  return rng.seed / 4294967296;
 }
 function rounded(w, h, d, mat, x = 0, y = 0, z = 0, parent = scene, radius = .25) {
   const r = Math.max(.012, Math.min(radius, w * .2, h * .2, d * .2));
