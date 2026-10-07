@@ -359,6 +359,7 @@ function boot() {
   const copperMat=new THREE.MeshStandardMaterial({color:0xb55d2c,metalness:.88,roughness:.25});
   const redMat=new THREE.MeshStandardMaterial({color:0xb51e1c,emissive:0x5a0502,emissiveIntensity:.2,roughness:.45});
   const yellowMat=new THREE.MeshStandardMaterial({color:0xd6ad23,roughness:.52});
+  const whiteStart=new THREE.MeshStandardMaterial({color:0xe8e8df,roughness:.7});
 
   const studio=new THREE.Group(); scene.add(studio);
   const driveWorld=new THREE.Group(); driveWorld.visible=false; scene.add(driveWorld);
@@ -632,9 +633,7 @@ function boot() {
     const posts=new THREE.InstancedMesh(new THREE.CylinderGeometry(.055,.065,.82,8),darkMetal,120);
     for(let i=0;i<120;i++){const k=Math.floor(i/120*samples),p=trackPts[k].clone().addScaledVector(lefts[k],side*5.25);cd.position.set(p.x,.39,p.z);cd.rotation.set(0,0,0);cd.updateMatrix();posts.setMatrixAt(i,cd.matrix);}driveWorld.add(posts);
   }
-  // start line
-const whiteStart=new THREE.MeshStandardMaterial({color:0xe8e8df,roughness:.7});
-  for(let i=0;i<14;i++){const p=trackPts[0].clone().addScaledVector(lefts[0],-3+i*.46);mesh(new THREE.PlaneGeometry(.46,1.8),i%2?whiteStart:bodyBlack,V(p.x,.018,p.z),{x:-Math.PI/2,y:-Math.atan2(tangents[0].x,tangents[0].z)},driveWorld);}
+  // start linefor(let i=0;i<14;i++){const p=trackPts[0].clone().addScaledVector(lefts[0],-3+i*.46);mesh(new THREE.PlaneGeometry(.46,1.8),i%2?whiteStart:bodyBlack,V(p.x,.018,p.z),{x:-Math.PI/2,y:-Math.atan2(tangents[0].x,tangents[0].z)},driveWorld);}
 
   // trees, hills, and distant markers
   let seed=831;const rand=()=>{seed=(seed*16807)%2147483647;return seed/2147483647;};
