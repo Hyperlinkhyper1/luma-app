@@ -20,6 +20,8 @@
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import Stats from 'three/addons/libs/stats.module.js';
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
     let scene, camera, renderer, composer, water, stats, ui, controls, clock, deltaTime, particleCount, gravity, viscosity, timeStep, paused;
@@ -40,7 +42,7 @@
       document.body.appendChild(renderer.domElement);
 
       composer = new EffectComposer(renderer);
-      composer.addPass(new THREE.RenderPass(scene, camera));
+      composer.addPass(new RenderPass(scene, camera));
       const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0);
       composer.addPass(bloomPass);
 
@@ -113,7 +115,7 @@
       });
       ui.appendChild(select);
 
-      const input = document.createElement('input');
+      let input = document.createElement('input');
       input.type = 'range';
       input.min = 1000;
       input.max = 100000;
@@ -161,7 +163,7 @@
       ui.appendChild(input);
       ui.appendChild(document.createTextNode('time step'));
 
-      const button = document.createElement('button');
+      let button = document.createElement('button');
       button.innerText = 'Pause';
       button.addEventListener('click', () => {
         paused = !paused;
