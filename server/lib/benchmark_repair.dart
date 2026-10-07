@@ -180,6 +180,64 @@ int? nearestLineOf(String source, String reply) {
 /// them together.
 const kRepairMaxAttempts = 4;
 
+/// How often one model attempt is sent again after the provider was busy or
+/// dropped the call before it produced anything. These don't count as repair
+/// attempts: nothing was generated, so nothing was billed.
+const kRepairBusyRetries = 3;
+
+/// The wait before each busy retry.
+Duration repairBusyBackoff(int retry) =>
+    Duration(seconds: const [10, 30, 60][retry.clamp(0, 2)]);
+
+/// The longest one repair call may run. Free reasoning models at a high
+/// effort routinely need more than five minutes.
+const kRepairCallDeadline = Duration(minutes: 15);
+
+/// A call that receives nothing (not even a keep-alive) for this long is
+/// stopped.
+const kRepairIdleTimeout = Duration(minutes: 3);
+
+/// Whether a provider error means "try again later" rather than "this
+/// request is wrong".
+bool busyProviderError(String? message, int? code) {
+  if (const {408, 429, 500, 502, 503, 504, 524, 529}.contains(code)) {
+    return true;
+  }
+  return message != null &&
+      RegExp(
+              r'overload|temporarily|rate.?limit|try again|timed? ?out|'
+              r'unavailable|capacity|too many requests',
+              caseSensitive: false)
+          .hasMatch(message);
+}
+
+/// The provider answered a repair call with something other than HTTP 200.
+class RepairHttpStatus implements Exception {
+  RepairHttpStatus(this.status, [this.detail]);
+  final int status;
+  final String? detail;
+
+  bool get busy => status == 408 || status == 429 || status >= 500;
+
+  @override
+  String toString() => 'The repair provider returned HTTP $status'
+      '${detail == null || detail!.isEmpty ? '' : ': $detail'}. '
+      'The live test was kept.';
+}
+
+/// A repair call stopped by its own clock rather than by the provider.
+class RepairTimeout implements Exception {
+  RepairTimeout(this.message, {required this.idle});
+  final String message;
+
+  /// True when the provider went quiet, false when the whole call ran out
+  /// of time.
+  final bool idle;
+
+  @override
+  String toString() => '$message The live test was kept.';
+}
+
 /// Reasoning effort a repair asks for when the settings don't pick one. A
 /// fix to a stack trace needs little thought, and unbounded thinking is what
 /// made repairs slow and incomplete.

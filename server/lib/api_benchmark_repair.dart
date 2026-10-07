@@ -410,20 +410,47 @@ extension BenchmarkRepairApi on Api {
             ? 'Repairing the render error…'
             : 'Attempt $attempt of $kRepairMaxAttempts: fixing what the last '
                 'attempt left…';
-        final acc = ChatStreamAccumulator();
-        try {
-          await _callRepairModel(route, body, acc);
-        } finally {
-          spent += acc.usage.costUsd ?? 0;
-          job.costUsd = spent;
-          if (acc.usage.totalTokens > 0 || acc.usage.costUsd != null) {
-            await aiUsage.recordCall(ownerId,
-                feature: 'Benchmark render repair',
-                upstream: route.upstream.label,
-                model: route.model,
-                usage: acc.usage,
-                includeInUsage: true);
+        late ChatStreamAccumulator acc;
+        for (var retry = 0;; retry++) {
+          acc = ChatStreamAccumulator();
+          Object? thrown;
+          StackTrace? trace;
+          try {
+            await _callRepairModel(route, body, acc);
+          } catch (e, st) {
+            thrown = e;
+            trace = st;
+          } finally {
+            spent += acc.usage.costUsd ?? 0;
+            job.costUsd = spent;
+            if (acc.usage.totalTokens > 0 || acc.usage.costUsd != null) {
+              await aiUsage.recordCall(ownerId,
+                  feature: 'Benchmark render repair',
+                  upstream: route.upstream.label,
+                  model: route.model,
+                  usage: acc.usage,
+                  includeInUsage: true);
+            }
           }
+          if (!_providerWasBusy(acc, thrown, accepted)) {
+            if (thrown != null) Error.throwWithStackTrace(thrown, trace!);
+            break;
+          }
+          final why = thrown == null
+              ? _incompleteReason(acc, maxTokens)
+              : thrown is StateError
+                  ? thrown.message
+                  : '$thrown';
+          if (retry >= kRepairBusyRetries) {
+            const kept = 'The live test was kept.';
+            throw StateError('The provider stayed busy through '
+                '${retry + 1} tries. Last: $why'
+                '${why.contains(kept) ? '' : ' $kept'}');
+          }
+          final wait = benchmarkRepairBusyBackoff(retry);
+          job.detail = 'The provider is busy; trying again in '
+              '${wait.inSeconds}s (${retry + 1} of $kRepairBusyRetries)…';
+          await Future<void>.delayed(wait);
         }
         if (spent > limit) {
           throw StateError(
@@ -557,8 +584,31 @@ extension BenchmarkRepairApi on Api {
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
-    final deadline =
-        Timer(const Duration(minutes: 5), () => client.close(force: true));
+    RepairTimeout? cutOff;
+    void cut(RepairTimeout why) {
+      cutOff ??= why;
+      client.close(force: true);
+    }
+
+    final deadline = Timer(
+        kRepairCallDeadline,
+        () => cut(RepairTimeout(
+            'The model took longer than ${kRepairCallDeadline.inMinutes} '
+            'minutes to answer, so the call was stopped.',
+            idle: false)));
+    Timer? idle;
+    void stillAlive() {
+      idle?.cancel();
+      idle = Timer(
+          kRepairIdleTimeout,
+          () => cut(RepairTimeout(
+              'The provider sent nothing for '
+              '${kRepairIdleTimeout.inMinutes} minutes, so the call was '
+              'stopped.',
+              idle: true)));
+    }
+
+    stillAlive();
     try {
       final req = await client.postUrl(Uri.parse(route.upstream.endpoint));
       req.headers.set(HttpHeaders.authorizationHeader,
@@ -572,20 +622,64 @@ extension BenchmarkRepairApi on Api {
       req.add(utf8.encode(jsonEncode(body)));
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) {
-        throw HttpException(
-            'Repair provider returned HTTP ${res.statusCode}. No automatic retry.');
+        throw RepairHttpStatus(res.statusCode, await _errorMessageOf(res));
       }
       await for (final line
           in res.transform(utf8.decoder).transform(const LineSplitter())) {
+        stillAlive();
         acc.addLine(line);
         final problem = repairStreamProblem(acc,
             reasoningBudget: (body['max_tokens'] as int) * 3);
         if (problem != null) throw StateError(problem);
         if (acc.done) break;
       }
+    } on IOException {
+      if (cutOff case final why?) throw why;
+      rethrow;
     } finally {
       deadline.cancel();
+      idle?.cancel();
       client.close(force: true);
     }
+  }
+
+  /// The provider's own words for a failed request, when it gave any.
+  Future<String?> _errorMessageOf(HttpClientResponse res) async {
+    try {
+      final text = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 10));
+      final decoded = jsonDecode(text);
+      final error = decoded is Map ? decoded['error'] : null;
+      final message = error is Map ? error['message'] : error;
+      if (message is String && message.isNotEmpty) {
+        return message.length > 300 ? message.substring(0, 300) : message;
+      }
+    } catch (_) {
+      // A body that isn't JSON says nothing more than the status does.
+    }
+    return null;
+  }
+
+  /// Whether a failed call can simply be sent again: the provider was busy
+  /// or dropped the line, and either nothing came back (so nothing was
+  /// billed) or the model is free.
+  bool _providerWasBusy(
+      ChatStreamAccumulator acc, Object? thrown, AiPrice accepted) {
+    final nothingBack = acc.contentChars == 0 &&
+        acc.reasoningChars == 0 &&
+        (acc.usage.costUsd ?? 0) == 0;
+    final free = accepted.input == 0 && accepted.output == 0;
+    if (!nothingBack && !free) return false;
+    return switch (thrown) {
+      RepairHttpStatus(:final busy) => busy,
+      RepairTimeout(:final idle) => idle,
+      IOException() => true,
+      null => acc.error != null
+          ? busyProviderError(acc.error, acc.errorCode)
+          : acc.contentChars == 0 && (acc.finishReason == 'error' || !acc.done),
+      _ => false,
+    };
   }
 }

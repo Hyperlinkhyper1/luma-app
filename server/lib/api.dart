@@ -428,6 +428,10 @@ class Api {
   final Map<String, BenchmarkRepairJob> benchmarkRepairJobs = {};
   final BenchmarkRepairAll benchmarkRepairAll = BenchmarkRepairAll();
   bool benchmarkRepairStarting = false;
+
+  /// The wait before a repair re-sends a call the provider was too busy
+  /// for. Tests shorten it.
+  Duration Function(int retry) benchmarkRepairBusyBackoff = repairBusyBackoff;
   final Future<AiPrice?> Function(AiModeRoute)? benchmarkRepairPrice;
   final Future<void> Function(
           AiModeRoute, Map<String, dynamic>, ChatStreamAccumulator)?

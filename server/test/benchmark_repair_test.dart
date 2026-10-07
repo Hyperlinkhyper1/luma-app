@@ -419,6 +419,7 @@ void main() {
     late AiPrice? price;
     late int calls;
     late bool failCall;
+    late List<Object> busy;
     late String finish;
     late List<String> replies;
     late double callCost;
@@ -504,6 +505,7 @@ void main() {
       price = const AiPrice(1, 2);
       calls = 0;
       failCall = false;
+      busy = [];
       finish = 'stop';
       replies = [];
       callCost = .001;
@@ -548,6 +550,16 @@ void main() {
             calls++;
             sent = body;
             if (hold != null) await hold!.future;
+            if (busy.isNotEmpty) {
+              final next = busy.removeAt(0);
+              if (next is String) {
+                acc.addLine('data: ${jsonEncode({
+                      'error': {'message': next, 'code': 502}
+                    })}');
+                return;
+              }
+              throw next;
+            }
             acc.addLine('data: ${jsonEncode({
                   'model': 'actual/model',
                   'usage': {
@@ -568,6 +580,7 @@ void main() {
             if (failCall) throw const HttpException('Connection failed');
             acc.addLine('data: [DONE]');
           });
+      api.benchmarkRepairBusyBackoff = (_) => Duration.zero;
     });
     tearDown(() async {
       await finished();
@@ -867,6 +880,47 @@ void main() {
       expect(calls, 1);
       expect(renderer.validations, 0);
       expect(usage.usageCalls('owner'), hasLength(1));
+    });
+    test('a busy provider is asked again without using up an attempt',
+        () async {
+      await save();
+      busy = [
+        'Upstream error from Nvidia: Service temporarily overloaded',
+        RepairHttpStatus(429, 'Rate limited'),
+        const HttpException('Connection closed while receiving data'),
+      ];
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'done', reason: job.detail);
+      expect(job.detail, contains('attempt 1'));
+      expect(calls, 4);
+    });
+    test('a provider that stays busy fails with what it last said', () async {
+      await save();
+      busy = List<Object>.filled(
+          kRepairBusyRetries + 1, 'Service temporarily overloaded',
+          growable: true);
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(job.detail,
+          contains('stayed busy through ${kRepairBusyRetries + 1} tries'));
+      expect(job.detail, contains('temporarily overloaded'));
+      expect(calls, kRepairBusyRetries + 1);
+      expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
+          original);
+    });
+    test('a request the provider rejects is not sent again', () async {
+      await save();
+      busy = [RepairHttpStatus(400, 'Bad request')];
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(job.detail, contains('HTTP 400: Bad request'));
+      expect(calls, 1);
     });
     test(
         'unknown prices and insufficient budget block the model before any call',
