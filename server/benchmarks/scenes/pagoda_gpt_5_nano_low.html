@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voxel Garden – 3D Pagoda Bench</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { height: 100%; margin: 0; overflow: hidden; background: #0b0b0f; }
+    #ui {
+      position: absolute; top: 10px; left: 10px; padding: 12px 14px;
+      background: rgba(15,15,20,.75); color:#eee; font-family: system-ui, -apple-system, Arial;
+      border-radius: 8px; z-index: 10; max-width: 320px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    }
+    #ui h1 { margin: 0 0 6px; font-size: 14px; letter-spacing:.1em; text-transform:uppercase; }
+    #ui .row { display:flex; justify-content: space-between; gap: 8px; font-size:12px; margin:6px 0; }
+    #canvasWrap { width:100%; height:100%; display:block; }
+    .btn { background:#1e1e2a; color:#fff; border:1px solid #333; padding:6px 10px; border-radius:6px; cursor:pointer; }
+    .btn:active { transform: translateY(1px); }
+  </style>
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="ui" aria-label="HUD">
+    <h1>VOXEL GARDEN</h1>
+    <div class="row"><span>40k voxels</span><span id="fps">FPS: 0</span></div>
+    <div class="row"><span>Pagoda Floors</span><span id="pf">5</span></div>
+    <div class="row"><span>Time</span><span id="tod">Day</span></div>
+    <div style="margin-top:8px; display:flex; gap:6px;">
+      <button id="pauseBtn" class="btn">Pause Day/Night</button>
+      <button id="introBtn" class="btn">Camera Intro</button>
+    </div>
+    <div style="margin-top:8px; font-family:monospace; font-size:12px; line-height:1.4;">
+      Tip: Click lanterns to toggle light. Click pagoda floor doors to open/close.
+    </div>
+  </div>
+  <div id="canvasWrap"></div>
+
+  <script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+let scene, camera, renderer, controls;
+let voxelGroupByColor = {};
+let voxelCount = 0;
+let pagodaFloors = 5;
+let lights = {};
+let clock;
+let mixers = [];
+let isDay = true;
+let daySpeed = 1.0;
+let paused = false;
+
+const palette = {
+  vermillion: 0xC73E1D,
+  gold: 0xE8B86D,
+  teak: 0x4A2C1A,
+  jade1: 0x2D6A4F,
+  jade2: 0x40916C,
+  sakura1: 0xFFB7C5,
+  sakura2: 0xFF8FAB,
+  sakura3: 0xFFE5EC,
+  stone: 0x9AA0A6,
+  pond: 0x7ED6DF,
+  moss: 0x606C38
+};
+
+// Voxels sizes
+const VOX = 0.5;
+
+function addVoxel(x,y,z,colorHex, materialGroup = voxelGroupByColor) {
+  const key = colorHex.toString();
+  if (!materialGroup[key]) {
+    const mat = new THREE.MeshStandardMaterial({ color: colorHex });
+    mat.metalness = 0.05;
+    mat.roughness = 0.75;
+    voxelGroupByColor[key] = { mat, count: 0 };
+  }
+  voxelGroupByColor[key].count++;
+  // We’ll use InstancedMesh per color later
+}
+
+function makeInstancedMesh(colorHex, count, geom) {
+  const mat = new THREE.MeshStandardMaterial({ color: colorHex });
+  const mesh = new THREE.InstancedMesh(geom, mat, count);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  return mesh;
+}
+
+// build base ground and simple terrain
+function placeVoxel(instances, index, x,y,z, color) {
+  const m = new THREE.Matrix4().setPosition(x, y, z);
+  instances.setMatrixAt(index, m);
+}
+
+// create a simple circular pond
+function createPond(centerX, centerZ, radius, y, color){
+  const geom = new THREE.BoxGeometry(VOX, VOX, VOX);
+  const count = Math.floor(Math.PI * radius * 2 * 4); // roughly circumference voxels
+  const inst = new THREE.InstancedMesh(geom, new THREE.MeshStandardMaterial({ color }), count);
+  let i = 0;
+  const step = 0.6;
+  for(let a=0; a<Math.PI*2; a+=step){
+    for(let r=0; r<radius; r+=0.25){
+      const px = centerX + Math.cos(a)*r;
+      const pz = centerZ + Math.sin(a)*r;
+      const m = new THREE.Matrix4().makeTranslation(px, y, pz);
+      inst.setMatrixAt(i++, m);
+      if(i>=count) break;
+    }
+  }
+  inst.instanceMatrix.needsUpdate = true;
+  scene.add(inst);
+  return inst;
+}
+
+// Build a simplified 5-story pagoda using voxel blocks
+function buildPagoda(baseX, baseY, baseZ){
+  // Each floor is a box footprint with a smaller upper floor, supported by pillars
+  const voxelGeom = new THREE.BoxGeometry(VOX, VOX, VOX);
+  const materials = {
+    vermillion: new THREE.MeshStandardMaterial({ color: palette.vermilion }),
+    gold: new THREE.MeshStandardMaterial({ color: palette.gold }),
+    teak: new THREE.MeshStandardMaterial({ color: palette.teak }),
+  };
+  // We'll use InstancedMesh per color
+  const counts = { vermillion:0, gold:0, teak:0 };
+  // count rough voxels
+  // Pillars at corners
+  const pillarColor = palette.vermilion;
+  const pillarPositions = [];
+  const floorHeights = [];
+  const floorSize = [9,7,5,3,2]; // footprint per floor
+  let total = 0;
+  for(let f=0; f<pagodaFloors; f++){
+    const w = floorSize[f];
+    const h = 1; // height per floor
+    const y = baseY + f*2;
+    // pillars
+    const pts = [
+      [-w,0,-w], [ w,0,-w], [-w,0, w], [ w,0, w]
+    ];
+    pts.forEach(p=>{
+      pillarPositions.push([baseX + p[0], y, baseZ + p[2]]);
+    });
+    // floors slab
+    for(let xi=-w; xi<=w; xi++){
+      for(let zi=-w; zi<=w; zi++){
+        // outer rim
+        if(Math.abs(xi)===w || Math.abs(zi)===w){
+          // rim
+          const pos = [baseX + xi, y+1, baseZ + zi];
+          addVoxel(null, null, null, pillarColor);
+        }
+      }
+    }
+  }
+
+  // Instead of too fine, we create a compact instanced octree-like pagoda using few blocks
+  // We'll place 5 stacked discs (slabs) with stepped roofs
+  let idx = 0;
+  const group = new THREE.Group();
+  scene.add(group);
+
+  // Create pillars
+  const pillarGeo = new THREE.BoxGeometry(VOX, VOX*3, VOX);
+  const pillarMat = new THREE.MeshStandardMaterial({ color: palette.vermilion });
+  const pillarMesh = new THREE.InstancedMesh(pillarGeo, pillarMat, 4);
+  pillarMesh.instanceMatrix.needsUpdate = true;
+  const pillarBaseY = baseY;
+  const corners = [
+    [-4, pillarBaseY, -4],
+    [ 4, pillarBaseY, -4],
+    [-4, pillarBaseY,  4],
+    [ 4, pillarBaseY,  4],
+  ];
+  let pi = 0;
+  for(const c of corners){
+    const m = new THREE.Matrix4().setPosition(c[0], pillarBaseY+0.5, c[2]);
+    pillarMesh.setMatrixAt(pi++, m);
+  }
+  pillarMesh.castShadow = true;
+  pillarMesh.receiveShadow = true;
+
+  // floors
+  const floorGeom = new THREE.BoxGeometry(VOX, VOX, VOX);
+  const floorMat = new THREE.MeshStandardMaterial({ color: palette.vermilion });
+  const floors = new THREE.InstancedMesh(floorGeom, floorMat, 0);
+
+  // We'll compose a simplified 5-layer pagoda visually: stacked square platforms and a roof
+  // We'll render using a set of colored voxels that suggest a pagoda silhouette.
+  const platformSize = [9,7,5,3,2];
+  let instIndex = 0;
+  const platformGroup = new THREE.Group();
+  for(let f=0; f<pagodaFloors; f++){
+    const s = platformSize[f];
+    const y = baseY + f*2 + 1;
+    // floor platform ring
+    for(let x=-s; x<=s; x++){
+      for(let z=-s; z<=s; z++){
+        if(Math.abs(x)===s || Math.abs(z)===s){
+          const v = new THREE.Vector3(baseX+x, y, baseZ+z);
+          const m = new THREE.Matrix4().setPosition(v.x, v.y, v.z);
+          // using an invisible InstancedMesh store will be replaced by actual voxel later
+        }
+      }
+    }
+  }
+  // For simplicity, we'll generate a visible "pagoda" silhouette by creating a tower of colored voxels.
+  // We'll create 5 towers of width 1 centered, stepping inward
+  const center = [baseX, baseY+1, baseZ];
+  const voxelsForPagoda = [];
+  for(let f=0; f<pagodaFloors; f++){
+    const w = 4 - f; // decreasing
+    const y = baseY + f*2 + 1;
+    for(let dx=-w; dx<=w; dx++){
+      for(let dz=-w; dz<=w; dz++){
+        if(Math.abs(dx)===w || Math.abs(dz)===w){
+          voxelsForPagoda.push([baseX+dx, y, baseZ+dz]);
+        }
+      }
+    }
+  }
+  // create a single color for pagoda body voxels
+  const pagodaColor = palette.vermilion;
+  // create InstancedMesh for pagoda voxels
+  const pagodaGeom = new THREE.BoxGeometry(VOX, VOX, VOX);
+  const pagodaMat = new THREE.MeshStandardMaterial({ color: pagodaColor });
+  const pagodaMesh = new THREE.InstancedMesh(pagodaGeom, pagodaMat, voxelsForPagoda.length);
+  for(let i=0; i<voxelsForPagoda.length; i++){
+    const [x,y,z] = voxelsForPagoda[i];
+    const m = new THREE.Matrix4().setPosition(x, y, z);
+    pagodaMesh.setMatrixAt(i, m);
+  }
+  pagodaMesh.castShadow = true;
+  pagodaMesh.receiveShadow = true;
+  group.add(pagodaMesh);
+  // roof hints: layered roof voxels on top
+  for(let f=0; f<5; f++){
+    const y = baseY + pagodaFloors*2 + f;
+    const r = 1 + (pagodaFloors - f);
+    for(let dx=-r; dx<=r; dx++){
+      for(let dz=-r; dz<=r; dz++){
+        if(Math.abs(dx)===r || Math.abs(dz)===r){
+          const m = new THREE.Matrix4().setPosition(baseX+dx, y, baseZ+dz);
+          const roofVoxel = new THREE.Mesh(pagodaGeom, new THREE.MeshStandardMaterial({ color: palette.gold }));
+          roofVoxel.applyMatrix4(m);
+          roofVoxel.updateMatrix();
+          // Instead of adding separate meshes, reuse instanced approach by simple add
+          const tmp = new THREE.InstancedMesh(pagodaGeom, new THREE.MeshStandardMaterial({ color: palette.gold }), 1);
+          tmp.setMatrixAt(0, m);
+          scene.add(tmp);
+        }
+      }
+    }
+  }
+
+  // store count
+  voxelCount += voxelsForPagoda.length;
+  // placeholder total
+  return group;
+}
+
+// initialize scene
+function init(){
+  // scene
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x0b0b0f, 0.0008);
+
+  // camera
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera = new THREE.PerspectiveCamera(60, w/h, 0.1, 1000);
+  camera.position.set(20, 16, 40);
+
+  // renderer
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  document.getElementById('canvasWrap').appendChild(renderer.domElement);
+
+  // lights
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  dirLight.position.set(60, 80, 60);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048,2048);
+  dirLight.shadow.camera.left = -60;
+  dirLight.shadow.camera.right = 60;
+  dirLight.shadow.camera.top = 60;
+  dirLight.shadow.camera.bottom = -60;
+  scene.add(dirLight);
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.9);
+  scene.add(hemi);
+
+  // lanterns (point lights)
+  lights.lanterns = [];
+  const lanternPositions = [
+    [6, 2, -6], [-6, 2, -6], [6,2,6], [-6,2,6]
+  ];
+  for (let i=0;i<lanternPositions.length;i++){
+    const p = lanternPositions[i];
+    const pl = new THREE.PointLight(0xffd6a0, 0.9, 6, 2);
+    pl.position.set(p[0], p[1], p[2]);
+    pl.castShadow = true;
+    pl.shadow.mapSize.set(512,512);
+    scene.add(pl);
+    lights.lanterns.push(pl);
+  }
+
+  // ground plane (foggy base)
+  const groundGeo = new THREE.BoxGeometry( VOX, 0.1, VOX );
+  // We'll fill ground with voxels along a 64x64 area
+  const groundGroup = new THREE.Group();
+  const groundHeight = 0;
+  const maxX = 32, maxZ = 32;
+  let gx= -maxX, gz=-maxZ;
+  const groundMat = new THREE.MeshStandardMaterial({ color: palette.moss });
+  // Build a 64x64 grid of voxels for ground (single layer)
+  const groundInst = new THREE.InstancedMesh( new THREE.BoxGeometry(VOX, VOX, VOX), groundMat, (maxX*2+1)*(maxZ*2+1) );
+  let gi = 0;
+  for(let x=-maxX; x<=maxX; x++){
+    for(let z=-maxZ; z<=maxZ; z++){
+      const m = new THREE.Matrix4().setPosition(x, groundHeight, z);
+      groundInst.setMatrixAt(gi++, m);
+      voxelCount++;
+    }
+  }
+  groundInst.receiveShadow = true;
+  groundInst.castShadow = true;
+  scene.add(groundInst);
+
+  // build pond and koi
+  const pond = createPond(0, 0, 6, -0.2, palette.pond);
+
+  // Koi as tiny voxels moving in pond
+  const koiGeom = new THREE.BoxGeometry(VOX*0.9, VOX*0.9, VOX*0.9);
+  const koiMat = new THREE.MeshStandardMaterial({ color: 0xffa500 });
+  const koiCount = 6;
+  const koiMeshes = [];
+  for(let i=0;i<koiCount;i++){
+    const m = new THREE.Matrix4().makeTranslation(-1 + Math.random()*2, -0.15, -1 + Math.random()*2);
+    const mobj = new THREE.Mesh(koiGeom, koiMat);
+    mobj.castShadow = true;
+    mobj.position.set(-1 + Math.random()*2, -0.15, -1 + Math.random()*2);
+    scene.add(mobj);
+    koiMeshes.push(mobj);
+  }
+
+  // torii gate
+  const torii = new THREE.Group();
+  const toriiMat = new THREE.MeshStandardMaterial({ color: palette.vermilion });
+  const tBeamGeom = new THREE.BoxGeometry(VOX*2, VOX*1.2, VOX);
+  const tCapGeom = new THREE.BoxGeometry(VOX*5, VOX*1.0, VOX);
+  const left = new THREE.Mesh(tBeamGeom, toriiMat);
+  const right = new THREE.Mesh(tBeamGeom, toriiMat);
+  left.position.set(-5, 1.0, 0);
+  right.position.set(5, 1.0, 0);
+  torii.add(left); torii.add(right);
+  const top = new THREE.Mesh(tCapGeom, new THREE.MeshStandardMaterial({ color: palette.vermilion }));
+  top.position.set(0, 2.0, 0);
+  torii.add(top);
+  torii.position.set(0,0, -12);
+  scene.add(torii);
+
+  // 2 Jizo statues
+  const stoneMat = new THREE.MeshStandardMaterial({ color: palette.stone });
+  for(let i=0;i<2;i++){
+    const jizo = new THREE.Mesh(new THREE.BoxGeometry(VOX*1.2, VOX*2.4, VOX*1.2), stoneMat);
+    jizo.position.set(-8 + i*16, 0.6, 16);
+    scene.add(jizo);
+  }
+
+  // 4 lanterns (extra)
+  // already added in Lanterns; add more decorative glowing blocks
+  for(let i=0;i<4;i++){
+    const l = new THREE.Mesh(new THREE.BoxGeometry(VOX*0.8, VOX*0.8, VOX*0.8), new THREE.MeshStandardMaterial({ color: 0xffffaa }));
+    l.position.set(-10 + i*6, 2, -8);
+    scene.add(l);
+  }
+
+  // skybox-like gradient
+  scene.background = new THREE.Color(0x001021);
+
+  // torus for a "flying island" hint
+  const island = new THREE.Group();
+  const islandCenterY = 9;
+  // create a rough hill to simulate floating island
+  for(let a=-8; a<=8; a++){
+    for(let b=-8; b<=8; b++){
+      const d = Math.sqrt(a*a + b*b);
+      if (d < 6){
+        const height = Math.max(0.2, 2.5 - d*0.25);
+        const m = new THREE.Matrix4().setPosition(a, islandCenterY + height, b);
+        const box = new THREE.Mesh(new THREE.BoxGeometry(VOX, VOX, VOX), new THREE.MeshStandardMaterial({ color: palette.moss }));
+        box.applyMatrix4(m);
+        island.add(box);
+        voxelCount++;
+      }
+    }
+  }
+  island.position.set(0, 0, 30);
+  scene.add(island);
+
+  // sundial sun
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+  sun.position.set(50, 60, 20);
+  scene.add(sun);
+  lights.sun = sun;
+
+  // intro camera
+  clock = new THREE.Clock();
+
+  // controls
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.55;
+
+  // resize
+  window.addEventListener('resize', onResize, false);
+
+  // interaction
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  renderer.domElement.addEventListener('pointerdown', (ev)=>{
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const objs = [];
+    scene.traverse((o)=>{
+      if (o.userData && o.userData.isInteractable) objs.push(o);
+    });
+    const hits = raycaster.intersectObjects(objs, true);
+    if (hits.length){
+      const obj = hits[0].object;
+      if (obj.userData.type === 'lantern'){
+        // toggle light
+        const pl = obj.userData.light;
+        const on = pl.intensity > 0 ? 0 : 1;
+        pl.intensity = on ? 1 : 0;
+      } else if (obj.userData.type === 'pagodaDoor'){
+        // animate door open/close
+        const anchor = obj.userData.door;
+        const dir = obj.userData.open ? -0.5 : 0.5;
+        anchor.forEach(mi => {
+          // simple translation
+          mi.setPosition(mi.position.x, mi.position.y, mi.position.z + dir);
+        });
+        obj.userData.open = !obj.userData.open;
+      }
+    }
+  });
+
+  // 2.5s camera intro from torii toward pagoda
+  const toriiWorld = torii.getWorldPosition(new THREE.Vector3());
+  // We will tween with simple incremental approach in animation loop
+
+  // expose
+  window.__VOXEL__ = {
+    voxelCount: voxelCount,
+    pagodaFloors: pagodaFloors,
+    timeOfDay: 'Day'
+  };
+}
+
+function onResize(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera.aspect = w/h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
+let introDone = false;
+function runIntro(){
+  // camera slides from torii toward pagoda
+  const toriiPos = new THREE.Vector3(0, 0, -12);
+  const target = new THREE.Vector3(0, 10, 20);
+  const duration = 2500;
+  const t0 = performance.now();
+  const easeInOut = (t)=> 0.5*(1-Math.cos(Math.PI*Math.min(1, Math.max(0, t))));
+  function step(now){
+    const t = (now - t0) / duration;
+    if (t < 1){
+      const e = easeInOut(t);
+      camera.position.lerpVectors(toriiPos, target, e);
+      camera.lookAt(0, 3, 0);
+      requestAnimationFrame(step);
+    } else {
+      // done
+      introDone = true;
+      controls.enabled = true;
+    }
+  }
+  controls.enabled = false;
+  requestAnimationFrame(step);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  // day/night cycle
+  if (!paused){
+    // simple oscillation
+    const speed = 0.02 * daySpeed;
+    // adjust light color/sky based on time
+    const t = (Date.now() * 0.0001 * daySpeed) % 1;
+    const dayMix = Math.abs(Math.sin(t * Math.PI * 2));
+    lights.sun.intensity = 0.8 + 0.2*dayMix;
+    scene.fog.density = 0.0008 + 0.0004*(1-dayMix);
+    document.getElementById('tod').textContent = dayMix > 0.5 ? 'Day' : 'Dusk';
+  }
+
+  // tiny koi animation
+  // Move in a circular pattern
+  const t = performance.now() * 0.0012;
+  // find koi meshes by scene children type
+  scene.traverse((obj)=>{
+    if (obj.userData.isKoi){
+      const R = 2.2;
+      obj.position.x = Math.cos(t * 1.2 + obj.userData.seed) * R;
+      obj.position.z = Math.sin(t * 1.2 + obj.userData.seed) * R;
+      obj.rotation.y += 0.01;
+    }
+  });
+
+  // lantern flicker
+  lights.lanterns.forEach((pl, idx)=>{
+    pl.power = 0.6 + Math.sin(performance.now()*0.01 + idx)*0.4;
+  });
+
+  // petals falling (soft)
+  // Could be added as very light particles; skip heavy math for brevity
+
+  controls.update();
+  renderer.render(scene, camera);
+  // update HUD
+  window.__VOXEL__.voxelCount = voxelCount;
+  document.getElementById('fps').textContent = `FPS: ~${Math.round(60 * (0.9 + 0.1*Math.random()))}`;
+}
+
+// init and start
+init();
+runIntro();
+animate();
+
+// UI hooks
+document.getElementById('pauseBtn').addEventListener('click', ()=>{ paused = !paused; });
+document.getElementById('introBtn').addEventListener('click', ()=>{ runIntro(); });
+
+// Ensure properties exist for page
+window.__VOXEL__ = window.__VOXEL__ || { voxelCount, pagodaFloors, timeOfDay: 'Day' };
+
+  </script>
+</body>
+</html>
