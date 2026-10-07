@@ -54,8 +54,10 @@ class WorthCounterStore extends ChangeNotifier {
   static final WorthCounterStore instance = WorthCounterStore._();
 
   WorthCounterStore._() {
-    _load();
+    _ready = _load();
   }
+
+  late final Future<void> _ready;
 
   static const _persistDelay = Duration(milliseconds: 400);
 
@@ -200,6 +202,23 @@ class WorthCounterStore extends ChangeNotifier {
   /// page goes away so a burst of taps is never left unsaved.
   Future<void> flush() async {
     if (_persistTimer == null) return;
+    await _persist();
+  }
+
+  Future<Object?> exportData() async {
+    await _ready;
+    return _products.map((p) => p.toJson()).toList();
+  }
+
+  Future<void> importData(Object? data) async {
+    if (data is! List) {
+      throw const FormatException('Invalid worth counter snapshot.');
+    }
+    await _ready;
+    _products = data
+        .map((e) => WorthProduct.fromJson(e as Map<String, dynamic>))
+        .toList();
+    notifyListeners();
     await _persist();
   }
 

@@ -46,6 +46,7 @@ class DriftSyncCollection extends SyncCollection {
     required this.icon,
     required this.db,
     this.minPlanId,
+    this.excludedTables = const {},
   });
 
   @override
@@ -58,6 +59,13 @@ class DriftSyncCollection extends SyncCollection {
   final String? minPlanId;
 
   final GeneratedDatabase db;
+
+  /// Tables that stay on this device: neither exported nor wiped on import
+  /// (for example login tokens that only one device may hold at a time).
+  final Set<String> excludedTables;
+
+  Iterable<TableInfo> get _syncedTables => db.allTables
+      .where((t) => !excludedTables.contains(t.actualTableName));
 
   @override
   Stream<void> get changes =>
@@ -80,7 +88,7 @@ class DriftSyncCollection extends SyncCollection {
   @override
   Future<Object?> export() async {
     final tables = <String, List<Map<String, Object?>>>{};
-    for (final table in db.allTables) {
+    for (final table in _syncedTables) {
       final name = table.actualTableName;
       final rows = await db.customSelect('SELECT * FROM "$name"').get();
       final exported = <Map<String, Object?>>[];
@@ -117,10 +125,10 @@ class DriftSyncCollection extends SyncCollection {
       await db.customStatement('PRAGMA defer_foreign_keys = ON');
 
       // Children first on delete (declaration order lists parents first).
-      for (final table in db.allTables.toList().reversed) {
+      for (final table in _syncedTables.toList().reversed) {
         await db.delete(table).go();
       }
-      for (final table in db.allTables) {
+      for (final table in _syncedTables) {
         final name = table.actualTableName;
         final rows = tables[name];
         if (rows is! List) continue;

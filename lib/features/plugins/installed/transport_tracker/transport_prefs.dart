@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'transit_vehicle.dart';
@@ -61,6 +62,7 @@ class TransportPrefs {
     try {
       final file = await _file(directory);
       await file.writeAsString(jsonEncode(toJson()), flush: true);
+      revision.value++;
     } catch (_) {
       // Preferences are a convenience; losing them is not worth an error.
     }
@@ -116,5 +118,18 @@ class TransportPrefs {
       transitModes:
           TransitMode.values.where((m) => !hidden.contains(m)).toSet(),
     );
+  }
+
+  /// Bumped on every save so sync follows the layer toggles; the prefs are
+  /// a value type with no long-lived instance to listen to.
+  static final ValueNotifier<int> revision = ValueNotifier(0);
+
+  static Future<Object?> exportData() async => (await load()).toJson();
+
+  static Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid transport tracker snapshot.');
+    }
+    await fromJson(data).save();
   }
 }

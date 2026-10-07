@@ -1,6 +1,7 @@
 ﻿import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../../storage/storage_guard.dart';
@@ -84,5 +85,30 @@ class DownloadHistoryStore {
   Future<void> _save(List<DownloadHistoryEntry> entries) async {
     final file = await _file();
     await file.writeAsString(jsonEncode(entries.map((e) => e.toJson()).toList()));
+    revision.value++;
+  }
+
+  /// Bumped on every write; drives sync, since the store has no instance
+  /// that outlives the page.
+  static final ValueNotifier<int> revision = ValueNotifier(0);
+
+  Future<Object?> exportData() async =>
+      (await load()).map((e) => e.toJson()).toList();
+
+  /// Merges by file path: each device downloaded its own files, so another
+  /// device's history adds to this one rather than replacing it.
+  Future<void> importData(Object? data) async {
+    if (data is! List) {
+      throw const FormatException('Invalid download history snapshot.');
+    }
+    final entries = await load();
+    final known = entries.map((e) => e.filePath).toSet();
+    for (final raw in data) {
+      if (raw is! Map<String, dynamic>) continue;
+      final entry = DownloadHistoryEntry.fromJson(raw);
+      if (known.add(entry.filePath)) entries.add(entry);
+    }
+    entries.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    await _save(entries);
   }
 }

@@ -219,7 +219,29 @@ class AudioToolsRepository extends ChangeNotifier {
     _saveTimer = Timer(const Duration(milliseconds: 400), _save);
   }
 
+  /// Bumped on every save, so sync follows the EQ without also waking up
+  /// for every level-meter repaint.
+  final ValueNotifier<int> syncRevision = ValueNotifier(0);
+
+  /// Only the curve and the bypass switch travel between devices — device
+  /// ids and the system EQ install are specific to this machine.
+  Future<Object?> exportData() async => {
+    'bypass': _bypass,
+    'eq': _eq.toJson(),
+  };
+
+  Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid audio tools snapshot.');
+    }
+    final eq = data['eq'];
+    if (eq is Map) setEq(EqSettings.fromJson(eq.cast<String, dynamic>()));
+    final bypass = data['bypass'];
+    if (bypass is bool && bypass != _bypass) setBypass(bypass);
+  }
+
   Future<void> _save() async {
+    syncRevision.value++;
     final file = _file;
     if (file == null) return;
     try {

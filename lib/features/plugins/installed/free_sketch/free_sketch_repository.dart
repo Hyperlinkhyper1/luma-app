@@ -282,6 +282,73 @@ class FreeSketchRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------------------------------------------------------------- sync
+
+  /// Every document as its files (metadata, layers, thumbnail), base64'd so
+  /// the sketches survive the JSON sync snapshot byte-for-byte.
+  Future<Object?> exportData() async {
+    final docs = await _docsDir();
+    final out = <String, Map<String, String>>{};
+    await for (final entity in docs.list()) {
+      if (entity is! Directory) continue;
+      final id = entity.path.split(_sep).last;
+      final files = <String, String>{};
+      await for (final file in entity.list()) {
+        if (file is! File) continue;
+        final name = file.path.split(_sep).last;
+        if (name.endsWith('.tmp')) continue;
+        files[name] = base64Encode(await file.readAsBytes());
+      }
+      if (files.containsKey('document.json')) out[id] = files;
+    }
+    return {'format': 1, 'docs': out};
+  }
+
+  Future<void> importData(Object? data) async {
+    final docs = data is Map ? data['docs'] : null;
+    if (docs is! Map) {
+      throw const FormatException('Invalid sketch snapshot.');
+    }
+    final dir = await _docsDir();
+    final incoming = <String>{};
+    for (final entry in docs.entries) {
+      final id = '${entry.key}';
+      final files = entry.value;
+      if (files is! Map) continue;
+      final Directory target;
+      try {
+        target = await _docDir(id);
+      } on ArgumentError {
+        continue;
+      }
+      incoming.add(id);
+      if (await target.exists()) await target.delete(recursive: true);
+      await target.create(recursive: true);
+      for (final file in files.entries) {
+        final name = '${file.key}';
+        final bytes = file.value;
+        if (bytes is! String ||
+            name.contains('/') ||
+            name.contains(r'\') ||
+            name.contains('..')) {
+          continue;
+        }
+        await _file(target, name).writeAsBytes(base64Decode(bytes), flush: true);
+      }
+    }
+    await for (final entity in dir.list()) {
+      if (entity is! Directory) continue;
+      if (incoming.contains(entity.path.split(_sep).last)) continue;
+      try {
+        await entity.delete(recursive: true);
+      } on FileSystemException {
+        // Still open elsewhere (Windows); the next import sweeps it up.
+      }
+    }
+    StorageGuard.instance.scheduleRefresh();
+    notifyListeners();
+  }
+
   // --------------------------------------------------------------- prefs
 
   Future<File> _prefsFile() async {

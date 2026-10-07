@@ -118,9 +118,11 @@ class ServerTycoonRepository extends ChangeNotifier {
 
   ServerTycoonRepository() : _state = GameState.newDefault() {
     _ensureMissionBoard();
-    _load();
+    _ready = _load();
     _startDayTimer();
   }
+
+  late final Future<void> _ready;
 
   void dispose() {
     _dayTimer?.cancel();
@@ -201,7 +203,12 @@ class ServerTycoonRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Bumped on every save, so sync follows the game without waking up for
+  /// each one-second tick the repository notifies about.
+  final ValueNotifier<int> syncRevision = ValueNotifier(0);
+
   Future<void> _save() async {
+    syncRevision.value++;
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$_saveFileName');
@@ -210,6 +217,29 @@ class ServerTycoonRepository extends ChangeNotifier {
     } catch (e) {
       // ignore save errors
     }
+  }
+
+  Future<Object?> exportData() async {
+    await _ready;
+    return _state.toJson();
+  }
+
+  /// Restores a snapshot from another device. Like Airline Tycoon, the day
+  /// clock runs on every device, so only a snapshot that is newer than the
+  /// local game replaces it; otherwise this device wins the next push.
+  Future<void> importData(Object? data) async {
+    if (data is! Map) return;
+    await _ready;
+    final incoming = GameState.fromJson(Map<String, dynamic>.from(data));
+    if (incoming.lastSeenEpochMs <= _state.lastSeenEpochMs) return;
+    _state = incoming;
+    _secondsElapsed = 0;
+    _activeIncidents.clear();
+    _todayCounters.clear();
+    _regenerateContractOffers();
+    _ensureMissionBoard();
+    await _save();
+    notifyListeners();
   }
 
   // ── Day Timer ──

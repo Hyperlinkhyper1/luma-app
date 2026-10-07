@@ -21,8 +21,10 @@ class SftpSiteStore extends ChangeNotifier {
   static final SftpSiteStore instance = SftpSiteStore._();
 
   SftpSiteStore._() {
-    _load();
+    _ready = _load();
   }
+
+  late final Future<void> _ready;
 
   static const _fileName = 'luma_sftp_sites.json';
   static const _secretField = 'secret';
@@ -159,6 +161,59 @@ class SftpSiteStore extends ChangeNotifier {
       remoteDirectory: remote,
       localDirectory: local,
     );
+    notifyListeners();
+    await _save();
+  }
+
+  /// Sync snapshot. A remembered secret is bound to this device's key file,
+  /// so it is decrypted here (the snapshot itself is end-to-end encrypted,
+  /// like the password vault's) and re-encrypted with the receiving
+  /// device's key on import.
+  Future<Object?> exportData() async {
+    await _ready;
+    final out = <Map<String, dynamic>>[];
+    for (final site in _sites) {
+      final json = site.toJson()..remove('secret');
+      try {
+        final secret = await secretFor(site);
+        if (secret != null) json['plainSecret'] = secret;
+      } catch (_) {}
+      out.add(json);
+    }
+    return {'sites': out};
+  }
+
+  /// Key files and the local folder are paths on this machine, so a site
+  /// this device already knows keeps its own.
+  Future<void> importData(Object? data) async {
+    final list = data is Map ? data['sites'] : null;
+    if (list is! List) {
+      throw const FormatException('Invalid SFTP sites snapshot.');
+    }
+    await _ready;
+    final crypto = await _getCrypto();
+    final next = <SftpSite>[];
+    for (final raw in list) {
+      if (raw is! Map<String, dynamic>) continue;
+      var site = SftpSite.fromJson({...raw}..remove('secret'));
+      final local = siteById(site.id);
+      if (local != null) {
+        site = site.copyWith(
+          keyPath: local.keyPath,
+          localDirectory: local.localDirectory,
+        );
+      }
+      final secret = raw['plainSecret'];
+      if (site.saveSecret && secret is String && secret.isNotEmpty) {
+        site = site.copyWith(
+          secretToken:
+              crypto.encrypt(secret, siteId: site.id, field: _secretField),
+        );
+      }
+      next.add(site);
+    }
+    _sites = next;
+    _sort();
     notifyListeners();
     await _save();
   }

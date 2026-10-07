@@ -43,8 +43,14 @@ class SmartHomeRepository extends ChangeNotifier {
        _discovery = discovery ?? const NsdDirigeraDiscovery(),
        _credentials = credentials ?? const SecureSmartHomeCredentialStore(),
        _presetStore = presetStore ?? const FileSmartHomePresetStore() {
-    _load();
+    _ready = _load();
   }
+
+  late final Future<void> _ready;
+
+  /// Bumped whenever the presets change. Sync follows this rather than the
+  /// repository itself, which also notifies for every lamp refresh.
+  final ValueNotifier<int> syncRevision = ValueNotifier(0);
 
   final DirigeraApi _api;
   final DirigeraDiscovery _discovery;
@@ -280,6 +286,7 @@ class SmartHomeRepository extends ChangeNotifier {
     try {
       await _presetStore.save(next);
       _presets = next;
+      syncRevision.value++;
       _error = null;
       notifyListeners();
       return true;
@@ -297,6 +304,7 @@ class SmartHomeRepository extends ChangeNotifier {
     try {
       await _presetStore.save(next);
       _presets = next;
+      syncRevision.value++;
       _error = null;
       notifyListeners();
       return true;
@@ -305,6 +313,26 @@ class SmartHomeRepository extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Only the presets sync. The hub pairing token stays on this device.
+  Future<Object?> exportData() async {
+    await _ready;
+    return _presets.map((p) => p.toJson()).toList();
+  }
+
+  Future<void> importData(Object? data) async {
+    if (data is! List) {
+      throw const FormatException('Invalid smart home snapshot.');
+    }
+    await _ready;
+    final next = [
+      for (final item in data)
+        SmartHomePreset.fromJson((item as Map).cast<String, dynamic>()),
+    ];
+    await _presetStore.save(next);
+    _presets = next;
+    notifyListeners();
   }
 
   Future<void> activatePreset(SmartHomePreset preset) async {

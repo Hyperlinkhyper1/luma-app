@@ -51,7 +51,7 @@ class RecipeBookController extends ChangeNotifier {
 
   final List<LocalRecipe> _local = [];
   final Set<String> _favoritePublicIds = {};
-  bool _loadedLocal = false;
+  Future<void>? _loadingLocal;
 
   // ---- Weekly meal planner ------------------------------------------------
 
@@ -257,9 +257,9 @@ class RecipeBookController extends ChangeNotifier {
     return photos;
   }
 
-  Future<void> _load() async {
-    if (_loadedLocal) return;
-    _loadedLocal = true;
+  Future<void> _load() => _loadingLocal ??= _loadOnce();
+
+  Future<void> _loadOnce() async {
     try {
       final file = await _getStoreFile();
       if (await file.exists()) {
@@ -361,7 +361,12 @@ class RecipeBookController extends ChangeNotifier {
     }
   }
 
+  /// Bumped on every local write. Static because sync is registered while
+  /// this controller (which itself needs the sync service) is still unbuilt.
+  static final ValueNotifier<int> revision = ValueNotifier(0);
+
   Future<void> _persist() async {
+    revision.value++;
     try {
       final file = await _getStoreFile();
       await file.writeAsString(jsonEncode({
@@ -374,6 +379,73 @@ class RecipeBookController extends ChangeNotifier {
             MapEntry(key, meals.map((m) => m.toJson()).toList())),
       }));
     } catch (_) {}
+  }
+
+  /// Sync snapshot of the private side: recipes, favourites and the meal
+  /// plan. A photo is a file at a device-specific path, so it travels as
+  /// base64 and is written back next to this device's other recipe photos.
+  Future<Object?> exportData() async {
+    await _load();
+    final local = <Map<String, Object?>>[];
+    for (final recipe in _local) {
+      final json = Map<String, Object?>.of(recipe.toJson())..remove('photoPath');
+      final photo = await _readPhotoFile(recipe.photoPath);
+      if (photo != null) json['photo'] = base64Encode(photo);
+      local.add(json);
+    }
+    return {
+      'version': 1,
+      'local': local,
+      'favoritePublicIds': _favoritePublicIds.toList(),
+      'weekStartsOn': _weekStartsOn,
+      'plan': _plan.map((key, meals) =>
+          MapEntry(key, meals.map((m) => m.toJson()).toList())),
+    };
+  }
+
+  Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid recipe book snapshot.');
+    }
+    await _load();
+    final incoming = <LocalRecipe>[];
+    for (final raw in (data['local'] as List? ?? const [])) {
+      if (raw is! Map<String, dynamic>) continue;
+      var recipe = LocalRecipe.fromJson({...raw, 'photoPath': null});
+      final photo = raw['photo'];
+      if (photo is String) {
+        final path =
+            await _writePhotoFile(recipe.id, base64Decode(photo));
+        recipe = recipe.copyWith(photoPath: path);
+      }
+      incoming.add(recipe);
+    }
+    final kept = incoming.map((r) => r.photoPath).toSet();
+    for (final old in _local) {
+      if (!kept.contains(old.photoPath)) await _deletePhotoFile(old.photoPath);
+    }
+    _local
+      ..clear()
+      ..addAll(incoming);
+    _favoritePublicIds
+      ..clear()
+      ..addAll((data['favoritePublicIds'] as List? ?? const [])
+          .whereType<String>());
+    final ws = data['weekStartsOn'] as int?;
+    if (ws != null && ws >= 1 && ws <= 7) _weekStartsOn = ws;
+    _plan.clear();
+    final planRaw = data['plan'];
+    if (planRaw is Map) {
+      planRaw.forEach((key, value) {
+        if (value is! List) return;
+        _plan['$key'] = value
+            .map((e) => PlannedMeal.fromJson(e as Map<String, dynamic>))
+            .toList();
+      });
+    }
+    _photoCache.clear();
+    await _persist();
+    notifyListeners();
   }
 
   // ---- Private recipe mutations -------------------------------------------

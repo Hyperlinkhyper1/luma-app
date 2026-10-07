@@ -76,8 +76,10 @@ class CalculatorStore extends ChangeNotifier {
   static final CalculatorStore instance = CalculatorStore._();
 
   CalculatorStore._() {
-    _load();
+    _ready = _load();
   }
+
+  late final Future<void> _ready;
 
   static const _persistDelay = Duration(milliseconds: 400);
 
@@ -119,19 +121,7 @@ class CalculatorStore extends ChangeNotifier {
     try {
       final file = await _getFile();
       if (await file.exists()) {
-        final raw = jsonDecode(await file.readAsString());
-        if (raw is Map<String, dynamic>) {
-          _history = ((raw['history'] as List<dynamic>?) ?? const [])
-              .whereType<Map<String, dynamic>>()
-              .map(CalcHistoryEntry.fromJson)
-              .toList();
-          _functions = ((raw['functions'] as List<dynamic>?) ?? const [])
-              .whereType<Map<String, dynamic>>()
-              .map(GraphFunction.fromJson)
-              .toList();
-          _degrees = raw['degrees'] as bool? ?? true;
-          _lastAnswer = (raw['lastAnswer'] as num?)?.toDouble() ?? 0;
-        }
+        _apply(jsonDecode(await file.readAsString()));
       }
     } catch (_) {
       _history = [];
@@ -140,6 +130,27 @@ class CalculatorStore extends ChangeNotifier {
     _loaded = true;
     notifyListeners();
   }
+
+  void _apply(Object? raw) {
+    if (raw is! Map<String, dynamic>) return;
+    _history = ((raw['history'] as List<dynamic>?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(CalcHistoryEntry.fromJson)
+        .toList();
+    _functions = ((raw['functions'] as List<dynamic>?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(GraphFunction.fromJson)
+        .toList();
+    _degrees = raw['degrees'] as bool? ?? true;
+    _lastAnswer = (raw['lastAnswer'] as num?)?.toDouble() ?? 0;
+  }
+
+  Map<String, Object?> _snapshot() => {
+    'history': _history.map((e) => e.toJson()).toList(),
+    'functions': _functions.map((f) => f.toJson()).toList(),
+    'degrees': _degrees,
+    'lastAnswer': _lastAnswer,
+  };
 
   void _schedulePersist() {
     _persistTimer?.cancel();
@@ -151,14 +162,7 @@ class CalculatorStore extends ChangeNotifier {
     _persistTimer = null;
     try {
       final file = await _getFile();
-      await file.writeAsString(
-        jsonEncode({
-          'history': _history.map((e) => e.toJson()).toList(),
-          'functions': _functions.map((f) => f.toJson()).toList(),
-          'degrees': _degrees,
-          'lastAnswer': _lastAnswer,
-        }),
-      );
+      await file.writeAsString(jsonEncode(_snapshot()));
     } catch (_) {}
   }
 
@@ -235,6 +239,21 @@ class CalculatorStore extends ChangeNotifier {
   /// goes away so the last sum is never left unsaved.
   Future<void> flush() async {
     if (_persistTimer == null) return;
+    await _persist();
+  }
+
+  Future<Object?> exportData() async {
+    await _ready;
+    return _snapshot();
+  }
+
+  Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid calculator snapshot.');
+    }
+    await _ready;
+    _apply(data);
+    notifyListeners();
     await _persist();
   }
 

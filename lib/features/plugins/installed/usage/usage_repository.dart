@@ -223,6 +223,7 @@ class UsageRepository extends ChangeNotifier {
     _currentStartedAt = null;
     _currentInfo = null;
     _lastPersistedAt = null;
+    _bumpSync();
     _notify();
   }
 
@@ -245,6 +246,89 @@ class UsageRepository extends ChangeNotifier {
   Future<void> clearHistory() async {
     await _finalizeCurrent();
     await _db.delete(_db.usageSessions).go();
+  }
+
+  /// Bumped when a session closes, at most every [_syncThrottle], so sync
+  /// follows the history without re-uploading it on every app switch.
+  final ValueNotifier<int> syncRevision = ValueNotifier(0);
+  static const _syncThrottle = Duration(minutes: 10);
+  DateTime? _lastSyncBump;
+
+  void _bumpSync() {
+    final now = DateTime.now();
+    final last = _lastSyncBump;
+    if (last != null && now.difference(last) < _syncThrottle) return;
+    _lastSyncBump = now;
+    syncRevision.value++;
+  }
+
+  Future<Object?> exportData() async {
+    final rows = await _db.select(_db.usageSessions).get();
+    return [
+      for (final r in rows)
+        {
+          'appName': r.appName,
+          'processName': r.processName,
+          'windowTitle': r.windowTitle,
+          'startedAt': r.startedAt.toUtc().millisecondsSinceEpoch,
+          'endedAt': r.endedAt.toUtc().millisecondsSinceEpoch,
+          'durationSeconds': r.durationSeconds,
+        },
+    ];
+  }
+
+  /// Merges rather than replaces: every device records its own screen time,
+  /// so a snapshot from another device must never wipe this one's sessions.
+  /// A session is identified by its process and start time; when both sides
+  /// have it, the longer copy wins.
+  Future<void> importData(Object? data) async {
+    if (data is! List) {
+      throw const FormatException('Invalid usage snapshot.');
+    }
+    final existing = {
+      for (final r in await _db.select(_db.usageSessions).get())
+        '${r.processName}|${r.startedAt.toUtc().millisecondsSinceEpoch}': r,
+    };
+    await _db.transaction(() async {
+      for (final raw in data) {
+        if (raw is! Map) continue;
+        final process = raw['processName'];
+        final started = raw['startedAt'];
+        final ended = raw['endedAt'];
+        final duration = raw['durationSeconds'];
+        if (process is! String ||
+            started is! int ||
+            ended is! int ||
+            duration is! int) {
+          continue;
+        }
+        final startedAt =
+            DateTime.fromMillisecondsSinceEpoch(started, isUtc: true);
+        final endedAt = DateTime.fromMillisecondsSinceEpoch(ended, isUtc: true);
+        final local = existing['$process|$started'];
+        if (local == null) {
+          await _db.into(_db.usageSessions).insert(
+            UsageSessionsCompanion.insert(
+              appName: raw['appName'] as String? ?? process,
+              processName: process,
+              windowTitle: Value(raw['windowTitle'] as String?),
+              startedAt: startedAt,
+              endedAt: endedAt,
+              durationSeconds: duration,
+            ),
+          );
+        } else if (duration > local.durationSeconds) {
+          await (_db.update(_db.usageSessions)
+                ..where((t) => t.id.equals(local.id)))
+              .write(
+            UsageSessionsCompanion(
+              endedAt: Value(endedAt),
+              durationSeconds: Value(duration),
+            ),
+          );
+        }
+      }
+    });
   }
 
   void _notify() {

@@ -144,25 +144,78 @@ class AutoClickerRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Map<String, Object?> _snapshot() => {
+    'intervalMs': _intervalMs,
+    'randomOffsetMs': _randomOffsetMs,
+    'button': _button.name,
+    'doubleClick': _doubleClick,
+    'clickAtCursor': _clickAtCursor,
+    if (_fixedPoint != null) 'fixedX': _fixedPoint!.x,
+    if (_fixedPoint != null) 'fixedY': _fixedPoint!.y,
+    'repeatMode': _repeatMode.name,
+    'repeatCount': _repeatCount,
+    'hotKey': _hotKey.toJson(),
+  };
+
+  /// Bumped on every save, so sync follows settings changes without also
+  /// waking up for each click counted while the clicker runs.
+  final ValueNotifier<int> syncRevision = ValueNotifier(0);
+
   Future<void> _save() async {
+    syncRevision.value++;
     final file = _file;
     if (file == null) return;
     try {
-      await file.writeAsString(jsonEncode({
-        'intervalMs': _intervalMs,
-        'randomOffsetMs': _randomOffsetMs,
-        'button': _button.name,
-        'doubleClick': _doubleClick,
-        'clickAtCursor': _clickAtCursor,
-        if (_fixedPoint != null) 'fixedX': _fixedPoint!.x,
-        if (_fixedPoint != null) 'fixedY': _fixedPoint!.y,
-        'repeatMode': _repeatMode.name,
-        'repeatCount': _repeatCount,
-        'hotKey': _hotKey.toJson(),
-      }));
+      await file.writeAsString(jsonEncode(_snapshot()));
     } catch (_) {
       // Best-effort save; a failure here shouldn't crash the app.
     }
+  }
+
+  Future<Object?> exportData() async => _snapshot();
+
+  Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid auto clicker snapshot.');
+    }
+    _intervalMs = (data['intervalMs'] as num?)?.toInt() ?? _intervalMs;
+    _randomOffsetMs =
+        (data['randomOffsetMs'] as num?)?.toInt() ?? _randomOffsetMs;
+    _button = ClickButton.values.firstWhere(
+      (b) => b.name == data['button'],
+      orElse: () => _button,
+    );
+    _doubleClick = data['doubleClick'] as bool? ?? _doubleClick;
+    _clickAtCursor = data['clickAtCursor'] as bool? ?? _clickAtCursor;
+    final fx = data['fixedX'] as num?;
+    final fy = data['fixedY'] as num?;
+    _fixedPoint =
+        fx != null && fy != null ? ClickPoint(fx.toInt(), fy.toInt()) : null;
+    _repeatMode = ClickRepeatMode.values.firstWhere(
+      (m) => m.name == data['repeatMode'],
+      orElse: () => _repeatMode,
+    );
+    _repeatCount = (data['repeatCount'] as num?)?.toInt() ?? _repeatCount;
+    final hotKeyJson = data['hotKey'];
+    if (hotKeyJson is Map) {
+      try {
+        final parsed = HotKey.fromJson(hotKeyJson.cast<String, dynamic>());
+        final incoming = HotKey(
+          identifier: parsed.identifier,
+          key: parsed.key,
+          modifiers: parsed.modifiers ?? const <HotKeyModifier>[],
+          scope: parsed.scope,
+        );
+        String shortcut(HotKey k) =>
+            jsonEncode({...k.toJson()}..remove('identifier'));
+        if (shortcut(incoming) != shortcut(_hotKey)) {
+          await setHotKey(incoming);
+        }
+      } catch (_) {}
+    }
+    await _save();
+    notifyListeners();
+    if (_isRunning) _startTimer();
   }
 
   Future<void> _registerHotKey() async {

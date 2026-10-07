@@ -99,4 +99,32 @@ void main() {
     repo.setIntervalSeconds(999);
     expect(repo.intervalSeconds, kUsageMaxIntervalSeconds);
   });
+
+  test('sync import merges another device\'s sessions instead of replacing',
+      () async {
+    await repo.handlePoll(chrome);
+    await repo.handlePoll(spotify);
+    final local = await repo.exportData() as List;
+
+    final otherDb = UsageDatabase(NativeDatabase.memory());
+    addTearDown(otherDb.close);
+    final other = UsageRepository(otherDb);
+    await other.importData([
+      {
+        'appName': 'Steam',
+        'processName': 'steam.exe',
+        'windowTitle': null,
+        'startedAt': DateTime.utc(2026, 1, 1).millisecondsSinceEpoch,
+        'endedAt': DateTime.utc(2026, 1, 1, 1).millisecondsSinceEpoch,
+        'durationSeconds': 3600,
+      },
+    ]);
+    await other.importData(local);
+    await other.importData(local);
+
+    final rows = await otherDb.select(otherDb.usageSessions).get();
+    expect(rows.map((r) => r.processName).toSet(),
+        {'steam.exe', 'chrome.exe', 'spotify.exe'});
+    expect(rows, hasLength(1 + local.length));
+  });
 }

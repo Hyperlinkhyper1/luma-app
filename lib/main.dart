@@ -118,6 +118,12 @@ import 'features/plugins/installed/recipe_book/recipe_book_scope.dart';
 import 'features/plugins/installed/minecraft_launcher/data/minecraft_launcher_database.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_repository.dart';
 import 'features/plugins/installed/minecraft_launcher/minecraft_launcher_scope.dart';
+import 'features/plugins/installed/calculator/calculator_store.dart';
+import 'features/plugins/installed/media_downloader/download_history_store.dart';
+import 'features/plugins/installed/nfc_tag_editor/nfc_tag_store.dart';
+import 'features/plugins/installed/sftp/sftp_site_store.dart';
+import 'features/plugins/installed/transport_tracker/transport_prefs.dart';
+import 'features/plugins/installed/worth_counter/worth_counter_store.dart';
 import 'features/plugins/installed/gallery/gallery_repository.dart';
 import 'features/plugins/installed/gallery/gallery_scope.dart';
 import 'features/plugins/installed/sftp/share/device_share_repository.dart';
@@ -511,6 +517,126 @@ class _LumaAppState extends State<LumaApp> {
         listenable: _airlineTycoonRepository,
         exporter: () => _airlineTycoonRepository.exportData(),
         importer: (data) => _airlineTycoonRepository.importData(data),
+      ),
+      DriftSyncCollection(
+        id: 'steam_tools',
+        label: 'Steam Tools',
+        icon: Icons.sports_esports_rounded,
+        db: _steamDb,
+      ),
+      JsonStoreSyncCollection(
+        id: 'server_tycoon',
+        label: 'Server Tycoon',
+        icon: Icons.dns_rounded,
+        listenable: _serverTycoonRepository.syncRevision,
+        exporter: _serverTycoonRepository.exportData,
+        importer: _serverTycoonRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: 'recipe_book',
+        label: 'Recipe book',
+        icon: Icons.restaurant_menu_rounded,
+        listenable: RecipeBookController.revision,
+        exporter: () => _recipeBookController.exportData(),
+        importer: (data) => _recipeBookController.importData(data),
+      ),
+      // Microsoft logins stay per device: their refresh tokens rotate, so
+      // two devices sharing one would keep signing each other out.
+      DriftSyncCollection(
+        id: 'minecraft_launcher',
+        label: 'Minecraft launcher',
+        icon: Icons.videogame_asset_rounded,
+        db: _minecraftDb,
+        excludedTables: const {'mc_accounts'},
+      ),
+      // Merged rather than replaced, so each device's screen time adds up.
+      JsonStoreSyncCollection(
+        id: 'usage',
+        label: 'Usage',
+        icon: Icons.timelapse_rounded,
+        listenable: _usageRepository.syncRevision,
+        exporter: _usageRepository.exportData,
+        importer: _usageRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: 'free_sketch',
+        label: 'Free Sketch',
+        icon: Icons.brush_rounded,
+        listenable: _freeSketchRepository,
+        exporter: _freeSketchRepository.exportData,
+        importer: _freeSketchRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: 'smart_home',
+        label: 'Smart Home presets',
+        icon: Icons.lightbulb_rounded,
+        listenable: _smartHomeRepository.syncRevision,
+        exporter: _smartHomeRepository.exportData,
+        importer: _smartHomeRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: 'audio_tools',
+        label: 'Audio Tools EQ',
+        icon: Icons.graphic_eq_rounded,
+        listenable: _audioToolsRepository.syncRevision,
+        exporter: _audioToolsRepository.exportData,
+        importer: _audioToolsRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: 'auto_clicker',
+        label: 'Auto Clicker',
+        icon: Icons.ads_click_rounded,
+        listenable: _autoClickerRepository.syncRevision,
+        exporter: _autoClickerRepository.exportData,
+        importer: _autoClickerRepository.importData,
+      ),
+      JsonStoreSyncCollection(
+        id: 'calculator',
+        label: 'Calculator',
+        icon: Icons.calculate_rounded,
+        listenable: CalculatorStore(),
+        exporter: () => CalculatorStore().exportData(),
+        importer: (data) => CalculatorStore().importData(data),
+      ),
+      JsonStoreSyncCollection(
+        id: 'worth_counter',
+        label: 'Worth counter',
+        icon: Icons.exposure_plus_1_rounded,
+        listenable: WorthCounterStore(),
+        exporter: () => WorthCounterStore().exportData(),
+        importer: (data) => WorthCounterStore().importData(data),
+      ),
+      JsonStoreSyncCollection(
+        id: 'nfc_tag_editor',
+        label: 'NFC tag editor',
+        icon: Icons.nfc_rounded,
+        listenable: NfcTagStore(),
+        exporter: () => NfcTagStore().exportData(),
+        importer: (data) => NfcTagStore().importData(data),
+      ),
+      JsonStoreSyncCollection(
+        id: 'sftp_sites',
+        label: 'SFTP sites',
+        icon: Icons.lan_rounded,
+        listenable: SftpSiteStore(),
+        exporter: () => SftpSiteStore().exportData(),
+        importer: (data) => SftpSiteStore().importData(data),
+      ),
+      JsonStoreSyncCollection(
+        id: 'media_downloader',
+        label: 'Media downloader history',
+        icon: Icons.download_rounded,
+        listenable: DownloadHistoryStore.revision,
+        exporter: () => DownloadHistoryStore().exportData(),
+        importer: (data) => DownloadHistoryStore().importData(data),
+      ),
+      JsonStoreSyncCollection(
+        id: 'transport_tracker',
+        label: 'Transport tracker',
+        icon: Icons.directions_transit_rounded,
+        listenable: TransportPrefs.revision,
+        exporter: TransportPrefs.exportData,
+        importer: TransportPrefs.importData,
       ),
     ],
   );

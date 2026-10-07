@@ -100,8 +100,10 @@ class NfcTagStore extends ChangeNotifier {
   static final NfcTagStore instance = NfcTagStore._();
 
   NfcTagStore._() {
-    _load();
+    _ready = _load();
   }
+
+  late final Future<void> _ready;
 
   /// Oldest entries fall off past this so the JSON file can't grow forever.
   static const _maxHistory = 300;
@@ -194,6 +196,29 @@ class NfcTagStore extends ChangeNotifier {
 
   Future<void> deleteTemplate(String id) async {
     _templates.removeWhere((t) => t.id == id);
+    notifyListeners();
+    await _persist();
+  }
+
+  Future<Object?> exportData() async {
+    await _ready;
+    return {
+      'templates': _templates.map((t) => t.toJson()).toList(),
+      'history': _history.map((h) => h.toJson()).toList(),
+    };
+  }
+
+  Future<void> importData(Object? data) async {
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid NFC tag editor snapshot.');
+    }
+    await _ready;
+    _templates = ((data['templates'] as List?) ?? const [])
+        .map((e) => NfcTagTemplate.fromJson(e as Map<String, dynamic>))
+        .toList();
+    _history = ((data['history'] as List?) ?? const [])
+        .map((e) => NfcHistoryEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
     notifyListeners();
     await _persist();
   }
