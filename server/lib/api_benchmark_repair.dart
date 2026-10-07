@@ -369,7 +369,7 @@ extension BenchmarkRepairApi on Api {
               'renderError': error,
               if (attempt > 1) 'originalError': diagnostic,
               if (tried.isNotEmpty) 'previousAttempts': tried,
-              if (errorLineOf(error) ?? focus case final line?) ...{
+              if (repairFocusLine(base, error) ?? focus case final line?) ...{
                 'errorLine': line,
                 'errorLines': errorLinesOf(base, line, radius: 25),
               },
@@ -471,8 +471,7 @@ extension BenchmarkRepairApi on Api {
         } on FormatException catch (e) {
           problem = e.message.startsWith('Your reply was not valid JSON')
               ? e.message
-              : 'Your reply could not be applied: ${e.message} Copy '
-                  'before exactly from html, or use a startLine/endLine edit.';
+              : 'Your reply could not be applied: ${e.message}';
           focus = nearestLineOf(base, acc.content) ?? focus;
         }
         if (candidate != null) {
@@ -480,9 +479,19 @@ extension BenchmarkRepairApi on Api {
           if (await previewRenders.findSyntaxError(bytes) case final broken?) {
             problem = 'Syntax error at line ${broken.line}:${broken.column}: '
                 '${broken.message}.';
-            base = candidate;
-            error = explainRenderError(candidate, problem);
-            focus = null;
+            if (bracketProblem(candidate) case final unbalanced?
+                when bracketProblem(base) == null) {
+              // Building on a page whose braces no longer match only buries
+              // the next attempt in errors far from the real fault, so this
+              // edit is dropped and the model tries again from before it.
+              problem = 'Your edits unbalanced the brackets, so they were '
+                  'discarded and html is unchanged: ${unbalanced.message}';
+              focus = errorLineOf(error) ?? focus;
+            } else {
+              base = candidate;
+              error = explainRenderError(candidate, problem);
+              focus = null;
+            }
           } else {
             job.detail = attempt == 1
                 ? 'Checking the repaired test in the banner renderer…'

@@ -141,9 +141,178 @@ String? declarationHint(String source, String error) {
       : "'$name' is declared at lines $where; keep one and remove or rename the other.";
 }
 
+/// Where the brackets of a page's inline scripts stop balancing: a closer
+/// with nothing open (the line it is on), or the openers never closed
+/// (innermost first). A syntax error at "end of input" is reported at the
+/// last line, which is never where the missing `}` belongs; this is.
+({int line, String message})? bracketProblem(String source) {
+  final lineStarts = <int>[0];
+  for (var i = source.indexOf('\n'); i >= 0; i = source.indexOf('\n', i + 1)) {
+    lineStarts.add(i + 1);
+  }
+  int lineOf(int offset) {
+    var lo = 0, hi = lineStarts.length - 1;
+    while (lo < hi) {
+      final mid = (lo + hi + 1) >> 1;
+      if (lineStarts[mid] <= offset) {
+        lo = mid;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    return lo + 1;
+  }
+
+  String textOf(int line) {
+    final end = line < lineStarts.length ? lineStarts[line] - 1 : source.length;
+    final text = source.substring(lineStarts[line - 1], end).trim();
+    return text.length > 120 ? '${text.substring(0, 120)}…' : text;
+  }
+
+  final blocks =
+      RegExp(r'<script\b([^>]*)>([\s\S]*?)</script>', caseSensitive: false);
+  for (final block in blocks.allMatches(source)) {
+    final attrs = block.group(1)!;
+    if (RegExp(r'\bsrc\s*=|json|importmap|x-shader|text/plain',
+            caseSensitive: false)
+        .hasMatch(attrs)) {
+      continue;
+    }
+    final code = block.group(2)!;
+    final base = block.start + block.group(0)!.indexOf('>') + 1;
+    final open = <({String c, int at})>[];
+    var inTemplate = false;
+    var lastSignificant = '';
+    const pairs = {')': '(', ']': '[', '}': '{'};
+    for (var i = 0; i < code.length; i++) {
+      final c = code[i];
+      if (inTemplate) {
+        if (c == '\\') {
+          i++;
+        } else if (c == '`') {
+          inTemplate = false;
+          lastSignificant = '`';
+        } else if (c == r'$' && i + 1 < code.length && code[i + 1] == '{') {
+          open.add((c: r'${', at: base + i));
+          inTemplate = false;
+          i++;
+        }
+        continue;
+      }
+      final next = i + 1 < code.length ? code[i + 1] : '';
+      if (c == '/' && next == '/') {
+        final end = code.indexOf('\n', i);
+        i = end < 0 ? code.length : end;
+        continue;
+      }
+      if (c == '/' && next == '*') {
+        final end = code.indexOf('*/', i + 2);
+        i = end < 0 ? code.length : end + 1;
+        continue;
+      }
+      if (c == '"' || c == "'") {
+        var j = i + 1;
+        while (j < code.length && code[j] != c && code[j] != '\n') {
+          if (code[j] == '\\') j++;
+          j++;
+        }
+        i = j;
+        lastSignificant = c;
+        continue;
+      }
+      if (c == '`') {
+        inTemplate = true;
+        continue;
+      }
+      if (c == '/' &&
+          (lastSignificant.isEmpty ||
+              '(,=:[!&|?{};+-*%<>~^'.contains(lastSignificant))) {
+        var j = i + 1;
+        var inClass = false;
+        while (j < code.length && code[j] != '\n') {
+          final r = code[j];
+          if (r == '\\') {
+            j++;
+          } else if (r == '[') {
+            inClass = true;
+          } else if (r == ']') {
+            inClass = false;
+          } else if (r == '/' && !inClass) {
+            break;
+          }
+          j++;
+        }
+        i = j;
+        lastSignificant = '/';
+        continue;
+      }
+      if (c == '(' || c == '[' || c == '{') {
+        open.add((c: c, at: base + i));
+      } else if (pairs.containsKey(c)) {
+        final top = open.isEmpty ? null : open.last;
+        final wanted = pairs[c]!;
+        if (top == null || (top.c != wanted && !(c == '}' && top.c == r'${'))) {
+          final line = lineOf(base + i);
+          return (
+            line: line,
+            message: "Line $line has a '$c' that closes nothing"
+                "${top == null ? '' : " (the innermost open bracket is the "
+                    "'${top.c}' at line ${lineOf(top.at)}: ${textOf(lineOf(top.at))})"}"
+                '. A block above it was probably closed early or its opening '
+                'line was lost.'
+          );
+        }
+        open.removeLast();
+        if (top.c == r'${') {
+          inTemplate = true;
+          continue;
+        }
+      }
+      if (c.trim().isNotEmpty) lastSignificant = c;
+    }
+    if (inTemplate) {
+      final line = lineOf(block.end);
+      return (
+        line: line,
+        message: 'A template literal (`) is never closed in the script '
+            'ending at line $line.'
+      );
+    }
+    if (open.isNotEmpty) {
+      final unclosed = open.reversed.take(5).map((o) {
+        final line = lineOf(o.at);
+        return "'${o.c}' at line $line: ${textOf(line)}";
+      }).join('; ');
+      return (
+        line: lineOf(open.last.at),
+        message: '${open.length} bracket${open.length == 1 ? ' is' : 's are'} '
+            'never closed in the script ending at line ${lineOf(block.end)}, '
+            'innermost first: $unclosed. Close each where its block should end '
+            '(or write the missing code if the script was cut short).'
+      );
+    }
+  }
+  return null;
+}
+
+/// The line a repair should be shown the code around: where the brackets
+/// stop balancing for a bracket error, else the line the error names.
+int? repairFocusLine(String source, String error) {
+  if (RegExp(r"Unexpected end of input|Unexpected token '[)}\]]'")
+      .hasMatch(error)) {
+    if (bracketProblem(source) case final problem?) return problem.line;
+  }
+  return errorLineOf(error);
+}
+
 /// [error] with a hint appended when [source] can say more about it.
 String explainRenderError(String source, String error) {
-  final hint = declarationHint(source, error);
+  final hint = declarationHint(source, error) ??
+      (RegExp(r"Unexpected end of input|Unexpected token '[)}\]]'|"
+                  r'missing \) after|Unterminated template')
+              .hasMatch(error)
+          ? bracketProblem(source)?.message
+          : null);
   return hint == null ? error : '$error Hint: $hint';
 }
 
@@ -345,12 +514,12 @@ the fix. Copy each before exactly as it appears in the source.
 /// indentation, a run of spaces) is accepted if that is just as unique, since
 /// models routinely retype those slightly differently.
 ({int start, int end}) _locateEdit(String source, String before) {
+  const ambiguous = FormatException(
+      'An edit\'s "before" text matches more than one place in the source. '
+      'Include more of the lines around it so it matches exactly one.');
   final exact = source.indexOf(before);
   if (exact >= 0) {
-    if (source.indexOf(before, exact + 1) >= 0) {
-      throw const FormatException(
-          'An edit matches more than one place in the source.');
-    }
+    if (source.indexOf(before, exact + 1) >= 0) throw ambiguous;
     return (start: exact, end: exact + before.length);
   }
   final loose = RegExp(before.splitMapJoin(RegExp(r'\s+'),
@@ -358,12 +527,10 @@ the fix. Copy each before exactly as it appears in the source.
   final found = loose.allMatches(source).take(2).toList();
   if (found.isEmpty) {
     throw const FormatException(
-        'An edit\'s "before" text was not found in the source.');
+        'An edit\'s "before" text was not found in the source. Copy it '
+        'exactly from html, or use startLine/endLine for lines in errorLines.');
   }
-  if (found.length > 1) {
-    throw const FormatException(
-        'An edit matches more than one place in the source.');
-  }
+  if (found.length > 1) throw ambiguous;
   return (start: found.first.start, end: found.first.end);
 }
 
@@ -445,7 +612,8 @@ String applyBenchmarkRepair(String source, String reply) {
   }
   final edits = raw is Map ? raw['edits'] : null;
   if (edits is! List || edits.isEmpty || edits.length > 40) {
-    throw const FormatException('No valid repair was returned.');
+    throw const FormatException(
+        'No edits were returned. Find the cause in renderError and edit it.');
   }
   final lineStarts = <int>[0];
   for (var i = source.indexOf('\n'); i >= 0; i = source.indexOf('\n', i + 1)) {
@@ -503,7 +671,8 @@ String applyBenchmarkRepair(String source, String reply) {
   var next = source.length;
   for (final span in spans) {
     if (span.end > next) {
-      throw const FormatException('Overlapping repair edits.');
+      throw const FormatException(
+          'Two edits change the same text; merge them into one edit.');
     }
     result = result.replaceRange(span.start, span.end, span.after);
     next = span.start;

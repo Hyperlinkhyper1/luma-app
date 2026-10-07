@@ -99,6 +99,26 @@ void main() {
             original, 'The bug is X.\n```json\n$reply\n```\nThat fixes it.'),
         fixed);
   });
+  test('bracket problems point at where the imbalance starts', () {
+    final cut = bracketProblem('<html>\n<script>\nfunction a() {\n'
+        '  if (x) {\n    y();\n</script>\n</html>')!;
+    expect(cut.line, 4);
+    expect(cut.message, contains('2 brackets are never closed'));
+    expect(cut.message, contains("'{' at line 4: if (x) {"));
+    final extra = bracketProblem(
+        '<script>\nfunction a() {\n  b();\n}\n}\nc();\n</script>')!;
+    expect(extra.line, 5);
+    expect(extra.message, contains("Line 5 has a '}' that closes nothing"));
+    expect(
+        bracketProblem('<script type="importmap">{"imports":{</script>'
+            '<script>const s = "{"; const r = /[}(]/g; '
+            'const t = `a\${b + `{`}{`; // }\n/* { */ f(s, [r, t]);</script>'),
+        isNull);
+    expect(
+        repairFocusLine('<script>\nfunction a() {\n  b();\n\n\n</script>',
+            'Syntax error at line 6:1: Unexpected end of input.'),
+        2);
+  });
   test('code pasted into JSON strings unescaped is mended', () {
     const page = '<script>\nconst re = /broken()/;\n</script>';
     expect(
@@ -804,6 +824,34 @@ void main() {
               .toList();
       expect(await File(backups.single.path).readAsString(), original);
       expect(usage.usageCalls('owner'), hasLength(2));
+    });
+    test('an edit that unbalances the brackets is dropped, not built on',
+        () async {
+      await save();
+      String edit(String before, String after) => jsonEncode({
+            'edits': [
+              {'before': before, 'after': after}
+            ]
+          });
+      replies = [
+        edit('broken();', 'fixed(); function f() {'),
+        edit('broken()', 'fixed()'),
+      ];
+      renderer.syntax = (bytes) => utf8.decode(bytes).contains('function f')
+          ? (line: 1, column: 99, message: 'Unexpected end of input')
+          : null;
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'done', reason: job.detail);
+      expect(calls, 2);
+      final user =
+          jsonDecode((sent['messages'] as List).last['content'] as String)
+              as Map;
+      expect(user['html'], original);
+      expect(user['renderError'], 'ReferenceError: broken is not defined');
+      expect((user['previousAttempts'] as List).single,
+          contains('unbalanced the brackets'));
     });
     test('a reply that cannot be applied is retried with the real error shown',
         () async {
