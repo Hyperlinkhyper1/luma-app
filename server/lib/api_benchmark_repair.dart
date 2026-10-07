@@ -38,6 +38,7 @@ extension BenchmarkRepairApi on Api {
       'route': benchmarkRepairSettings.route?.toJson(),
       'acceptedPrice': benchmarkRepairSettings.acceptedPrice?.toJson(),
       'maxCostUsd': benchmarkRepairSettings.maxCostUsd,
+      'maxOutputPrice': benchmarkRepairSettings.maxOutputPrice,
       'owner': benchmarkRepairOwner,
       'keys': [
         for (final key in config.configuredAiUpstreams)
@@ -87,6 +88,13 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(409, 'repair_running',
           'Wait for the current settings update or repair.');
     }
+    final rawCap = body['maxOutputPrice'];
+    final double? cap = rawCap is num ? rawCap.toDouble() : null;
+    if (rawCap != null &&
+        (cap == null || !BenchmarkRepairSettings.validOutputPriceCap(cap))) {
+      return errorResponse(400, 'bad_settings',
+          r'The maximum output price must be between $0 and $1000 per million tokens, or left empty.');
+    }
     benchmarkRepairStarting = true;
     try {
       final price = await _repairPrice(route);
@@ -94,7 +102,15 @@ extension BenchmarkRepairApi on Api {
         return errorResponse(409, 'unknown_price',
             'Both input and output prices must be known. Refresh model data or choose another model.');
       }
-      await benchmarkRepairSettings.save(route, price!, limit.toDouble());
+      if (cap != null && price!.output! > cap * 1.000001 + 1e-12) {
+        return errorResponse(
+            409,
+            'output_price_too_high',
+            'This model currently charges \$${price.output} per million '
+                'output tokens, above your maximum of \$$cap. Raise the '
+                'maximum or choose another model.');
+      }
+      await benchmarkRepairSettings.save(route, price!, limit.toDouble(), cap);
       return jsonResponse(
           200, {'saved': true, 'acceptedPrice': price.toJson()});
     } finally {
@@ -313,6 +329,12 @@ extension BenchmarkRepairApi on Api {
       if (current!.risesAbove(accepted!)) {
         throw StateError(
             'Price guard: the model price increased. Review and save settings to accept the current price.');
+      }
+      final outputCap = benchmarkRepairSettings.maxOutputPrice;
+      if (outputCap != null && current.output! > outputCap * 1.000001 + 1e-12) {
+        throw StateError('Price guard: the model now charges '
+            '\$${current.output} per million output tokens, above your maximum '
+            'of \$$outputCap. No model call was made.');
       }
       final original = utf8.decode(scene.bytes);
 

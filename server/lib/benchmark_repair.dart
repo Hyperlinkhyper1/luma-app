@@ -22,6 +22,10 @@ class BenchmarkRepairSettings {
       if (limit is num && validLimit(limit.toDouble())) {
         maxCostUsd = limit.toDouble();
       }
+      final cap = raw['maxOutputPrice'];
+      if (cap is num && validOutputPriceCap(cap.toDouble())) {
+        maxOutputPrice = cap.toDouble();
+      }
     } catch (_) {
       route = null;
       acceptedPrice = null;
@@ -33,12 +37,23 @@ class BenchmarkRepairSettings {
   AiPrice? acceptedPrice;
   double maxCostUsd = 0.25;
 
+  /// The most the model may charge per million output tokens, in USD. Null
+  /// means no cap beyond the price accepted on save.
+  double? maxOutputPrice;
+
   static bool validLimit(double value) =>
       value.isFinite && value > 0 && value <= 10;
 
-  Future<void> save(AiModeRoute selected, AiPrice price, double limit) async {
+  static bool validOutputPriceCap(double value) =>
+      value.isFinite && value >= 0 && value <= 1000;
+
+  Future<void> save(AiModeRoute selected, AiPrice price, double limit,
+      [double? outputPriceCap]) async {
     if (!validLimit(limit) || !completeRepairPrice(price)) {
       throw ArgumentError('A valid price and spending limit are required.');
+    }
+    if (outputPriceCap != null && !validOutputPriceCap(outputPriceCap)) {
+      throw ArgumentError('The output price cap is not valid.');
     }
     await atomicWriteString(
         _file.path,
@@ -46,10 +61,12 @@ class BenchmarkRepairSettings {
           'route': selected.toJson(),
           'acceptedPrice': price.toJson(),
           'maxCostUsd': limit,
+          if (outputPriceCap != null) 'maxOutputPrice': outputPriceCap,
         }));
     route = selected;
     acceptedPrice = price;
     maxCostUsd = limit;
+    maxOutputPrice = outputPriceCap;
   }
 }
 
