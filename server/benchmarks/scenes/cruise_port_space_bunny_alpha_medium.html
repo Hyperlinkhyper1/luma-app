@@ -208,7 +208,25 @@ function boat(kind,color){const g=new THREE.Group();boats.add(g);if(kind==='ferr
 const tug=boat('tug',0x1c5961),pilot=boat('ferry',0xead138),ferry1=boat('ferry',0x246c8a),ferry2=boat('ferry',0xd95143);tug.position.set(-175,0,-7);pilot.position.set(170,0,-3);ferry1.position.set(-330,0,-250);ferry2.position.set(410,0,-390);
 const sails=[];for(let i=0;i<8;i++){let s=boat('sail',0xfff);s.position.set(-550+i*150,0,-120-(i%3)*60);s.scale.setScalar(.6+(i%2)*.3);sails.push(s)}
 // wakes behind moving boats
-function wake(g,len=30){const pts=[],geo=new THREE.BufferGeometry(),m=new THREE.MeshBasicMaterial({color:0xc5e2e5,transparent:true,opacity:.26,side:THREE.DoubleSide,depthWrite:false});for(let i=0;i<14;i++){let z=-i*len/14,ww=1.5+i*.8;pts.push(-ww,.03,z,ww,.03,z)}for(let i=0;i<13;i++){let a=i*2;geo.setAttribute('position',new THREE.Float32BufferAttribute(pts.slice(a*2,a*2+6),3));geo.setIndex([0,1,2,1,3,2])}const o=new THREE.Mesh(geo,m);g.add(o);return o}
+function wake(g,len=30){
+  const pts=[];
+  for(let i=0;i<14;i++){
+    let z=-i*len/14, ww=1.5+i*.8;
+    pts.push(-ww,.03,z, ww,.03,z);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pts,3));
+  const indices=[];
+  for(let i=0;i<13;i++){
+    const a=i*2;
+    indices.push(a,a+1,a+2, a+1,a+3,a+2);
+  }
+  geo.setIndex(indices);
+  const m=new THREE.MeshBasicMaterial({color:0xc5e2e5,transparent:true,opacity:.26,side:THREE.DoubleSide,depthWrite:false});
+  const o=new THREE.Mesh(geo,m);
+  g.add(o);
+  return o;
+}
 const tugWake=wake(tug,35),ferryWake=wake(ferry1,60);world.add(tugWake,ferryWake);
 
 // gulls
