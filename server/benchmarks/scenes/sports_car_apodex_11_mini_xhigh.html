@@ -920,11 +920,14 @@ colors.forEach((col, i) => {
   d.className = 'swatch'; d.title = col.name;
   d.style.backgroundColor = '#' + col.c.toString(16).padStart(6, '0');
   if (i === 0) d.classList.add('selected');
+  d.dataset.index = i;
   d.onclick = () => {
     document.querySelectorAll('.swatch').forEach(x => x.classList.remove('selected'));
     d.classList.add('selected');
     bodyMat.color.setHex(col.c);
   };
+  // set initial color
+  if (i === 0) bodyMat.color.setHex(col.c);
   colContainer.appendChild(d);
 });
 el('mat-select').onchange = (e) => {
