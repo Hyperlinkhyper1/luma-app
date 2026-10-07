@@ -1,37 +1,10 @@
-<!DOCTYPE html>
 <html>
 <head>
-  <title>3D Train World Benchmark</title>
   <style>
     body {
       margin: 0;
       overflow: hidden;
       font-family: Arial, sans-serif;
-    }
-    #info, #ui {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.5);
-      color: #fff;
-      padding: 10px;
-      border-radius: 5px;
-    }
-    #info {
-      left: auto;
-      right: 10px;
-    }
-    #ui button {
-      margin-top: 5px;
-    }
-    #schematic {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 300px;
-      height: 300px;
-      border: 1px solid #fff;
-      pointer-events: none;
     }
     #stats {
       position: absolute;
@@ -42,30 +15,25 @@
       padding: 5px;
       border-radius: 5px;
       font-size: 12px;
-    }
   </style>
-  <script type="importmap">
-    {"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
-  </script>
 </head>
 <body>
-  <script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { Water } from 'three/addons/objects/Water.js';
-    import { Sky } from 'three/addons/objects/Sky.js';
-    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-
+  </style>
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #info {
     let scene, camera, renderer, controls, clock, stats;
     let trains = [], signals = [], switches = [], blocks = [], routes = {};
-    let schematic = document.getElementById('schematic');
-    let ui = document.getElementById('ui');
-    let info = document.getElementById('info');
     let timeScale = 1, day = 0.5;
 
     init();
     animate();
-
+    }
+    #schematic {
+      position: absolute;
     function init() {
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0xcccccc);
@@ -85,11 +53,64 @@
 
       clock = new THREE.Clock();
 
-      // Create track, signals, switches, and blocks
       createTrack();
       createSignals();
       createSwitches();
       createBlocks();
+      createTrain('Steam', 0xFF0000, [0, 1, 2, 3, 4]);
+      createTrain('Electric', 0x00FF00, [5, 6, 7, 8, 9]);
+      createTrain('Freight', 0x0000FF, [10, 11, 12, 13, 14]);
+
+      createUI();
+      updateSignals();
+      updateRoutes();
+    }
+      color: #fff;
+    function createTrack() {
+      let geometry = new THREE.BufferGeometry();
+      let material = new THREE.LineBasicMaterial({ color: 0x333333 });
+      let points = [];
+      geometry.setFromPoints(points);
+      let mesh = new THREE.Line(geometry, material);
+      scene.add(mesh);
+
+      let waterGeometry = new THREE.PlaneGeometry(1000, 1000);
+      let water = new Water(waterGeometry, {
+        textureWidth: 512,
+        textureHeight: 512,
+        waterNormals: new THREE.TextureLoader().load('https://threejs.org/examples/textures/waternormals.jpg', function() {}),
+        sunDirection: new THREE.Vector3(),
+        sunColor: 0xffffff,
+        waterColor: 0x0010ff,
+        distortionScale: 3.7,
+        fog: scene.fog !== undefined
+      });
+      water.rotation.x = -Math.PI / 2;
+      scene.add(water);
+
+      let sky = new Sky();
+      sky.scale.setScalar(1000);
+      scene.add(sky);
+      let sun = new THREE.Vector3();
+      let uniforms = sky.material.uniforms;
+      uniforms['turbidity'].value = 10;
+      uniforms['rayleigh'].value = 1;
+      uniforms['luminance'].value = 1;
+      uniforms['sun'].value.copy(sun);
+    }
+      document.body.appendChild(renderer.domElement);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.minDistance = 100;
+      controls.maxDistance = 1000;
+
+      clock = new THREE.Clock();
+
+      let geometry = new THREE.BoxGeometry(2,2,2);
+      let material = new THREE.MeshBasicMaterial({ color: color });
+      let mesh = new THREE.Mesh(geometry, material);
+      scene.add(mesh);
+      train.mesh = mesh;
 
       // Create trains
       createTrain('Steam', 0xFF0000, [0, 1, 2, 3, 4]);
@@ -106,13 +127,14 @@
 
     function createTrack() {
       // Create track geometry and add to scene
-      let geometry = new THREE.Geometry();
+      let geometry = new THREE.BufferGeometry();
       let material = new THREE.LineBasicMaterial({ color: 0x333333 });
       let points = [
         // Add your track points here
       ];
-      geometry.vertices.push.apply(points);
-      let line = new THREE.Line(geometry, material);
+      geometry.setFromPoints(points);
+      let mesh = new THREE.Line(geometry, material);
+      scene.add(mesh);
       scene.add(line);
 
       // Create water and add to scene
@@ -129,13 +151,15 @@
       });
       water.rotation.x = -Math.PI / 2;
       scene.add(water);
-
-      // Create sky and add to scene
-      let sky = new Sky();
+      let sun = new THREE.Vector3();
       sky.scale.setScalar(1000);
       scene.add(sky);
-      let sun = new THREE.Vector3();
       let uniforms = sky.material.uniforms;
+      uniforms['turbidity'].value = 10;
+      uniforms['rayleigh'].value = 1;
+      uniforms['luminance'].value = 1;
+      uniforms['sun'].value.copy(sun);
+      sun.copy(sky.position);
       uniforms['turbidity'].value = 10;
       uniforms['rayleigh'].value = 1;
       uniforms['luminance'].value = 1;
@@ -176,17 +200,12 @@
       };
       trains.push(train);
 
-      // Create train geometry and add to scene
-      let geometry = new THREE.Geometry();
+      // Create train mesh and add to scene
+      let geometry = new THREE.BoxGeometry(2, 2, 2);
       let material = new THREE.MeshBasicMaterial({ color: color });
-      let points = [
-        // Add train points here
-      ];
-      geometry.vertices.push.apply(points);
       let mesh = new THREE.Mesh(geometry, material);
       scene.add(mesh);
       train.mesh = mesh;
-    }
 
     function createUI() {
       // Create UI elements and add to ui div
@@ -221,9 +240,61 @@
       slider.step = '0.01';
       slider.value = day;
       slider.addEventListener('input', function() {
-        day = parseFloat(slider.value);
-      });
-      ui.appendChild(slider);
+    function updateTrains(delta) {
+      for (let train of trains) {
+        let block = blocks[train.position.x];
+        let nextBlock = blocks[train.nextBlock];
+        let nextSignal = signals[train.nextSignal];
+
+        if (!block || !nextBlock || !nextSignal) continue;
+
+        if (train.state === 'RUNNING') {
+          if (nextSignal.aspect === 'RED') {
+            train.speed -= 0.1 * delta;
+            if (train.speed < 0) train.speed = 0;
+          } else if (nextSignal.aspect === 'YELLOW') {
+            train.speed -= 0.05 * delta;
+            if (train.speed < 0) train.speed = 0;
+          } else {
+            train.speed += 0.1 * delta;
+          }
+          train.position.x += train.speed * train.direction * delta;
+          if (train.mesh) train.mesh.position.x = train.position.x;
+        } else if (train.state === 'WAITING') {
+          if (train.route && train.route.reserved) {
+            train.state = 'RUNNING';
+          }
+        } else if (train.state === 'DWELLING') {
+          train.dwellTime -= delta;
+          if (train.dwellTime <= 0) {
+            train.state = 'RUNNING';
+          }
+        }
+
+        if (train.position.x >= nextBlock.end) {
+          train.nextBlock = nextBlock.next;
+          train.nextSignal = nextSignal.next;
+          train.route = null;
+          updateRoutes();
+        } else if (train.position.x === nextSignal.position.x) {
+          train.nextSignal = nextSignal.next;
+          if (nextSignal.aspect === 'RED') {
+            train.state = 'WAITING';
+            train.route = nextSignal.route;
+            updateRoutes();
+          }
+        }
+
+        if (train.position.x === block.start && train.direction === 1) {
+          train.state = 'DWELLING';
+          train.dwellTime = train.dwellTimeMax || 2;
+        } else if (train.position.x === block.end && train.direction === -1) {
+          train.state = 'DWELLING';
+          train.dwellTime = train.dwellTimeMax || 2;
+        }
+      }
+    }
+    import Stats from 'three/addons/libs/stats.module.js';
 
       // Create schematic canvas and add to schematic div
       let canvas = document.createElement('canvas');
@@ -240,7 +311,13 @@
 
       // Create stats panel and add to stats div
       stats = new Stats();
-      stats.showPanel(0);
+  </script>
+  <div id="ui"></div>
+  <div id="info"></div>
+  <canvas id="schematic"></canvas>
+  <div id="stats"></div>
+</body>
+</html>
       stats.domElement.style.position = 'absolute';
       stats.domElement.style.top = '0px';
       document.body.appendChild(stats.domElement);
@@ -257,7 +334,8 @@
             break;
           }
         }
-        if (signal.route && signal.route.reserved) {
+      let canvas = schematic;
+      let ctx = canvas.getContext('2d');
           signal.aspect = 'RED';
         } else if (occupied) {
           signal.aspect = 'RED';
