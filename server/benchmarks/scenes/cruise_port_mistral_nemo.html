@@ -32,11 +32,12 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
     import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
     import { Sky } from 'three/addons/objects/Sky.js';
     import { Water } from 'three/addons/objects/Water.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-    let scene, camera, renderer, composer, controls, clock, timeOfDay, ship, water, sky, environment;
+    let scene, camera, renderer, composer, controls, clock, timeOfDay, ship, water, sky, environment, departInterval, returnInterval;
 
     init();
     animate();
@@ -53,7 +54,7 @@
       document.body.appendChild(renderer.domElement);
 
       composer = new EffectComposer(renderer);
-      const renderPass = new THREE.RenderPass(scene, camera);
+      const renderPass = new RenderPass(scene, camera);
       composer.addPass(renderPass);
       const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0, 0);
       composer.addPass(bloomPass);
@@ -91,23 +92,29 @@
     }
 
     function onDepart() {
-      ship.position.z -= 0.1;
-      if (Math.abs(ship.rotation.y) < 0.5) {
-        ship.rotation.y -= 0.01;
-      }
-      if (Math.abs(ship.position.z) > 1000) {
-        clearInterval(departInterval);
-      }
+      if (departInterval) clearInterval(departInterval);
+      departInterval = setInterval(() => {
+        ship.position.z -= 0.1;
+        if (Math.abs(ship.rotation.y) < 0.5) {
+          ship.rotation.y -= 0.01;
+        }
+        if (Math.abs(ship.position.z) > 1000) {
+          clearInterval(departInterval);
+        }
+      }, 16);
     }
 
     function onReturn() {
-      ship.position.z += 0.1;
-      if (Math.abs(ship.rotation.y) > 0.5) {
-        ship.rotation.y += 0.01;
-      }
-      if (Math.abs(ship.position.z) < 100) {
-        clearInterval(returnInterval);
-      }
+      if (returnInterval) clearInterval(returnInterval);
+      returnInterval = setInterval(() => {
+        ship.position.z += 0.1;
+        if (Math.abs(ship.rotation.y) > 0.5) {
+          ship.rotation.y += 0.01;
+        }
+        if (Math.abs(ship.position.z) < 100) {
+          clearInterval(returnInterval);
+        }
+      }, 16);
     }
 
     function createLisbon() {
@@ -119,7 +126,19 @@
     }
 
     function createWater() {
-      water = new Water(1000, 1000, 1024, 0.5);
+      const waterGeometry = new THREE.PlaneGeometry(1000, 1000);
+      water = new Water(waterGeometry, {
+        textureWidth: 1024,
+        textureHeight: 1024,
+        waterNormals: new THREE.TextureLoader().load('https://unpkg.com/three@0.160.0/examples/textures/waternormals.jpg', function (texture) {
+          texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        }),
+        alpha: 0.5,
+        sunDirection: new THREE.Vector3(),
+        sunColor: 0xffffff,
+        waterColor: 0x001e0f,
+        distortionScale: 3.7,
+      });
       water.position.y = -10;
       water.rotation.x = -Math.PI / 2;
       scene.add(water);
@@ -132,14 +151,17 @@
     }
 
     function createEnvironment() {
-      environment = new RoomEnvironment();
-      environment.set(sky);
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+      const envMap = pmremGenerator.fromScene(sky).texture;
+      scene.environment = envMap;
     }
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
       controls.update(delta);
+      if (water) water.material.uniforms.time.value += delta;
       composer.render(delta);
     }
   </script>
