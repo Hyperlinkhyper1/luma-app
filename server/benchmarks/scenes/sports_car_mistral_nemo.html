@@ -70,7 +70,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { PMREMGenerator } from 'three/addons/math/PMREMGenerator.js';
+
     import { Water } from 'three/addons/objects/Water.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
@@ -120,7 +120,7 @@
     }
 
     function createCar() {
-      carGeometry = new THREE.Geometry();
+      carGeometry = new THREE.BufferGeometry();
       // ... create car geometry here using custom BufferGeometry, lofted cross-sections, lathed or extruded profiles or a deformed subdivided mesh
 
       carMaterials = {
@@ -281,7 +281,7 @@
       drivePlane.rotation.x = Math.PI / -2;
       driveScene.add(drivePlane);
 
-      const trackGeometry = new THREE.Geometry();
+      const trackGeometry = new THREE.BufferGeometry();
       // ... create track geometry here using custom BufferGeometry, lofted cross-sections, lathed or extruded profiles or a deformed subdivided mesh
 
       const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
