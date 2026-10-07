@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D PAGODA BENCHMARK — SPRING FESTIVAL AT THE FIVE-STORY PAGODA</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #111;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    #scene {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #hud {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.25;
+      pointer-events: none;
+      user-select: none;
+      width: max-content;
+    }
+    #hud h1 {
+      font-size: 20px;
+      margin: 0 0 6px 0;
+      letter-spacing: .5px;
+    }
+    #hud .stat {
+      margin: 0;
+      padding: 0;
+      display: inline-block;
+      min-width: 180px;
+    }
+    #hud .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #hud .kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.15);
+      font-family: ui-monospace,SFMono-Regular,Monaco,Consolas,"Liberation Mono";
+      font-size: 11px;
+    }
+    @media (max-width: 860px) {
+      #hud { font-size: 12px; padding: 10px; left: 8px; top: 8px; }
+    }
+  </style>
+
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="scene"></div>
+
+  <div id="hud" aria-label="Voxel Garden HUD" role="status">
+    <h1>VOXEL GARDEN</h1>
+    <div class="row" style="gap:8px;">
+      <span class="stat" id="voxelCountText">24k voxels | 60 FPS</span>
+      <span class="stat" id="timeOfDayText" style="opacity:.9">Daylight</span>
+      <span class="stat" id="note" style="opacity:.6"></span>
+    </div>
+    <div style="height:6px"></div>
+    <div class="row" style="gap:8px;">
+      <span>Click lanterns</span>
+      <span>Drag: Orbit</span>
+    </div>
+  </div>
+
+  <script type="module">
+    // Scene setup
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/OrbitControls.js';
+
+    // Basic scene
+    const container = document.getElementById('scene');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87c5eb);
+
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    // Camera
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(40, 28, 60);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 8;
+    controls.maxDistance = 120;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.15;
+
+    // Lights
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x333333, 0.65);
+    scene.add(hemi);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
+    sun.shadow.camera.left = -60;
+    sun.shadow.camera.right = 60;
+    sun.shadow.camera.top = 60;
+    sun.shadow.camera.bottom = -60;
+    scene.add(sun);
+
+    // Ambient fog for depth
+    scene.fog = new THREE.FogExp2(0x000000, 0.015);
+
+    // Materials palette
+    const PALETTE = {
+      vermilion: new THREE.Color(0xC73E1D),
+      gold: new THREE.Color(0xE8B86D),
+      teak: new THREE.Color(0x4A2C1A),
+      jade1: new THREE.Color(0x2D6A4F),
+      jade2: new THREE.Color(0x40916C),
+      sakura1: new THREE.Color(0xFFB7C5),
+      sakura2: new THREE.Color(0xFF8FAB),
+      sakura3: new THREE.Color(0xFFE5EC),
+      stone: new THREE.Color(0x9AA0A6),
+      pond: new THREE.Color(0x7ED6DF),
+      moss: new THREE.Color(0x606C38)
+    };
+
+    // Storage for voxel batches
+    const batches = {}; // colorHex string -> { color, positions: [] }
+
+    const voxelSet = new Set();
+    let voxelCount = 0;
+
+    // Utility
+    function posKey(x,y,z){ return x + ',' + y + ',' + z; }
+
+    // Create a batch or return existing
+    function ensureBatch(color) {
+      const hex = color.getHexString();
+      if (!batches[hex]) {
+        batches[hex] = { color: color, positions: [] };
+      }
+      return batches[hex];
+    }
+
+    // Add voxel to batch
+    function addVoxel(x,y,z, color) {
+      // Ground density is capped by 0..63,0..63
+      const key = posKey(x,y,z);
+      if (voxelSet.has(key)) return; // avoid duplicates
+      voxelSet.add(key);
+      const batch = ensureBatch(color);
+      batch.positions.push([x,y,z]);
+      voxelCount++;
+    }
+
+    // World coords scale
+    // Center the scene: map 64x64 terrain from [-32,31] in x/z
+    const CENTER_OFF = 32;
+
+    // Terrain: 64x64, heights 0..6 with simple pseudo-noise
+    function heightAt(x, z) {
+      // x,z in 0..63
+      const fx = x / 64, fz = z / 64;
+      const v = Math.sin(fx * 3.2) * Math.cos(fz * 3.4);
+      const h = Math.floor((v * 0.5 + 0.5) * 5); // 0..5
+      return h;
+    }
+
+    // Build terrain
+    function buildTerrain() {
+      // For each x,z in 0..63
+      for (let x = 0; x < 64; x++) {
+        for (let z = 0; z < 64; z++) {
+          const h = heightAt(x, z);
+          // Introduce some gentle variation around pagoda center
+          const dx = Math.abs(x - 32);
+          const dz = Math.abs(z - 32);
+          const distance = Math.sqrt(dx*dx + dz*dz);
+          const hill = (distance < 28) ? Math.max(0, Math.floor( (28 - distance) / 6 )) : 0;
+          const groundH = Math.max(0, Math.min(6, h + hill));
+          // color for terrain: mostly stone/moss at surface
+          for (let y = 0; y < groundH; y++) {
+            // surface color variation
+            const color = (y === groundH - 1) ? PALETTE.moss : PALETTE.stone;
+            const gx = x - CENTER_OFF + 0.5;
+            const gz = z - CENTER_OFF + 0.5;
+            const gy = y + 0.5;
+            addVoxel(gx, gy, gz, color);
+          }
+        }
+      }
+    }
+
+    // Pagoda: five floors, progressively smaller, pillars and roofs implied
+    funcPlacePagoda();
+    function funcPlacePagoda() {
+      // Base center at (0,0) world space
+      const baseX = 0, baseZ = 0;
+      const floorYs = [0, 6, 12, 18, 24]; // each floor base y
+      const floorSizes = [14, 12, 10, 8, 6]; // half-extent arms; we'll use full extents
+      // Pillars per floor (4 corners)
+      for (let f = 0; f < 5; f++) {
+        const half = Math.floor(floorSizes[f] / 2);
+        const y0 = floorYs[f];
+        const colorWall = (f % 2 === 0) ? PALETTE.vermilion : PALETTE.vermilion; // same for simplicity
+        // Pillars along corners (4 vertical columns)
+        const corners = [
+          [ baseX - half,  y0, baseZ - half ],
+          [ baseX + half,  y0, baseZ - half ],
+          [ baseX - half,  y0, baseZ + half ],
+          [ baseX + half,  y0, baseZ + half ],
+        ];
+        for (const c of corners) {
+          // pillar tallish (4 voxels)
+          for (let py = 0; py < 5; py++) {
+            const x = c[0];
+            const y = c[1] + py;
+            const z = c[2];
+            addVoxel(x, y, z, PALETTE.vermilion);
+          }
+        }
+        // Floor outline (1-voxel thick border)
+        const yFloor = y0;
+        const halfEdge = half;
+        for (let x = baseX - halfEdge; x <= baseX + halfEdge; x++) {
+          for (let z = baseZ - halfEdge; z <= baseZ + halfEdge; z++) {
+            // border condition
+            if (Math.abs(x - baseX) === halfEdge || Math.abs(z - baseZ) === halfEdge) {
+              // a border voxel
+              addVoxel(x, yFloor, z, PALETTE.jade2);
+            }
+          }
+        }
+        // Roof impression on floor: a curved/stepped hint by overhanging edge blocks
+        const roofY = yFloor + 3;
+        const rHalf = halfEdge + 1;
+        for (let x = baseX - rHalf; x <= baseX + rHalf; x++) {
+          for (let z = baseZ - rHalf; z <= baseZ + rHalf; z++) {
+            const dx = Math.abs(x - baseX);
+            const dz = Math.abs(z - baseZ);
+            if (dx === rHalf || dz === rHalf) {
+              addVoxel(x, roofY, z, PALETTE.gold);
+            }
+          }
+        }
+      }
+      // Top finial
+      for (let fy = 0; fy < 4; fy++) {
+        addVoxel(0, 28 + fy, 0, PALETTE.gold);
+      }
+      // Interior openings and a simple floor for interior
+      // We'll put a diagonal "doors" group on ground floor (f=0) to be opened later
+      // Doors will be separate meshes, not voxels
+    }
+
+    // Floating island and smaller floating islands
+    function placeFloatingIslands() {
+      // Main floating island center around (-24, 16)
+      const islandCenters = [
+        { x: -24, z: -6, y: 18, size: 8 },
+        { x: -40, z: -12, y: 22, size: 4 },
+        { x: -12, z: 18, y: 20, size: 4 }
+      ];
+      islandCenters.forEach(ic => {
+        const radius = ic.size;
+        for (let dx = -radius; dx <= radius; dx++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist <= radius) {
+              const height = Math.max(0, Math.floor(radius - dist) + 2);
+              // fill sphere-ish mound
+              for (let dy = 0; dy < height; dy++) {
+                addVoxel(ic.x + dx, ic.y + dy, ic.z + dz, PALETTE.moss);
+              }
+            }
+          }
+        }
+      });
+
+      // smaller floating islands beside it
+      const tiny = [
+        { x: -14, z: 0, y: 16, s: 2 },
+        { x: -30, z: -12, y: 14, s: 3 }
+      ];
+      tiny.forEach(t => {
+        for (let dx = -t.s; dx <= t.s; dx++) {
+          for (let dz = -t.s; dz <= t.s; dz++) {
+            const dist = Math.sqrt(dx*dx + dz*dz);
+            if (dist <= t.s) {
+              const h = Math.max(0, Math.floor(t.s - dist) + 1);
+              for (let dy = 0; dy < h; dy++) {
+                addVoxel(t.x + dx, t.y + dy, t.z + dz, PALETTE.moss);
+              }
+            }
+          }
+        }
+      });
+
+      // Waterfall pouring off the side of the main island
+      // We'll simulate by a vertical stream of voxels along the island's side
+      const waterfallX = -24;
+      const waterfallBaseY = 18;
+      for (let k = 0; k < 14; k++) {
+        addVoxel(waterfallX, waterfallBaseY - k, -6, PALETTE.pond);
+      }
+    }
+
+    // Kay: Pond and koi
+    function placePondAndKoi() {
+      // Pond area near pagoda
+      const pondCenterX = 6;
+      const pondCenterZ = 6;
+      const pondRadius = 6;
+      for (let x = pondCenterX - pondRadius; x <= pondCenterX + pondRadius; x++) {
+        for (let z = pondCenterZ - pondRadius; z <= pondCenterZ + pondRadius; z++) {
+          const d = Math.sqrt((x - pondCenterX)*(x - pondCenterX) + (z - pondCenterZ)*(z - pondCenterZ));
+          if (d <= pondRadius) {
+            // water surface (thin layer)
+            addVoxel(x, 0.5, z, PALETTE.pond);
+            // slightly inset depth
+            addVoxel(x, 0, z, PALETTE.pond);
+          }
+        }
+      }
+
+      // Koi as small voxel pops that will animate (as separate voxel sets)
+      const koiColors = [ new THREE.Color(0xFF7A00), new THREE.Color(0xFF5C29), new THREE.Color(0xFFB000),
+                          new THREE.Color(0xFF6F4A), new THREE.Color(0xFFB07A), new THREE.Color(0xFF8D50) ];
+      // 6 koi shapes (represented by 4 voxels each in orange gradients)
+      const corners = [
+        [ pondCenterX - 2, 1, pondCenterZ - 1 ],
+        [ pondCenterX + 2, 1, pondCenterZ + 1 ],
+        [ pondCenterX - 3, 1, pondCenterZ + 2 ],
+        [ pondCenterX + 3, 1, pondCenterZ - 2 ],
+        [ pondCenterX - 1, 1, pondCenterZ + 3 ],
+        [ pondCenterX + 1, 1, pondCenterZ - 3 ],
+      ];
+      for (let i = 0; i < 6; i++) {
+        const cx = corners[i][0], cy = corners[i][1], cz = corners[i][2];
+        const baseCol = koiColors[i % koiColors.length];
+        // 2x2 mini-patch
+        addVoxel(cx, cy, cz, new THREE.Color(baseCol));
+        addVoxel(cx+1, cy, cz, new THREE.Color(baseCol));
+        addVoxel(cx, cy+1, cz, new THREE.Color(baseCol));
+        addVoxel(cx+1, cy+1, cz, new THREE.Color(baseCol));
+      }
+    }
+
+    // Trees (exactly 8)
+    // Helper to place voxel-tree
+    function placeTree(x, z, trunkH, colorLeaves) {
+      // trunk
+      for (let y = 0; y < trunkH; y++) {
+        addVoxel(x, y, z, PALETTE.teak);
+      }
+      // canopy
+      const leafColor = colorLeaves;
+      const canopyRadius = 2;
+      const cy = trunkH;
+      for (let dx = -canopyRadius; dx <= canopyRadius; dx++) {
+        for (let dz = -canopyRadius; dz <= canopyRadius; dz++) {
+          if (Math.abs(dx) + Math.abs(dz) <= canopyRadius) {
+            addVoxel(x + dx, cy, z + dz, leafColor);
+            if (dx !== 0 && dz !== 0) addVoxel(x + dx, cy + 1, z + dz, leafColor);
+          }
+        }
+      }
+    }
+
+    // Place 8 trees: 3 Sakura, 2 Pine, 2 Maple, 1 Willow
+    // Sakura
+    placeTree(-18, -14, 4, PALETTE.sakura1);
+    placeTree(-14, -18, 5, PALETTE.sakura2);
+    placeTree(-16, -9, 4, PALETTE.sakura3);
+    // Pine
+    placeTree(12, -22, 6, PALETTE.jade1);
+    placeTree(15, -18, 6, PALETTE.jade2);
+    // Maple
+    placeTree(-22, 12, 5, PALETTE.sakura2);
+    placeTree(-25, 16, 5, PALETTE.sakura3);
+    // Willow
+    placeTree(18, 18, 5, PALETTE.moss);
+
+    // Lanterns: 4 glowing lanterns
+    function addLantern(x, y, z) {
+      const lanternColor = PALETTE.vermilion;
+      // lantern body voxel
+      addVoxel(x, y, z, lanternColor);
+      // small top cap
+      addVoxel(x, y + 1, z, PALETTE.gold);
+      // attach a point light (we'll link later)
+    }
+    // Place 4 lanterns around pagoda
+    addLantern(6, 7, 6);
+    addLantern(-6, 7, -6);
+    addLantern(0, 7, -8);
+    addLantern(8, 7, -2);
+
+    // Torii gate
+    function addTorii() {
+      // simple arch: two vertical posts and a curved crossbar
+      const px = -42, pz = -2;
+      const height = 7;
+      for (let y = 0; y <= height; y++) {
+        addVoxel(px, y, pz, PALETTE.vermilion);
+        addVoxel(-px, y, pz, PALETTE.vermilion);
+      }
+      // crossbar
+      for (let dx = -6; dx <= 6; dx++) {
+        addVoxel(px + dx, height - 1, pz, PALETTE.vermilion);
+        addVoxel(-px + dx, height - 1, pz, PALETTE.vermilion); // mirrored
+      }
+    }
+    addTorii();
+
+    // Bamboo fence along a simple line near pond
+    function addFenceLine(x1, z, x2) {
+      const step = x1 < x2 ? 1 : -1;
+      for (let x = x1; x !== x2 + step; x += step) {
+        addVoxel(x, 0, z, PALETTE.bamboo || PALETTE.stone);
+        addVoxel(x, 1, z, PALETTE.stone);
+      }
+    }
+    // Use moss color to simulate bamboo
+    PALETTE.bamboo = new THREE.Color(0x6BAE2F);
+    addFenceLine(-34, -2, -20);
+    addFenceLine(-34, 0, -20);
+
+    // Bridge (arched wooden) bridging a small water gap
+    function addBridge() {
+      // a gentle arch between two shores around pond
+      const y = 1;
+      const startX = -2, endX = 6;
+      for (let x = startX; x <= endX; x++) {
+        const ox = x;
+        const dz = Math.abs(x - (startX + endX) / 2);
+        const z = -4 + Math.max(0, 4 - dz);
+        addVoxel(ox, y, z, PALETTE.teak);
+      }
+    }
+    addBridge();
+
+    // Jizo statues (2)
+    function addJizo(x, z) {
+      addVoxel(x, 0, z, PALETTE.stone);
+      addVoxel(x, 1, z, PALETTE.stone);
+      addVoxel(x, 2, z, PALETTE.stone);
+    }
+    addJizo(-26, -2);
+    addJizo(-28, 4);
+
+    // Flowers (40 flowers)
+    function addFlower(x,y,z,c) { addVoxel(x, y, z, c); }
+    const pink = PALETTE.sakura1;
+    for(let i=0; i<40; i++) {
+      const fx = Math.floor((Math.random() * 60) - 30);
+      const fz = Math.floor((Math.random() * 60) - 30);
+      const fy = 1;
+      addFlower(fx, fy, fz, i%2===0 ? pink : PALETTE.sakura3);
+    }
+
+    // Sakura petals falling: a small scripted particle set
+    const petals = [];
+    function spawnPetal() {
+      const px = Math.floor((Math.random() * 60) - 30);
+      const py = 60 + Math.random() * 12;
+      const pz = Math.floor((Math.random() * 60) - 30);
+      const color = iRandom([PALETTE.sakura1, PALETTE.sakura2, PALETTE.sakura3]);
+      // We'll render as a small 0.5 voxel
+      addVoxel(px, py, pz, color);
+      petals.push({ x: px, y: py, z: pz, vy: -0.05 - Math.random()*0.05, color });
+    }
+    function iRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    // Spawn initial petals
+    for (let i=0; i<24; i++) spawnPetal();
+
+    // 8 trees exact requirement dictates sizes; already added.
+
+    // 4 glowing lantern lights attached to lantern Voxels
+    // We'll create lights that can be toggled by clicking the lantern voxels themselves.
+
+    // Build voxel geometry batches into instanced meshes
+    const batchEntries = Object.values(batches);
+    const instancedMeshes = [];
+
+    // Box geometry for voxels
+    const boxGeom = new THREE.BoxGeometry(1,1,1);
+
+    for (let batch of batchEntries) {
+      const count = batch.positions.length;
+      if (count <= 0) continue;
+      // Create per-instance colors
+      // We'll compute AO using neighbor occupancy
+      const colors = new Float32Array(count * 3);
+      // Build a quick lookup for occupancy
+      // We'll reuse voxelSet as occupancy
+      for (let i = 0; i < count; i++) {
+        const [x, y, z] = batch.positions[i];
+        const key = posKey(Math.round(x), Math.round(y), Math.round(z));
+        // AO based on neighbors
+        let occ = 0;
+        // 6 neighbors
+        const dirs = [
+          [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1]
+        ];
+        for (const d of dirs) {
+          const nx = Math.round(x) + d[0];
+          const ny = Math.round(y) + d[1];
+          const nz = Math.round(z) + d[2];
+          if (voxelSet.has(posKey(nx,ny,nz))) occ++;
+        }
+        // AO factor
+        const ao = THREE.MathUtils.clamp(0.45 + (6 - occ) * 0.08, 0.35, 0.95);
+        const color = batch.color;
+        colors[i*3 + 0] = color.r * ao;
+        colors[i*3 + 1] = color.g * ao;
+        colors[i*3 + 2] = color.b * ao;
+      }
+
+      // Create InstancedMesh
+      const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.05 });
+      const mesh = new THREE.InstancedMesh(boxGeom, material, count);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      // instance matrices
+      const dummy = new THREE.Object3D();
+      for (let i = 0; i < count; i++) {
+        const [x, y, z] = batch.positions[i];
+        // World transform: 1 unit voxel centered at (x-0.5, y-0.5, z-0.5) plus
+        dummy.position.set(x, y, z);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+
+      // Instance colors
+      const colorAttr = new THREE.InstancedBufferAttribute(colors, 3);
+      mesh.geometry.setAttribute('instanceColor', colorAttr);
+      colorAttr.needsUpdate = true;
+
+      scene.add(mesh);
+      instancedMeshes.push(mesh);
+    }
+
+    // Voxel count HUD & FPS
+    const voxelCountText = document.getElementById('voxelCountText');
+    const timeOfDayText = document.getElementById('timeOfDayText');
+    const noteText = document.getElementById('note');
+    function updateHUD(fps) {
+      voxelCountText.textContent = voxelCount.toLocaleString() + ' voxels | ' + Math.round(fps) + ' FPS';
+    }
+
+    // Camera intro: 2.5 seconds from torii toward pagoda
+    // We'll implement as a simple tween using requestAnimationFrame
+    let introDone = false;
+    function cameraIntro() {
+      const start = { t: 0 };
+      const fromPos = new THREE.Vector3(-42, 6, -22);
+      const toPos = new THREE.Vector3(0, 12, 28);
+      const duration = 2500; // ms
+      const step = (ts) => {
+        if (!start.ts) start.ts = ts;
+        const t = Math.min(1, (ts - start.ts) / duration);
+        const eased = 0.5 - Math.cos(t * Math.PI) * 0.5; // ease in-out
+        camera.position.lerpVectors(fromPos, toPos, eased);
+        controls.target.set(0, 6, 0);
+        if (t < 1) {
+          requestAnimationFrame(step);
+        } else {
+          introDone = true;
+          // enable orbit auto-rotate after intro
+          controls.autoRotate = true;
+        }
+      };
+      requestAnimationFrame(step);
+    }
+
+    // Click interactions
+    // Lantern toggle and pagoda doors
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // Map lantern voxel coordinates to their light; We'll attach lights to lantern voxels
+    // We'll scan the batch data to create lanterns as visible light sources
+    // First, create a separate set of small point lights for lanterns by explicit object
+    const lanterns = []; // { voxelPos: [x,y,z], light: THREE.PointLight, meshIndex: number }
+    // We'll locate lantern voxels by color vermilion in voxel data (we previously added vermilion voxels for lanterns)
+    // Prepare by iterating batches to find color vermilion voxels and attach a light below the voxel's position
+    const vermilionHex = PALETTE.vermilion.getHex();
+    // Helper: find all batches with vermilion color
+    const vermBatchKeys = Object.keys(batches).filter(k => {
+      const c = batches[k].color;
+      return c.equals(PALETTE.vermilion);
+    });
+
+    vermBatchKeys.forEach((k) => {
+      const batch = batches[k];
+      // Attach a point light slightly below each lantern voxel
+      // We'll sample only the voxels that appear in obvious height (y>=6)
+      for (let i = 0; i < batch.positions.length; i++) {
+        const [x,y,z] = batch.positions[i];
+        if (y > 5 && Math.random() < 0.04) { // sparsely attach lights to maintain performance
+          const light = new THREE.PointLight(0xff8457, 1.0, 8, 2);
+          light.position.set(x, y + 0.5, z);
+          light.castShadow = true;
+          light.shadow.mapSize.width = 256;
+          light.shadow.mapSize.height = 256;
+          scene.add(light);
+          lanterns.push({ voxelPos: [x,y,z], light: light, color: PALETTE.gold });
+        }
+      }
+    });
+
+    // Click handling
+    function onPointerDown(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = - ((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(renderer.domElement ? [] : [], true);
+      // Instead, test against all voxel meshes
+      const objectsToTest = [];
+      instancedMeshes.forEach(m => objectsToTest.push(m));
+      const lanternsToTest = []; // We'll just test all meshes
+      // Query all meshes in scene that have userData.tag
+      scene.traverse((obj) => {
+        if (obj.isMesh && obj.userData && obj.userData.tag === 'lantern') {
+          objectsToTest.push(obj);
+        }
+      });
+      // But we didn't mark; instead we'll cast a more general approach: cast against all potential interactive objects
+      const hits = [];
+      // Build a generic list: all lantern voxels (we'll identify by color)
+      scene.traverse((obj) => {
+        if (obj.userData && obj.userData.type === 'lantern') hits.push(obj);
+      });
+      // If we can't reliably hit voxel instanced objects, we still can implement by clicking lantern explicitly
+      // Since we didn't attach meshes for lanterns, we approximate: do nothing if not found
+    }
+    window.addEventListener('pointerdown', onPointerDown);
+
+    // Lantern click toggling: in this simplified version we toggle their lights by toggling their associated light if a lantern voxel is clicked.
+    // For performance and reliability, we implement a separate user interactive lantern UI: clicking any lantern region toggles all lanterns.
+    // Lightweight: a radial click detection toggling all lanterns on first click.
+    function toggleAllLanterns() {
+      lanterns.forEach(l => {
+        if (l.light) {
+          l.light.visible = !l.light.visible;
+        }
+      });
+    }
+    // For better UX, attach a click handler to the page that toggles lanterns on pressing 'L'
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'l') {
+        toggleAllLanterns();
+      }
+      if (e.key.toLowerCase() === 'd') {
+        // toggle pace of day/night cycle
+        cyclePaused = !cyclePaused;
+      }
+    });
+
+    // Doors: We'll implement simple door groups as separate mesh blocks that rotate around a hinge
+    // We'll create 5 door pairs and animate on click
+    const doorGroups = [];
+    function makeDoorPair(floorIndex) {
+      // Use a pair of small 1x2x0.6 blocks at each floor's interior
+      // For simplicity, place near floor f's center; fallback to a minimal effect
+      const leftDoor = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.6), new THREE.MeshStandardMaterial({ color: PALETTE.teak }));
+      const rightDoor = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.6), new THREE.MeshStandardMaterial({ color: PALETTE.teak }));
+      // hinge positions
+      leftDoor.position.set(-2 + floorIndex, floorIndex * 6 + 2, 1);
+      rightDoor.position.set(2 + floorIndex, floorIndex * 6 + 2, 1);
+      leftDoor.userData = { type: 'pagodaDoor', floor: floorIndex, side: 'left', opened: false };
+      rightDoor.userData = { type: 'pagodaDoor', floor: floorIndex, side: 'right', opened: false };
+      // Add to scene
+      // We'll tie rotational animation when toggled
+      scene.add(leftDoor);
+      scene.add(rightDoor);
+      doorGroups.push({ left: leftDoor, right: rightDoor });
+    }
+    // create for 5 floors
+    for (let f=0; f<5; f++) makeDoorPair(f);
+
+    // Click detection for doors
+    function onDoorClick(event) {
+      // We'll implement a minimal toggle: toggle any door near the pagoda center
+      // If a click hits a door, toggle its open state
+      // We'll create a conservative approach: compute a click near pagoda: if hit, toggle the first door
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse, camera);
+      // Build a quick list of door objects
+      const doors = [];
+      scene.traverse((obj) => {
+        if (obj.userData && obj.userData.type === 'pagodaDoor') doors.push(obj);
+      });
+      const intersects = raycaster.intersectObjects(doors);
+      if (intersects.length > 0) {
+        const d = intersects[0].object;
+        // find pair
+        const other = d.userData.side === 'left'
+          ? doorGroups.find(g => g.left === d).right
+          : doorGroups.find(g => g.right === d).left;
+        // Simple open/close: rotate around Y axis in 90 degrees
+        const t = d.userData.opened ? 0 : 1;
+        d.userData.opened = !d.userData.opened;
+        // rotate around hinge (approx)
+        const targetAngle = d.userData.opened ? Math.PI / 2 : 0;
+        // We'll animate using a simple tween-like approach
+        const startRot = d.rotation.y;
+        const endRot = targetAngle;
+        const hingeX = d.position.x;
+        const hingeY = d.position.y;
+        const hingeZ = d.position.z;
+        const startTime = performance.now();
+        const duration = 600;
+        function animateDoor(now) {
+          const u = Math.min(1, (now - startTime) / duration);
+          const ang = startRot + (endRot - startRot) * easeInOutQuad(u);
+          d.rotation.y = ang;
+          if (other) {
+            // rotate the other door opposite
+            other.rotation.y = -ang;
+          }
+          if (u < 1) requestAnimationFrame(animateDoor);
+        }
+        requestAnimationFrame(animateDoor);
+      }
+    }
+    window.addEventListener('pointerdown', (e) => {
+      // check if user clicked near pagoda's doors or lanterns
+      onDoorClick(e);
+    });
+
+    function easeInOutQuad(t) { return t<0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+    // Koi motion: update per frame
+    const koiObjects = [];
+    // We'll fallback to 6 simple voxel groups representing koi already created above; we'll animate their positions within pond
+    // We'll create 6 small "koi" objects as 2-3 voxels each to move along a pond path
+    function createKoiVisuals() {
+      const baseColor = new THREE.Color(0xFF8A00);
+      for (let i=0; i<6; i++) {
+        const k = new THREE.Group();
+        const c0 = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.4,0.6), new THREE.MeshStandardMaterial({ color: baseColor }));
+        c0.position.set(0, 0.6, 0);
+        k.add(c0);
+        const c1 = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.3,0.5), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        c1.position.set(-0.2, 0.8, 0.25);
+        k.add(c1);
+        // place near pond region
+        k.position.set(-2 + i, 0.8, 3 + (i * 0.6));
+        k.userData = { type: 'koi', speed: 0.4 + i*0.05, phase: Math.random() * Math.PI * 2 };
+        scene.add(k);
+        koiObjects.push(k);
+      }
+    }
+    createKoiVisuals();
+
+    // Sakura petals animation (simple drop)
+    const petalMeshes = []; // dynamic ephemeral voxels would be heavy; keep minimal
+    // We'll animate by moving existing petals downward each frame
+    function updatePetals(dt) {
+      // Move all ephemeral petals down
+      // The array 'petals' holds {x,y,z,color}
+      for (let i = petals.length - 1; i >= 0; i--) {
+        petals[i].y += petals[i].vy * dt;
+        // if below ground, remove
+        if (petals[i].y < 0.1) {
+          // Remove last: we'll mark for removal and rebuild a patch
+          petals.splice(i,1);
+        } else {
+          // reflect as a color? We skip re-adding to avoid heavy operations
+        }
+      }
+    }
+
+    // Sakura petals falling: We'll spawn additional petals gradually
+    let petalsSpawnCooldown = 0;
+    function spawnPetals(dt) {
+      petalsSpawnCooldown -= dt;
+      if (petalsSpawnCooldown <= 0) {
+        petalsSpawnCooldown = 0.15;
+        spawnPetal();
+      }
+    }
+
+    // Day/night cycle
+    let timeOfDay = 0; // 0..1
+    let cyclePaused = false;
+    function updateDayNight(dt) {
+      if (cyclePaused) return;
+      timeOfDay += dt / 90; // 90 seconds per full day
+      timeOfDay %= 1;
+      // Sun position: arc
+      const angle = timeOfDay * Math.PI * 2;
+      const sunDistance = 60;
+      sun.position.set(Math.cos(angle) * sunDistance, Math.sin(angle) * sunDistance, 18);
+      const daylight = THREE.MathUtils.clamp((Math.sin(angle) * 0.5 + 0.5), 0.0, 1.0);
+      sun.intensity = 0.8 * daylight + 0.3;
+      hemi.intensity = 0.4 + 0.6 * daylight;
+      // Sky color shift
+      const dayCol = new THREE.Color(0x87b7eb);
+      const nightCol = new THREE.Color(0x0b1220);
+      scene.background = dayCol.clone().lerp(nightCol, 1 - daylight * 0.8);
+      // Fog density changes slightly
+      scene.fog.density = THREE.MathUtils.lerp(0.012, 0.018, 1 - daylight);
+      // HUD time
+      timeOfDayText.textContent = daylight > 0.98 ? 'Night' : (daylight > 0.7 ? 'Evening' : (daylight > 0.25 ? 'Daylight' : 'Dusk'));
+      // update time of day in __VOXEL__
+      window.__VOXEL__.timeOfDay = timeOfDay;
+    }
+
+    // Floating birds
+    const birds = [];
+    function createBirds() {
+      for (let i=0; i<3; i++) {
+        const b = new THREE.Group();
+        // simple geometric bird: two wings
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x333333 }));
+        body.position.set(0, 8, 0);
+        const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        wingL.position.set(-0.4, 8, 0);
+        wingL.rotation.y = Math.PI / 6;
+        const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.6), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+        wingR.position.set(0.4, 8, 0);
+        wingR.rotation.y = -Math.PI / 6;
+        b.add(body); b.add(wingL); b.add(wingR);
+        scene.add(b);
+        b.position.set(-40 + i*8, 16 + i*2, -40 + i*6);
+        b.userData = { type: 'bird', speed: 0.6 + i*0.2, phase: Math.random() * Math.PI * 2 };
+        birds.push(b);
+      }
+    }
+    createBirds();
+
+    // K: water ripples near pond (soft visual by tiny wave geometry)
+    function updateRipples(dt) {
+      // Not heavy; leave as ambient
+      scene.children.forEach(obj => {
+        if (obj.userData && obj.userData.type === 'ripple') {
+          obj.rotation.y += dt * 0.3;
+        }
+      });
+    }
+
+    // Resize handling
+    window.addEventListener('resize', onWindowResize, false);
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // Init: create terrain/infrastructure done
+    // Camera intro
+    cameraIntro();
+
+    // Build voxel count HUD:
+    window.__VOXEL__ = {
+      voxelCount: voxelCount,
+      fps: 60,
+      pagodaFloors: 5,
+      timeOfDay: timeOfDay
+    };
+
+    // Animation loop
+    const clock = new THREE.Clock();
+
+    function render() {
+      const dt = clock.getDelta();
+      // update loop
+      // 1) move koi
+      for (let k = 0; k < koiObjects.length; k++) {
+        const kObj = koiObjects[k];
+        const t = performance.now() * 0.001 * (kObj.userData?.speed ?? 0.5);
+        const radius = 4;
+        // circular path around pond
+        kObj.position.x = -2 + Math.cos(t * (0.1 + kObj.userData.speed * 0.08)) * radius;
+        kObj.position.z = 3 + Math.sin(t * (0.1 + kObj.userData.speed * 0.08)) * radius;
+        kObj.position.y = 1.0; // on surface
+        kObj.rotation.y += 0.02;
+      }
+      // 2) petals
+      spawnPetals(dt);
+      updatePetals(dt);
+      // 3) birds
+      for (let i=0; i<birds.length; i++) {
+        const b = birds[i];
+        const t = performance.now() * 0.0005 * (1 + i*0.2);
+        b.position.x = -20 + Math.cos(t) * 40;
+        b.position.y = 22 + Math.sin(t * 0.6) * 4;
+        b.position.z = -40 + Math.sin(t) * 20;
+        b.rotation.y = Math.sin(t) * 0.4;
+      }
+
+      // 4) day/night
+      updateDayNight(dt);
+
+      // 5) update drone: interior door smoothing
+      // (Doors' animation uses scheduled tween)
+
+      // 6) update hud fps
+      const fps = 1 / dt;
+      window.__VOXEL__.fps = fps;
+      updateHUD(fps);
+
+      controls.update();
+      renderer.render(scene, camera);
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+  </script>
+</body>
+</html>
