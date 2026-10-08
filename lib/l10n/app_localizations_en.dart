@@ -5296,6 +5296,10 @@ class LEn extends L {
   }
 
   @override
+  String get schematicAxiomEntities =>
+      'Entities in this blueprint are not carried across.';
+
+  @override
   String get schematicMceditTileEntities =>
       'Tile entity contents (chest inventories, sign text) are not carried across.';
 
@@ -6463,7 +6467,7 @@ class LEn extends L {
 
   @override
   String get schemConvSubtitle =>
-      'Convert between schem, litematic, schematic, nbt and mcstructure';
+      'Convert between bp, schem, litematic, schematic, nbt and mcstructure';
 
   @override
   String get schemConvPickPrompt => 'Tap to pick a build';

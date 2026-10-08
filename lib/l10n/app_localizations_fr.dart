@@ -5343,6 +5343,10 @@ class LFr extends L {
   }
 
   @override
+  String get schematicAxiomEntities =>
+      'Les entités de ce plan ne sont pas transférées.';
+
+  @override
   String get schematicMceditTileEntities =>
       'Le contenu des entités de bloc (inventaires de coffres, textes de panneaux) n\'est pas transféré.';
 
@@ -6518,7 +6522,7 @@ class LFr extends L {
 
   @override
   String get schemConvSubtitle =>
-      'Convertir entre schem, litematic, schematic, nbt et mcstructure';
+      'Convertir entre bp, schem, litematic, schematic, nbt et mcstructure';
 
   @override
   String get schemConvPickPrompt => 'Touchez pour choisir une construction';

@@ -13,7 +13,7 @@ import 'schematic_viewer.dart';
 
 /// Converts between the Minecraft block formats — Sponge `.schem`, Litematica
 /// `.litematic`, MCEdit `.schematic`, vanilla `.nbt` structures and Bedrock
-/// `.mcstructure` — and previews the build in 3D while you do it.
+/// `.mcstructure`, plus Axiom `.bp` blueprints — and previews the build in 3D.
 class SchematicConverterView extends StatefulWidget {
   const SchematicConverterView({super.key, required this.onBack});
 

@@ -8994,6 +8994,12 @@ abstract class L {
   /// **'{count, plural, =1{1 legacy block id had no modern equivalent and became air (id {list}).} other{{count} legacy block ids had no modern equivalent and became air (ids {list}).}}'**
   String schematicMceditUnmappedIds(int count, String list);
 
+  /// No description provided for @schematicAxiomEntities.
+  ///
+  /// In en, this message translates to:
+  /// **'Entities in this blueprint are not carried across.'**
+  String get schematicAxiomEntities;
+
   /// No description provided for @schematicMceditTileEntities.
   ///
   /// In en, this message translates to:
@@ -10836,7 +10842,7 @@ abstract class L {
   /// No description provided for @schemConvSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Convert between schem, litematic, schematic, nbt and mcstructure'**
+  /// **'Convert between bp, schem, litematic, schematic, nbt and mcstructure'**
   String get schemConvSubtitle;
 
   /// No description provided for @schemConvPickPrompt.

@@ -5045,6 +5045,9 @@ class LZh extends L {
   }
 
   @override
+  String get schematicAxiomEntities => '此蓝图中的实体不会被保留。';
+
+  @override
   String get schematicMceditTileEntities => '方块实体内容（箱子物品、告示牌文字）不会被保留。';
 
   @override
@@ -6127,7 +6130,7 @@ class LZh extends L {
 
   @override
   String get schemConvSubtitle =>
-      '在 schem、litematic、schematic、nbt 和 mcstructure 之间转换';
+      '在 bp、schem、litematic、schematic、nbt 和 mcstructure 之间转换';
 
   @override
   String get schemConvPickPrompt => '点击选择建筑';

@@ -151,6 +151,7 @@ void main() {
     for (final format in [
       SchematicFormat.sponge,
       SchematicFormat.litematic,
+      SchematicFormat.axiom,
       SchematicFormat.structure,
     ]) {
       test('${format.label} preserves every block', () {
@@ -200,8 +201,7 @@ void main() {
     });
 
     test('MCSTRUCTURE keeps the shape and the recognised blocks', () {
-      final export =
-          SchematicService.save(sample, SchematicFormat.mcstructure);
+      final export = SchematicService.save(sample, SchematicFormat.mcstructure);
       final back = SchematicService.load(export.bytes, 'build.mcstructure');
 
       expect(back.width, sample.width);
@@ -258,10 +258,8 @@ void main() {
         blocks: blocks,
       );
 
-      final export =
-          SchematicService.save(source, SchematicFormat.litematic);
-      final back =
-          SchematicService.load(export.bytes, 'packed.litematic');
+      final export = SchematicService.save(source, SchematicFormat.litematic);
+      final back = SchematicService.load(export.bytes, 'packed.litematic');
 
       for (var i = 0; i < blocks.length; i++) {
         expect(
@@ -280,8 +278,7 @@ void main() {
         );
         for (final to in SchematicFormat.values) {
           final result = SchematicService.save(intermediate, to);
-          final back =
-              SchematicService.load(result.bytes, 'x.${to.extension}');
+          final back = SchematicService.load(result.bytes, 'x.${to.extension}');
           expect(
             [back.width, back.height, back.length],
             [sample.width, sample.height, sample.length],

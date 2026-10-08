@@ -3181,6 +3181,7 @@
       }
     }
   },
+  "schematicAxiomEntities": "Entities in this blueprint are not carried across.",
   "schematicMceditTileEntities": "Tile entity contents (chest inventories, sign text) are not carried across.",
   "schematicMceditUnmappedTypes": "{count, plural, =1{1 block type did not exist before Minecraft 1.13 and became stone ({list}).} other{{count} block types did not exist before Minecraft 1.13 and became stone ({list}).}}",
   "@schematicMceditUnmappedTypes": {
@@ -3860,7 +3861,7 @@
   "pictureConvSvgVector": "SVG is vector — it will be rasterized at a crisp size before converting.",
   "pictureConvConvertDownload": "Convert & download",
   "schemConvTitle": "Minecraft schematics",
-  "schemConvSubtitle": "Convert between schem, litematic, schematic, nbt and mcstructure",
+  "schemConvSubtitle": "Convert between bp, schem, litematic, schematic, nbt and mcstructure",
   "schemConvPickPrompt": "Tap to pick a build",
   "schemConvReading": "Reading the build…",
   "schemConvReadFailed": "Something went wrong while reading that file: {error}",

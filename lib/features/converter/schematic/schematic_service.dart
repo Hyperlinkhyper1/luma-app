@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../l10n/current_l.dart';
+import 'formats/axiom_blueprint.dart';
 import 'formats/litematic.dart';
 import 'formats/mcedit_schematic.dart';
 import 'formats/mcstructure.dart';
@@ -52,8 +53,11 @@ class SchematicService {
   }
 
   static Schematic _readAs(Uint8List bytes, SchematicFormat format) {
+    if (format == SchematicFormat.axiom) return AxiomBlueprint.read(bytes);
     if (format == SchematicFormat.mcstructure) {
-      return Mcstructure.read(Nbt.read(bytes, endian: Endian.little).asCompound);
+      return Mcstructure.read(
+        Nbt.read(bytes, endian: Endian.little).asCompound,
+      );
     }
     final root = Nbt.read(bytes).asCompound;
     return switch (format) {
@@ -62,11 +66,13 @@ class SchematicService {
       SchematicFormat.mcedit => MceditSchematic.read(root),
       SchematicFormat.structure => StructureNbt.read(root),
       SchematicFormat.mcstructure => throw StateError('handled above'),
+      SchematicFormat.axiom => throw StateError('handled above'),
     };
   }
 
   /// Works out the format from the file's own contents.
   static SchematicFormat? _sniff(Uint8List bytes) {
+    if (AxiomBlueprint.matches(bytes)) return SchematicFormat.axiom;
     try {
       final root = Nbt.read(bytes).asCompound;
       final schematic = root.compound('Schematic') ?? root;
@@ -107,6 +113,8 @@ class SchematicService {
     final notes = <String>[];
     final Uint8List bytes;
     switch (target) {
+      case SchematicFormat.axiom:
+        bytes = AxiomBlueprint.write(schematic);
       case SchematicFormat.sponge:
         bytes = SpongeSchematic.write(schematic);
       case SchematicFormat.litematic:
@@ -125,8 +133,7 @@ class SchematicService {
         notes.addAll(result.notes);
     }
 
-    if (schematic.palette.length > 4096 &&
-        target == SchematicFormat.mcedit) {
+    if (schematic.palette.length > 4096 && target == SchematicFormat.mcedit) {
       notes.add(currentL.schematicLegacyPaletteLoss);
     }
 

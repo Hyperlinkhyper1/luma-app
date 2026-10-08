@@ -5331,6 +5331,10 @@ class LEs extends L {
   }
 
   @override
+  String get schematicAxiomEntities =>
+      'Las entidades de este plano no se transfieren.';
+
+  @override
   String get schematicMceditTileEntities =>
       'El contenido de las entidades de bloque (inventarios de cofres, texto de carteles) no se transfiere.';
 
@@ -6500,7 +6504,7 @@ class LEs extends L {
 
   @override
   String get schemConvSubtitle =>
-      'Convierte entre schem, litematic, schematic, nbt y mcstructure';
+      'Convierte entre bp, schem, litematic, schematic, nbt y mcstructure';
 
   @override
   String get schemConvPickPrompt => 'Toca para elegir una construcción';

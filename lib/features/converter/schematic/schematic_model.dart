@@ -6,6 +6,7 @@ import '../../../l10n/current_l.dart';
 enum SchematicFormat {
   sponge('schem', 'SCHEM'),
   litematic('litematic', 'LITEMATIC'),
+  axiom('bp', 'BP'),
   mcedit('schematic', 'SCHEMATIC'),
   structure('nbt', 'NBT'),
   mcstructure('mcstructure', 'MCSTRUCTURE');
@@ -20,13 +21,14 @@ enum SchematicFormat {
 
   /// One-line explanation shown next to the format picker.
   String get description => switch (this) {
-        SchematicFormat.sponge => currentL.schematicFormatSpongeDescription,
-        SchematicFormat.litematic => 'Litematica',
-        SchematicFormat.mcedit => currentL.schematicFormatMceditDescription,
-        SchematicFormat.structure => currentL.schematicFormatStructureDescription,
-        SchematicFormat.mcstructure =>
-          currentL.schematicFormatMcstructureDescription,
-      };
+    SchematicFormat.sponge => currentL.schematicFormatSpongeDescription,
+    SchematicFormat.litematic => 'Litematica',
+    SchematicFormat.axiom => 'Axiom Blueprint',
+    SchematicFormat.mcedit => currentL.schematicFormatMceditDescription,
+    SchematicFormat.structure => currentL.schematicFormatStructureDescription,
+    SchematicFormat.mcstructure =>
+      currentL.schematicFormatMcstructureDescription,
+  };
 
   /// True for the Bedrock edition format, whose block names and states are a
   /// different vocabulary from the Java ones every other format uses.
@@ -73,9 +75,9 @@ void guardVolume(int width, int height, int length) {
 /// properties, e.g. `minecraft:oak_stairs[facing=north,half=top]`.
 class BlockState {
   BlockState(this.name, [Map<String, String>? properties])
-      : properties = properties == null || properties.isEmpty
-            ? const <String, String>{}
-            : Map.unmodifiable(properties);
+    : properties = properties == null || properties.isEmpty
+          ? const <String, String>{}
+          : Map.unmodifiable(properties);
 
   /// Namespaced block id, always carrying its namespace (`minecraft:stone`).
   final String name;
@@ -216,20 +218,19 @@ class Schematic {
     String? author,
     List<String>? notes,
     SchematicFormat? sourceFormat,
-  }) =>
-      Schematic(
-        width: width,
-        height: height,
-        length: length,
-        palette: palette ?? this.palette,
-        blocks: blocks ?? this.blocks,
-        name: name ?? this.name,
-        author: author ?? this.author,
-        description: description,
-        dataVersion: dataVersion,
-        sourceFormat: sourceFormat ?? this.sourceFormat,
-        notes: notes ?? this.notes,
-      );
+  }) => Schematic(
+    width: width,
+    height: height,
+    length: length,
+    palette: palette ?? this.palette,
+    blocks: blocks ?? this.blocks,
+    name: name ?? this.name,
+    author: author ?? this.author,
+    description: description,
+    dataVersion: dataVersion,
+    sourceFormat: sourceFormat ?? this.sourceFormat,
+    notes: notes ?? this.notes,
+  );
 
   /// Counts how many times each palette entry is used, most-used first, with
   /// air excluded. Drives the material list under the viewer.

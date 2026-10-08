@@ -5332,6 +5332,10 @@ class LNl extends L {
   }
 
   @override
+  String get schematicAxiomEntities =>
+      'Entiteiten in deze blauwdruk worden niet meegenomen.';
+
+  @override
   String get schematicMceditTileEntities =>
       'De inhoud van tile-entiteiten (kistinventarissen, bordtekst) wordt niet meegenomen.';
 
@@ -6501,7 +6505,7 @@ class LNl extends L {
 
   @override
   String get schemConvSubtitle =>
-      'Converteer tussen schem, litematic, schematic, nbt en mcstructure';
+      'Converteer tussen bp, schem, litematic, schematic, nbt en mcstructure';
 
   @override
   String get schemConvPickPrompt => 'Tik om een bouwwerk te kiezen';
