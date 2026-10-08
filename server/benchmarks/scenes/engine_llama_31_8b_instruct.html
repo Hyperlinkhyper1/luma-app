@@ -21,6 +21,399 @@
             top: 50%;
             transform: translate(-50%, -50%);
         }
+        #slider-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        input[type="range"] {
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="engine-container">
+        <canvas id="engine"></canvas>
+    </div>
+    <div id="slider-container">
+        <label for="crank-position">Crank Position:</label>
+        <input type="range" id="crank-position" min="0" max="720" value="0">
+    </div>
+
+    <script src="https://unpkg.com/three@0.134.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Constants
+        const CRANK_RADIUS = 100;
+        const CRANK_LENGTH = 200;
+        const CONN_ROD_LENGTH = 150;
+        const CYLINDER_COUNT = 8;
+        const FIRE_ORDER = [1, 8, 4, 3, 6, 5, 7, 2];
+        const CYCLE_STAGES = 4;
+        const CYCLE_STAGE_DURATION = 180;
+        const CAMSHAFT_SPEED = 0.5;
+        const RPM_MIN = 0;
+        const RPM_MAX = 8000;
+        let crankAngle = 0;
+
+        // Engine class
+        class Engine {
+            constructor() {
+                this.crankshaft = new Crankshaft();
+                this.cylinders = [];
+                this.camshaft = new Camshaft();
+                this.valves = [];
+                this.timings = [];
+                this.controls = [];
+                this.flywheel = new Flywheel();
+                this.block = new Block();
+                this.intake = new Intake();
+                this.exhaust = new Exhaust();
+            }
+            update(dTime) {
+                this.crankshaft.update(dTime);
+                this.cylinders.forEach(cylinder => cylinder.update(dTime));
+                this.camshaft.update(dTime);
+                this.valves.forEach(valve => valve.update(dTime));
+                this.timings.forEach(timing => timing.update(dTime));
+                this.flywheel.update(dTime);
+                this.block.update(dTime);
+                this.intake.update(dTime);
+                this.exhaust.update(dTime);
+                crankAngle += dTime * 1000;
+            }
+            render() {
+                this.crankshaft.render();
+                this.cylinders.forEach(cylinder => cylinder.render());
+                this.camshaft.render();
+                this.valves.forEach(valve => valve.render());
+                this.timings.forEach(timing => timing.render());
+                this.flywheel.render();
+                this.block.render();
+                this.intake.render();
+                this.exhaust.render();
+            }
+            addCylinder(x, y, z, cylinderNum) {
+                const cylinder = new Cylinder(x, y, z, cylinderNum);
+                this.cylinders.push(cylinder);
+            }
+        }
+
+        // Crankshaft class
+        class Crankshaft {
+            constructor() {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+            }
+            update(dTime) {
+                const dAngle = dTime * 1000;
+                this.mesh.rotation.y = crankAngle;
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Cylinder class
+        class Cylinder {
+            constructor(x, y, z, cylinderNum) {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+                this.cylinderNum = cylinderNum;
+                Engine.engine.addCylinder(x, y, z, cylinderNum);
+            }
+            update(dTime) {
+                const angle = crankAngle + (CYCLE_STAGE_DURATION * FIRE_ORDER.indexOf(this.cylinderNum) / CYCLE_STAGES);
+                this.mesh.position.x = Math.cos(angle) * 20;
+                this.mesh.position.y = Math.sin(angle) * 20;
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Camshaft class
+        class Camshaft {
+            constructor() {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+            }
+            update(dTime) {
+                const dAngle = dTime * 500;
+                this.mesh.rotation.y = crankAngle * 2;
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Valve class
+        class Valve {
+            constructor(cylinder, isIntake) {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+                this.cylinder = cylinder;
+                this.isIntake = isIntake;
+                Engine.engine.valves.push(this);
+            }
+            update(dTime) {
+                const angle = crankAngle + (CYCLE_STAGE_DURATION * FIRE_ORDER.indexOf(this.cylinder.cylinderNum) / CYCLE_STAGES);
+                this.mesh.position.y = this.isIntake ? Math.sin(angle) * 10 : -Math.sin(angle) * 10;
+                if (this.isIntake && angle > Math.PI * 1.75 && angle < Math.PI * 2.25) {
+                    this.mesh.position.y = Math.sin(angle) * 10;
+                } else if (!this.isIntake && angle > Math.PI * 2.75 && angle < Math.PI * 3.25) {
+                    this.mesh.position.y = -Math.sin(angle) * 10;
+                }
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Flywheel class
+        class Flywheel {
+            constructor() {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+            }
+            update(dTime) {
+                const dAngle = dTime * 1000;
+                this.mesh.rotation.y = crankAngle;
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Block class
+        class Block {
+            constructor() {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+            }
+            update(dTime) {
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Intake class
+        class Intake {
+            constructor() {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+            }
+            update(dTime) {
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Exhaust class
+        class Exhaust {
+            constructor() {
+                this.geometry = new THREE.BufferGeometry();
+                this.material = new THREE.MeshPhongMaterial({
+                    color: 0x343434,
+                    specular: 0x606060,
+                    shininess: 20,
+                    reflectivity: 0.5
+                });
+                this.mesh = new THREE.Mesh(this.geometry, this.material);
+            }
+            update(dTime) {
+            }
+            render() {
+                scene.add(this.mesh);
+                this.mesh.geometry.setFromPoints([]);
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 0], 3));
+                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
+                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
+                const pos = this.mesh.getWorldPosition(new THREE.Vector3());
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
+                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
+                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
+                this.mesh.geometry = this.geometry;
+            }
+        }
+
+        // Engine creation
+        let engine = new Engine();
+        Engine.engine = engine;
+
+        // Scene and camera setup
+        let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        let renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('engine'),
+            antialias: true
+        });
+        document.body.appendChild(renderer.domElement);
+        let scene = new THREE.Scene();
+
+        // Clock setup
+        let clock = new THREE.Clock();
+
+        // Controls setup
+        let controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // Engine rendering loop
+        function animate() {
+            requestAnimationFrame(animate);
+            let dTime = clock.getDelta();
+            engine.update(dTime);
+            engine.render();
+            controls.update(clock.getDelta());
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Crankshaft position input handler
+        document.getElementById('crank-position').addEventListener('input', e => {
+            crankAngle = parseFloat(e.target.value) * Math.PI / 180;
+        });
+    </script>
+</body>
+</html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural V8 Engine</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #engine-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            perspective: 1000px;
+        }
+        #engine {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
     </style>
 </head>
 <body>
@@ -361,13 +754,7 @@
                 this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0], 2));
                 this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([0.5, 0.5, 0.5], 3));
                 const pos = this.mesh.getWorldPosition(new THREE.Vector3());
-                const norm = this.mesh.getWorldDirection(new THREE.Vector3());
-                const uv = this.mesh.getWorldTransform().getPosition();
-                const col = this.mesh.getWorldColor(new THREE.Color());
-                this.geometry.setAttribute('position', new THREE.Float32BufferAttribute([pos.x, pos.y, pos.z], 3));
-                this.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([norm.x, norm.y, norm.z], 3));
-                this.geometry.setAttribute('uv', new THREE.Float32BufferAttribute([uv.x, uv.y], 2));
-                this.geometry.setAttribute('color', new THREE.Float32BufferAttribute([col.r, col.g, col.b], 3));
+                const norm = this.mesh.getWorldDirection(new THREE.Vector3()).normalize();
                 this.mesh.geometry = this.geometry;
             }
         }
@@ -379,7 +766,7 @@
         // Scene and camera setup
         let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         let renderer = new THREE.WebGLRenderer({
-            canvas: document.getElementById('canvas'),
+            canvas: document.getElementById('engine'),
             antialias: true
         });
         document.body.appendChild(renderer.domElement);
