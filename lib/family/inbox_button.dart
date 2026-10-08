@@ -25,7 +25,7 @@ class _InboxButtonState extends State<InboxButton> {
     return ListenableBuilder(
       listenable: familyRepo,
       builder: (context, _) {
-        final count = familyRepo.pendingInvites.length;
+        final count = familyRepo.inboxCount;
         return Tooltip(
           message: 'Inbox',
           waitDuration: const Duration(milliseconds: 500),

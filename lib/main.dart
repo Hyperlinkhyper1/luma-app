@@ -730,6 +730,7 @@ class _LumaAppState extends State<LumaApp> {
     _peerSync.init();
     unawaited(_syncDeviceShareWithPlan());
     _familyRepository.init();
+    unawaited(_pluginRepository.migrateMergedPlugins());
     unawaited(_passwordRepository.migrateLegacyCiphertexts());
     _secureChatRepository.init();
     _recipeBookController.init();

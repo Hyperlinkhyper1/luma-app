@@ -1,0 +1,8 @@
+{
+  "id": "game-tools",
+  "name": "Game Tools",
+  "version": "1.0.0",
+  "description": "Helpers for the games you play, one per sidebar entry. Steam: price history, the CS2 market and a selling calculator. Roblox: Mafia role counting. Minecraft is coming soon.",
+  "icon": "sports_esports",
+  "category": "Games"
+}

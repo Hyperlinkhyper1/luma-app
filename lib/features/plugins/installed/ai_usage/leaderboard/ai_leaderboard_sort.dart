@@ -146,3 +146,16 @@ List<({String key, String name})> vendorsOf(List<AiModel> models) {
   ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   return entries;
 }
+
+/// The detailed leaderboard's rows: every model that has measured effort
+/// tiers becomes one row per tier ("Claude Opus 5.5 (max)", "… (high)", …),
+/// the way Artificial Analysis ranks them, and every other model stays a
+/// single row. Filter and sort the result with [filterAndSortModels] as
+/// usual — a tier row sorts on its own scores, not its model's best ones.
+List<AiModel> expandEffortTiers(List<AiModel> models) => [
+      for (final m in models)
+        if (m.effortProfiles.isEmpty)
+          m
+        else
+          for (final p in m.effortProfiles) m.atEffort(p),
+    ];

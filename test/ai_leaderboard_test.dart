@@ -167,6 +167,62 @@ void main() {
     });
   });
 
+  group('expandEffortTiers', () {
+    final opus = AiModel(
+      id: 'anthropic/claude-opus-5.5',
+      slug: 'claude-opus-5.5',
+      name: 'Claude Opus 5.5',
+      vendor: 'anthropic',
+      vendorName: 'Anthropic',
+      llmStatsIndex: 58,
+      codingIndex: 52,
+      codeArena: 1500,
+      inputPricePerM: 5,
+      outputPricePerM: 25,
+      effortProfiles: const [
+        AiEffortProfile(effort: 'high', intelligenceIndex: 54),
+        AiEffortProfile(
+          effort: 'max',
+          intelligenceIndex: 58,
+          codingIndex: 52,
+          inputPricePerM: 6,
+        ),
+      ],
+    );
+    final plain = _model('Gamma', index: 55);
+
+    test('splits a model into one row per tier, others stay single', () {
+      final rows = expandEffortTiers([opus, plain]);
+      expect(rows.map((m) => m.name), [
+        'Claude Opus 5.5 (high)',
+        'Claude Opus 5.5 (max)',
+        'Gamma',
+      ]);
+      expect(rows.first.id, opus.id);
+      expect(rows.first.effort, 'high');
+      expect(rows.last.effort, isNull);
+    });
+
+    test("a tier row never borrows the best tier's scores", () {
+      final high = expandEffortTiers([opus]).first;
+      expect(high.llmStatsIndex, 54);
+      expect(high.codingIndex, isNull);
+      expect(high.codeArena, isNull);
+      // Per-token price doesn't depend on effort, so it falls back.
+      expect(high.inputPricePerM, 5);
+      expect(expandEffortTiers([opus]).last.inputPricePerM, 6);
+    });
+
+    test('tiers rank against other models on their own index', () {
+      final rows = filterAndSortModels(expandEffortTiers([opus, plain]));
+      expect(rows.map((m) => m.name), [
+        'Claude Opus 5.5 (max)',
+        'Gamma',
+        'Claude Opus 5.5 (high)',
+      ]);
+    });
+  });
+
   group('AiModel pricing', () {
     test('averages input and output, and refuses to average half a price', () {
       const both = AiModel(

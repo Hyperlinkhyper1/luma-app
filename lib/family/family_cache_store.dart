@@ -25,6 +25,7 @@ class FamilyCacheStore {
   Map<String, dynamic>? familyJson;
   List<dynamic> invitesJson = const [];
   List<dynamic> eventsJson = const [];
+  List<dynamic> messagesJson = const [];
 
   static Future<FamilyCacheStore> load() async {
     File? file;
@@ -45,6 +46,7 @@ class FamilyCacheStore {
       store.familyJson = data['family'] as Map<String, dynamic>?;
       store.invitesJson = data['invites'] as List? ?? const [];
       store.eventsJson = data['events'] as List? ?? const [];
+      store.messagesJson = data['messages'] as List? ?? const [];
     } catch (_) {
       // A corrupt cache file just means an empty cache until the next refresh.
     }
@@ -59,6 +61,7 @@ class FamilyCacheStore {
         'family': familyJson,
         'invites': invitesJson,
         'events': eventsJson,
+        'messages': messagesJson,
       });
       final tmp = File('${file.path}.tmp');
       await tmp.writeAsString(payload, flush: true);

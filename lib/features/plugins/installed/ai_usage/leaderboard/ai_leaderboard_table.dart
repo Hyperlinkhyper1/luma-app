@@ -31,6 +31,10 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
   AiLeaderboardColumn _sortBy = AiLeaderboardColumn.llmStats;
   bool _descending = true;
   bool _openOnly = false;
+
+  /// One row per model-and-effort pair instead of one per model — Artificial
+  /// Analysis' layout, where "Opus (max)" and "Opus (high)" rank separately.
+  bool _detailed = false;
   String? _vendor;
   bool _started = false;
 
@@ -105,8 +109,11 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
           );
         }
 
+        final models = _detailed
+            ? expandEffortTiers(repo.catalog.models)
+            : repo.catalog.models;
         final rows = filterAndSortModels(
-          repo.catalog.models,
+          models,
           query: _search.text,
           vendor: _vendor,
           openWeightsOnly: _openOnly,
@@ -135,8 +142,10 @@ class _AiLeaderboardTableViewState extends State<AiLeaderboardTableView> {
                     onVendor: (v) => setState(() => _vendor = v),
                     openOnly: _openOnly,
                     onOpenOnly: (v) => setState(() => _openOnly = v),
+                    detailed: _detailed,
+                    onDetailed: (v) => setState(() => _detailed = v),
                     shown: rows.length,
-                    total: repo.catalog.models.length,
+                    total: models.length,
                     repo: repo,
                     // The header row is the only way to sort a table; the
                     // card list has no header, so it gets its own control.
@@ -188,6 +197,8 @@ class _FilterBar extends StatelessWidget {
     required this.onVendor,
     required this.openOnly,
     required this.onOpenOnly,
+    required this.detailed,
+    required this.onDetailed,
     required this.shown,
     required this.total,
     required this.repo,
@@ -203,6 +214,8 @@ class _FilterBar extends StatelessWidget {
   final ValueChanged<String?> onVendor;
   final bool openOnly;
   final ValueChanged<bool> onOpenOnly;
+  final bool detailed;
+  final ValueChanged<bool> onDetailed;
   final int shown;
   final int total;
   final AiCatalogRepository repo;
@@ -265,9 +278,25 @@ class _FilterBar extends StatelessWidget {
               descending: descending,
               onSort: onSort,
             ),
-          _OpenWeightsToggle(value: openOnly, onChanged: onOpenOnly),
+          _ToggleChip(
+            value: openOnly,
+            onChanged: onOpenOnly,
+            icon: Icons.lock_open_rounded,
+            label: 'Open weights',
+            tooltip: 'Show only models whose weights you can download',
+          ),
+          _ToggleChip(
+            value: detailed,
+            onChanged: onDetailed,
+            icon: Icons.tune_rounded,
+            label: 'Detailed',
+            tooltip: 'One row per model and reasoning effort, so each effort '
+                'level is ranked on its own scores',
+          ),
           Text(
-            shown == total ? '$total models' : '$shown of $total models',
+            shown == total
+                ? '$total ${detailed ? "variants" : "models"}'
+                : '$shown of $total ${detailed ? "variants" : "models"}',
             style: TextStyle(color: luma.textMuted, fontSize: 12),
           ),
           // Refreshing is an operator action (the admin dashboard's
@@ -361,17 +390,26 @@ class _VendorMenu extends StatelessWidget {
   }
 }
 
-class _OpenWeightsToggle extends StatelessWidget {
-  const _OpenWeightsToggle({required this.value, required this.onChanged});
+class _ToggleChip extends StatelessWidget {
+  const _ToggleChip({
+    required this.value,
+    required this.onChanged,
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+  });
 
   final bool value;
   final ValueChanged<bool> onChanged;
+  final IconData icon;
+  final String label;
+  final String tooltip;
 
   @override
   Widget build(BuildContext context) {
     final luma = context.luma;
     return Tooltip(
-      message: 'Show only models whose weights you can download',
+      message: tooltip,
       child: Material(
         color: value ? luma.accentSubtle : luma.surface,
         borderRadius: BorderRadius.circular(9),
@@ -388,11 +426,11 @@ class _OpenWeightsToggle extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_open_rounded,
+                Icon(icon,
                     size: 16, color: value ? luma.accent : luma.textMuted),
                 const SizedBox(width: 7),
                 Text(
-                  'Open weights',
+                  label,
                   style: TextStyle(
                     color: value ? luma.textPrimary : luma.textSecondary,
                     fontSize: 13,

@@ -35,7 +35,7 @@ import '../features/plugins/installed/minecraft_launcher/minecraft_launcher_page
 import '../features/plugins/installed/mood_journal/mood_journal_page.dart';
 import '../features/plugins/installed/text_library/text_library_page.dart';
 import '../features/plugins/installed/ai_usage/ai_usage_shell.dart';
-import '../features/plugins/installed/steam_tools/steam_tools_shell.dart';
+import '../features/plugins/installed/game_tools/game_tools_page.dart';
 import '../features/plugins/installed/ai_detector/ai_detector_page.dart';
 import '../features/plugins/installed/nfc_tag_editor/nfc_tag_editor_page.dart';
 import '../features/plugins/installed/bulletin_board/bulletin_board_page.dart';
@@ -60,7 +60,6 @@ import '../features/plugins/installed/small_games/small_games_page.dart';
 import '../features/plugins/installed/worth_counter/worth_counter_page.dart';
 import '../features/plugins/installed/media_downloader/media_downloader_page.dart';
 import '../features/plugins/installed/recipe_book/recipe_book_page.dart';
-import '../features/plugins/installed/roblox_tools/roblox_tools_page.dart';
 import '../features/plugins/plugin_icons.dart';
 import '../features/plugins/plugin_repository.dart';
 import '../features/plugins/plugin_scope.dart';
@@ -879,7 +878,7 @@ class _AppShellState extends State<AppShell> {
     'mood-journal' => const MoodJournalPage(),
     'text-library' => const TextLibraryPage(),
     'ai-usage' => const AiUsagePage(),
-    'steam-tools' => const SteamToolsPage(),
+    'game-tools' => const GameToolsPage(),
     'ai-detector' => const AiDetectorPage(),
     'youtube-downloader' => const MediaDownloaderPage(),
     'school' => const SchoolPage(),
@@ -901,7 +900,6 @@ class _AppShellState extends State<AppShell> {
     'worth-counter' => const WorthCounterPage(),
     'gallery' => const GalleryPage(),
     'nfc-tag-editor' => const NfcTagEditorPage(),
-    'roblox-tools' => const RobloxToolsPage(),
     'device-health' => const DeviceHealthPage(),
     'account-overview' => const AccountOverviewPage(),
     _ => LumaEmptyState(

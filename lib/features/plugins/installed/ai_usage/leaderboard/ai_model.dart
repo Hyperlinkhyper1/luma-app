@@ -13,11 +13,31 @@ class AiEffortProfile {
     required this.effort,
     this.intelligenceIndex,
     this.medianOutputTokens,
+    this.reasoningIndex,
+    this.codingIndex,
+    this.agentIndex,
+    this.mathIndex,
+    this.speedTokensPerSec,
+    this.latencyMs,
+    this.inputPricePerM,
+    this.outputPricePerM,
   });
 
   final String effort;
   final double? intelligenceIndex;
   final int? medianOutputTokens;
+
+  /// The tier's own measurements, for the detailed leaderboard's
+  /// one-row-per-effort view. Null when nothing was measured at this tier —
+  /// never borrowed from another tier.
+  final double? reasoningIndex;
+  final double? codingIndex;
+  final double? agentIndex;
+  final double? mathIndex;
+  final double? speedTokensPerSec;
+  final double? latencyMs;
+  final double? inputPricePerM;
+  final double? outputPricePerM;
 
   /// Title-cased for display: `xhigh` → `Xhigh` reads badly, so the known
   /// tiers get proper labels and anything new falls back to capitalising.
@@ -37,6 +57,14 @@ class AiEffortProfile {
         effort: j['effort'] as String? ?? '',
         intelligenceIndex: (j['intelligenceIndex'] as num?)?.toDouble(),
         medianOutputTokens: (j['medianOutputTokens'] as num?)?.toInt(),
+        reasoningIndex: (j['reasoningIndex'] as num?)?.toDouble(),
+        codingIndex: (j['codingIndex'] as num?)?.toDouble(),
+        agentIndex: (j['agentIndex'] as num?)?.toDouble(),
+        mathIndex: (j['mathIndex'] as num?)?.toDouble(),
+        speedTokensPerSec: (j['speedTokensPerSec'] as num?)?.toDouble(),
+        latencyMs: (j['latencyMs'] as num?)?.toDouble(),
+        inputPricePerM: (j['inputPricePerM'] as num?)?.toDouble(),
+        outputPricePerM: (j['outputPricePerM'] as num?)?.toDouble(),
       );
 }
 
@@ -84,6 +112,7 @@ class AiModel {
     this.supportedEfforts = const [],
     this.defaultEffort,
     this.effortProfiles = const [],
+    this.effort,
   });
 
   final String id;
@@ -129,6 +158,11 @@ class AiModel {
   final String? defaultEffort;
   final List<AiEffortProfile> effortProfiles;
 
+  /// Set only on a row of the detailed leaderboard: the effort tier this row
+  /// stands for. [id] stays the base model's, so tapping it opens the same
+  /// detail page.
+  final String? effort;
+
   /// The price column: input and output averaged, USD per million tokens.
   /// Null unless both halves are known — averaging against a missing side
   /// would show the model as cheaper than it is.
@@ -151,6 +185,51 @@ class AiModel {
   /// graph — one point is a dot, not a trend.
   bool get hasEffortGraph =>
       effortProfiles.where((e) => e.intelligenceIndex != null).length > 1;
+
+  /// This model run at one effort tier, as its own leaderboard row named the
+  /// way Artificial Analysis names it — "Claude Opus 5.5 (max)".
+  ///
+  /// Scores, speed and latency come from [profile] alone: the base model's
+  /// headline numbers are its *best* tier's, and lending them to the others
+  /// would rank every tier as high as the top one. Code Arena isn't measured
+  /// per tier, so it is dropped. Price falls back to the model's own when AA
+  /// didn't quote one for the tier — the per-token price doesn't depend on
+  /// effort.
+  AiModel atEffort(AiEffortProfile profile) => AiModel(
+        id: id,
+        slug: slug,
+        name: '$name (${profile.effort.toLowerCase()})',
+        vendor: vendor,
+        vendorName: vendorName,
+        description: description,
+        releasedAt: releasedAt,
+        contextTokens: contextTokens,
+        maxOutputTokens: maxOutputTokens,
+        inputPricePerM: profile.inputPricePerM ?? inputPricePerM,
+        outputPricePerM: profile.outputPricePerM ?? outputPricePerM,
+        cacheReadPerM: cacheReadPerM,
+        cacheWritePerM: cacheWritePerM,
+        llmStatsIndex: profile.intelligenceIndex,
+        reasoningIndex: profile.reasoningIndex,
+        codingIndex: profile.codingIndex,
+        agentIndex: profile.agentIndex,
+        mathIndex: profile.mathIndex,
+        speedTokensPerSec: profile.speedTokensPerSec,
+        latencyMs: profile.latencyMs,
+        openWeights: openWeights,
+        licenseId: licenseId,
+        licenseName: licenseName,
+        parametersB: parametersB,
+        activeParametersB: activeParametersB,
+        huggingFaceId: huggingFaceId,
+        inputModalities: inputModalities,
+        outputModalities: outputModalities,
+        knowledgeCutoff: knowledgeCutoff,
+        supportedEfforts: supportedEfforts,
+        defaultEffort: defaultEffort,
+        effortProfiles: effortProfiles,
+        effort: profile.effort,
+      );
 
   factory AiModel.fromJson(Map<String, dynamic> j) {
     final releasedAtMs = (j['releasedAtMs'] as num?)?.toInt();

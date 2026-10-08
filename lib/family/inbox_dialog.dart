@@ -28,6 +28,19 @@ class _InboxDialog extends StatefulWidget {
 
 class _InboxDialogState extends State<_InboxDialog> {
   final Set<String> _busyIds = {};
+  late final Set<String> _freshMessageIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _freshMessageIds = {
+      for (final m in widget.familyRepo.messages)
+        if (!m.read) m.id,
+    };
+    for (final id in _freshMessageIds) {
+      widget.familyRepo.markMessageRead(id);
+    }
+  }
 
   Future<void> _respond(
       String inviteId, Future<void> Function(String) action) async {
@@ -69,14 +82,16 @@ class _InboxDialogState extends State<_InboxDialog> {
                   listenable: widget.familyRepo,
                   builder: (context, _) {
                     final invites = widget.familyRepo.pendingInvites;
-                    if (invites.isEmpty) {
+                    final messages = widget.familyRepo.messages;
+                    if (invites.isEmpty && messages.isEmpty) {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 24),
                           child: LumaEmptyState(
                             icon: Icons.inbox_rounded,
                             title: 'Nothing here yet',
-                            subtitle: 'Family invites will show up here.',
+                            subtitle:
+                                'Messages from luma and family invites will show up here.',
                           ),
                         ),
                       );
@@ -86,6 +101,13 @@ class _InboxDialogState extends State<_InboxDialog> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          for (final m in messages) ...[
+                            _MessageCard(
+                              message: m,
+                              fresh: _freshMessageIds.contains(m.id),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           for (var i = 0; i < invites.length; i++) ...[
                             if (i > 0) const SizedBox(height: 12),
                             _InviteCard(
@@ -170,6 +192,78 @@ class _Header extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({required this.message, required this.fresh});
+
+  final RemoteAdminMessage message;
+  final bool fresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final luma = context.luma;
+    final sent = DateTime.fromMillisecondsSinceEpoch(message.createdAtMs);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: luma.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: fresh ? luma.accent : luma.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: luma.accentSubtle,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.campaign_rounded, color: luma.accent, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(message.title,
+                          style: TextStyle(
+                              color: luma.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                    if (fresh)
+                      Text('New',
+                          style: TextStyle(
+                              color: luma.accent,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SelectableText(message.body,
+                    style: TextStyle(
+                        color: luma.textSecondary, fontSize: 13.5, height: 1.5)),
+                const SizedBox(height: 10),
+                _MetaItem(
+                  icon: Icons.schedule_rounded,
+                  label: 'From luma · ${_formatDate(sent)}',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime d) {
+    return '${d.day.toString().padLeft(2, '0')}-${d.month.toString().padLeft(2, '0')}-${d.year}';
   }
 }
 

@@ -60,6 +60,20 @@ REBOOT_REQUEST_FILE="$DATA_DIR/reboot.request"
 REBOOT_LOG_FILE="$DATA_DIR/reboot.log"
 REBOOT_REQUIRED_FILE="$DATA_DIR/reboot-required"
 
+# The header's Start / Restart / Shut down buttons (PowerConsole). The
+# container drops power.request holding "<action> <target>":
+#   stop wiki | start wiki   the wiki only
+#   restart all              the wiki, then the whole server stack
+#   shutdown all             the wiki, then `docker compose stop` of the stack
+# Output goes to power.log. Every heartbeat also writes wiki.state
+# (running / stopped / none) and wiki.start-cmd, the command that starts the
+# wiki by hand — the admin shutdown screen shows it, since after that
+# nothing is left to ask.
+POWER_REQUEST_FILE="$DATA_DIR/power.request"
+POWER_LOG_FILE="$DATA_DIR/power.log"
+WIKI_STATE_FILE="$DATA_DIR/wiki.state"
+WIKI_START_CMD_FILE="$DATA_DIR/wiki.start-cmd"
+
 # Read LUMA_REPO_PATH from server/.env rather than hardcoding it, so this
 # can never drift from the same value the container's gate check
 # (Api._adminDeploy, via config.repoPathConfigured) is enforcing.
@@ -68,6 +82,130 @@ if [ -z "$REPO_PATH" ]; then
   echo "[deploy-watcher] LUMA_REPO_PATH is not set in $SCRIPT_DIR/.env — exiting." >&2
   exit 1
 fi
+
+# Optional: where the wiki's compose file lives, when it isn't
+# $REPO_PATH/wiki. Without it the wiki is found by wiki_detect below.
+WIKI_COMPOSE_DIR="$(grep -m1 '^LUMA_WIKI_COMPOSE_DIR=' "$SCRIPT_DIR/.env" 2>/dev/null | cut -d= -f2-)"
+
+# docker without sudo when this user is in the docker group, otherwise
+# passwordless sudo — the same two routes check_updates already tries.
+docker_cmd() {
+  if docker info >/dev/null 2>&1; then
+    docker "$@"
+  else
+    sudo -n docker "$@"
+  fi
+}
+
+# Sets WIKI_KIND (compose / container / systemd) and WIKI_REF (directory,
+# container name or unit name). Returns 1 when no wiki is found.
+wiki_detect() {
+  WIKI_KIND=""
+  WIKI_REF=""
+  local dir f name svc
+  for dir in "$WIKI_COMPOSE_DIR" "$REPO_PATH/wiki"; do
+    [ -n "$dir" ] || continue
+    for f in compose.yml compose.yaml docker-compose.yml docker-compose.yaml; do
+      if [ -f "$dir/$f" ]; then
+        WIKI_KIND=compose
+        WIKI_REF="$dir"
+        return 0
+      fi
+    done
+  done
+  for name in wiki wiki.js luma-wiki luma_wiki; do
+    if docker_cmd inspect "$name" >/dev/null 2>&1; then
+      WIKI_KIND=container
+      WIKI_REF="$name"
+      return 0
+    fi
+  done
+  for svc in wiki wiki.js luma-wiki; do
+    if systemctl cat "$svc.service" >/dev/null 2>&1; then
+      WIKI_KIND=systemd
+      WIKI_REF="$svc"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# wiki_ctl start|stop|restart|status — status prints running/stopped/none.
+wiki_ctl() {
+  if ! wiki_detect; then
+    if [ "$1" = status ]; then echo none; return 0; fi
+    echo "No wiki found (looked for a compose file in $REPO_PATH/wiki, a wiki container and a wiki systemd unit)."
+    return 1
+  fi
+  case "$WIKI_KIND:$1" in
+    compose:status)
+      if [ -n "$(cd "$WIKI_REF" && docker_cmd compose ps --status running -q 2>/dev/null)" ]; then
+        echo running
+      else
+        echo stopped
+      fi ;;
+    compose:start) (cd "$WIKI_REF" && docker_cmd compose up -d 2>&1) ;;
+    compose:stop) (cd "$WIKI_REF" && docker_cmd compose stop 2>&1) ;;
+    compose:restart) (cd "$WIKI_REF" && { docker_cmd compose restart 2>&1; docker_cmd compose up -d 2>&1; }) ;;
+    container:status)
+      if [ "$(docker_cmd inspect -f '{{.State.Running}}' "$WIKI_REF" 2>/dev/null)" = true ]; then
+        echo running
+      else
+        echo stopped
+      fi ;;
+    container:*) docker_cmd "$1" "$WIKI_REF" 2>&1 ;;
+    systemd:status)
+      if systemctl is-active --quiet "$WIKI_REF"; then echo running; else echo stopped; fi ;;
+    systemd:*) sudo -n systemctl "$1" "$WIKI_REF" 2>&1 ;;
+  esac
+}
+
+wiki_start_cmd() {
+  wiki_detect || { echo ""; return; }
+  case "$WIKI_KIND" in
+    compose) echo "cd $WIKI_REF && docker compose up -d" ;;
+    container) echo "docker start $WIKI_REF" ;;
+    systemd) echo "sudo systemctl start $WIKI_REF" ;;
+  esac
+}
+
+sync_wiki_state() {
+  wiki_ctl status > "$WIKI_STATE_FILE.tmp" 2>/dev/null &&
+    mv -f "$WIKI_STATE_FILE.tmp" "$WIKI_STATE_FILE"
+  wiki_start_cmd > "$WIKI_START_CMD_FILE.tmp" 2>/dev/null &&
+    mv -f "$WIKI_START_CMD_FILE.tmp" "$WIKI_START_CMD_FILE"
+}
+
+# Runs the "<action> <target>" read from power.request.
+power() {
+  local action="$1" target="$2"
+  echo "==> $action $target requested from the admin dashboard ($(date -Is))"
+  case "$action:$target" in
+    stop:wiki)
+      step "Stopping the wiki"
+      wiki_ctl stop || return 1 ;;
+    start:wiki)
+      step "Starting the wiki"
+      wiki_ctl start || return 1 ;;
+    restart:all)
+      step "Restarting the wiki"
+      wiki_ctl restart || echo "(wiki restart failed — carrying on with the server)"
+      step "Restarting the server stack"
+      (cd "$REPO_PATH/server" && docker_cmd compose restart 2>&1) || return 1 ;;
+    shutdown:all)
+      step "Stopping the wiki"
+      wiki_ctl stop || echo "(wiki stop failed — carrying on with the server)"
+      step "Stopping the server stack"
+      (cd "$REPO_PATH/server" && docker_cmd compose stop 2>&1) || return 1
+      echo
+      echo "==> Everything is stopped. Start it again with:"
+      echo "cd $REPO_PATH/server && docker compose up -d"
+      wiki_start_cmd ;;
+    *)
+      echo "Unknown request: '$action $target'"
+      return 1 ;;
+  esac
+}
 
 step() {
   echo
@@ -246,38 +384,10 @@ check_updates() {
   fi
 
   echo "Restarting wiki…"
-  WIKI_RESTARTED=false
-  if [ -f "$REPO_PATH/wiki/docker-compose.yml" ] || [ -f "$REPO_PATH/wiki/compose.yml" ]; then
-    if (cd "$REPO_PATH/wiki" && docker compose restart 2>&1) || (cd "$REPO_PATH/wiki" && sudo -n docker compose restart 2>&1); then
-      echo "wiki restarted via docker compose (wiki project)."
-      WIKI_RESTARTED=true
-    fi
-  fi
-  if [ "$WIKI_RESTARTED" = false ]; then
-    for name in wiki wiki.js luma-wiki luma_wiki; do
-      if docker restart "$name" 2>&1; then
-        echo "wiki container '$name' restarted."
-        WIKI_RESTARTED=true
-        break
-      fi
-      if sudo -n docker restart "$name" 2>&1; then
-        echo "wiki container '$name' restarted (via sudo)."
-        WIKI_RESTARTED=true
-        break
-      fi
-    done
-  fi
-  if [ "$WIKI_RESTARTED" = false ]; then
-    for svc in wiki wiki.js luma-wiki; do
-      if sudo -n systemctl restart "$svc" 2>&1; then
-        echo "wiki systemd service '$svc' restarted."
-        WIKI_RESTARTED=true
-        break
-      fi
-    done
-  fi
-  if [ "$WIKI_RESTARTED" = false ]; then
-    echo "No separate wiki container/service found — wiki (if served via luma-sync/caddy) was already restarted with the server."
+  if wiki_ctl restart; then
+    echo "wiki restarted ($WIKI_KIND $WIKI_REF)."
+  else
+    echo "No separate wiki container/service restarted — wiki (if served via luma-sync/caddy) was already restarted with the server."
   fi
 
   # Kernel and driver updates only take effect after the host itself
@@ -326,6 +436,7 @@ while true; do
   if [ "$beat" -le 0 ]; then
     : 2>/dev/null > "$HEARTBEAT_FILE" || true
     sync_reboot_required
+    sync_wiki_state
     beat=5
   fi
   beat=$((beat - 1))
@@ -339,7 +450,7 @@ while true; do
   # claiming any request, so a request is always handled by the script on
   # disk.
   if { [ -f "$REQUEST_FILE" ] || [ -f "$UPDATE_REQUEST_FILE" ] ||
-       [ -f "$REBOOT_REQUEST_FILE" ]; } &&
+       [ -f "$REBOOT_REQUEST_FILE" ] || [ -f "$POWER_REQUEST_FILE" ]; } &&
      [ "$(script_hash)" != "$SELF_HASH" ]; then
     echo "[deploy-watcher] script changed on disk — reloading before handling the request." >&2
     exec "$SCRIPT_DIR/deploy-watcher.sh"
@@ -388,6 +499,27 @@ while true; do
     update_refresher_stop
     date -Is > "$UPDATE_DONE_FILE"
     rm -f "$UPDATE_LOCK_FILE"
+    beat=0
+  fi
+
+  # Same two-minute rule as a reboot: a stale shutdown must never fire long
+  # after whoever asked for it has moved on.
+  if [ -f "$POWER_REQUEST_FILE" ]; then
+    fresh="$(find "$POWER_REQUEST_FILE" -mmin -2 2>/dev/null)"
+    read -r p_action p_target < "$POWER_REQUEST_FILE" || true
+    if [ -n "$fresh" ]; then
+      # Log before dropping the request, so the dashboard never sees
+      # "no request, empty log" and reads it as finished.
+      echo "==> Working on it ($(date -Is))" > "$POWER_LOG_FILE"
+      rm -f "$POWER_REQUEST_FILE"
+      ( power "${p_action:-}" "${p_target:-}" ) > "$POWER_LOG_FILE" 2>&1
+      code=$?
+      [ "$code" -eq 0 ] || echo "==> FAILED (exit $code)." >> "$POWER_LOG_FILE"
+    else
+      rm -f "$POWER_REQUEST_FILE"
+      echo "==> Ignored a request older than two minutes ($(date -Is))." > "$POWER_LOG_FILE"
+    fi
+    sync_wiki_state
     beat=0
   fi
 

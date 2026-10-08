@@ -132,12 +132,12 @@
       "version": "1.0.0"
     },
     {
-      "id": "steam-tools",
-      "name": "Steam Tools",
-      "description": "A hub for your Steam library. Price Tracker lists every game you own and charts its real Steam price history over 1D, 1W, 1M, 6M, 1Y and 5Y — years of it, sourced from IsThereAnyDeal, plus the all-time low. Open a game for its banner, current price and discount, description, tags and full PC system requirements. Your Steam key stays encrypted on this device and goes only to Steam; price history is read through the luma server with your account, so there is no second key to find or paste in.",
+      "id": "game-tools",
+      "name": "Game Tools",
+      "description": "Helpers for the games you play, organised by game in a sidebar where each game folds out into its own tools. Steam: Price Tracker charts the real price history of every game you own over 1D to 5Y, sourced from IsThereAnyDeal, plus the all-time low; CS2 Market prices and charts skins; Selling Calculator estimates what a CS2 sale nets you. Roblox: Mafia Role Counting shows exactly which roles are in play for your lobby size, sourced from the official wiki, and lets you tick off each claim during the round. Minecraft tools are coming soon. Your Steam key stays encrypted on this device and goes only to Steam.",
       "icon": "sports_esports",
-      "category": "Utility",
-      "tags": ["Utility", "Gaming", "Shopping"],
+      "category": "Games",
+      "tags": ["Games", "Utility", "Shopping"],
       "free": true,
       "version": "1.0.0"
     },
@@ -349,16 +349,6 @@
       "icon": "nfc",
       "category": "Utility",
       "tags": ["Utility"],
-      "free": true,
-      "version": "1.0.0"
-    },
-    {
-      "id": "roblox-tools",
-      "name": "Roblox Tools",
-      "description": "A hub of calculators and helpers for Roblox games, organized by game in a sidebar. Mafia is first: Role Counting takes your lobby size (2-20 players) and shows exactly which roles are in play, sourced from the official wiki's role chart. Check off each role as it's claimed during the round and optionally note who claimed it, searched against the wiki's full disguise-name list. Reset clears every claim for the next round.",
-      "icon": "sports_esports",
-      "category": "Games",
-      "tags": ["Games", "Utility"],
       "free": true,
       "version": "1.0.0"
     },

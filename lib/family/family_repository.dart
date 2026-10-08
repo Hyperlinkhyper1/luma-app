@@ -55,6 +55,17 @@ class FamilyRepository extends ChangeNotifier {
       .map((j) => RemoteIncomingInvite.fromJson(j as Map<String, dynamic>))
       .toList();
 
+  /// Messages the luma operator sent to this account, newest first.
+  List<RemoteAdminMessage> get messages => (_cache?.messagesJson ?? const [])
+      .map((j) => RemoteAdminMessage.fromJson(j as Map<String, dynamic>))
+      .toList();
+
+  int get unreadMessageCount => messages.where((m) => !m.read).length;
+
+  /// Everything waiting on the user in the inbox: invites plus unread
+  /// operator messages. Drives the badge.
+  int get inboxCount => pendingInvites.length + unreadMessageCount;
+
   /// Every shared event visible to the current user, across their family.
   /// Used by the Calendar plugin to merge into its own (local, personal)
   /// event list — see calendar_page.dart.
@@ -141,10 +152,19 @@ class FamilyRepository extends ChangeNotifier {
       }
       final events =
           fam == null ? const <RemoteSharedEvent>[] : await api.listSharedEvents(fam.id);
+      List<RemoteAdminMessage>? messages;
+      try {
+        messages = await api.listMyMessages();
+      } on FamilyApiException catch (e) {
+        // A server that predates operator messages has no such route; keep
+        // the invites and family working regardless.
+        if (!e.isNotFound) rethrow;
+      }
 
       _cache!
         ..familyJson = fam?.toJson()
         ..invitesJson = invites.map((i) => i.toJson()).toList()
+        ..messagesJson = messages?.map((m) => m.toJson()).toList() ?? const []
         ..eventsJson = events.map((e) => e.toJson()).toList();
       await _cache!.save();
       _lastError = null;
@@ -198,6 +218,27 @@ class FamilyRepository extends ChangeNotifier {
     final api = _requireApi();
     await api.declineInvite(inviteId);
     await refresh();
+  }
+
+  /// Marks one operator message read, locally first so the badge drops at
+  /// once, then on the server.
+  Future<void> markMessageRead(String messageId) async {
+    final cache = _cache;
+    if (cache == null) return;
+    cache.messagesJson = [
+      for (final j in cache.messagesJson)
+        if ((j as Map<String, dynamic>)['id'] == messageId)
+          {...j, 'read': true}
+        else
+          j,
+    ];
+    notifyListeners();
+    await cache.save();
+    try {
+      await _api?.markMessageRead(messageId);
+    } catch (_) {
+      // The next refresh() restores the server's view if this didn't land.
+    }
   }
 
   Future<void> removeMember(String userId) async {

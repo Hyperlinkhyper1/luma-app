@@ -157,6 +157,40 @@ class RemoteIncomingInvite {
       );
 }
 
+/// A message the luma operator sent from the admin dashboard.
+class RemoteAdminMessage {
+  const RemoteAdminMessage({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.createdAtMs,
+    required this.read,
+  });
+
+  final String id;
+  final String title;
+  final String body;
+  final int createdAtMs;
+  final bool read;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'body': body,
+        'createdAtMs': createdAtMs,
+        'read': read,
+      };
+
+  factory RemoteAdminMessage.fromJson(Map<String, dynamic> j) =>
+      RemoteAdminMessage(
+        id: j['id'] as String,
+        title: j['title'] as String? ?? '',
+        body: j['body'] as String? ?? '',
+        createdAtMs: j['createdAtMs'] as int,
+        read: j['read'] as bool? ?? false,
+      );
+}
+
 /// A calendar entry shared with (part of) a family. Unlike everything synced
 /// through [SyncApi], this data is deliberately readable by the server — see
 /// the note atop server/lib/family_store.dart.
@@ -310,6 +344,20 @@ class FamilyApi {
         .map((i) =>
             RemoteIncomingInvite.fromJson(i as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<RemoteAdminMessage>> listMyMessages() async {
+    final response = await _client
+        .get(_uri('/messages'), headers: _authHeaders)
+        .timeout(_timeout);
+    final body = _decodeOrThrow(response);
+    return (body['messages'] as List? ?? const [])
+        .map((m) => RemoteAdminMessage.fromJson(m as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> markMessageRead(String messageId) async {
+    await _postJson('/messages/$messageId/read', const {});
   }
 
   Future<RemoteFamily> acceptInvite(String inviteId) async =>

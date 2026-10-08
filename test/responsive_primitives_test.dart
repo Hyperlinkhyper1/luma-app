@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:luma/app/widgets.dart';
 import 'package:luma/app/window_title_bar.dart';
 import 'package:luma/features/converter/converter_widgets.dart';
-import 'package:luma/features/plugins/installed/roblox_tools/roblox_tools_page.dart';
+import 'package:luma/features/plugins/installed/game_tools/game_tools_page.dart';
 import 'package:luma/theme/luma_theme.dart';
 
 void main() {
@@ -111,13 +111,16 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Roblox tools gives the content the full phone width',
+  testWidgets('Game tools gives the content the full phone width',
       (tester) async {
     phone(tester);
-    await tester.pumpWidget(app(const RobloxToolsPage()));
+    await tester.pumpWidget(
+      app(const GameToolsPage(initialSection: GameToolsSection.mafia)),
+    );
 
     expect(tester.takeException(), isNull);
     expect(find.text('Mafia'), findsWidgets);
+    expect(find.text('Roblox'), findsOneWidget);
     expect(find.byTooltip('Collapse sidebar'), findsNothing);
   });
 }
