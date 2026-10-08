@@ -38,6 +38,7 @@ extension BenchmarkRepairApi on Api {
       'route': benchmarkRepairSettings.route?.toJson(),
       'acceptedPrice': benchmarkRepairSettings.acceptedPrice?.toJson(),
       'maxCostUsd': benchmarkRepairSettings.maxCostUsd,
+      'maxOutputTokens': benchmarkRepairSettings.maxOutputTokens,
       'owner': benchmarkRepairOwner,
       'keys': [
         for (final key in config.configuredAiUpstreams)
@@ -87,6 +88,16 @@ extension BenchmarkRepairApi on Api {
       return errorResponse(409, 'repair_running',
           'Wait for the current settings update or repair.');
     }
+    final rawTokens = body['maxOutputTokens'];
+    final int? tokens = rawTokens == null
+        ? kRepairMaxOutputTokens
+        : rawTokens is num && rawTokens == rawTokens.toInt()
+            ? rawTokens.toInt()
+            : null;
+    if (tokens == null || !BenchmarkRepairSettings.validOutputTokens(tokens)) {
+      return errorResponse(400, 'bad_settings',
+          'The maximum output tokens must be a whole number from 512 to 200000.');
+    }
     benchmarkRepairStarting = true;
     try {
       final price = await _repairPrice(route);
@@ -94,7 +105,8 @@ extension BenchmarkRepairApi on Api {
         return errorResponse(409, 'unknown_price',
             'Both input and output prices must be known. Refresh model data or choose another model.');
       }
-      await benchmarkRepairSettings.save(route, price!, limit.toDouble());
+      await benchmarkRepairSettings.save(
+          route, price!, limit.toDouble(), tokens);
       return jsonResponse(
           200, {'saved': true, 'acceptedPrice': price.toJson()});
     } finally {
@@ -357,7 +369,7 @@ extension BenchmarkRepairApi on Api {
               'renderError': error,
               if (attempt > 1) 'originalError': diagnostic,
               if (tried.isNotEmpty) 'previousAttempts': tried,
-              if (errorLineOf(error) ?? focus case final line?) ...{
+              if (repairFocusLine(base, error) ?? focus case final line?) ...{
                 'errorLine': line,
                 'errorLines': errorLinesOf(base, line, radius: 25),
               },
@@ -370,8 +382,8 @@ extension BenchmarkRepairApi on Api {
         late final int maxTokens;
         try {
           if (remaining <= 0) throw ArgumentError('Spent.');
-          maxTokens =
-              repairOutputLimit(jsonEncode(messages), accepted, remaining);
+          maxTokens = repairOutputLimit(jsonEncode(messages), accepted,
+              remaining, benchmarkRepairSettings.maxOutputTokens);
         } on ArgumentError {
           if (attempt == 1) rethrow;
           throw StateError('Gave up after ${attempt - 1} '
@@ -385,6 +397,7 @@ extension BenchmarkRepairApi on Api {
           'max_tokens': maxTokens,
           'stream': true,
           'stream_options': {'include_usage': true},
+          'response_format': {'type': 'json_object'},
           ..._repairReasoning(route),
           if (route.upstream == AiUpstream.openrouter)
             'provider': {
@@ -398,20 +411,47 @@ extension BenchmarkRepairApi on Api {
             ? 'Repairing the render error…'
             : 'Attempt $attempt of $kRepairMaxAttempts: fixing what the last '
                 'attempt left…';
-        final acc = ChatStreamAccumulator();
-        try {
-          await _callRepairModel(route, body, acc);
-        } finally {
-          spent += acc.usage.costUsd ?? 0;
-          job.costUsd = spent;
-          if (acc.usage.totalTokens > 0 || acc.usage.costUsd != null) {
-            await aiUsage.recordCall(ownerId,
-                feature: 'Benchmark render repair',
-                upstream: route.upstream.label,
-                model: route.model,
-                usage: acc.usage,
-                includeInUsage: true);
+        late ChatStreamAccumulator acc;
+        for (var retry = 0;; retry++) {
+          acc = ChatStreamAccumulator();
+          Object? thrown;
+          StackTrace? trace;
+          try {
+            await _callRepairModel(route, body, acc);
+          } catch (e, st) {
+            thrown = e;
+            trace = st;
+          } finally {
+            spent += acc.usage.costUsd ?? 0;
+            job.costUsd = spent;
+            if (acc.usage.totalTokens > 0 || acc.usage.costUsd != null) {
+              await aiUsage.recordCall(ownerId,
+                  feature: 'Benchmark render repair',
+                  upstream: route.upstream.label,
+                  model: route.model,
+                  usage: acc.usage,
+                  includeInUsage: true);
+            }
           }
+          if (!_providerWasBusy(acc, thrown, accepted)) {
+            if (thrown != null) Error.throwWithStackTrace(thrown, trace!);
+            break;
+          }
+          final why = thrown == null
+              ? _incompleteReason(acc, maxTokens)
+              : thrown is StateError
+                  ? thrown.message
+                  : '$thrown';
+          if (retry >= kRepairBusyRetries) {
+            const kept = 'The live test was kept.';
+            throw StateError('The provider stayed busy through '
+                '${retry + 1} tries. Last: $why'
+                '${why.contains(kept) ? '' : ' $kept'}');
+          }
+          final wait = benchmarkRepairBusyBackoff(retry);
+          job.detail = 'The provider is busy; trying again in '
+              '${wait.inSeconds}s (${retry + 1} of $kRepairBusyRetries)…';
+          await Future<void>.delayed(wait);
         }
         if (spent > limit) {
           throw StateError(
@@ -424,13 +464,45 @@ extension BenchmarkRepairApi on Api {
           throw StateError(_incompleteReason(acc, maxTokens));
         }
 
+        if (repairReplyIsEmpty(acc.content)) {
+          // The model sees nothing to fix. Either the recorded failure was a
+          // one-off (a slow GPU, a CDN hiccup) and the page renders as it is,
+          // or it is broken past what an edit can mend; more attempts won't
+          // change either.
+          job.detail = 'The model found nothing to fix; rendering the test '
+              'as it is…';
+          final current = utf8.encode(base);
+          final renderError =
+              await previewRenders.findSyntaxError(current) != null
+                  ? 'it has a syntax error'
+                  : await previewRenders.validateRepair(job.id, current);
+          if (renderError != null) {
+            throw StateError('The model found nothing it could fix, and the '
+                'test still does not render: $renderError. The page is '
+                'broken past what a small edit can mend. The live test was '
+                'kept.');
+          }
+          if (base != original) {
+            fixed = current;
+            break;
+          }
+          previewRenders.recordFailure(job.id, null);
+          final render = await previewRenders.enqueue([job.id]);
+          job.finish(
+              'done',
+              'Renders as it is: the recorded failure did not happen again, '
+                  'so nothing was changed. Banner: '
+                  '${render == null ? 'started' : render == 'queued' ? 'queued' : render}.');
+          return;
+        }
         String? problem;
         String? candidate;
         try {
           candidate = applyBenchmarkRepair(base, acc.content);
         } on FormatException catch (e) {
-          problem = 'Your reply could not be applied: ${e.message} Copy '
-              'before exactly from html, or use a startLine/endLine edit.';
+          problem = e.message.startsWith('Your reply was not valid JSON')
+              ? e.message
+              : 'Your reply could not be applied: ${e.message}';
           focus = nearestLineOf(base, acc.content) ?? focus;
         }
         if (candidate != null) {
@@ -438,9 +510,19 @@ extension BenchmarkRepairApi on Api {
           if (await previewRenders.findSyntaxError(bytes) case final broken?) {
             problem = 'Syntax error at line ${broken.line}:${broken.column}: '
                 '${broken.message}.';
-            base = candidate;
-            error = explainRenderError(candidate, problem);
-            focus = null;
+            if (bracketProblem(candidate) case final unbalanced?
+                when bracketProblem(base) == null) {
+              // Building on a page whose braces no longer match only buries
+              // the next attempt in errors far from the real fault, so this
+              // edit is dropped and the model tries again from before it.
+              problem = 'Your edits unbalanced the brackets, so they were '
+                  'discarded and html is unchanged: ${unbalanced.message}';
+              focus = errorLineOf(error) ?? focus;
+            } else {
+              base = candidate;
+              error = explainRenderError(candidate, problem);
+              focus = null;
+            }
           } else {
             job.detail = attempt == 1
                 ? 'Checking the repaired test in the banner renderer…'
@@ -545,8 +627,31 @@ extension BenchmarkRepairApi on Api {
     }
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 30);
-    final deadline =
-        Timer(const Duration(minutes: 5), () => client.close(force: true));
+    RepairTimeout? cutOff;
+    void cut(RepairTimeout why) {
+      cutOff ??= why;
+      client.close(force: true);
+    }
+
+    final deadline = Timer(
+        kRepairCallDeadline,
+        () => cut(RepairTimeout(
+            'The model took longer than ${kRepairCallDeadline.inMinutes} '
+            'minutes to answer, so the call was stopped.',
+            idle: false)));
+    Timer? idle;
+    void stillAlive() {
+      idle?.cancel();
+      idle = Timer(
+          kRepairIdleTimeout,
+          () => cut(RepairTimeout(
+              'The provider sent nothing for '
+              '${kRepairIdleTimeout.inMinutes} minutes, so the call was '
+              'stopped.',
+              idle: true)));
+    }
+
+    stillAlive();
     try {
       final req = await client.postUrl(Uri.parse(route.upstream.endpoint));
       req.headers.set(HttpHeaders.authorizationHeader,
@@ -560,19 +665,75 @@ extension BenchmarkRepairApi on Api {
       req.add(utf8.encode(jsonEncode(body)));
       final res = await req.close();
       if (res.statusCode != HttpStatus.ok) {
-        throw HttpException(
-            'Repair provider returned HTTP ${res.statusCode}. No automatic retry.');
+        throw RepairHttpStatus(res.statusCode, await _errorMessageOf(res));
       }
       await for (final line
           in res.transform(utf8.decoder).transform(const LineSplitter())) {
+        stillAlive();
         acc.addLine(line);
-        final problem = repairStreamProblem(acc);
+        final problem = repairStreamProblem(acc,
+            reasoningBudget: (body['max_tokens'] as int) * 3);
         if (problem != null) throw StateError(problem);
         if (acc.done) break;
       }
+    } on IOException {
+      if (cutOff case final why?) throw why;
+      rethrow;
     } finally {
       deadline.cancel();
+      idle?.cancel();
       client.close(force: true);
     }
+  }
+
+  /// The provider's own words for a failed request, when it gave any.
+  Future<String?> _errorMessageOf(HttpClientResponse res) async {
+    try {
+      final text = await res
+          .transform(utf8.decoder)
+          .join()
+          .timeout(const Duration(seconds: 10));
+      final decoded = jsonDecode(text);
+      final error = decoded is Map ? decoded['error'] : null;
+      final message = error is Map ? error['message'] : error;
+      if (message is String && message.isNotEmpty) {
+        return message.length > 300 ? message.substring(0, 300) : message;
+      }
+    } catch (_) {
+      // A body that isn't JSON says nothing more than the status does.
+    }
+    return null;
+  }
+
+  /// Whether a failed call can simply be sent again. Only when the provider
+  /// was busy or dropped the line before anything came back: nothing was
+  /// billed, and little time was lost. A free model is also re-sent after an
+  /// explicit "overloaded", but not after it reasoned for minutes and then
+  /// failed, since that would only repeat the wait.
+  bool _providerWasBusy(
+      ChatStreamAccumulator acc, Object? thrown, AiPrice accepted) {
+    final nothingBack = acc.contentChars == 0 &&
+        acc.reasoningChars == 0 &&
+        (acc.usage.costUsd ?? 0) == 0;
+    final free = accepted.input == 0 && accepted.output == 0;
+    if (!nothingBack) {
+      return free &&
+          switch (thrown) {
+            RepairHttpStatus(:final busy) => busy,
+            null => acc.error != null &&
+                busyProviderError(acc.error, acc.errorCode) &&
+                acc.reasoningChars < 2000,
+            _ => false,
+          };
+    }
+    return switch (thrown) {
+      RepairHttpStatus(:final busy) => busy,
+      RepairTimeout(:final idle) => idle,
+      IOException() => true,
+      null => acc.error != null
+          ? busyProviderError(acc.error, acc.errorCode)
+          : acc.finishReason == 'error' || !acc.done,
+      _ => false,
+    };
   }
 }
