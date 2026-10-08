@@ -365,6 +365,7 @@ void main() {
       ..addLine(line({'reasoning': 'x' * (kRepairReasoningCharBudget * 2)}))
       ..addLine(line({'content': '{"edits":'}));
     expect(repairStreamProblem(answering), isNull);
+    expect(repairStreamProblem(thinking, reasoningOff: true), isNull);
     final huge = ChatStreamAccumulator()
       ..addLine(line({'content': 'y' * 100001}));
     expect(repairStreamProblem(huge), contains('too large'));
@@ -392,7 +393,7 @@ void main() {
         throwsArgumentError);
     expect(repairOutputLimit('source', const AiPrice(0, 0), .001),
         kRepairMaxOutputTokens);
-    expect(repairOutputLimit('source', const AiPrice(1, 2), .25),
+    expect(repairOutputLimit('source', const AiPrice(0, 0.5), .25),
         kRepairMaxOutputTokens);
     final tokens = repairOutputLimit('source', const AiPrice(1, 100), .1);
     expect(tokens, lessThan(1000));
@@ -1001,10 +1002,11 @@ void main() {
       finish = 'length';
       await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
       await finished();
-      expect(sent['max_tokens'], kRepairMaxOutputTokens);
+      final room = sent['max_tokens'] as int;
+      expect(room, greaterThan(100000));
       final job = api.benchmarkRepairJobs['pagoda_demo']!;
       expect(job.state, 'failed');
-      expect(job.detail, contains('ran out of its $kRepairMaxOutputTokens'));
+      expect(job.detail, contains('ran out of its $room'));
       expect(job.detail, isNot(contains('Bad state')));
       expect(utf8.decode((await scenes.readScene('pagoda_demo'))!.bytes),
           original);

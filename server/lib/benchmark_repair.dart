@@ -22,10 +22,6 @@ class BenchmarkRepairSettings {
       if (limit is num && validLimit(limit.toDouble())) {
         maxCostUsd = limit.toDouble();
       }
-      final tokens = raw['maxOutputTokens'];
-      if (tokens is int && validOutputTokens(tokens)) {
-        maxOutputTokens = tokens;
-      }
     } catch (_) {
       route = null;
       acceptedPrice = null;
@@ -37,22 +33,12 @@ class BenchmarkRepairSettings {
   AiPrice? acceptedPrice;
   double maxCostUsd = 0.25;
 
-  /// The most output tokens (reasoning included) one model call may produce.
-  int maxOutputTokens = kRepairMaxOutputTokens;
-
   static bool validLimit(double value) =>
       value.isFinite && value > 0 && value <= 10;
 
-  static bool validOutputTokens(int value) => value >= 512 && value <= 200000;
-
-  Future<void> save(AiModeRoute selected, AiPrice price, double limit,
-      [int? outputTokens]) async {
-    final tokens = outputTokens ?? kRepairMaxOutputTokens;
+  Future<void> save(AiModeRoute selected, AiPrice price, double limit) async {
     if (!validLimit(limit) || !completeRepairPrice(price)) {
       throw ArgumentError('A valid price and spending limit are required.');
-    }
-    if (!validOutputTokens(tokens)) {
-      throw ArgumentError('The output token limit is not valid.');
     }
     await atomicWriteString(
         _file.path,
@@ -60,12 +46,10 @@ class BenchmarkRepairSettings {
           'route': selected.toJson(),
           'acceptedPrice': price.toJson(),
           'maxCostUsd': limit,
-          'maxOutputTokens': tokens,
         }));
     route = selected;
     acceptedPrice = price;
     maxCostUsd = limit;
-    maxOutputTokens = tokens;
   }
 }
 
@@ -141,178 +125,9 @@ String? declarationHint(String source, String error) {
       : "'$name' is declared at lines $where; keep one and remove or rename the other.";
 }
 
-/// Where the brackets of a page's inline scripts stop balancing: a closer
-/// with nothing open (the line it is on), or the openers never closed
-/// (innermost first). A syntax error at "end of input" is reported at the
-/// last line, which is never where the missing `}` belongs; this is.
-({int line, String message})? bracketProblem(String source) {
-  final lineStarts = <int>[0];
-  for (var i = source.indexOf('\n'); i >= 0; i = source.indexOf('\n', i + 1)) {
-    lineStarts.add(i + 1);
-  }
-  int lineOf(int offset) {
-    var lo = 0, hi = lineStarts.length - 1;
-    while (lo < hi) {
-      final mid = (lo + hi + 1) >> 1;
-      if (lineStarts[mid] <= offset) {
-        lo = mid;
-      } else {
-        hi = mid - 1;
-      }
-    }
-    return lo + 1;
-  }
-
-  String textOf(int line) {
-    final end = line < lineStarts.length ? lineStarts[line] - 1 : source.length;
-    final text = source.substring(lineStarts[line - 1], end).trim();
-    return text.length > 120 ? '${text.substring(0, 120)}…' : text;
-  }
-
-  final blocks =
-      RegExp(r'<script\b([^>]*)>([\s\S]*?)</script>', caseSensitive: false);
-  for (final block in blocks.allMatches(source)) {
-    final attrs = block.group(1)!;
-    if (RegExp(r'\bsrc\s*=|json|importmap|x-shader|text/plain',
-            caseSensitive: false)
-        .hasMatch(attrs)) {
-      continue;
-    }
-    final code = block.group(2)!;
-    final base = block.start + block.group(0)!.indexOf('>') + 1;
-    final open = <({String c, int at})>[];
-    var inTemplate = false;
-    var lastSignificant = '';
-    const pairs = {')': '(', ']': '[', '}': '{'};
-    for (var i = 0; i < code.length; i++) {
-      final c = code[i];
-      if (inTemplate) {
-        if (c == '\\') {
-          i++;
-        } else if (c == '`') {
-          inTemplate = false;
-          lastSignificant = '`';
-        } else if (c == r'$' && i + 1 < code.length && code[i + 1] == '{') {
-          open.add((c: r'${', at: base + i));
-          inTemplate = false;
-          i++;
-        }
-        continue;
-      }
-      final next = i + 1 < code.length ? code[i + 1] : '';
-      if (c == '/' && next == '/') {
-        final end = code.indexOf('\n', i);
-        i = end < 0 ? code.length : end;
-        continue;
-      }
-      if (c == '/' && next == '*') {
-        final end = code.indexOf('*/', i + 2);
-        i = end < 0 ? code.length : end + 1;
-        continue;
-      }
-      if (c == '"' || c == "'") {
-        var j = i + 1;
-        while (j < code.length && code[j] != c && code[j] != '\n') {
-          if (code[j] == '\\') j++;
-          j++;
-        }
-        i = j;
-        lastSignificant = c;
-        continue;
-      }
-      if (c == '`') {
-        inTemplate = true;
-        continue;
-      }
-      if (c == '/' &&
-          (lastSignificant.isEmpty ||
-              '(,=:[!&|?{};+-*%<>~^'.contains(lastSignificant))) {
-        var j = i + 1;
-        var inClass = false;
-        while (j < code.length && code[j] != '\n') {
-          final r = code[j];
-          if (r == '\\') {
-            j++;
-          } else if (r == '[') {
-            inClass = true;
-          } else if (r == ']') {
-            inClass = false;
-          } else if (r == '/' && !inClass) {
-            break;
-          }
-          j++;
-        }
-        i = j;
-        lastSignificant = '/';
-        continue;
-      }
-      if (c == '(' || c == '[' || c == '{') {
-        open.add((c: c, at: base + i));
-      } else if (pairs.containsKey(c)) {
-        final top = open.isEmpty ? null : open.last;
-        final wanted = pairs[c]!;
-        if (top == null || (top.c != wanted && !(c == '}' && top.c == r'${'))) {
-          final line = lineOf(base + i);
-          return (
-            line: line,
-            message: "Line $line has a '$c' that closes nothing"
-                "${top == null ? '' : " (the innermost open bracket is the "
-                    "'${top.c}' at line ${lineOf(top.at)}: ${textOf(lineOf(top.at))})"}"
-                '. A block above it was probably closed early or its opening '
-                'line was lost.'
-          );
-        }
-        open.removeLast();
-        if (top.c == r'${') {
-          inTemplate = true;
-          continue;
-        }
-      }
-      if (c.trim().isNotEmpty) lastSignificant = c;
-    }
-    if (inTemplate) {
-      final line = lineOf(block.end);
-      return (
-        line: line,
-        message: 'A template literal (`) is never closed in the script '
-            'ending at line $line.'
-      );
-    }
-    if (open.isNotEmpty) {
-      final unclosed = open.reversed.take(5).map((o) {
-        final line = lineOf(o.at);
-        return "'${o.c}' at line $line: ${textOf(line)}";
-      }).join('; ');
-      return (
-        line: lineOf(open.last.at),
-        message: '${open.length} bracket${open.length == 1 ? ' is' : 's are'} '
-            'never closed in the script ending at line ${lineOf(block.end)}, '
-            'innermost first: $unclosed. Close each where its block should end '
-            '(or write the missing code if the script was cut short).'
-      );
-    }
-  }
-  return null;
-}
-
-/// The line a repair should be shown the code around: where the brackets
-/// stop balancing for a bracket error, else the line the error names.
-int? repairFocusLine(String source, String error) {
-  if (RegExp(r"Unexpected end of input|Unexpected token '[)}\]]'")
-      .hasMatch(error)) {
-    if (bracketProblem(source) case final problem?) return problem.line;
-  }
-  return errorLineOf(error);
-}
-
 /// [error] with a hint appended when [source] can say more about it.
 String explainRenderError(String source, String error) {
-  final hint = declarationHint(source, error) ??
-      (RegExp(r"Unexpected end of input|Unexpected token '[)}\]]'|"
-                  r'missing \) after|Unterminated template')
-              .hasMatch(error)
-          ? bracketProblem(source)?.message
-          : null);
+  final hint = declarationHint(source, error);
   return hint == null ? error : '$error Hint: $hint';
 }
 
@@ -349,64 +164,6 @@ int? nearestLineOf(String source, String reply) {
 /// them together.
 const kRepairMaxAttempts = 4;
 
-/// How often one model attempt is sent again after the provider was busy or
-/// dropped the call before it produced anything. These don't count as repair
-/// attempts: nothing was generated, so nothing was billed.
-const kRepairBusyRetries = 3;
-
-/// The wait before each busy retry.
-Duration repairBusyBackoff(int retry) =>
-    Duration(seconds: const [20, 60, 120][retry.clamp(0, 2)]);
-
-/// The longest one repair call may run. Free reasoning models at a high
-/// effort routinely need more than five minutes.
-const kRepairCallDeadline = Duration(minutes: 15);
-
-/// A call that receives nothing (not even a keep-alive) for this long is
-/// stopped.
-const kRepairIdleTimeout = Duration(minutes: 3);
-
-/// Whether a provider error means "try again later" rather than "this
-/// request is wrong".
-bool busyProviderError(String? message, int? code) {
-  if (const {408, 429, 500, 502, 503, 504, 524, 529}.contains(code)) {
-    return true;
-  }
-  return message != null &&
-      RegExp(
-              r'overload|temporarily|rate.?limit|try again|timed? ?out|'
-              r'unavailable|capacity|too many requests',
-              caseSensitive: false)
-          .hasMatch(message);
-}
-
-/// The provider answered a repair call with something other than HTTP 200.
-class RepairHttpStatus implements Exception {
-  RepairHttpStatus(this.status, [this.detail]);
-  final int status;
-  final String? detail;
-
-  bool get busy => status == 408 || status == 429 || status >= 500;
-
-  @override
-  String toString() => 'The repair provider returned HTTP $status'
-      '${detail == null || detail!.isEmpty ? '' : ': $detail'}. '
-      'The live test was kept.';
-}
-
-/// A repair call stopped by its own clock rather than by the provider.
-class RepairTimeout implements Exception {
-  RepairTimeout(this.message, {required this.idle});
-  final String message;
-
-  /// True when the provider went quiet, false when the whole call ran out
-  /// of time.
-  final bool idle;
-
-  @override
-  String toString() => '$message The live test was kept.';
-}
-
 /// Reasoning effort a repair asks for when the settings don't pick one. A
 /// fix to a stack trace needs little thought, and unbounded thinking is what
 /// made repairs slow and incomplete.
@@ -438,14 +195,10 @@ List<Map<String, Object>> errorLinesOf(String source, int line,
 }
 
 /// Why a repair's stream should be cut off now, or null to keep reading.
-String? repairStreamProblem(ChatStreamAccumulator acc,
-    {int reasoningBudget = kRepairReasoningCharBudget}) {
+String? repairStreamProblem(ChatStreamAccumulator acc) {
   if (acc.contentChars > 100000) return 'Repair reply too large.';
   if (acc.contentChars == 0 &&
-      acc.reasoningChars >
-          (reasoningBudget > kRepairReasoningCharBudget
-              ? reasoningBudget
-              : kRepairReasoningCharBudget)) {
+      acc.reasoningChars > kRepairReasoningCharBudget) {
     return 'The model spent ${acc.reasoningChars} characters reasoning '
         'without answering, so it was stopped early. Lower its reasoning '
         'effort in the cog, or pick another model. The live test was kept.';
@@ -455,8 +208,7 @@ String? repairStreamProblem(ChatStreamAccumulator acc,
 
 /// Conservative input bound: one token per UTF-8 byte plus message overhead.
 /// Output includes reasoning and is capped at the provider request boundary.
-int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd,
-    [int maxTokens = kRepairMaxOutputTokens]) {
+int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd) {
   if (!completeRepairPrice(price) ||
       !BenchmarkRepairSettings.validLimit(maxCostUsd)) {
     throw ArgumentError('Unknown pricing or invalid spending limit.');
@@ -466,8 +218,10 @@ int repairOutputLimit(String messagesJson, AiPrice price, double maxCostUsd,
   final remaining = maxCostUsd - inputCost;
   if (remaining <= 0) throw ArgumentError('Input exceeds the price guard.');
   final output = price.output == 0
-      ? maxTokens
-      : (remaining * 1000000 / price.output!).floor().clamp(0, maxTokens);
+      ? kRepairMaxOutputTokens
+      : (remaining * 1000000 / price.output!)
+          .floor()
+          .clamp(0, kRepairMaxOutputTokens);
   if (output < 512) {
     throw ArgumentError('The price guard leaves too few output tokens.');
   }
@@ -489,13 +243,9 @@ files are available.
 Return only a JSON object {"edits":[...]} where each edit is one of:
 {"before":"exact source text that occurs exactly once","after":"replacement"}
 {"startLine":N,"endLine":M,"after":"new text for those lines"}
-The second form takes 1-based inclusive line numbers and replaces those lines
-entirely; use it to rewrite a broken block, and an empty after to delete
-lines. The html itself is not numbered: only use line numbers listed in
-errorLines, and use the first form anywhere else. Use at most 40 edits that do
-not overlap.
-Before you add a function, const, let or class, check the html does not
-already declare that name; if it does, edit the existing one instead.
+The second form takes 1-based inclusive line numbers of the html as given and
+replaces those lines entirely; use it to rewrite a broken block, and an empty
+after to delete lines. Use at most 40 edits that do not overlap.
 If previousAttempts is given, those fixes did not work: the html you now see
 already contains their changes and renderError is what is still wrong with it.
 Do not repeat a fix that failed. If the page cannot be made to render, return
@@ -514,12 +264,12 @@ the fix. Copy each before exactly as it appears in the source.
 /// indentation, a run of spaces) is accepted if that is just as unique, since
 /// models routinely retype those slightly differently.
 ({int start, int end}) _locateEdit(String source, String before) {
-  const ambiguous = FormatException(
-      'An edit\'s "before" text matches more than one place in the source. '
-      'Include more of the lines around it so it matches exactly one.');
   final exact = source.indexOf(before);
   if (exact >= 0) {
-    if (source.indexOf(before, exact + 1) >= 0) throw ambiguous;
+    if (source.indexOf(before, exact + 1) >= 0) {
+      throw const FormatException(
+          'An edit matches more than one place in the source.');
+    }
     return (start: exact, end: exact + before.length);
   }
   final loose = RegExp(before.splitMapJoin(RegExp(r'\s+'),
@@ -527,110 +277,30 @@ the fix. Copy each before exactly as it appears in the source.
   final found = loose.allMatches(source).take(2).toList();
   if (found.isEmpty) {
     throw const FormatException(
-        'An edit\'s "before" text was not found in the source. Copy it '
-        'exactly from html, or use startLine/endLine for lines in errorLines.');
+        'An edit\'s "before" text was not found in the source.');
   }
-  if (found.length > 1) throw ambiguous;
+  if (found.length > 1) {
+    throw const FormatException(
+        'An edit matches more than one place in the source.');
+  }
   return (start: found.first.start, end: found.first.end);
 }
-
-/// The JSON object in a repair reply, without the code fence or the
-/// "Here is the fix:" some models put around it.
-String repairReplyJson(String reply) {
-  final text = reply.trim();
-  final fenced = RegExp(r'```(?:json)?\s*(\{[\s\S]*\})\s*```').firstMatch(text);
-  if (fenced != null) return fenced.group(1)!;
-  final start = text.indexOf('{');
-  final end = text.lastIndexOf('}');
-  return start >= 0 && end > start ? text.substring(start, end + 1) : text;
-}
-
-/// [json] with the two slips models make when they put code in a JSON
-/// string mended: raw newlines and tabs, and backslashes that start no JSON
-/// escape (a regex's `\d`, a `\'`). Anything else is left for the parser.
-String mendRepairJson(String json) {
-  final out = StringBuffer();
-  var inString = false;
-  for (var i = 0; i < json.length; i++) {
-    final c = json[i];
-    if (!inString) {
-      if (c == '"') inString = true;
-      out.write(c);
-      continue;
-    }
-    if (c == '\\') {
-      final next = i + 1 < json.length ? json[i + 1] : '';
-      if ('"\\/bfnrtu'.contains(next) && next.isNotEmpty) {
-        out
-          ..write(c)
-          ..write(next);
-        i++;
-      } else {
-        out.write(r'\\');
-      }
-    } else if (c == '"') {
-      inString = false;
-      out.write(c);
-    } else if (c == '\n') {
-      out.write(r'\n');
-    } else if (c == '\r') {
-      out.write(r'\r');
-    } else if (c == '\t') {
-      out.write(r'\t');
-    } else {
-      out.write(c);
-    }
-  }
-  return out.toString();
-}
-
-/// Whether a repair reply is the model saying there is nothing it can fix:
-/// a well-formed reply whose edit list is empty.
-bool repairReplyIsEmpty(String reply) {
-  final json = repairReplyJson(reply);
-  Object? raw;
-  try {
-    raw = jsonDecode(json);
-  } on FormatException {
-    try {
-      raw = jsonDecode(mendRepairJson(json));
-    } on FormatException {
-      return false;
-    }
-  }
-  return raw is Map && raw['edits'] is List && (raw['edits'] as List).isEmpty;
-}
-
-/// A line number from an edit, which some models send as "12" or 12.0.
-int? _lineNumber(Object? value) => switch (value) {
-      int n => n,
-      double n when n == n.roundToDouble() => n.toInt(),
-      String s => int.tryParse(s.trim()),
-      _ => null,
-    };
 
 /// Applies a repair reply's edits to [source]. An edit replaces text that
 /// occurs exactly once, or a range of whole lines, so a broken block can be
 /// rewritten; edits cannot overlap, and together they cannot replace the
 /// whole page.
 String applyBenchmarkRepair(String source, String reply) {
-  final json = repairReplyJson(reply);
-  Object? raw;
-  try {
-    raw = jsonDecode(json);
-  } on FormatException catch (e) {
-    try {
-      raw = jsonDecode(mendRepairJson(json));
-    } on FormatException {
-      throw FormatException('Your reply was not valid JSON (${e.message}). '
-          'Reply with only the JSON object, escaping quotes, backslashes and '
-          'newlines inside strings.');
-    }
+  var text = reply.trim();
+  if (text.startsWith('```')) {
+    text = text
+        .replaceFirst(RegExp(r'^```(?:json)?\s*'), '')
+        .replaceFirst(RegExp(r'\s*```$'), '');
   }
+  final raw = jsonDecode(text);
   final edits = raw is Map ? raw['edits'] : null;
   if (edits is! List || edits.isEmpty || edits.length > 40) {
-    throw const FormatException(
-        'No edits were returned. Find the cause in renderError and edit it.');
+    throw const FormatException('No valid repair was returned.');
   }
   final lineStarts = <int>[0];
   for (var i = source.indexOf('\n'); i >= 0; i = source.indexOf('\n', i + 1)) {
@@ -643,22 +313,17 @@ String applyBenchmarkRepair(String source, String reply) {
     if (after is! String || after.length > 60000) {
       throw const FormatException('Repair edits must be exact changes.');
     }
-    if (edit['startLine'] != null || edit['endLine'] != null) {
-      final first = _lineNumber(edit['startLine']);
-      final last = _lineNumber(edit['endLine']);
-      if (first == null ||
-          last == null ||
+    final first = edit['startLine'];
+    final last = edit['endLine'];
+    if (first != null || last != null) {
+      if (first is! int ||
+          last is! int ||
           first < 1 ||
           last < first ||
-          last > lineStarts.length) {
-        throw FormatException('An edit names lines '
-            '${edit['startLine']}–${edit['endLine']}, but the source has '
-            '${lineStarts.length} lines. Use startLine/endLine only for lines '
-            'listed in errorLines; anywhere else, copy "before" from html.');
-      }
-      if (last - first > 600) {
+          last > lineStarts.length ||
+          last - first > 600) {
         throw const FormatException(
-            'An edit replaces more than 600 lines; replace a smaller block.');
+            'An edit names lines that are not in the source.');
       }
       final start = lineStarts[first - 1];
       var end =
@@ -688,8 +353,7 @@ String applyBenchmarkRepair(String source, String reply) {
   var next = source.length;
   for (final span in spans) {
     if (span.end > next) {
-      throw const FormatException(
-          'Two edits change the same text; merge them into one edit.');
+      throw const FormatException('Overlapping repair edits.');
     }
     result = result.replaceRange(span.start, span.end, span.after);
     next = span.start;
