@@ -98,19 +98,18 @@ class SimpleNoise {
     let i = Math.floor(x+s), j = Math.floor(y+s);
     let t = (i+j)*G2;
     let X0 = i-t, Y0 = j-t;
-    let x0 = x-X0, y0 = y-Y0;
-    let i1, j1;
-    if (x0>y0) { i1=1; j1=0; } else { i1=0; j1=1; }
-    let x1 = x0 - i1 + G2, y1 = y0 - j1 + G2;
-    let x2 = x0 - 1 + 2*G2, y2 = y0 - 1 + 2*G2;
-    let ii = i & 255, jj = j & 255;
-    let gi0 = this.p[ii+this.p[jj]]%12, gi1 = this.p[ii+i1+this.p[jj+j1]]%12, gi2 = this.p[ii+1+this.p[jj+1]]%12;
+    let xi = Math.floor(X0), yi = Math.floor(Y0);
+    let x0 = X0 - xi, y0 = Y0 - yi;
+    const gi00 = this.p[(xi%256 + 256)%256] % 12, gi01 = this.p[(xi%256 + 256)%256 + 1] % 12;
+    const gi10 = this.p[((xi+1)%256 + 256)%256] % 12, gi11 = this.p[((xi+1)%256 + 256)%256 + 1] % 12;
+    const grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
+    const g00 = grad3[gi00], g01 = grad3[gi01], g10 = grad3[gi10], g11 = grad3[gi11];
     let t0 = 0.5 - x0*x0 - y0*y0;
-    if (t0<0) n0 = 0; else { t0*=t0; n0 = t0*t0*(this.V(gi0,x0,y0)); }
-    let t1 = 0.5 - x1*x1 - y1*y1;
-    if (t1<0) n1 = 0; else { t1*=t1; n1 = t1*t1*(this.V(gi1,x1,y1)); }
-    let t2 = 0.5 - x2*x2 - y2*y2;
-    if (t2<0) n2 = 0; else { t2*=t2; n2 = t2*t2*(this.V(gi2,x2,y2)); }
+    if (t0 < 0) n0 = 0; else { t0 *= t0; n0 = t0*t0 * (g00[0]*x0 + g00[1]*y0); }
+    let t1 = 0.5 - (x0-1)*(x0-1) - y0*y0;
+    if (t1 < 0) n1 = 0; else { t1 *= t1; n1 = t1*t1 * (g10[0]*(x0-1) + g10[1]*y0); }
+    let t2 = 0.5 - x0*x0 - (y0-1)*(y0-1);
+    if (t2 < 0) n2 = 0; else { t2 *= t2; n2 = t2*t2 * (g01[0]*x0 + g01[1]*(y0-1)); }
     return 70*(n0+n1+n2);
   }
   V(g, x, y) {
