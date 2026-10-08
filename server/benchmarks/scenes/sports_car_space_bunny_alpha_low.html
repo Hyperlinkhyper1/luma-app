@@ -182,7 +182,6 @@ let lastGate=false;function positionToTrack(u){if(u<.008&&lastGate){lastGate=fal
 // minimap
 const mc=document.getElementById('map').getContext('2d');function drawMap(){mc.clearRect(0,0,380,380);mc.strokeStyle='#606871';mc.lineWidth=18;mc.beginPath();for(let i=0;i<=150;i++){let p=centerCurve.getPointAt(i/150);let x=190+p.x*.9,y=190+p.z*.9;i?mc.lineTo(x,y):mc.moveTo(x,y)}mc.closePath();mc.stroke();let p=car.position;mc.fillStyle='#e6c583';mc.beginPath();mc.arc(190+p.x*.9,190+p.z*.9,8,0,7);mc.fill();mc.strokeStyle='#1a1e23';mc.lineWidth=3;mc.beginPath();mc.moveTo(190+p.x*.9,190+p.z*.9);mc.lineTo(190+p.x*.9+Math.sin(car.rotation.y)*13,190+p.z*.9+Math.cos(car.rotation.y)*13);mc.stroke()}
 // UI
-document.getElementById('hideUI').onclick=()=>document.body.classList.add('hiddenUI');document.getElementById('showUI').onclick=()=>document.body.classList.remove('hiddenUI');
 // hover labels and raycaster
 const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();addEventListener('pointermove',e=>{mouse.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);if(!xray)return;ray.setFromCamera(mouse,camera);let hit=ray.intersectObjects(chassis.children,true)[0];parts.forEach(p=>p.el.style.display='none');if(hit){let o=hit.object;while(o&&!o.userData.part)o=o.parent;if(o){let p=parts.find(p=>p.o===o);if(p)p.el.style.display='block';}}parts.forEach(p=>{if(p.el.style.display==='block'){let v=p.anchor.clone().applyMatrix4(car.matrixWorld).project(camera);p.el.style.left=(v.x*.5+.5)*innerWidth+'px';p.el.style.top=(-v.y*.5+.5)*innerHeight+'px'}})});
 // animation
