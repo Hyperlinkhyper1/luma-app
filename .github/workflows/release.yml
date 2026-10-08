@@ -76,7 +76,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dart run tool/world_converter/build_version_engine.dart build/world_converter
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dart run tool/world_converter/verify_round_trip.dart build/world_converter/Release/luma-world-converter.exe --versions
+          $env:LUMA_WORLD_VERIFY_ARGS = 'build/world_converter/Release/luma-world-converter.exe --versions'
+          flutter test --no-pub tool/world_converter/verify_round_trip_test.dart
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --install build/world_converter --config Release --component WorldConverter --prefix build/windows/x64/runner/Release
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -186,7 +187,7 @@ jobs:
           cmake --build build/world_converter --target luma-world-converter luma-world-converter-actor-test --parallel 2
           build/world_converter/luma-world-converter-actor-test
           dart run tool/world_converter/build_version_engine.dart build/world_converter
-          dart run tool/world_converter/verify_round_trip.dart build/world_converter/luma-world-converter --versions
+          LUMA_WORLD_VERIFY_ARGS='build/world_converter/luma-world-converter --versions' flutter test --no-pub tool/world_converter/verify_round_trip_test.dart
           cmake --install build/world_converter --component WorldConverter --prefix build/linux/x64/release/bundle
 
       - name: Archive Linux bundle
