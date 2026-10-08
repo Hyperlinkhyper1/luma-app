@@ -113,6 +113,52 @@ class PluginRepository {
     }
   }
 
+  /// Plugins that were folded into another one, keyed by the plugin that now
+  /// holds them. The merged plugin's manifest values are inlined so the
+  /// migration runs offline at startup.
+  static const _mergedPlugins = {
+    'game-tools': (
+      name: 'Game Tools',
+      icon: 'sports_esports',
+      version: '1.0.0',
+      legacyIds: ['steam-tools', 'roblox-tools'],
+    ),
+  };
+
+  /// Replaces installs of retired plugins with the plugin they were merged
+  /// into, keeping the earliest install date so the nav rail order holds.
+  /// An existing install of the merged plugin wins; legacy rows are dropped.
+  Future<void> migrateMergedPlugins() async {
+    for (final MapEntry(key: mergedId, value: merged)
+        in _mergedPlugins.entries) {
+      await _db.transaction(() async {
+        final legacy = await (_db.select(_db.installedPlugins)
+              ..where((t) => t.pluginId.isIn(merged.legacyIds))
+              ..orderBy([(t) => OrderingTerm.asc(t.installedAt)]))
+            .get();
+        if (legacy.isEmpty) return;
+
+        final existing = await (_db.select(_db.installedPlugins)
+              ..where((t) => t.pluginId.equals(mergedId)))
+            .getSingleOrNull();
+        if (existing == null) {
+          await _db.into(_db.installedPlugins).insert(
+                InstalledPluginsCompanion.insert(
+                  pluginId: mergedId,
+                  name: merged.name,
+                  icon: Value(merged.icon),
+                  version: Value(merged.version),
+                  installedAt: Value(legacy.first.installedAt),
+                ),
+              );
+        }
+        await (_db.delete(_db.installedPlugins)
+              ..where((t) => t.pluginId.isIn(merged.legacyIds)))
+            .go();
+      });
+    }
+  }
+
   Future<void> uninstall(String pluginId) {
     return (_db.delete(_db.installedPlugins)
           ..where((t) => t.pluginId.equals(pluginId)))
