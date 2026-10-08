@@ -1788,13 +1788,30 @@
             scene.add(portLife);
             
             // Get references for ship elements
-            bowLine = ship.children.find(child => child.geometry && child.geometry.type === 'BoxGeometry' && 
-                child.position.x === 12 && child.position.z === -50);
-            sternLine = ship.children.find(child => child.geometry && child.geometry.type === 'BoxGeometry' && 
-                child.position.x === -12 && child.position.z === -50);
-            gangway = ship.children.find(child => child.geometry && child.geometry.type === 'BoxGeometry' && 
-                child.position.y === 5 && child.position.z === -50 && 
-                Math.abs(child.position.x + 12) < 0.5);
+            let tempBowl;
+            for (let i = 0; i < ship.children.length; i++) {
+                const c = ship.children[i];
+                if (c.geometry && c.geometry.type === 'BoxGeometry' && c.position.x === 12 && c.position.z === -50) {
+                    tempBowl = c;
+                    break;
+                }
+            }
+            let tempStern;
+            for (let i = 0; i < ship.children.length; i++) {
+                const c = ship.children[i];
+                if (c.geometry && c.geometry.type === 'BoxGeometry' && c.position.x === -12 && c.position.z === -50) {
+                    tempStern = c;
+                    break;
+                }
+            }
+            let tempGang;
+            for (let i = 0; i < ship.children.length; i++) {
+                const c = ship.children[i];
+                if (c.geometry && c.geometry.type === 'BoxGeometry' && c.position.y === 5 && c.position.z === -50 && Math.abs(c.position.x + 12) < 0.5) {
+                    tempGang = c;
+                    break;
+                }
+            }
             
             // Store references for updates
             window.ship = ship;
