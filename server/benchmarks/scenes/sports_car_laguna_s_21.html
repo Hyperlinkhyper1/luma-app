@@ -209,7 +209,11 @@ function buildCar() {
 function generateEnvironmentMap() {
   const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(512);
   const pmremGenerator = new THREE.PMREMGenerator(renderer);
-  pmremGenerator.compileCubemapShader();
+  if (pmremGenerator.compileCubemapShader) {
+    pmremGenerator.compileCubemapShader();
+  } else {
+    pmremGenerator.initialize();
+  }
   const sceneBG = new THREE.Scene();
   sceneBG.background = new THREE.Color(0x333333);
   const envMap = pmremGenerator.fromScene(sceneBG).texture;
