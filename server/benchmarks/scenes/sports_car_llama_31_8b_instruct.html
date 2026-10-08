@@ -59,17 +59,15 @@
         <div id="cameras">
             <div class="option" id="front-3-4">Front 3/4</div>
             <div class="option" id="side">Side</div>
-            <div class="option" id="rear-3-4">Rear 3/4</div>
-            <div class="option" id="top">Top</div>
-            <div class="option" id="interior">Interior</div>
-            <div class="option" id="wheel-close-up">Wheel Close-Up</div>
+            const OrbitControls = (await import('https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js')).OrbitControls;
+            controls = new OrbitControls(camera, renderer.domElement);
         </div>
         <button id="reset">Reset</button>
     </div>
     <canvas id="renderCanvas"></canvas>
     <script type="module">
         import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/OrbitControls.js';
+
 
         let scene, camera, renderer, controls;
         let currentMode = 'showroom';
