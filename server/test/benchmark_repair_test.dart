@@ -119,6 +119,49 @@ void main() {
             'Syntax error at line 6:1: Unexpected end of input.'),
         2);
   });
+  test('replies in other shapes are understood', () {
+    final fixed = original.replaceFirst('broken()', 'fixed()');
+    const edit = {'before': 'broken()', 'after': 'fixed()'};
+    for (final shape in [
+      [edit],
+      edit,
+      {
+        'changes': [edit]
+      },
+      {'edit': edit},
+      {'html': fixed},
+    ]) {
+      expect(applyBenchmarkRepair(original, jsonEncode(shape)), fixed,
+          reason: '$shape');
+      expect(repairReplyIsEmpty(jsonEncode(shape), original), isFalse,
+          reason: '$shape');
+    }
+    for (final nothing in [
+      {'edits': []},
+      {},
+      {'reason': 'The page looks correct.'},
+      {'html': '\n$original\n'},
+    ]) {
+      expect(repairReplyIsEmpty(jsonEncode(nothing), original), isTrue,
+          reason: '$nothing');
+    }
+    expect(
+        () => applyBenchmarkRepair(
+            original, jsonEncode({'html': '<html>something else</html>'})),
+        throwsA(isA<FormatException>().having(
+            (e) => e.message, 'message', contains('changes too much'))));
+  });
+  test('an edit running a line past the end means to the end', () {
+    expect(
+        applyBenchmarkRepair(
+            'a\nb\nc',
+            jsonEncode({
+              'edits': [
+                {'startLine': 2, 'endLine': 4, 'after': 'B'}
+              ]
+            })),
+        'a\nB');
+  });
   test('code pasted into JSON strings unescaped is mended', () {
     const page = '<script>\nconst re = /broken()/;\n</script>';
     expect(
@@ -256,7 +299,7 @@ void main() {
         ['first of the page', ...lines.sublist(1, 9), 'last'].join('\n'));
     for (final bad in [
       [
-        {'startLine': 9, 'endLine': 11, 'after': 'x'}
+        {'startLine': 9, 'endLine': 13, 'after': 'x'}
       ],
       [
         {'startLine': 0, 'endLine': 1, 'after': 'x'}
@@ -844,6 +887,18 @@ void main() {
       expect(
           await Directory('${dir.path}/benchmark_repairs/pagoda_demo').exists(),
           isFalse);
+    });
+    test('a failed repair keeps what the model answered, to read', () async {
+      await save();
+      renderer.validationError = 'Still cannot render';
+      await request('POST', '/admin/benchmark-banners/repair/pagoda_demo');
+      await finished();
+      final job = api.benchmarkRepairJobs['pagoda_demo']!;
+      expect(job.state, 'failed');
+      expect(job.toJson()['hasReplies'], isTrue);
+      expect(job.replies, hasLength(kRepairMaxAttempts));
+      expect(job.replies.first, startsWith('--- Attempt 1 ---'));
+      expect(job.replies.first, contains('fixed()'));
     });
     test('nothing to fix and it still fails: stops after one call', () async {
       await save();

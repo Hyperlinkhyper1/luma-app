@@ -12,22 +12,50 @@ const int kAiNewsRetained = 40;
 /// which publishes both numbers per model variant; models whose provider
 /// exposes effort levels but has no measured variants keep an empty list and
 /// the app draws no effort graph for them rather than inventing one.
+///
+/// The other scores, speed and price are the tier's own measurements, so the
+/// app's detailed leaderboard can rank every model-and-effort pair as its own
+/// row the way AA's does. Each is null when AA didn't measure it for this tier.
 class AiEffortProfile {
   const AiEffortProfile({
     required this.effort,
     this.intelligenceIndex,
     this.medianOutputTokens,
+    this.reasoningIndex,
+    this.codingIndex,
+    this.agentIndex,
+    this.mathIndex,
+    this.speedTokensPerSec,
+    this.latencyMs,
+    this.inputPricePerM,
+    this.outputPricePerM,
   });
 
   /// Provider's own label — `minimal`, `low`, `medium`, `high`, `xhigh`.
   final String effort;
   final double? intelligenceIndex;
   final int? medianOutputTokens;
+  final double? reasoningIndex;
+  final double? codingIndex;
+  final double? agentIndex;
+  final double? mathIndex;
+  final double? speedTokensPerSec;
+  final double? latencyMs;
+  final double? inputPricePerM;
+  final double? outputPricePerM;
 
   factory AiEffortProfile.fromJson(Map<String, dynamic> j) => AiEffortProfile(
         effort: j['effort'] as String,
         intelligenceIndex: (j['intelligenceIndex'] as num?)?.toDouble(),
         medianOutputTokens: (j['medianOutputTokens'] as num?)?.toInt(),
+        reasoningIndex: (j['reasoningIndex'] as num?)?.toDouble(),
+        codingIndex: (j['codingIndex'] as num?)?.toDouble(),
+        agentIndex: (j['agentIndex'] as num?)?.toDouble(),
+        mathIndex: (j['mathIndex'] as num?)?.toDouble(),
+        speedTokensPerSec: (j['speedTokensPerSec'] as num?)?.toDouble(),
+        latencyMs: (j['latencyMs'] as num?)?.toDouble(),
+        inputPricePerM: (j['inputPricePerM'] as num?)?.toDouble(),
+        outputPricePerM: (j['outputPricePerM'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +63,14 @@ class AiEffortProfile {
         if (intelligenceIndex != null) 'intelligenceIndex': intelligenceIndex,
         if (medianOutputTokens != null)
           'medianOutputTokens': medianOutputTokens,
+        if (reasoningIndex != null) 'reasoningIndex': reasoningIndex,
+        if (codingIndex != null) 'codingIndex': codingIndex,
+        if (agentIndex != null) 'agentIndex': agentIndex,
+        if (mathIndex != null) 'mathIndex': mathIndex,
+        if (speedTokensPerSec != null) 'speedTokensPerSec': speedTokensPerSec,
+        if (latencyMs != null) 'latencyMs': latencyMs,
+        if (inputPricePerM != null) 'inputPricePerM': inputPricePerM,
+        if (outputPricePerM != null) 'outputPricePerM': outputPricePerM,
       };
 }
 

@@ -1039,10 +1039,19 @@ List<AiModel> aaOverlays(List<Object?> raw, List<AiModel> known) {
       // An effort-tier row contributes a point to the effort graph, and
       // stands by as a headline candidate in case AA never publishes a bare
       // row for this model.
+      final pricing = _map(entry['pricing']);
       (efforts[match.id] ??= []).add(AiEffortProfile(
         effort: effort,
         intelligenceIndex: intelligence,
         medianOutputTokens: _num(entry['median_output_tokens'])?.round(),
+        reasoningIndex: row.reasoningIndex,
+        codingIndex: row.codingIndex,
+        agentIndex: row.agentIndex,
+        mathIndex: row.mathIndex,
+        speedTokensPerSec: row.speedTokensPerSec,
+        latencyMs: row.latencyMs,
+        inputPricePerM: _num(pricing['price_1m_input_tokens']),
+        outputPricePerM: _num(pricing['price_1m_output_tokens']),
       ));
       final incumbent = bestTier[match.id];
       if (incumbent == null ||

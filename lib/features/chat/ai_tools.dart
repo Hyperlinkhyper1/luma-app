@@ -82,7 +82,7 @@ class AiToolRegistry {
         ),
         const AiToolDefinition(
           name: 'navigate_luma',
-          description: 'Open a Luma destination the user requests. Destinations include home, converter, finance, passwords, notes, assistant, plugins, settings, account, calendar, steam-tools, and any installed plugin id.',
+          description: 'Open a Luma destination the user requests. Destinations include home, converter, finance, passwords, notes, assistant, plugins, settings, account, calendar, game-tools, and any installed plugin id.',
           parameters: {'type': 'object', 'properties': {'destination': {'type': 'string'}}, 'required': ['destination']},
         ),
         const AiToolDefinition(

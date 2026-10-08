@@ -298,6 +298,21 @@ extension BenchmarkRepairApi on Api {
     return jsonResponse(200, {'stopped': true});
   }
 
+  /// What the model answered on each attempt of a repair. Plain text and
+  /// sandboxed, so a reply that contains a page is shown, never run.
+  Response _adminRepairReplies(Request request) {
+    final job = benchmarkRepairJobs[request.params['id']!];
+    if (job == null || job.replies.isEmpty) {
+      return errorResponse(404, 'not_found', 'No replies for that repair.');
+    }
+    return Response(200, body: job.replies.join('\n\n'), headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Security-Policy': 'sandbox',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
+    });
+  }
+
   /// Clears finished repair cards (and a finished run's summary).
   Response _adminRepairAllDismiss(Request request) {
     if (!_sameOrigin(request))
@@ -453,6 +468,7 @@ extension BenchmarkRepairApi on Api {
               '${wait.inSeconds}s (${retry + 1} of $kRepairBusyRetries)…';
           await Future<void>.delayed(wait);
         }
+        job.addReply('--- Attempt $attempt ---\n${acc.content}');
         if (spent > limit) {
           throw StateError(
               'Price guard: the provider reported a cost above the repair limit. Usage was recorded; the live test was kept.');
@@ -464,7 +480,7 @@ extension BenchmarkRepairApi on Api {
           throw StateError(_incompleteReason(acc, maxTokens));
         }
 
-        if (repairReplyIsEmpty(acc.content)) {
+        if (repairReplyIsEmpty(acc.content, base)) {
           // The model sees nothing to fix. Either the recorded failure was a
           // one-off (a slow GPU, a CDN hiccup) and the page renders as it is,
           // or it is broken past what an edit can mend; more attempts won't

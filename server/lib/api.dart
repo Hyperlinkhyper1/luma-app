@@ -736,6 +736,8 @@ class Api {
           _requireAdmin(_adminRepairAllDismiss))
       ..post('/admin/benchmark-banners/repair/<id>',
           _requireAdmin(_adminRepairStart))
+      ..get('/admin/benchmark-banners/repair/<id>/replies',
+          _requireAdmin(_adminRepairReplies))
       ..post('/admin/benchmark-banners/stop', _requireAdmin(_adminBannersStop))
       ..get('/admin/benchmark-banners/status',
           _requireAdmin(_adminBannersStatus))
@@ -14073,6 +14075,10 @@ window.lumaAskReason = function (form, message) {
         + (j.kind ? ' <span class="badge">' + esc(j.kind) + '</span>' : '') + badge + '</div>'
         + '<div class="bg-run-meta">' + repairLabel + (repairLabel ? ' → ' : '') + '<code>' + esc(j.id) + '</code></div></div>'
         + '<div class="bg-run-actions">'
+        + (!running && j.hasReplies
+          ? '<a class="btn btn-ghost btn-sm" href="/admin/benchmark-banners/repair/' + encodeURIComponent(j.id)
+            + '/replies" target="_blank" rel="noopener" title="What the repair model answered on each attempt">Replies</a>'
+          : '')
         + (j.state === 'failed' && j.kind && window.lumaRegenerate
           ? '<button type="button" class="btn btn-ghost btn-sm" data-regen="1" data-kind="' + esc(j.kind)
             + '" data-name="' + esc(j.name || j.id) + '" title="Have a model write this test again from its prompt, '

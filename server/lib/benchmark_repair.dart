@@ -321,15 +321,9 @@ String explainRenderError(String source, String error) {
 /// again trimmed. Lets the next attempt be shown the right code to copy.
 int? nearestLineOf(String source, String reply) {
   try {
-    var text = reply.trim();
-    if (text.startsWith('```')) {
-      text = text
-          .replaceFirst(RegExp(r'^```(?:json)?\s*'), '')
-          .replaceFirst(RegExp(r'\s*```$'), '');
-    }
-    final edits = (jsonDecode(text) as Map)['edits'];
+    final edits = _repairRequest(_decodeRepairReply(reply)).edits;
     final lines = source.split('\n');
-    for (final edit in edits as List) {
+    for (final edit in edits) {
       final before = (edit as Map)['before'];
       if (before is! String) continue;
       for (final candidate in before.split('\n').map((l) => l.trim())) {
@@ -584,21 +578,85 @@ String mendRepairJson(String json) {
   return out.toString();
 }
 
-/// Whether a repair reply is the model saying there is nothing it can fix:
-/// a well-formed reply whose edit list is empty.
-bool repairReplyIsEmpty(String reply) {
+/// A repair reply decoded, mending the usual slips; throws a
+/// [FormatException] that tells the model what to do when it isn't JSON.
+Object? _decodeRepairReply(String reply) {
   final json = repairReplyJson(reply);
-  Object? raw;
   try {
-    raw = jsonDecode(json);
-  } on FormatException {
+    return jsonDecode(json);
+  } on FormatException catch (e) {
     try {
-      raw = jsonDecode(mendRepairJson(json));
+      return jsonDecode(mendRepairJson(json));
     } on FormatException {
-      return false;
+      throw FormatException('Your reply was not valid JSON (${e.message}). '
+          'Reply with only the JSON object, escaping quotes, backslashes and '
+          'newlines inside strings.');
     }
   }
-  return raw is Map && raw['edits'] is List && (raw['edits'] as List).isEmpty;
+}
+
+/// What a decoded reply asks for, whatever shape the model gave it in:
+/// - `edits`: a list of edits (empty when it found nothing to fix), taken
+///   from `{"edits":[…]}`, a bare list, a single edit object, or the same
+///   under `changes`/`patches`/`edit`;
+/// - `page`: a whole corrected page, when the model sent the html back
+///   (`{"html":"…"}`) instead of edits.
+/// A reply with neither (`{}`, `{"reason":"…"}`) means nothing to fix.
+({List edits, String? page}) _repairRequest(Object? raw) {
+  if (raw is List) return (edits: raw, page: null);
+  if (raw is! Map) return (edits: const [], page: null);
+  final found = raw['edits'] ?? raw['changes'] ?? raw['patches'] ?? raw['edit'];
+  if (found is List) return (edits: found, page: null);
+  if (found is Map) return (edits: [found], page: null);
+  if (raw.containsKey('after') &&
+      (raw.containsKey('before') || raw.containsKey('startLine'))) {
+    return (edits: [raw], page: null);
+  }
+  for (final key in const ['html', 'page', 'source', 'fixedHtml']) {
+    final page = raw[key];
+    if (page is String && page.trim().isNotEmpty) {
+      return (edits: const [], page: page);
+    }
+  }
+  return (edits: const [], page: null);
+}
+
+/// Whether a repair reply is the model saying there is nothing it can fix
+/// in [source]: no edits, or the page sent back unchanged.
+bool repairReplyIsEmpty(String reply, String source) {
+  final Object? raw;
+  try {
+    raw = _decodeRepairReply(reply);
+  } on FormatException {
+    return false;
+  }
+  final request = _repairRequest(raw);
+  if (request.page != null) return request.page!.trim() == source.trim();
+  return request.edits.isEmpty;
+}
+
+/// A whole page sent back in place of edits, held to the same rule as
+/// edits: only the stretch between the unchanged start and end counts as
+/// changed, and that may not be most of the page.
+String _applyWholePage(String source, String page) {
+  final a = source, b = page;
+  var start = 0;
+  final shortest = a.length < b.length ? a.length : b.length;
+  while (start < shortest && a.codeUnitAt(start) == b.codeUnitAt(start)) {
+    start++;
+  }
+  var end = 0;
+  while (end < shortest - start &&
+      a.codeUnitAt(a.length - 1 - end) == b.codeUnitAt(b.length - 1 - end)) {
+    end++;
+  }
+  final changed = a.length - start - end;
+  if (changed > a.length * .6 || b.length < a.length * .4) {
+    throw const FormatException(
+        'The page you sent back changes too much of the test. Send edits '
+        'for the broken part only.');
+  }
+  return b;
 }
 
 /// A line number from an edit, which some models send as "12" or 12.0.
@@ -614,23 +672,17 @@ int? _lineNumber(Object? value) => switch (value) {
 /// rewritten; edits cannot overlap, and together they cannot replace the
 /// whole page.
 String applyBenchmarkRepair(String source, String reply) {
-  final json = repairReplyJson(reply);
-  Object? raw;
-  try {
-    raw = jsonDecode(json);
-  } on FormatException catch (e) {
-    try {
-      raw = jsonDecode(mendRepairJson(json));
-    } on FormatException {
-      throw FormatException('Your reply was not valid JSON (${e.message}). '
-          'Reply with only the JSON object, escaping quotes, backslashes and '
-          'newlines inside strings.');
-    }
-  }
-  final edits = raw is Map ? raw['edits'] : null;
-  if (edits is! List || edits.isEmpty || edits.length > 40) {
+  final request = _repairRequest(_decodeRepairReply(reply));
+  if (request.page case final page?) return _applyWholePage(source, page);
+  final edits = request.edits;
+  if (edits.isEmpty) {
     throw const FormatException(
         'No edits were returned. Find the cause in renderError and edit it.');
+  }
+  if (edits.length > 40) {
+    throw const FormatException(
+        'More than 40 edits were returned; rewrite the broken block with one '
+        'startLine/endLine edit instead.');
   }
   final lineStarts = <int>[0];
   for (var i = source.indexOf('\n'); i >= 0; i = source.indexOf('\n', i + 1)) {
@@ -645,7 +697,16 @@ String applyBenchmarkRepair(String source, String reply) {
     }
     if (edit['startLine'] != null || edit['endLine'] != null) {
       final first = _lineNumber(edit['startLine']);
-      final last = _lineNumber(edit['endLine']);
+      var last = _lineNumber(edit['endLine']);
+      // Models often count a trailing newline as one more line; running a
+      // line or two past the end means "to the end".
+      if (last != null &&
+          first != null &&
+          first <= lineStarts.length &&
+          last > lineStarts.length &&
+          last <= lineStarts.length + 2) {
+        last = lineStarts.length;
+      }
       if (first == null ||
           last == null ||
           first < 1 ||
@@ -711,6 +772,14 @@ class BenchmarkRepairJob {
   String detail = 'Checking price guard…';
   double? costUsd;
 
+  /// What the model answered on each attempt (the first 20k characters),
+  /// so a failed repair can be read on the dashboard.
+  final List<String> replies = [];
+
+  void addReply(String reply) => replies.add(reply.length > 20000
+      ? '${reply.substring(0, 20000)}\n… (${reply.length - 20000} more characters)'
+      : reply);
+
   /// Settles the job, stamping when, so a card can say how long it took.
   void finish(String result, String note) {
     state = result;
@@ -727,6 +796,7 @@ class BenchmarkRepairJob {
         'costUsd': costUsd,
         'startedAtMs': startedAtMs,
         'finishedAtMs': finishedAtMs,
+        'hasReplies': replies.isNotEmpty,
       };
 }
 

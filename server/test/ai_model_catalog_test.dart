@@ -604,6 +604,39 @@ void main() {
       expect(out.single.reasoningIndex, 80);
     });
 
+    test('each effort tier keeps its own scores, speed and price', () {
+      final out = aaOverlays([
+        {
+          'name': 'Claude Opus 5.5 (high)',
+          'evaluations': {
+            'artificial_analysis_intelligence_index': 54.0,
+            'artificial_analysis_coding_index': 48.0,
+          },
+          'performance': {'median_output_tokens_per_second': 76.0},
+          'pricing': {
+            'price_1m_input_tokens': 5.0,
+            'price_1m_output_tokens': 25.0,
+          },
+        },
+        row('Claude Opus 5.5 (max)', 58, coding: 52),
+      ], [
+        known('anthropic/claude-opus-5.5', 'Claude Opus 5.5')
+      ]);
+
+      final [high, max] = out.single.effortProfiles;
+      expect(high.effort, 'high');
+      expect(high.codingIndex, 48);
+      expect(high.speedTokensPerSec, 76);
+      expect(high.inputPricePerM, 5);
+      expect(high.outputPricePerM, 25);
+      expect(max.codingIndex, 52);
+      expect(max.speedTokensPerSec, isNull);
+
+      final roundTrip = AiEffortProfile.fromJson(high.toJson());
+      expect(roundTrip.codingIndex, 48);
+      expect(roundTrip.inputPricePerM, 5);
+    });
+
     test('rows for models the catalogue does not carry are dropped', () {
       expect(aaOverlays([row('Some Other Model (max)', 40)], []), isEmpty);
     });
